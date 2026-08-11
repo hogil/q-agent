@@ -57,6 +57,7 @@ JS = r"""() => {
             const cs = getComputedStyle(n.parentElement);
             out.push({ t, size: parseFloat(cs.fontSize),
                        bold: parseInt(cs.fontWeight, 10) >= 600,
+                       underline: (cs.textDecorationLine || '').includes('underline'),
                        color: rgb(cs.color) || [17, 24, 39],
                        mono: /mono|Consolas|AXNoto/i.test(cs.fontFamily) &&
                              /mono|Consolas/i.test(cs.fontFamily) });
@@ -107,6 +108,7 @@ JS = r"""() => {
             align: 'left', valign: 'top', lh: parseFloat(tcs.lineHeight) || 0,
             runs: [{ t: value, size: parseFloat(tcs.fontSize) || 8,
                      bold: parseInt(tcs.fontWeight, 10) >= 600,
+                     underline: false,
                      color: rgb(tcs.fill) || rgb(tcs.color) || [17, 24, 39],
                      mono: /mono|Consolas/i.test(tcs.fontFamily) }]
           });
@@ -127,13 +129,18 @@ JS = r"""() => {
                   Bottom: side('Bottom'), Left: side('Left') };
       const present = Object.values(B).filter(Boolean);
       const allFour = present.length === 4;
+      const uniformBorder = allFour && present.every(s =>
+        Math.abs(s.w - present[0].w) < 0.01 &&
+        JSON.stringify(s.c) === JSON.stringify(present[0].c));
 
-      if (bg || allFour) {
+      if (bg || uniformBorder) {
         items.push({ kind: 'box', ...box, bg, shadow, radius,
-                     bc: allFour ? B.Top.c : null, bw: allFour ? B.Top.w : 0 });
+                     bc: uniformBorder ? B.Top.c : null,
+                     bw: uniformBorder ? B.Top.w : 0 });
       }
-      if (!allFour) {
-        // 한쪽 테두리는 그 변 자리에 얇은 채움 사각형으로 옮긴다 — 보이는 대로다
+      if (!uniformBorder) {
+        // 변마다 두께나 색이 다르면 각각 얇은 채움 사각형으로 옮긴다. 상단 강조띠를
+        // 네 변 전체의 굵은 테두리로 오인하지 않도록 하는 것이 중요하다.
         if (B.Top)    items.push({ kind: 'box', x: box.x, y: box.y, w: box.w, h: B.Top.w, bg: B.Top.c, bc: null, bw: 0, radius: 0 });
         if (B.Bottom) items.push({ kind: 'box', x: box.x, y: box.y + box.h - B.Bottom.w, w: box.w, h: B.Bottom.w, bg: B.Bottom.c, bc: null, bw: 0, radius: 0 });
         if (B.Left)   items.push({ kind: 'box', x: box.x, y: box.y, w: B.Left.w, h: box.h, bg: B.Left.c, bc: null, bw: 0, radius: 0 });

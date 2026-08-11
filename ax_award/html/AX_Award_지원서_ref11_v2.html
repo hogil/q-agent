@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="_ds/qie-deck-design-system-3e89fc2b-617a-478e-8046-1d49f7f8e83c/tokens/fonts.css">
+  <link rel="stylesheet" href="_ds/qie-deck-design-system-3e89fc2b-617a-478e-8046-1d49f7f8e83c/tokens/colors.css">
+  <link rel="stylesheet" href="_ds/qie-deck-design-system-3e89fc2b-617a-478e-8046-1d49f7f8e83c/tokens/typography.css">
+  <link rel="stylesheet" href="_ds/qie-deck-design-system-3e89fc2b-617a-478e-8046-1d49f7f8e83c/tokens/spacing.css">
+  <link rel="stylesheet" href="_ds/qie-deck-design-system-3e89fc2b-617a-478e-8046-1d49f7f8e83c/tokens/base.css">
+  <link rel="stylesheet" href="_ds/qie-deck-design-system-3e89fc2b-617a-478e-8046-1d49f7f8e83c/styles.css">
+  <script src="_ds/qie-deck-design-system-3e89fc2b-617a-478e-8046-1d49f7f8e83c/_ds_bundle.js"></script>
+  <script src="./doc-page.js"></script>
+  <style>
+    doc-page:not(:defined){visibility:hidden}
+    body{margin:0}
+    a{color:#12B5B0;text-decoration:none}
+    a:hover{color:#0F1E3D;text-decoration:underline}
+  </style>
+</helmet>
+<doc-page size="a4">
+
+<section class="page" data-screen-label="1p — 개요·문제정의" style="position:relative;padding:113px 96px 96px;font-family:'Noto Sans KR','Malgun Gothic',sans-serif;font-size:11px;line-height:1.6;color:#111827;overflow:hidden">
+  <div style="text-align:center;font-size:29px;font-weight:700;text-decoration:underline;color:#0F1E3D;letter-spacing:0.01em;margin-bottom:10px">AX Award 지원서</div>
+
+  <table style="width:100%;border-collapse:collapse;font-size:8.3px">
+    <tbody>
+      <tr><td colspan="4" style="border:1px solid #33415E;background:#F2F5FA;padding:3px 10px"><div style="display:flex;align-items:center;gap:9px"><span style="width:5px;height:12px;background:#12B5B0;flex:none"></span><span style="font-weight:700;font-size:13.5px;color:#0F1E3D">I. 개요</span></div></td></tr>
+      <tr>
+        <td style="width:85px;border:1px solid #33415E;background:#F2F5FA;padding:2.5px 4px;font-weight:700;color:#0F1E3D;text-align:center">지원부문</td>
+        <td colspan="3" style="border:1px solid #33415E;padding:2.5px 9px">제조 AX 부문</td>
+      </tr>
+      <tr>
+        <td style="width:85px;border:1px solid #33415E;background:#F2F5FA;padding:2.5px 4px;font-weight:700;color:#0F1E3D;text-align:center">팀 / 그룹</td>
+        <td style="border:1px solid #33415E;padding:2.5px 9px">제조기술센터 품질기술그룹</td>
+        <td style="width:60px;border:1px solid #33415E;background:#F2F5FA;padding:2.5px 4px;font-weight:700;color:#0F1E3D;text-align:center">대표자</td>
+        <td style="width:100px;border:1px solid #33415E;padding:2.5px 9px">홍길동</td>
+      </tr>
+      <tr>
+        <td style="width:85px;border:1px solid #33415E;background:#F2F5FA;padding:2.5px 4px;font-weight:700;color:#0F1E3D;text-align:center">제목</td>
+        <td colspan="3" style="border:1px solid #33415E;padding:2.5px 9px"><b style="color:#0F1E3D">품질 이상 접수부터 확정 이력 재사용까지 연결하는 AI Agent Orchestration 구축</b> — SPC 이벤트와 Chat 질문을 접수해 조사, 판정, 조치안 작성, 이력 등록을 연결하고 승인 범위에 따라 자동조치까지 확대하는 품질 관리 시스템</td>
+      </tr>
+      <tr>
+        <td style="width:85px;border:1px solid #33415E;background:#F2F5FA;padding:2.5px 4px;font-weight:700;color:#0F1E3D;text-align:center">적용시점</td>
+        <td colspan="3" style="border:1px solid #33415E;padding:2.5px 9px">2026-09-01 ~ 2028-08-31 (24개월) — 1차년 구축, 검증 / 2차년 확산, 자동화</td>
+      </tr>
+      <tr>
+        <td style="width:85px;border:1px solid #33415E;background:#F2F5FA;padding:2.5px 4px;font-weight:700;color:#0F1E3D;text-align:center">횡전개 범위</td>
+        <td colspan="3" style="border:1px solid #33415E;padding:2.5px 9px">1차년 포토 1개 공정 → 2차년 etch, CMP 3개 공정 → 품질, 공정 엔지니어 약 1,000명, DRAM, NAND 전 제품군. 확산 표준안으로 타 조직 이관.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <table style="width:100%;border-collapse:collapse;margin-top:7px">
+    <tbody>
+      <tr><td colspan="2" style="border:1px solid #33415E;background:#F2F5FA;padding:3px 10px"><div style="display:flex;align-items:center;gap:9px"><span style="width:5px;height:12px;background:#12B5B0;flex:none"></span><span style="font-weight:700;font-size:13.5px;color:#0F1E3D">II. Process</span><sc-if value="{{ rubricOn }}" hint-placeholder-val="{{ false }}"><span style="margin-left:auto;font-size:7.9px;font-weight:700;color:#12B5B0;border:1px solid #B7E6E4;border-radius:999px;padding:0.5px 8px;background:#FFFFFF">심사 60 — 문제 명확 20, E2E 대체 20, 활용, 확산 20</span></sc-if></div></td></tr>
+      <tr>
+        <td style="width:85px;border:1px solid #33415E;background:#F2F5FA;padding:5px 3px;font-weight:700;font-size:14.7px;color:#0F1E3D;text-align:center;vertical-align:middle">문제<br>정의</td>
+        <td style="border:1px solid #33415E;padding:6px 9px;vertical-align:top">
+          <div style="font-size:12.5px;font-weight:700;color:#0F1E3D"><span style="color:#12B5B0">1.</span> 해결하려는 문제 — 이상 감지 이후 조사와 판정이 대부분 수작업으로 남아 있다</div>
+          <div style="font-size:8.3px;line-height:1.55;color:#3E4C64;margin:3px 0 4px">품질 이상이 발생하면 담당 엔지니어가 SPC Trend, MES 이력, 설비 작업 이력, 변경점, 불량 이미지, 과거 사고 보고서를 하나씩 열어 대조한 뒤 원인을 판단하고 대응을 정한다. <b style="color:#0F1E3D">이상 검출은 수 초면 끝나지만 그 뒤 조사와 판정은 대부분 수작업이라, 빠르게 잡아내고도 처리 결정까지 수 시간이 걸린다.</b></div>
+          <div style="display:flex;gap:2px;align-items:stretch;margin-bottom:5px">
+            <div style="flex:1;background:#F2F5FA;border-radius:4px 0 0 4px;padding:3px 4px;text-align:center;font-size:7.1px;color:#5A6B84;line-height:1.3">이상 발생</div>
+            <div style="flex:1;background:#F2F5FA;padding:3px 4px;text-align:center;font-size:7.1px;color:#5A6B84;line-height:1.3">알람 확인</div>
+            <div style="flex:1.15;background:#0F1E3D;padding:3px 4px;text-align:center;font-size:7.1px;color:#FFFFFF;line-height:1.3">Trend 확인</div>
+            <div style="flex:1.35;background:#0F1E3D;padding:3px 4px;text-align:center;font-size:7.1px;color:#FFFFFF;line-height:1.3">MES, 설비 이력 조회</div>
+            <div style="flex:1.15;background:#0F1E3D;padding:3px 4px;text-align:center;font-size:7.1px;color:#FFFFFF;line-height:1.3">변경점 확인</div>
+            <div style="flex:1.35;background:#0F1E3D;padding:3px 4px;text-align:center;font-size:7.1px;color:#FFFFFF;line-height:1.3">과거 사고 검색</div>
+            <div style="flex:1.1;background:#1B3260;padding:3px 4px;text-align:center;font-size:7.1px;color:#FFFFFF;line-height:1.3">원인 판단</div>
+            <div style="flex:1.15;background:#1B3260;padding:3px 4px;text-align:center;font-size:7.1px;color:#FFFFFF;line-height:1.3">대응 결정</div>
+            <div style="flex:0.85;background:#F2F5FA;padding:3px 4px;text-align:center;font-size:7.1px;color:#5A6B84;line-height:1.3">보고</div>
+            <div style="flex:0.95;background:#F2F5FA;border-radius:0 4px 4px 0;padding:3px 4px;text-align:center;font-size:7.1px;color:#5A6B84;line-height:1.3">이력 등록</div>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:6px;font-size:8.3px;color:#5A6B84;margin-bottom:5px"><span style="font-weight:700;color:#0F1E3D">↑ 진한 구간이 병목</span><span>여섯 단계가 전부 사람이 화면을 열어 대조하는 일이다. 교차 조사에만 4시간 이상, 야간에는 담당자 출근 전까지 조사 자체가 시작되지 않는다.</span></div>
+          <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:2px"><span style="flex:none;font-size:8.3px;font-weight:700;color:#FFFFFF;background:#5A6B84;border-radius:3px;padding:0 6px">사례형 시나리오</span><span style="font-size:7.9px;color:#3E4C64">예시: PHOD03 CD 급등 — 검출 02:14, 조사 착수 08:30, 처리 결정 16:00</span></div>
+          <div style="display:flex;flex-direction:column;gap:3px;font-size:8.3px;line-height:1.55;color:#3E4C64;margin:3px 0 4px">
+            <div>판정 한 건에 필요한 정보는 세 가지다 — <b style="color:#0F1E3D">① 이 item의 Trend 이력 ② 직전 변경점(PM, 레시피, 자재) ③ 같은 조합에서 과거에 났던 불량.</b></div>
+            <div>새벽과 주말 취약시간에는 ②③을 아는 담당자가 없다. 그래서 <b style="color:#0F1E3D">파라미터만 보정해 Trend를 스펙 안으로 되돌리고 넘어간다.</b> 숫자는 정상으로 보이지만 원인은 남아, 같은 불량이 재발, 확산된 뒤 주간에 드러난다.</div>
+          </div>
+          <div style="border:1px solid #D7DEEA;border-radius:6px;padding:4px 9px;margin-bottom:5px">
+            <div style="display:flex;height:11px;border-radius:3px;overflow:hidden">
+              <div style="width:45%;background:#8A97AB"></div><div style="width:12%;background:#AEBBCB"></div><div style="width:31%;background:#5A6B84"></div><div style="width:12%;background:#0F1E3D"></div>
+            </div>
+            <div style="display:flex;font-size:8.3px;color:#5A6B84;margin-top:2px;line-height:1.35">
+              <div style="width:45%;padding-right:6px"><b style="color:#0F1E3D">02:14→08:30 무대응 6h</b></div>
+              <div style="width:12%;padding-right:6px"><b style="color:#0F1E3D">인수, 파악</b></div>
+              <div style="width:31%;padding-right:6px"><b style="color:#0F1E3D">교차 조사 4h+</b></div>
+              <div style="width:12%"><b style="color:#0F1E3D">보고, 결재</b></div>
+            </div>
+          </div>
+          <div style="font-size:12.5px;font-weight:700;color:#0F1E3D"><span style="color:#12B5B0">2.</span> 현장에서 반복되는 문제 4가지</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:4px">
+            <div style="background:#F2F5FA;border-left:4px solid #0F1E3D;border-radius:0 5px 5px 0;padding:3px 8px;font-size:8.3px;line-height:1.5;color:#3E4C64"><b style="color:#0F1E3D;font-size:8.3px">조사 시간이 길다</b> — 판정 한 건에 SPC, MES, YMS, EngrNote를 모두 열어 손으로 비교한다. 같은 형태의 조사가 이상이 나올 때마다 반복된다. <span style="color:#0E9C97;font-weight:700">측정: 건당 처리 시간</span></div>
+            <div style="background:#F2F5FA;border-left:4px solid #0F1E3D;border-radius:0 5px 5px 0;padding:3px 8px;font-size:8.3px;line-height:1.5;color:#3E4C64"><b style="color:#0F1E3D;font-size:8.3px">담당자별 판정 편차가 크다</b> — 같은 Trend를 봐도 숙련도에 따라 조사 범위와 결론이 달라질 수 있다. 판정 기준이 시스템화되지 않고 개인 경험에 의존한다. <span style="color:#0E9C97;font-weight:700">측정: 동일 현상 판정 일치율</span></div>
+            <div style="background:#F2F5FA;border-left:4px solid #0F1E3D;border-radius:0 5px 5px 0;padding:3px 8px;font-size:8.3px;line-height:1.5;color:#3E4C64"><b style="color:#0F1E3D;font-size:8.3px">야간과 주말 대응 공백이 발생한다</b> — 야간과 주말엔 변경점과 과거 사례를 아는 담당자가 없어 원인 조사가 지연되고, 파라미터를 정상 범위로 되돌리는 임시 대응만 남는다. <span style="color:#0E9C97;font-weight:700">측정: 발생→조사 착수 시각차</span></div>
+            <div style="background:#F2F5FA;border-left:4px solid #0F1E3D;border-radius:0 5px 5px 0;padding:3px 8px;font-size:8.3px;line-height:1.5;color:#3E4C64"><b style="color:#0F1E3D;font-size:8.3px">변경 근거와 이력이 표준화되어 있지 않다</b> — 근거가 문서로 안 남아 개인 판단으로 보정하고 지나간다. 담당이 바뀌면 같은 조사를 처음부터 다시 수행한다. <span style="color:#0E9C97;font-weight:700">측정: 담당 교체 후 재조사 건수</span></div>
+          </div>
+          <div style="font-size:12.5px;font-weight:700;color:#0F1E3D"><span style="color:#12B5B0">3.</span> 현업 관점의 중요도와 개선 필요성</div>
+          <div style="display:flex;gap:8px;align-items:stretch;margin:4px 0">
+            <div style="flex:1;display:flex;align-items:center;gap:8px;border:1px solid #D7DEEA;border-radius:6px;padding:4px 9px">
+              <svg viewBox="0 0 64 64" style="width:44px;flex:none;display:block">
+                <circle cx="32" cy="32" r="26" fill="none" stroke="#EDF1F7" stroke-width="10"></circle>
+                <circle cx="32" cy="32" r="26" fill="none" stroke="#12B5B0" stroke-width="10" stroke-dasharray="81.7 163.4" transform="rotate(-90 32 32)"></circle>
+                <text x="32" y="30" font-size="12" font-weight="900" fill="#0F1E3D" text-anchor="middle">4h</text>
+                <text x="32" y="41" font-size="6.5" fill="#5A6B84" text-anchor="middle">/ 근무 8h</text>
+              </svg>
+              <div style="font-size:8.3px;line-height:1.5;color:#3E4C64">근무의 절반이 판정 조사와 대조에 쓰인다 <span style="color:#8A97AB">[산정치 — 로그로 실측 대체]</span></div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;justify-content:center;border:1px solid #D7DEEA;border-radius:6px;padding:4px 11px">
+              <div style="font-size:15px;font-weight:900;color:#0F1E3D;line-height:1.1">× 약 1,000명</div>
+              <div style="font-size:8.3px;color:#5A6B84;line-height:1.45">품질과 공정 엔지니어 전원이 매일 하는 상시 업무다</div>
+            </div>
+          </div>          <div style="display:flex;gap:5px;align-items:stretch;margin-bottom:5px">
+            <div style="flex:1;background:#FBEDED;border-radius:5px;padding:3px 9px;font-size:7.9px;line-height:1.5;color:#3E4C64"><b style="color:#0F1E3D">진성 놓침</b> — 불량이 후공정과 고객까지 확대된다</div>
+            <div style="flex:none;display:flex;align-items:center;font-size:7.9px;font-weight:700;color:#5A6B84">어느 쪽으로도 기울일 수 없다</div>
+            <div style="flex:1;background:#FBEDED;border-radius:5px;padding:3px 9px;font-size:7.9px;line-height:1.5;color:#3E4C64"><b style="color:#0F1E3D">가성 Hold</b> — 정상 Lot을 세워 수율과 TAT에 손실이 난다</div>
+          </div>
+          <div style="font-size:8.3px;line-height:1.55;color:#3E4C64">진성 이상을 놓치거나 정상 Lot을 불필요하게 Hold하면 손실이 크다. <b style="color:#0F1E3D">따라서 이상 감지만으로는 충분하지 않다. 감지 이후 데이터 수집, 원인 조사, 판정, 대응, 이력 등록까지 전체 Process를 개선해야 한다.</b> 개선 효과는 조사 착수 시간, 건당 처리 시간, 판정 일치율, 재조사 건수로 측정한다.</div>
+          <div style="font-size:12.5px;font-weight:700;color:#0F1E3D"><span style="color:#12B5B0">4.</span> 기존 수단의 한계</div>
+          <div style="display:flex;gap:5px;margin:4px 0 5px">
+            <div style="flex:1;border:1px solid #D7DEEA;border-radius:5px;padding:3px 8px;font-size:7.9px;line-height:1.45;color:#3E4C64"><b style="color:#0F1E3D">사내 LLM API</b> <span style="color:#8A97AB">기각</span><br>SPC, MES 조회, Map 판독, 변경점 대조 기능이 없다</div>
+            <div style="flex:1;border:1px solid #D7DEEA;border-radius:5px;padding:3px 8px;font-size:7.9px;line-height:1.45;color:#3E4C64"><b style="color:#0F1E3D">사내 공용 RAG</b> <span style="color:#8A97AB">기각</span><br>공정별 시스템 조회, 조사 순서 결정, 승인 연계를 지원하지 않는다</div>
+            <div style="flex:1;border:1px solid #D7DEEA;border-radius:5px;padding:3px 8px;font-size:7.9px;line-height:1.45;color:#3E4C64"><b style="color:#0F1E3D">BI, 대시보드</b> <span style="color:#8A97AB">기각</span><br>조회 화면만 늘 뿐 판단은 사람 몫으로 남는다</div>
+            <div style="flex:1;background:#E6F7F6;border:1px solid #12B5B0;border-radius:5px;padding:3px 8px;font-size:7.9px;line-height:1.45;color:#3E4C64"><b style="color:#0F1E3D">규칙 기반 SPC 알람</b> <span style="color:#0E9C97;font-weight:700">편입</span><br>임계만 잡으므로 감지는 Trend Agent가 맡고 알람은 기동 트리거로 쓴다</div>
+          </div>
+          <div style="font-size:8.3px;line-height:1.55;color:#3E4C64"><b style="color:#0F1E3D">현재 적용 가능한 기반</b> — 사고 원장, 설비 이력, Trend, 이미지, 문서가 축적돼 있다. 사내 LLM, Vision, Tool Calling을 사용할 수 있고, 골든셋, 회귀 Runner, 검증기 5칙으로 모델 변경 전후를 비교할 수 있다.</div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div style="position:absolute;bottom:40px;left:0;right:0;text-align:center;font-size:11px;color:#8A97AB">- 1 -</div>
+</section>
+
+<section class="page" data-screen-label="2p — Process 재설계" style="position:relative;padding:113px 96px 96px;font-family:'Noto Sans KR','Malgun Gothic',sans-serif;font-size:11px;line-height:1.6;color:#111827;overflow:hidden">
+
+  <table style="width:100%;border-collapse:collapse;margin-top:7px">
+    <tbody>
+      <tr>
+        <td style="width:85px;border:1px solid #33415E;background:#F2F5FA;padding:5px 3px;font-weight:700;font-size:14.7px;color:#0F1E3D;text-align:center;vertical-align:middle">Process<br>재설계</td>
+        <td style="border:1px solid #33415E;padding:6px 9px;vertical-align:top">
+          <div style="font-size:12.5px;font-weight:700;color:#0F1E3D"><span style="color:#12B5B0">1.</span> E2E 전체 Process 재설계 — 접수부터 확정 이력 재사용까지 연결</div>
+          <div style="border:1px solid #D7DEEA;border-radius:6px;padding:4px 6px 3px;margin-top:4px">
+            <svg viewBox="0 0 608 150" style="width:100%;display:block">
+              <defs>
+                <marker id="ahT" markerWidth="6" markerHeight="6" refX="4.5" refY="3" orient="auto"><path d="M0,0.6 L4.8,3 L0,5.4 Z" fill="#12B5B0"></path></marker>
+                <marker id="ahN" markerWidth="6" markerHeight="6" refX="4.5" refY="3" orient="auto"><path d="M0,0.6 L4.8,3 L0,5.4 Z" fill="#0E9C97"></path></marker>
+              </defs>
+              <text x="70" y="12" font-size="8" font-weight="700" fill="#5A6B84" text-anchor="middle">인지</text>
+              <text x="174" y="12" font-size="8" font-weight="700" fill="#5A6B84" text-anchor="middle">조사</text>
+              <text x="278" y="12" font-size="8" font-weight="700" fill="#5A6B84" text-anchor="middle">판정</text>
+              <text x="382" y="12" font-size="8" font-weight="700" fill="#5A6B84" text-anchor="middle">조치 결정</text>
+              <text x="486" y="12" font-size="8" font-weight="700" fill="#5A6B84" text-anchor="middle">보고</text>
+              <text x="590" y="12" font-size="8" font-weight="700" fill="#5A6B84" text-anchor="middle">이력 등록</text>
+              <rect x="40" y="20" width="560" height="36" rx="5" fill="#F7F9FC" stroke="#D7DEEA" stroke-width="1"></rect>
+              <text x="19" y="33" font-size="8" font-weight="900" fill="#5A6B84" text-anchor="middle">사람</text>
+              <text x="19" y="44" font-size="7" font-weight="700" fill="#8A97AB" text-anchor="middle">4h+</text>
+              <rect x="40" y="100" width="560" height="36" rx="5" fill="#0F1E3D"></rect>
+              <text x="19" y="113" font-size="7.5" font-weight="900" fill="#0F1E3D" text-anchor="middle">Q-Agent</text>
+              <text x="19" y="124" font-size="7" font-weight="700" fill="#0E9C97" text-anchor="middle">목표</text>
+              <polyline points="70,38 174,38 278,38 382,38 486,38" fill="none" stroke="#AEBBCB" stroke-width="1.5"></polyline>
+              <path d="M 486 38 C 510 36 528 32 542 29" fill="none" stroke="#AEBBCB" stroke-width="1.2" stroke-dasharray="3 2.5"></path>
+              <text x="548" y="32" font-size="7" font-weight="900" fill="#8A97AB">✕ 개인 기록 — 휘발</text>
+              <circle cx="70" cy="38" r="4.5" fill="#8A97AB"></circle><circle cx="174" cy="38" r="4.5" fill="#8A97AB"></circle><circle cx="278" cy="38" r="4.5" fill="#8A97AB"></circle><circle cx="382" cy="38" r="4.5" fill="#8A97AB"></circle><circle cx="486" cy="38" r="4.5" fill="#8A97AB"></circle>
+              <text x="70" y="52" font-size="6.5" fill="#5A6B84" text-anchor="middle">수 분</text>
+              <text x="174" y="52" font-size="6.5" fill="#5A6B84" text-anchor="middle">수십 분</text>
+              <text x="278" y="52" font-size="6.5" fill="#5A6B84" text-anchor="middle">반나절</text>
+              <text x="382" y="52" font-size="6.5" fill="#5A6B84" text-anchor="middle">수십 분</text>
+              <text x="486" y="52" font-size="6.5" fill="#5A6B84" text-anchor="middle">수 시간</text>
+              <line x1="70" y1="45" x2="70" y2="93" stroke="#12B5B0" stroke-width="1" stroke-dasharray="3 2.5" marker-end="url(#ahT)"></line>
+              <line x1="174" y1="45" x2="174" y2="93" stroke="#12B5B0" stroke-width="1" stroke-dasharray="3 2.5" marker-end="url(#ahT)"></line>
+              <line x1="278" y1="45" x2="278" y2="93" stroke="#12B5B0" stroke-width="1" stroke-dasharray="3 2.5" marker-end="url(#ahT)"></line>
+              <line x1="382" y1="45" x2="382" y2="93" stroke="#12B5B0" stroke-width="1" stroke-dasharray="3 2.5" marker-end="url(#ahT)"></line>
+              <line x1="486" y1="45" x2="486" y2="93" stroke="#12B5B0" stroke-width="1" stroke-dasharray="3 2.5" marker-end="url(#ahT)"></line>
+              <text x="74" y="64" font-size="6" font-weight="700" fill="#0E9C97" font-family="ui-monospace,monospace">adapter</text>
+              <text x="178" y="64" font-size="6" font-weight="700" fill="#0E9C97" font-family="ui-monospace,monospace">investigator</text>
+              <text x="282" y="64" font-size="6" font-weight="700" fill="#0E9C97" font-family="ui-monospace,monospace">judgment</text>
+              <text x="386" y="64" font-size="6" font-weight="700" fill="#0E9C97" font-family="ui-monospace,monospace">action</text>
+              <text x="490" y="64" font-size="6" font-weight="700" fill="#0E9C97" font-family="ui-monospace,monospace">answer</text>
+              <polyline points="70,118 174,118 278,118 382,118 486,118" fill="none" stroke="#12B5B0" stroke-width="2"></polyline>
+              <circle cx="70" cy="118" r="4.5" fill="#12B5B0" stroke="#FFFFFF" stroke-width="1"></circle><circle cx="174" cy="118" r="4.5" fill="#12B5B0" stroke="#FFFFFF" stroke-width="1"></circle><circle cx="278" cy="118" r="4.5" fill="#12B5B0" stroke="#FFFFFF" stroke-width="1"></circle><circle cx="382" cy="118" r="4.5" fill="#12B5B0" stroke="#FFFFFF" stroke-width="1"></circle><circle cx="486" cy="118" r="4.5" fill="#12B5B0" stroke="#FFFFFF" stroke-width="1"></circle>
+              <text x="278" y="132" font-size="6.5" font-weight="700" fill="#7FD1CE" text-anchor="middle">6개 수작업 단계를 조사 코어에서 연계 처리 — 처리 시간은 파일럿 실측 후 확정</text>
+              <path d="M 486 118 C 545 116 568 72 588 46" fill="none" stroke="#12B5B0" stroke-width="1.6" marker-end="url(#ahT)"></path>
+              <circle cx="590" cy="38" r="5.5" fill="#E6F7F6" stroke="#12B5B0" stroke-width="1.5"></circle>
+              <text x="590" y="52" font-size="6" font-weight="700" fill="#0E9C97" text-anchor="middle" font-family="ui-monospace,monospace">register</text>
+              <text x="590" y="61" font-size="6.5" font-weight="900" fill="#0F1E3D" text-anchor="middle">사람이 확정</text>
+              <path d="M 578 48 C 480 90 280 92 180 96" fill="none" stroke="#0E9C97" stroke-width="1" stroke-dasharray="2.5 2.5" marker-end="url(#ahN)"></path>
+              <text x="392" y="82" font-size="6.5" font-weight="700" fill="#0E9C97" text-anchor="middle">확정 이력 — 다음 사건의 검색 근거로 환류</text>
+            </svg>
+            <div style="border-top:1px solid #EDF1F7;margin-top:2px;padding-top:3px;font-size:7.3px;line-height:1.6;color:#3E4C64"><span style="font-family:ui-monospace,monospace;font-weight:700;color:#0E9C97">adapter</span> 알람 JSON, 질문 → 표준 사건 카드 &nbsp;<span style="font-family:ui-monospace,monospace;font-weight:700;color:#0E9C97">investigator</span> 도구 5~15회 → 증거 묶음 &nbsp;<span style="font-family:ui-monospace,monospace;font-weight:700;color:#0E9C97">judgment</span> 검증 5칙 통과분만 판정서로 &nbsp;<span style="font-family:ui-monospace,monospace;font-weight:700;color:#0E9C97">action</span> 조치안+등급+파라미터 가드 &nbsp;<span style="font-family:ui-monospace,monospace;font-weight:700;color:#0E9C97">answer</span> 근거 3종 인용 보고서 &nbsp;<span style="font-family:ui-monospace,monospace;font-weight:700;color:#0E9C97">register</span> 사람 승인, 수정, 반려 → 확정분이 코퍼스, 재학습 라벨</div>
+          </div>
+          <div style="font-size:12.5px;font-weight:700;color:#0F1E3D;margin-top:7px"><span style="color:#12B5B0">2.</span> 조치 권한 체계 — 실행 범위와 승인 주체</div>
+          <div style="display:flex;gap:0;align-items:stretch;margin-top:4px">
+            <div style="flex:3;border:1px solid #D7DEEA;border-radius:5px 0 0 5px;padding:4px 7px">
+              <div style="font-size:8.3px;font-weight:700;color:#8A97AB">1차년 운영 — 정보 제공과 권고</div>
+              <div style="display:flex;flex-direction:column;gap:3px;margin-top:2px">
+                <div style="display:flex;gap:6px;align-items:baseline;background:#F2F5FA;border-radius:3px;padding:2px 6px"><span style="flex:none;width:58px;font-size:7.9px;font-weight:700;color:#0F1E3D">L0 정보 제공</span><span style="font-size:7.1px;color:#5A6B84;line-height:1.4">조회 결과와 이상 알림을 자동 제공</span></div>
+                <div style="display:flex;gap:6px;align-items:baseline;background:#F2F5FA;border-radius:3px;padding:2px 6px"><span style="flex:none;width:58px;font-size:7.9px;font-weight:700;color:#0F1E3D">L1 원인 소견</span><span style="font-size:7.1px;color:#5A6B84;line-height:1.4">유사 사고, 원인 후보, 점검 순서를 제시</span></div>
+                <div style="display:flex;gap:6px;align-items:baseline;background:#F2F5FA;border-radius:3px;padding:2px 6px"><span style="flex:none;width:58px;font-size:7.9px;font-weight:700;color:#0F1E3D">L1 조치 권고</span><span style="font-size:7.1px;color:#5A6B84;line-height:1.4">조치안을 제시하고 실행 권한은 현업에 유지</span></div>
+              </div>
+              <div style="font-size:7.1px;color:#8A97AB;margin-top:2px">시스템이 결과를 자동 발신하고 현업 담당자가 채택 여부를 결정</div>
+            </div>
+            <div style="flex:none;width:44px;background:#F7F9FC;border-top:1px solid #D7DEEA;border-bottom:1px solid #D7DEEA;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:2px">
+              <span style="font-size:8.3px;font-weight:900;color:#12B5B0">→</span>
+              <span style="font-size:7px;color:#5A6B84;text-align:center;line-height:1.4">채택, 반려<br>이력 축적</span>
+            </div>
+            <div style="flex:1.3;border:1px solid #D7DEEA;padding:4px 7px">
+              <div style="font-size:8.3px;font-weight:700;color:#8A97AB">사람 승인 후 실행</div>
+              <div style="background:#1B3260;border-radius:3px;padding:2px 6px;margin-top:2px"><div style="font-size:7.9px;font-weight:700;color:#FFFFFF">L2 승인 후 실행</div><div style="font-size:7.1px;color:#C6D2E6;line-height:1.4">현업 담당자가 승인한 경우에만 실행</div></div>
+              <div style="font-size:7.1px;color:#8A97AB;margin-top:2px">확정 주체: 담당 엔지니어</div>
+            </div>
+            <div style="flex:none;width:44px;background:#F7F9FC;border-top:1px solid #D7DEEA;border-bottom:1px solid #D7DEEA;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:2px">
+              <span style="font-size:8.3px;font-weight:900;color:#12B5B0">→</span>
+              <span style="font-size:7px;color:#5A6B84;text-align:center;line-height:1.4">승인율, 오탐율<br>기준 통과</span>
+            </div>
+            <div style="flex:1.3;border:1.5px solid #0F1E3D;border-radius:0 5px 5px 0;padding:4px 7px">
+              <div style="font-size:8.3px;font-weight:700;color:#0E9C97">2차년 심의 후 확대</div>
+              <div style="background:#0F1E3D;border-top:3px solid #12B5B0;border-radius:3px;padding:2px 6px;margin-top:2px"><div style="font-size:7.9px;font-weight:700;color:#FFFFFF">L3 조건부 자동조치</div><div style="font-size:7.1px;color:#C6D2E6;line-height:1.4">사전 심의를 통과하고 원복 가능한 시나리오에 한해 자동 실행</div></div>
+              <div style="font-size:7.1px;color:#8A97AB;margin-top:2px">설비 제어성 조치는 2차년에도 승인 대상</div>
+            </div>
+          </div>
+          <div style="font-size:12.5px;font-weight:700;color:#0F1E3D;margin-top:7px"><span style="color:#12B5B0">3.</span> 접수부터 확정 이력 재사용까지 연결</div>
+          <div style="display:flex;gap:6px;align-items:stretch;margin-top:4px">
+            <div style="flex:1;background:#F2F5FA;border:1px solid #D7DEEA;border-radius:5px;padding:3px 7px"><div style="font-size:8.3px;font-weight:700;color:#0F1E3D">입력 — Event / Chat</div><div style="font-size:7.9px;color:#5A6B84">Chat 질문, SPC 이벤트</div></div>
+            <div style="display:flex;align-items:center;font-size:11px;font-weight:900;color:#12B5B0">→</div>
+            <div style="flex:1.1;background:#0F1E3D;border-radius:5px;padding:3px 7px"><div style="font-size:8.3px;font-weight:700;color:#FFFFFF">Agent 처리 — 조사 → 판정 → 조치안</div><div style="font-size:7.9px;color:#9FB0CC">공통 Core에서 조사와 검증 수행</div></div>
+            <div style="display:flex;align-items:center;font-size:11px;font-weight:900;color:#12B5B0">→</div>
+            <div style="flex:1;background:#E6F7F6;border:1px solid #12B5B0;border-radius:5px;padding:3px 7px"><div style="font-size:8.3px;font-weight:700;color:#0F1E3D">확정 및 재사용 — 승인 이력을 다음 조사에 활용</div><div style="font-size:7.9px;color:#3E4C64">승인 결과를 검색 데이터와 평가셋에 반영</div></div>
+          </div>
+          <div style="font-size:12.5px;font-weight:700;color:#0F1E3D;margin-top:7px"><span style="color:#12B5B0">4.</span> Process 확산 가능성 — 새로 개발하지 않고 공정별 규칙과 연결 범위만 추가한다</div>
+          <div style="display:flex;flex-direction:column;gap:3px;font-size:8.3px;line-height:1.5;color:#3E4C64;margin:4px 0 5px">
+            <div><span style="color:#12B5B0;font-weight:900">●</span> <b style="color:#0F1E3D">확산 표준안</b> = 공통 조사 Core + 공정별 조사규칙 템플릿 + 골든셋 구축 절차. 5Q etch 통과 조건 — <b style="color:#0F1E3D">Core 변경 0건, 반려율 기준선 대비 상승 없음</b>. 공통 Core는 재개발하지 않고 공정별 조사 규칙과 데이터 연결만 추가한다.</div>
+            <div><span style="color:#12B5B0;font-weight:900">●</span> <b style="color:#0F1E3D">현업 역할</b> — 조사규칙 초안(3Q, 공정 담당), 조치 승인, 반려(상시), 골든셋 확정(분기). 확정 이력은 공정별 검색 데이터와 평가셋에 반영한다. 과다 알림은 이벤트 그룹핑, 수신자 피드백으로 조정(조회는 정보계 경유 전용 — 1Q 통과 조건).</div>
+          </div>
+          <div style="border:1px solid #D7DEEA;border-radius:6px;padding:5px 9px 4px">
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+              <div><div style="font-size:7.1px;font-weight:700;color:#0E9C97">1차년, 구축, 검증</div><div style="font-size:8.3px;font-weight:700;color:#0F1E3D">3Q 그림자 → Chat 파일럿</div><div style="font-size:8.3px;color:#5A6B84;line-height:1.4">포토 공정 담당 엔지니어</div></div>
+              <div><div style="font-size:7.1px;font-weight:700;color:#0E9C97">1차년, 구축, 검증</div><div style="font-size:8.3px;font-weight:700;color:#0F1E3D">4Q 무인 접수 개시</div><div style="font-size:8.3px;color:#5A6B84;line-height:1.4">야간, 주말 누락 0건, 채택률 집계</div></div>
+              <div><div style="font-size:7.1px;font-weight:700;color:#8A97AB">2차년, 확산, 자동화</div><div style="font-size:8.3px;font-weight:700;color:#0F1E3D">5Q etch 검증 → 6Q CMP 확산</div><div style="font-size:8.3px;color:#5A6B84;line-height:1.4">5Q 조건: Core 변경 0건</div></div>
+              <div><div style="font-size:7.1px;font-weight:700;color:#8A97AB">2차년, 확산, 자동화</div><div style="font-size:8.3px;font-weight:700;color:#0F1E3D">8Q 약 1,000명 전면</div><div style="font-size:8.3px;color:#5A6B84;line-height:1.4">표준안으로 공정별 데이터 연결</div></div>
+            </div>
+            <div style="display:flex;align-items:center;margin-top:4px">
+              <div style="width:7px;height:7px;border-radius:999px;background:#12B5B0;flex:none"></div><div style="flex:1;height:2px;background:#12B5B0"></div>
+              <div style="width:7px;height:7px;border-radius:999px;background:#12B5B0;flex:none"></div><div style="flex:1;height:2px;background:#7FD1CE"></div>
+              <div style="width:7px;height:7px;border-radius:999px;border:2px solid #12B5B0;background:#FFFFFF;flex:none"></div><div style="flex:1;height:2px;background:#7FD1CE"></div>
+              <div style="width:7px;height:7px;border-radius:999px;border:2px solid #12B5B0;background:#FFFFFF;flex:none"></div>
+            </div>
+          </div>
+          <div style="font-size:12.5px;font-weight:700;color:#0F1E3D;margin-top:7px"><span style="color:#12B5B0">5.</span> 현행 Workflow와 개선 Workflow — 어디를 대체했는지</div>
+          <div style="border:1px solid #D7DEEA;border-radius:6px;padding:5px 8px;margin-top:4px">
+            <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px">
+              <span style="flex:none;width:52px;font-size:8.3px;font-weight:900;color:#8A97AB">현행</span>
+              <div style="flex:1;display:flex;gap:3px">
+                <div style="flex:0.8;background:#F2F5FA;border-radius:3px;padding:3px 5px;text-align:center;font-size:7.5px;color:#5A6B84">이상 감지</div>
+                <div style="flex:0.8;background:#F2F5FA;border-radius:3px;padding:3px 5px;text-align:center;font-size:7.5px;color:#5A6B84">알람 확인</div>
+                <div style="flex:3.6;background:#FBEDED;border:1px solid #E3B4B4;border-radius:3px;padding:3px 5px;text-align:center;font-size:7.5px;color:#3E4C64;line-height:1.35"><b style="color:#0F1E3D">Trend 조사 → 설비, MES 이력 조사 → 과거 사고 검색 → 원인 판단 → 대응 방안 작성 → 보고서 작성</b><br>담당 엔지니어 수작업, 교차 조사 4h+</div>
+                <div style="flex:0.9;background:#F2F5FA;border-radius:3px;padding:3px 5px;text-align:center;font-size:7.5px;color:#5A6B84">담당자 승인</div>
+                <div style="flex:0.8;background:#F2F5FA;border-radius:3px;padding:3px 5px;text-align:center;font-size:7.5px;color:#5A6B84">현장 조치</div>
+                <div style="flex:0.8;background:#F2F5FA;border-radius:3px;padding:3px 5px;text-align:center;font-size:7.5px;color:#5A6B84">이력 등록</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:4px">
+              <span style="flex:none;width:52px;font-size:8.3px;font-weight:900;color:#0E9C97">개선</span>
+              <div style="flex:1;display:flex;gap:3px">
+                <div style="flex:0.8;background:#F2F5FA;border-radius:3px;padding:3px 5px;text-align:center;font-size:7.5px;color:#5A6B84">이상 감지</div>
+                <div style="flex:0.8;background:#E6F7F6;border-radius:3px;padding:3px 5px;text-align:center;font-size:7.5px;color:#0F1E3D;font-weight:700">Agent 자동 접수</div>
+                <div style="flex:3.6;background:#0F1E3D;border-radius:3px;padding:3px 5px;text-align:center;font-size:7.5px;color:#C6D2E6;line-height:1.35"><b style="color:#FFFFFF">Trend 자동 조회 → 설비, MES 자동 조회 → 유사 사고 자동 검색 → 근거 기반 원인 판단 → 대응 방안 생성 → 판정서 자동 작성</b><br>도구 호출 5~15회, 처리 시간은 그림자 운영에서 실측</div>
+                <div style="flex:0.9;background:#F2F5FA;border:1px solid #12B5B0;border-radius:3px;padding:3px 5px;text-align:center;font-size:7.5px;color:#0F1E3D;font-weight:700">담당자 승인</div>
+                <div style="flex:0.8;background:#F2F5FA;border-radius:3px;padding:3px 5px;text-align:center;font-size:7.5px;color:#5A6B84">현장 조치</div>
+                <div style="flex:0.8;background:#E6F7F6;border-radius:3px;padding:3px 5px;text-align:center;font-size:7.5px;color:#0F1E3D;font-weight:700">확정 이력 자동 등록</div>
+              </div>
+            </div>
+            <div style="font-size:7.9px;color:#3E4C64;line-height:1.5;border-top:1px solid #EDF1F7;margin-top:4px;padding-top:3px">붉은 구간은 기존 수작업 병목이고, 짙은 구간은 Agent 처리로 전환한 영역이다. <b style="color:#0F1E3D">접수부터 확정 이력의 다음 사건 재사용까지 E2E Process 전체를 연결한다</b> — 조사, 판정, 조치안, 보고, 등록은 Agent가 처리하고 승인과 현장 조치는 사람이 담당한다.</div>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+      </tr>
+    </tbody>
+  </table>
+  <div style="position:absolute;bottom:40px;left:0;right:0;text-align:center;font-size:11px;color:#8A97AB">- 2 -</div>
+</section>
+
+<section class="page" data-screen-label="3p — 재설계(계속)·Tech 아키텍처" style="position:relative;padding:113px 96px 96px;font-family:'Noto Sans KR','Malgun Gothic',sans-serif;font-size:11px;line-height:1.6;color:#111827;overflow:hidden">
+  <table style="width:100%;border-collapse:collapse">
+    <tbody>
+      <tr><td colspan="2" style="border:1px solid #33415E;background:#F2F5FA;padding:3px 10px"><div style="display:flex;align-items:center;gap:9px"><span style="width:5px;height:12px;background:#12B5B0;flex:none"></span><span style="font-weight:700;font-size:13.5px;color:#0F1E3D">III. Tech</span><sc-if value="{{ rubricOn }}" hint-placeholder-val="{{ false }}"><span style="margin-left:auto;font-size:7.9px;font-weight:700;color:#12B5B0;border:1px solid #B7E6E4;border-radius:999px;padding:0.5px 8px;background:#FFFFFF">심사 30 — AI로 풀 문제인가, 알고리즘 선택 근거</span></sc-if></div></td></tr>
+      <tr>
+        <td style="width:85px;border:1px solid #33415E;background:#F2F5FA;padding:5px 3px;font-weight:700;font-size:14.7px;color:#0F1E3D;text-align:center;vertical-align:middle">기술적<br>해결<br>방안</td>
+        <td style="border:1px solid #33415E;padding:6px 9px;vertical-align:top">
+          <div style="border:1.5px solid #0F1E3D;border-radius:7px;overflow:hidden;margin-bottom:7px">
+            <div style="background:#0F1E3D;padding:2px 9px;display:flex;align-items:baseline;gap:8px"><span style="font-size:8.3px;font-weight:900;color:#FFFFFF">품질 AI Agent Orchestration 전체 구조</span><span style="font-size:7.1px;color:#9FB0CC">감지와 질문부터 조치, 이력 등록, 재학습까지 하나의 오케스트레이션 코어에서 연결한다</span></div>
+            <div style="padding:5px 8px 4px">
+              <div style="display:flex;gap:4px;align-items:stretch">
+                <div style="flex:0.9;display:flex;flex-direction:column;gap:3px">
+                  <div style="font-size:6.5px;font-weight:900;color:#0E9C97;text-align:center">① 입구</div>
+                  <div style="border:1px solid #D7DEEA;border-radius:4px;padding:2px 5px;font-size:6.8px;color:#3E4C64;line-height:1.35"><b style="color:#0F1E3D">SPC 알람</b><br>무인 기동, 24h</div>
+                  <div style="border:1px solid #D7DEEA;border-radius:4px;padding:2px 5px;font-size:6.8px;color:#3E4C64;line-height:1.35"><b style="color:#0F1E3D">Chat 질문</b><br>이미지 첨부 가능</div>
+                  <div style="background:#F2F5FA;border-radius:4px;padding:2px 5px;font-size:6.3px;color:#5A6B84;line-height:1.35">그룹핑, 중복 제거 → <b style="color:#0F1E3D">표준 사건 카드</b></div>
+                </div>
+                <div style="display:flex;align-items:center;font-size:10px;font-weight:900;color:#12B5B0">→</div>
+                <div style="flex:1.85;display:flex;flex-direction:column;gap:3px">
+                  <div style="font-size:6.5px;font-weight:900;color:#0E9C97;text-align:center">② 조사 — Router 자율 루프 (5~15회)</div>
+                  <div style="background:#0F1E3D;border-radius:4px;padding:2px 6px;display:flex;align-items:center;gap:6px"><span style="font-size:8.3px;font-weight:900;color:#FFFFFF">Router LLM</span><span style="font-size:6.3px;font-weight:700;color:#7FD1CE;background:#1B3260;border-radius:2px;padding:0 4px">T=0</span><span style="font-size:6.3px;color:#C6D2E6;line-height:1.3">도구 선택 → 인자 생성 → 반환 해석 → 가설 갱신 → 계속/중단</span></div>
+                  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:3px">
+                    <div style="background:#1B3260;border-radius:3px;padding:2px 4px"><div style="font-size:6.3px;font-weight:700;color:#FFFFFF">Trend</div><div style="font-size:5.8px;color:#C6D2E6;line-height:1.3">2-stage 감지, 변화점</div></div>
+                    <div style="background:#1B3260;border-radius:3px;padding:2px 4px"><div style="font-size:6.3px;font-weight:700;color:#FFFFFF">Image</div><div style="font-size:5.8px;color:#C6D2E6;line-height:1.3">contrastive 유사도</div></div>
+                    <div style="background:#1B3260;border-radius:3px;padding:2px 4px"><div style="font-size:6.3px;font-weight:700;color:#FFFFFF">Agentic RAG</div><div style="font-size:5.8px;color:#C6D2E6;line-height:1.3">원장 → meta → 문서</div></div>
+                    <div style="background:#1B3260;border-radius:3px;padding:2px 4px"><div style="font-size:6.3px;font-weight:700;color:#FFFFFF">사내 DB</div><div style="font-size:5.8px;color:#C6D2E6;line-height:1.3">설비, MES 조회 전용</div></div>
+                  </div>
+                  <div style="border:1px dashed #7FD1CE;border-radius:4px;padding:2px 5px;font-size:6.3px;color:#3E4C64;line-height:1.35"><b style="color:#0E9C97">↩ 반환이 증거 스택에 누적</b> — 원장 행, 인용 원문, 판독 라벨, 변화점, 설비 이력</div>
+                </div>
+                <div style="display:flex;align-items:center;font-size:10px;font-weight:900;color:#12B5B0">→</div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:3px">
+                  <div style="font-size:6.5px;font-weight:900;color:#0E9C97;text-align:center">③ 판정</div>
+                  <div style="background:#12B5B0;border-radius:4px;padding:2px 6px;display:flex;align-items:baseline;gap:5px"><span style="font-size:8.3px;font-weight:900;color:#FFFFFF">Q/A LLM</span><span style="font-size:6.3px;font-weight:700;color:#FFFFFF;background:#0E9C97;border-radius:2px;padding:0 4px">T=0.3</span></div>
+                  <div style="border:1px solid #D7DEEA;border-radius:4px;padding:2px 5px;font-size:6.3px;color:#3E4C64;line-height:1.35">스택 전체로 <b style="color:#0F1E3D">판정서</b> 작성 — 수치, 인용은 반환값 복사</div>
+                  <div style="background:#E6F7F6;border:1px solid #12B5B0;border-radius:4px;padding:2px 5px;font-size:6.3px;color:#3E4C64;line-height:1.35"><b style="color:#0F1E3D">검증기 5칙</b> — 탈락 시 재생성, 반복 실패는 판단 불가로 강등</div>
+                </div>
+                <div style="display:flex;align-items:center;font-size:10px;font-weight:900;color:#12B5B0">→</div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:3px">
+                  <div style="font-size:6.5px;font-weight:900;color:#0E9C97;text-align:center">④ 조치</div>
+                  <div style="border:1px solid #D7DEEA;border-radius:4px;padding:2px 5px;font-size:6.3px;color:#3E4C64;line-height:1.35"><b style="color:#0F1E3D">등급 L0~L3</b> 규칙 결정 + <b style="color:#0F1E3D">파라미터 가드</b>(변경 한도, 횟수)</div>
+                  <div style="background:#F2F5FA;border-radius:4px;padding:2px 5px;font-size:6.3px;color:#3E4C64;line-height:1.35">L0~L1 정보와 권고 제공, <b style="color:#0F1E3D">L2 승인 후 실행</b>, L3는 심의 통과 Scenario만</div>
+                </div>
+                <div style="display:flex;align-items:center;font-size:10px;font-weight:900;color:#12B5B0">→</div>
+                <div style="flex:0.95;display:flex;flex-direction:column;gap:3px">
+                  <div style="font-size:6.5px;font-weight:900;color:#0E9C97;text-align:center">⑤ 사람, 등록</div>
+                  <div style="border:1.5px solid #0F1E3D;border-radius:4px;padding:2px 5px;font-size:6.3px;color:#3E4C64;line-height:1.35"><b style="color:#0F1E3D">승인, 수정, 반려</b><br>현장 조치는 승인 후에만</div>
+                  <div style="background:#0F1E3D;border-radius:4px;padding:2px 5px;font-size:6.3px;color:#C6D2E6;line-height:1.35"><b style="color:#FFFFFF">확정 이력 등록</b><br>EngrNote, 판정 이력</div>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:5px;margin-top:3px;border-top:1px solid #7FD1CE;padding-top:2px">
+                <div style="flex:none;font-size:6.3px;font-weight:900;color:#0E9C97">↖ 환류</div>
+                <div style="flex:1 1 auto;min-width:0;font-size:6.3px;color:#3E4C64;line-height:1.3">확정 이력을 <b style="color:#0F1E3D">검색 코퍼스 + 학습 라벨</b>로 축적한다 — 검색기 파인튜닝, SFT, DPO/KTO는 정기 수행 계획. 후보 모델은 회귀 통과 시에만 배포하며 목표 주기는 월 4회</div>
+                <div style="flex:none;font-size:6.3px;font-weight:900;color:#0E9C97">확정 이력을 다음 학습에 반영 ↗</div>
+              </div>
+            </div>
+          </div>
+          <div style="font-size:12.5px;font-weight:700;color:#0F1E3D"><span style="color:#12B5B0">1.</span> 기존 자동화만으로 해결하기 어려운 이유</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 11px;font-size:8.3px;line-height:1.5;color:#3E4C64;margin:4px 0 7px">
+            <div><b style="color:#0F1E3D">조사 순서를 사전에 고정하기 어렵다</b> — 다음에 볼 데이터가 직전 결과에 따라 달라진다. 고정 파이프라인은 조건별 분기가 급증해 유지보수가 어렵다.</div>
+            <div><b style="color:#0F1E3D">한 건의 판정에 시계열, 이미지, 문서, DB를 함께 확인해야 한다</b> — 각 데이터는 전용 모델로 처리하고 LLM이 종합한다.</div>
+            <div><b style="color:#0F1E3D">판정 근거를 함께 제시해야 한다</b> — Hold/Release 결과와 판단 근거를 모두 추적할 수 있어야 한다.</div>
+            <div><b style="color:#0F1E3D">고정 임계값만으로는 완만한 Drift를 놓칠 수 있다</b> — 변화점 검정이 필요하다.</div>
+          </div>
+          <div style="font-size:12.5px;font-weight:700;color:#0F1E3D;margin-top:7px"><span style="color:#12B5B0">2.</span> 문제별 알고리즘 선택 근거</div>
+          <div style="border:1px solid #D7DEEA;border-radius:6px;padding:5px 8px 3px;margin-top:4px">
+            <div style="display:flex;gap:0;margin-bottom:3px"><span style="flex:none;width:112px;font-size:7.1px;font-weight:900;color:#8A97AB">풀어야 할 문제</span><span style="font-size:7.1px;font-weight:900;color:#B9C3D2">✕ 기각한 대안</span><span style="margin-left:auto;font-size:7.1px;font-weight:900;color:#0E9C97">✔ 채택 — 이유</span></div>
+            <div style="display:flex;align-items:stretch;gap:0;margin-bottom:3px">
+              <div style="flex:none;width:96px;display:flex;align-items:center;font-size:8.3px;font-weight:700;color:#0F1E3D;line-height:1.35">Trend 이상 검출</div>
+              <div style="flex:none;width:16px;position:relative">
+                <div style="position:absolute;left:0;top:25%;bottom:25%;width:1.5px;background:#AEBBCB"></div>
+                <div style="position:absolute;left:0;top:25%;width:16px;height:1.5px;background:#AEBBCB"></div>
+                <div style="position:absolute;left:0;bottom:25%;width:16px;height:1.5px;background:#12B5B0"></div>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+                <div style="display:flex;align-items:baseline;gap:5px;background:#F7F9FC;border-radius:3px;padding:1px 7px"><span style="flex:none;font-size:7.9px;font-weight:900;color:#B9C3D2">✕</span><span style="font-size:7.5px;color:#98A4B6;line-height:1.4">규칙, 임계 알람 — 임계 아래로 흐르는 완만한 drift를 통과시킨다</span></div>
+                <div style="display:flex;align-items:baseline;gap:5px;background:#0F1E3D;border-radius:3px;padding:2px 7px"><span style="flex:none;font-size:7.9px;font-weight:900;color:#7FD1CE">✔</span><span style="font-size:7.9px;font-weight:700;color:#FFFFFF;line-height:1.4">합성 데이터 학습 감지 모델 + 2단 LLM</span><span style="font-size:7.5px;color:#B7C4DA;line-height:1.4">라벨 없는 구간을 합성으로 만들고, 1단은 정상과 이상만 판별해 성능을 올린 뒤 변경점 연관은 2단이 읽는다</span></div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:stretch;gap:0;margin-bottom:3px">
+              <div style="flex:none;width:96px;display:flex;align-items:center;font-size:8.3px;font-weight:700;color:#0F1E3D;line-height:1.35">불량 이미지 판독</div>
+              <div style="flex:none;width:16px;position:relative">
+                <div style="position:absolute;left:0;top:25%;bottom:25%;width:1.5px;background:#AEBBCB"></div>
+                <div style="position:absolute;left:0;top:25%;width:16px;height:1.5px;background:#AEBBCB"></div>
+                <div style="position:absolute;left:0;bottom:25%;width:16px;height:1.5px;background:#12B5B0"></div>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+                <div style="display:flex;align-items:baseline;gap:5px;background:#F7F9FC;border-radius:3px;padding:1px 7px"><span style="flex:none;font-size:7.9px;font-weight:900;color:#B9C3D2">✕</span><span style="font-size:7.5px;color:#98A4B6;line-height:1.4">분류기 단독 — 라벨 밖 새 패턴을 못 잡는다</span></div>
+                <div style="display:flex;align-items:baseline;gap:5px;background:#0F1E3D;border-radius:3px;padding:2px 7px"><span style="flex:none;font-size:7.9px;font-weight:900;color:#7FD1CE">✔</span><span style="font-size:7.9px;font-weight:700;color:#FFFFFF;line-height:1.4">ConvNeXt V2 분류 + contrastive 유사 검색</span><span style="font-size:7.5px;color:#B7C4DA;line-height:1.4">Known 유형은 분류 모델로 판정하고 Unknown 유형은 임베딩 거리로 유사 사례를 검색한다</span></div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:stretch;gap:0;margin-bottom:3px">
+              <div style="flex:none;width:96px;display:flex;align-items:center;font-size:8.3px;font-weight:700;color:#0F1E3D;line-height:1.35">사고 문서 검색</div>
+              <div style="flex:none;width:16px;position:relative">
+                <div style="position:absolute;left:0;top:25%;bottom:25%;width:1.5px;background:#AEBBCB"></div>
+                <div style="position:absolute;left:0;top:25%;width:16px;height:1.5px;background:#AEBBCB"></div>
+                <div style="position:absolute;left:0;bottom:25%;width:16px;height:1.5px;background:#12B5B0"></div>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+                <div style="display:flex;align-items:baseline;gap:5px;background:#F7F9FC;border-radius:3px;padding:1px 7px"><span style="flex:none;font-size:7.9px;font-weight:900;color:#B9C3D2">✕</span><span style="font-size:7.5px;color:#98A4B6;line-height:1.4">임베딩 단독 — 설비 ID와 공정 약어의 식별력이 낮다</span></div>
+                <div style="display:flex;align-items:baseline;gap:5px;background:#0F1E3D;border-radius:3px;padding:2px 7px"><span style="flex:none;font-size:7.9px;font-weight:900;color:#7FD1CE">✔</span><span style="font-size:7.9px;font-weight:700;color:#FFFFFF;line-height:1.4">원장 우선 조회 + 키워드, 임베딩 하이브리드 RRF</span><span style="font-size:7.5px;color:#B7C4DA;line-height:1.4">ID는 키워드가, 증상 서술은 의미 검색이 강하다. 확정은 사고번호 조회로 한다</span></div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:stretch;gap:0;margin-bottom:3px">
+              <div style="flex:none;width:96px;display:flex;align-items:center;font-size:8.3px;font-weight:700;color:#0F1E3D;line-height:1.35">조사 순서 결정</div>
+              <div style="flex:none;width:16px;position:relative">
+                <div style="position:absolute;left:0;top:25%;bottom:25%;width:1.5px;background:#AEBBCB"></div>
+                <div style="position:absolute;left:0;top:25%;width:16px;height:1.5px;background:#AEBBCB"></div>
+                <div style="position:absolute;left:0;bottom:25%;width:16px;height:1.5px;background:#12B5B0"></div>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+                <div style="display:flex;align-items:baseline;gap:5px;background:#F7F9FC;border-radius:3px;padding:1px 7px"><span style="flex:none;font-size:7.9px;font-weight:900;color:#B9C3D2">✕</span><span style="font-size:7.5px;color:#98A4B6;line-height:1.4">고정 Pipeline — 신규 공정마다 조건 분기와 Workflow 추가 개발이 필요하다</span></div>
+                <div style="display:flex;align-items:baseline;gap:5px;background:#0F1E3D;border-radius:3px;padding:2px 7px"><span style="flex:none;font-size:7.9px;font-weight:900;color:#7FD1CE">✔</span><span style="font-size:7.9px;font-weight:700;color:#FFFFFF;line-height:1.4">Router LLM tool calling 루프, T=0</span><span style="font-size:7.5px;color:#B7C4DA;line-height:1.4">다음에 볼 데이터가 직전 반환값에 따라 달라지므로 순서를 미리 못 정한다</span></div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:stretch;gap:0;margin-bottom:3px">
+              <div style="flex:none;width:96px;display:flex;align-items:center;font-size:8.3px;font-weight:700;color:#0F1E3D;line-height:1.35">최종 판정</div>
+              <div style="flex:none;width:16px;position:relative">
+                <div style="position:absolute;left:0;top:25%;bottom:25%;width:1.5px;background:#AEBBCB"></div>
+                <div style="position:absolute;left:0;top:25%;width:16px;height:1.5px;background:#AEBBCB"></div>
+                <div style="position:absolute;left:0;bottom:25%;width:16px;height:1.5px;background:#12B5B0"></div>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+                <div style="display:flex;align-items:baseline;gap:5px;background:#F7F9FC;border-radius:3px;padding:1px 7px"><span style="flex:none;font-size:7.9px;font-weight:900;color:#B9C3D2">✕</span><span style="font-size:7.5px;color:#98A4B6;line-height:1.4">분류 모델 — Hold/Release 판정은 가능하지만 근거를 제시하기 어렵다</span></div>
+                <div style="display:flex;align-items:baseline;gap:5px;background:#0F1E3D;border-radius:3px;padding:2px 7px"><span style="flex:none;font-size:7.9px;font-weight:900;color:#7FD1CE">✔</span><span style="font-size:7.9px;font-weight:700;color:#FFFFFF;line-height:1.4">Q/A LLM, T=0.3 + 코드 검증기</span><span style="font-size:7.5px;color:#B7C4DA;line-height:1.4">근거를 묶어 판정서를 쓰고, 근거 실재와 수치 대조는 코드가 검사한다</span></div>
+              </div>
+            </div>
+          </div>
+          <div style="font-size:12.5px;font-weight:700;color:#0F1E3D;margin-top:7px"><span style="color:#12B5B0">3.</span> 전문 모델 구성과 개선 과정 — 이미지와 Trend의 한계를 단계적으로 보완</div>
+          <div style="display:flex;gap:8px;align-items:stretch;margin-top:4px">
+            <div style="flex:1;border:1px solid #D7DEEA;border-radius:6px;padding:4px 8px">
+              <div style="font-size:8.3px;font-weight:900;color:#0E9C97">이미지 unknown-contrastive <span style="font-weight:700;color:#8A97AB">— 라벨 밖 패턴을 유사도로 탐색</span></div>
+              <div style="font-size:7.3px;line-height:1.55;color:#3E4C64;margin-top:2px">무라벨 SEM, Failbit 쌍에 InfoNCE(Global, Local, Queue, 위음성 필터)를 적용한다. ConvNeXt V2+TAPT, 384²→128-d. 대표는 <b style="color:#0F1E3D">클래스당 30장 평균 anchor</b>, 최종 확정은 <b style="color:#0F1E3D">composite map, 멤버 이미지 육안</b>로 확인한다.</div>
+              <div style="display:flex;gap:6px;align-items:flex-end;height:26px;margin-top:3px">
+                <div style="flex:1;background:#AEBBCB;height:24px;border-radius:2px 2px 0 0"></div>
+                <div style="flex:1;background:#8A97AB;height:15px;border-radius:2px 2px 0 0"></div>
+                <div style="flex:1;background:#1B3260;height:6px;border-radius:2px 2px 0 0"></div>
+                <div style="flex:1;background:#12B5B0;height:3px;border-radius:2px 2px 0 0"></div>
+              </div>
+              <div style="display:flex;gap:6px;font-size:6.5px;color:#5A6B84;text-align:center;margin-top:1px"><div style="flex:1">Global</div><div style="flex:1">+Local</div><div style="flex:1">+Queue</div><div style="flex:1">+위음성 필터</div></div>
+              <div style="font-size:7px;color:#8A97AB;margin-top:1px">선행 전문모델 개선 이력 — Global, Local, Queue, 위음성 필터를 단계적으로 적용해 유사 검색 안정성을 높였다. 공식 성능은 아래 회귀 기준선으로 관리한다.</div>
+            </div>
+            <div style="flex:1;border:1px solid #D7DEEA;border-radius:6px;padding:4px 8px">
+              <div style="font-size:8.3px;font-weight:900;color:#0E9C97">Trend, anomaly-detection <span style="font-weight:700;color:#8A97AB">— 라벨 부족을 합성 데이터로 보완</span></div>
+              <div style="font-size:7.3px;line-height:1.55;color:#3E4C64;margin-top:2px">라벨이 부족한 불량 구간에 <b style="color:#0F1E3D">합성 주입</b>(mean_shift, drift, spike, level_step)하고, <b style="color:#0F1E3D">복귀형 파형은 정상 클래스에 추가</b>해 학습한다.</div>
+              <div style="display:flex;flex-direction:column;gap:3px;margin-top:3px">
+                <div style="display:flex;gap:5px;align-items:baseline"><span style="flex:none;width:26px;background:#0F1E3D;color:#FFFFFF;border-radius:3px;font-size:7px;font-weight:900;text-align:center;padding:1px 0">1단</span><span style="font-size:7.1px;color:#3E4C64;line-height:1.5"><b style="color:#0F1E3D">정상/이상 전용 감지 모델</b> — 1단은 정상/이상을 감지하고, 2단 LLM은 변화 시점과 설비 작업 연관을 분석한다</span></div>
+                <div style="display:flex;gap:5px;align-items:baseline"><span style="flex:none;width:26px;background:#12B5B0;color:#FFFFFF;border-radius:3px;font-size:7px;font-weight:900;text-align:center;padding:1px 0">2단</span><span style="font-size:7.1px;color:#3E4C64;line-height:1.5"><b style="color:#0F1E3D">LLM 판독</b> — 변경점 이력과 Trend JSON을 입력해 <b style="color:#0F1E3D">변화 시점과 관련 설비 작업</b>까지 연결한다</span></div>
+              </div>
+              <div style="font-size:7px;color:#8A97AB;line-height:1.5;margin-top:2px">운영 검증 — Grad-CAM 근거, AUROC와 FN/FP 임계 스윕, 라인별 CSV 추가학습.</div>
+            </div>
+          </div>
+          <div style="font-size:12.5px;font-weight:700;color:#0F1E3D"><span style="color:#12B5B0">4.</span> 대표 실행 시나리오 — 이미지와 사고 문의가 동일한 조사 코어로 연결된다</div>
+          <div style="border:1px solid #D7DEEA;border-radius:6px;padding:4px 8px;margin:3px 0 4px">
+            <svg viewBox="0 0 600 96" style="width:100%;display:block;margin-bottom:2px">
+              <defs><marker id="ar1" markerWidth="6" markerHeight="6" refX="4.6" refY="3" orient="auto"><path d="M0,0.6 L4.8,3 L0,5.4 Z" fill="#12B5B0"></path></marker></defs>
+              <rect x="0" y="6" width="118" height="26" rx="4" fill="#F2F5FA"></rect>
+              <text x="8" y="18" font-size="9" font-weight="700" fill="#1B3260">A, 이미지 진입</text>
+              <text x="8" y="28" font-size="7.5" fill="#5A6B84">EDS, SEM 첨부 → search_similar_image</text>
+              <rect x="0" y="62" width="118" height="26" rx="4" fill="#F2F5FA"></rect>
+              <text x="8" y="74" font-size="9" font-weight="700" fill="#0F1E3D">B, 사고 문의, 알람</text>
+              <text x="8" y="84" font-size="7.5" fill="#5A6B84">{CD +0.8nm, 02:14} → search_incidents</text>
+              <path d="M 118 19 C 150 19 152 40 176 44" fill="none" stroke="#1B3260" stroke-width="2"></path>
+              <path d="M 118 75 C 150 75 152 52 176 48" fill="none" stroke="#0F1E3D" stroke-width="2"></path>
+              <circle cx="182" cy="46" r="6" fill="#12B5B0"></circle>
+              <text x="182" y="49" font-size="7" font-weight="900" fill="#FFFFFF" text-anchor="middle">⇢</text>
+              <line x1="190" y1="46" x2="596" y2="46" stroke="#12B5B0" stroke-width="2" marker-end="url(#ar1)"></line>
+              <rect x="196" y="30" width="392" height="32" rx="4" fill="#0F1E3D"></rect>
+              <text x="206" y="43" font-size="9" font-weight="700" fill="#FFFFFF">Router, T = 0</text>
+              <text x="290" y="43" font-size="7.5" fill="#C6D2E6">도구 선택 → 인자 생성 → 반환 해석 → 가설 갱신 → 계속/중단 판단</text>
+              <text x="206" y="55" font-size="7.5" fill="#7FD1CE">입구는 둘, 코어는 하나 — 진입 도구만 다르고 이후 경로는 같다</text>
+            </svg>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <div style="position:absolute;bottom:40px;left:0;right:0;text-align:center;font-size:11px;color:#8A97AB">- 3 -</div>
+</section>
+
+<section class="page" data-screen-label="4p — Tech 실행 시나리오" style="position:relative;padding:113px 96px 96px;font-family:'Noto Sans KR','Malgun Gothic',sans-serif;font-size:11px;line-height:1.6;color:#111827;overflow:hidden">
+  <table style="width:100%;border-collapse:collapse">
+    <tbody>
+      <tr>
+        <td style="width:85px;border:1px solid #33415E;background:#F2F5FA;padding:5px 3px;font-weight:700;font-size:14.7px;color:#0F1E3D;text-align:center;vertical-align:middle">기술적<br>해결<br>방안<br><span style="font-size:7.9px;font-weight:400;color:#8A97AB">(계속)</span></td>
+        <td style="border:1px solid #33415E;padding:6px 9px;vertical-align:top">
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <div style="display:flex;gap:5px;align-items:baseline"><span style="flex:none;width:120px;background:#1B3260;border-radius:3px;padding:1px 6px;font-size:7.5px;font-weight:700;color:#FFFFFF;text-align:center">Image / Trend</span><span style="font-size:7.9px;line-height:1.45;color:#3E4C64">불량 이미지가 들어오면 <b style="color:#0F1E3D">대조 학습 유사도로 후보를 찾고</b>, 해당 이미지의 <b style="color:#0F1E3D">경로와 meta로 RAG, 사내 DB를 조회</b>한다. Trend Agent는 변화점을 반환한다 — <span style="font-family:ui-monospace,monospace;color:#0E9C97">↩ {edge_ring 0.92, incident:PHOD01-2847}</span>, <span style="font-family:ui-monospace,monospace;color:#0E9C97">↩ {변화점 02:14, drift, 6/28 PM 연관}</span></span></div>
+              <div style="display:flex;gap:5px;align-items:baseline"><span style="flex:none;width:120px;background:#1B3260;border-radius:3px;padding:1px 6px;font-size:7.5px;font-weight:700;color:#FFFFFF;text-align:center">사고 원장 → RAG</span><span style="font-size:7.9px;line-height:1.45;color:#3E4C64">사고 건이면 <b style="color:#0F1E3D">담당자가 확정한 사고 원장을 먼저 조회</b>하고 사고명과 meta로 관련 보고서를 좁힌 뒤 필요한 Tool을 추가 호출한다 — <span style="font-family:ui-monospace,monospace;color:#0E9C97">↩ 원인, 대책 원문 인용</span></span></div>
+              <div style="display:flex;gap:5px;align-items:baseline"><span style="flex:none;width:120px;background:#1B3260;border-radius:3px;padding:1px 6px;font-size:7.5px;font-weight:700;color:#FFFFFF;text-align:center">사내 DB 교차 확인</span><span style="font-size:7.9px;line-height:1.45;color:#3E4C64"><span style="font-family:ui-monospace,monospace">get_interlock_history(SCN-07)</span> <span style="font-family:ui-monospace,monospace;color:#0E9C97">↩ PM 06/28 후 재보정 기록 없음</span> — 가설과 설비 이력이 일치</span></div>
+              <div style="display:flex;gap:5px;align-items:baseline"><span style="flex:none;width:120px;background:#12B5B0;border-radius:3px;padding:1px 6px;font-size:7.5px;font-weight:700;color:#FFFFFF;text-align:center">Q/A, T=0.3</span><span style="font-size:7.9px;line-height:1.45;color:#3E4C64">더 부를 도구가 없으면 증거 스택 전체로 판정서를 쓴다. 근거 부족 시 최대 3회 재검색, 그래도 모자라면 "확인 불가"로 남긴다</span></div>
+            </div>
+            <div style="font-size:7.5px;color:#5A6B84;line-height:1.45;border-top:1px solid #EDF1F7;margin-top:3px;padding-top:2px">유사도는 후보만 제시하고 확정은 사고번호 조회로 한다. 반환값은 판정서 근거로 사용한다.</div>
+          </div>
+          <div style="display:flex;gap:7px;align-items:stretch;margin-bottom:3px">
+            <div style="flex:1.15;border:1px solid #D7DEEA;border-radius:6px;padding:4px 8px">
+              <div style="font-size:7.1px;font-weight:900;color:#0E9C97">역할별 Temperature 설정</div>
+              <div style="display:flex;gap:7px;margin-top:2px">
+                <div style="flex:1">
+                  <div style="background:#0F1E3D;border-radius:3px;padding:1px 6px;font-size:7px;font-weight:900;color:#FFFFFF">Router LLM, T = 0</div>
+                  <div style="font-size:6.5px;color:#3E4C64;line-height:1.45;margin-top:2px">내는 것은 <b style="color:#0F1E3D">도구 이름 + 인자 JSON</b>. Router는 T=0으로 변동을 줄이며, 지원 환경에서는 <span style="font-family:ui-monospace,monospace">seed</span>를 고정한다. <span style="font-family:ui-monospace,monospace">top_p=1.0</span>으로 sampling을 제한하지 않는다. <span style="color:#8A97AB;font-family:ui-monospace,monospace"></span></div>
+                </div>
+                <div style="flex:1">
+                  <div style="background:#12B5B0;border-radius:3px;padding:1px 6px;font-size:7px;font-weight:900;color:#FFFFFF">Q/A LLM, T ≈ 0.3</div>
+                  <div style="font-size:6.5px;color:#3E4C64;line-height:1.45;margin-top:2px">내는 것은 <b style="color:#0F1E3D">스택을 읽고 쓴 문장</b>. 수치와 인용은 도구 반환값에서 복사한다. <span style="color:#8A97AB;font-family:ui-monospace,monospace">top_p 0.9, 검증기 ③이 차단</span></div>
+                </div>
+              </div>
+            </div>
+            <div style="flex:1;border:1px solid #12B5B0;border-radius:6px;padding:4px 8px">
+              <div style="font-size:7.1px;font-weight:900;color:#0E9C97">최종 Q/A 입력 구성 — 4개 계층</div>
+              <div style="font-size:6.5px;color:#3E4C64;line-height:1.5;margin-top:2px"><b style="color:#0F1E3D">① 고정층</b> 조사규칙과 판정서 스키마 <span style="color:#8A97AB">(고정)</span> → <b style="color:#0F1E3D">② 사건층</b> 질문, 알람 JSON, 이미지 → <b style="color:#0F1E3D">③ 증거층</b> 원장, 문서, Trend, 설비 이력 → <b style="color:#0F1E3D">④ 출력 지시층</b> 근거 밖 사실 금지, 부족분은 "확인 불가"</div>
+            </div>
+          </div>
+          <div style="font-size:12.5px;font-weight:700;color:#0F1E3D"><span style="color:#12B5B0">5.</span> 도구별 근거 추가에 따른 판정 내용 변화 <span style="font-weight:400;font-size:10px;color:#8A97AB">(예시 시나리오 기준)</span></div>
+          <div style="display:flex;flex-direction:column;margin:3px 0 5px">
+            <div style="display:flex;gap:6px;align-items:stretch">
+              <div style="flex:none;width:12px;display:flex;flex-direction:column;align-items:center"><div style="flex:1;width:1px;background:transparent"></div><div style="width:5px;height:5px;border-radius:999px;background:#AEBBCB;flex:none"></div><div style="flex:1;width:1px;background:#D7DEEA"></div></div>
+              <div style="flex:none;width:186px;display:flex;align-items:center;gap:4px;padding:1.5px 0"><span style="font-size:7.3px;font-weight:700;color:#5A6B84">LLM 단독</span><span style="font-size:7.1px;color:#8A97AB;font-family:ui-monospace,monospace">ctx: 알람 원문뿐</span></div>
+              <div style="flex:1;display:flex;gap:5px;align-items:center;padding:1.5px 0"><div style="flex:1;border:1px solid #D7DEEA;border-radius:8px 8px 8px 2px;background:#FFFFFF;padding:1.5px 7px;font-size:8.3px;color:#5A6B84;line-height:1.45">"CD 상승이 관찰됩니다. 계측 재확인이 필요합니다."</div><span style="flex:none;font-size:7px;font-weight:700;color:#8A97AB">모호 — 시점, 근거 없음</span></div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:stretch">
+              <div style="flex:none;width:12px;display:flex;flex-direction:column;align-items:center"><div style="flex:1;width:1px;background:#D7DEEA"></div><div style="width:6px;height:6px;border-radius:999px;background:#8A97AB;flex:none"></div><div style="flex:1;width:1px;background:#D7DEEA"></div></div>
+              <div style="flex:none;width:186px;display:flex;align-items:center;gap:4px;padding:1.5px 0"><span style="font-size:7.3px;font-weight:700;color:#0F1E3D">+ Trend Agent</span><span style="font-size:7.1px;color:#0E9C97;font-family:ui-monospace,monospace;border:1px solid #B7E6E4;border-radius:3px;padding:0 3px">+{02:14, +0.8nm, drift}</span></div>
+              <div style="flex:1;display:flex;gap:5px;align-items:center;padding:1.5px 0;margin-left:10px"><div style="flex:1;border:1px solid #D7DEEA;border-radius:8px 8px 8px 2px;background:#FFFFFF;padding:1.5px 7px;font-size:8.3px;color:#3E4C64;line-height:1.45">"02:14부터 +0.8nm drift가 지속돼 계측 오류 가능성이 낮습니다."</div><span style="flex:none;font-size:7px;font-weight:700;color:#5A6B84">시점, 변화량 확보</span></div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:stretch">
+              <div style="flex:none;width:12px;display:flex;flex-direction:column;align-items:center"><div style="flex:1;width:1px;background:#D7DEEA"></div><div style="width:7px;height:7px;border-radius:999px;background:#5A6B84;flex:none"></div><div style="flex:1;width:1px;background:#D7DEEA"></div></div>
+              <div style="flex:none;width:186px;display:flex;align-items:center;gap:4px;padding:1.5px 0"><span style="font-size:7.3px;font-weight:700;color:#0F1E3D">+ Image Agent</span><span style="font-size:7.1px;color:#0E9C97;font-family:ui-monospace,monospace;border:1px solid #B7E6E4;border-radius:3px;padding:0 3px">+{edge_ring, 0.92}</span></div>
+              <div style="flex:1;display:flex;gap:5px;align-items:center;padding:1.5px 0;margin-left:20px"><div style="flex:1;border:1px solid #AEBBCB;border-radius:8px 8px 8px 2px;background:#FFFFFF;padding:1.5px 7px;font-size:8.3px;color:#3E4C64;line-height:1.45">"같은 시각 edge ring 패턴(0.92)이 확인돼 Focus 이상을 의심합니다."</div><span style="flex:none;font-size:7px;font-weight:700;color:#5A6B84">불량 유형 특정</span></div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:stretch">
+              <div style="flex:none;width:12px;display:flex;flex-direction:column;align-items:center"><div style="flex:1;width:1px;background:#D7DEEA"></div><div style="width:8px;height:8px;border-radius:999px;background:#1B3260;flex:none"></div><div style="flex:1;width:1px;background:#D7DEEA"></div></div>
+              <div style="flex:none;width:186px;display:flex;align-items:center;gap:4px;padding:1.5px 0"><span style="font-size:7.3px;font-weight:700;color:#0F1E3D">+ 유사사례 RAG</span><span style="font-size:7.1px;color:#0E9C97;font-family:ui-monospace,monospace;border:1px solid #B7E6E4;border-radius:3px;padding:0 3px">+사고번호, 원인, 조치 문장</span></div>
+              <div style="flex:1;display:flex;gap:5px;align-items:center;padding:1.5px 0;margin-left:30px"><div style="flex:1;border:1px solid #1B3260;border-radius:8px 8px 8px 2px;background:#FFFFFF;padding:1.5px 7px;font-size:8.3px;color:#3E4C64;line-height:1.45">"PHOD01-2847과 동일 패턴이며 당시 원인은 PM 후 Focus 재보정 누락입니다."</div><span style="flex:none;font-size:7px;font-weight:700;color:#1B3260">원인 후보 확보</span></div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:stretch">
+              <div style="flex:none;width:12px;display:flex;flex-direction:column;align-items:center"><div style="flex:1;width:1px;background:#D7DEEA"></div><div style="width:9px;height:9px;border-radius:999px;background:#0F1E3D;flex:none"></div><div style="flex:1;width:1px;background:#D7DEEA"></div></div>
+              <div style="flex:none;width:186px;display:flex;align-items:center;gap:4px;padding:1.5px 0"><span style="font-size:7.3px;font-weight:700;color:#0F1E3D">+ 설비 이력 Tool</span><span style="font-size:7.1px;color:#0E9C97;font-family:ui-monospace,monospace;border:1px solid #B7E6E4;border-radius:3px;padding:0 3px">+PM, 인터락 기록</span></div>
+              <div style="flex:1;display:flex;gap:5px;align-items:center;padding:1.5px 0;margin-left:40px"><div style="flex:1;border:1px solid #0F1E3D;border-radius:8px 8px 8px 2px;background:#FFFFFF;padding:1.5px 7px;font-size:8.3px;color:#3E4C64;line-height:1.45">"SCN-07은 06/28 PM 이후 재보정 기록이 없어 원인 가능성이 높습니다."</div><span style="flex:none;font-size:7px;font-weight:700;color:#0F1E3D">교차 검증 완료</span></div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:stretch">
+              <div style="flex:none;width:12px;display:flex;flex-direction:column;align-items:center"><div style="flex:1;width:1px;background:#D7DEEA"></div><div style="width:10px;height:10px;border-radius:999px;background:#12B5B0;flex:none"></div><div style="flex:1;width:1px;background:transparent"></div></div>
+              <div style="flex:none;width:186px;display:flex;align-items:center;gap:4px;padding:1.5px 0"><span style="font-size:7.3px;font-weight:700;color:#0F1E3D">+ 조치 생성</span><span style="font-size:7.1px;color:#0E9C97;font-family:ui-monospace,monospace;border:1px solid #B7E6E4;border-radius:3px;padding:0 3px">+조치 등급표, 가드 한도</span></div>
+              <div style="flex:1;display:flex;gap:5px;align-items:center;padding:1.5px 0;margin-left:50px"><div style="flex:1;border:1px solid #12B5B0;border-radius:8px 8px 8px 2px;background:#E6F7F6;padding:1.5px 7px;font-size:8.3px;color:#0F1E3D;line-height:1.45;font-weight:500">"Focus offset −0.4 재보정 권고. |Δ|≤0.5, PM당 1회, 모니터 lot 2매 확인."</div><span style="flex:none;font-size:7px;font-weight:900;color:#FFFFFF;background:#12B5B0;border-radius:3px;padding:0.5px 4px">실행 가능</span></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:stretch">
+            <div style="flex:2.2;background:#F2F5FA;border-radius:4px;padding:3px 8px"><span style="font-size:7.9px;font-weight:900;color:#0F1E3D">SQL 5</span> <span style="font-size:7.1px;color:#3E4C64;font-family:ui-monospace,monospace">get_spc_trend, commonality_analysis, get_master_info, get_interlock_history, search_fab_data</span></div>
+            <div style="flex:1.35;background:#F2F5FA;border-radius:4px;padding:3px 8px"><span style="font-size:7.9px;font-weight:900;color:#0F1E3D">Vision 2</span> <span style="font-size:7.1px;color:#3E4C64;font-family:ui-monospace,monospace">classify_wafer_map, analyze_defect_image</span></div>
+            <div style="flex:1;background:#F2F5FA;border-radius:4px;padding:3px 8px"><span style="font-size:7.9px;font-weight:900;color:#0F1E3D">RAG 1</span> <span style="font-size:7.1px;color:#3E4C64;font-family:ui-monospace,monospace">search_engr_notes</span></div>
+          </div>
+          <div style="font-size:12.5px;font-weight:700;color:#0F1E3D"><span style="color:#12B5B0">6.</span> Agentic RAG — 확정 사고 원장을 먼저 조회하고 관련 문서로 검색 범위를 확장</div>
+          <div style="border:1px solid #D7DEEA;border-radius:6px;padding:4px 7px;margin:4px 0 5px">
+            <div style="display:flex;align-items:center;gap:4px">
+              <span style="flex:none;width:36px;font-size:7.3px;font-weight:900;color:#0F1E3D;line-height:1.35">트랙 ①<br>텍스트</span>
+              <div style="flex:1.25;background:#0F1E3D;border-radius:4px;padding:2px 6px"><div style="font-size:7.3px;font-weight:700;color:#FFFFFF">① 사고 원장 RDB — 1차 조회</div><div style="font-size:6.8px;color:#C6D2E6;line-height:1.4">현업이 확정한 이력으로 규모, 피해, 원인, 대책을 우선 확인</div></div>
+              <span style="font-size:8.3px;font-weight:900;color:#12B5B0">→</span>
+              <div style="flex:0.75;border:1px solid #D7DEEA;border-radius:4px;padding:2px 6px"><div style="font-size:7.3px;font-weight:700;color:#0F1E3D">② 사고 고유번호</div><div style="font-size:6.8px;color:#5A6B84;line-height:1.4">관련 문서 검색의 주요 필터 키</div></div>
+              <span style="font-size:8.3px;font-weight:900;color:#12B5B0">→</span>
+              <div style="flex:1.35;border:1px solid #D7DEEA;border-radius:4px;padding:2px 6px"><div style="font-size:7.3px;font-weight:700;color:#0F1E3D">③ meta 조회로 문서 선별 → 범위 내 검색</div><div style="font-size:6.8px;color:#5A6B84;line-height:1.4">사고명, 번호, 공정, 설비, 기간 meta로 후보를 좁힌 뒤, 그 안에서만 <span style="font-family:ui-monospace,monospace">tsvector</span>(lexical search) ∥ <span style="font-family:ui-monospace,monospace">halfvec</span>(임베딩)</div></div>
+              <span style="font-size:8.3px;font-weight:900;color:#12B5B0">→</span>
+              <div style="flex:0.85;border:1px solid #D7DEEA;border-radius:4px;padding:2px 6px"><div style="font-size:7.3px;font-weight:700;color:#0F1E3D">④ RRF 융합</div><div style="font-size:6.8px;color:#5A6B84;line-height:1.4">→ cross-encoder 리랭크 top-20</div></div>
+              <span style="font-size:8.3px;font-weight:900;color:#12B5B0">→</span>
+              <div style="flex:0.85;background:#E6F7F6;border:1px solid #12B5B0;border-radius:4px;padding:2px 6px"><div style="font-size:7.3px;font-weight:700;color:#0F1E3D">⑤ 부족 시 재검색</div><div style="font-size:6.8px;color:#3E4C64;line-height:1.4">질의 재작성 후 ③으로 루프</div></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:4px;margin-top:3px">
+              <span style="flex:none;width:36px;font-size:7.3px;font-weight:900;color:#0F1E3D;line-height:1.35">트랙 ②<br>이미지</span>
+              <div style="flex:1;border:1px solid #D7DEEA;border-radius:4px;padding:2px 6px;font-size:7.3px;color:#5A6B84;line-height:1.4"><b style="font-size:7.3px;color:#0F1E3D">① 신규 불량 이미지</b><br>현장 SEM, Failbit 첨부</div>
+              <span style="font-size:8.3px;font-weight:900;color:#12B5B0">→</span>
+              <div style="flex:1;border:1px solid #D7DEEA;border-radius:4px;padding:2px 6px;font-size:7.3px;color:#5A6B84;line-height:1.4"><b style="font-size:7.3px;color:#0F1E3D">② contrastive 임베딩</b><br>128-d L2 좌표화</div>
+              <span style="font-size:8.3px;font-weight:900;color:#12B5B0">→</span>
+              <div style="flex:1.1;border:1px solid #D7DEEA;border-radius:4px;padding:2px 6px;font-size:7.3px;color:#5A6B84;line-height:1.4"><b style="font-size:7.3px;color:#0F1E3D">③ 갤러리 코사인 top-10</b><br>유사 사고 이미지 지정</div>
+              <span style="font-size:8.3px;font-weight:900;color:#12B5B0">→</span>
+              <div style="flex:1.1;background:#1B3260;border-radius:4px;padding:2px 6px;font-size:7.3px;color:#C6D2E6;line-height:1.4"><b style="font-size:7.3px;color:#FFFFFF">④ 그 이미지의 경로, 메타 키</b><br>사고번호, 클래스 확보</div>
+              <span style="flex:none;font-size:7.3px;font-weight:900;color:#0E9C97;line-height:1.35;text-align:center">⑤ 경로, meta로<br>RAG DB 조회<br><span style="font-weight:700;color:#8A97AB">사고 DB는 필요시</span></span>
+            </div>
+            <div style="font-size:7px;color:#8A97AB;margin-top:2px">유사도는 후보이며 확정은 키 조회로 한다. 합류점은 <b style="color:#0F1E3D">Router에 쌓이는 증거 스택</b>이며, 증거 스택의 원문을 바탕으로 Q/A LLM이 판정서를 생성한다.</div>
+            <div style="border-top:1px solid #EDF1F7;margin-top:3px;padding-top:3px">
+              <div style="font-size:8.3px;font-weight:900;color:#0E9C97">향후 모델 개선 계획 — 승인, 수정, 반려를 라벨로 축적하고 회귀 통과 모델만 배포</div>
+              <div style="display:flex;flex-direction:column;gap:2.5px;margin-top:2px">
+                <div style="display:flex;gap:6px;align-items:baseline"><span style="flex:none;width:80px;background:#F2F5FA;border-radius:3px;padding:1px 4px;font-size:7.3px;font-weight:900;color:#0F1E3D;text-align:center">검색기 파인튜닝</span><span style="font-size:7.3px;color:#3E4C64;line-height:1.55">확정 판정과 참조 문서 쌍으로 검색기를 학습해 관련 사고 문서가 상위에 검색되도록 한다. <span style="color:#8A97AB"></span><b style="color:#0F1E3D"></b></span></div>
+                <div style="display:flex;gap:6px;align-items:baseline"><span style="flex:none;width:80px;background:#F2F5FA;border-radius:3px;padding:1px 4px;font-size:7.3px;font-weight:900;color:#0F1E3D;text-align:center">SFT 지시학습</span><span style="font-size:7.3px;color:#3E4C64;line-height:1.55">현업 확정 판정서로 원인, 근거, 조치를 정해진 판정서 형식으로 출력하도록 학습한다. <span style="color:#8A97AB"></span><b style="color:#0F1E3D"></b></span></div>
+                <div style="display:flex;gap:6px;align-items:baseline"><span style="flex:none;width:80px;background:#F2F5FA;border-radius:3px;padding:1px 4px;font-size:7.3px;font-weight:900;color:#0F1E3D;text-align:center">선호학습 DPO, KTO</span><span style="font-size:7.3px;color:#3E4C64;line-height:1.55">채택, 수정, 반려 이력을 선호 신호로 사용해 근거가 부족하면 조치를 제안하지 않도록 보정한다. <span style="color:#8A97AB"></span><b style="color:#0F1E3D"></b></span></div>
+              </div>
+            </div>
+            <div style="border-top:1px solid #EDF1F7;margin-top:4px;padding-top:3px">
+              <div style="font-size:9px;font-weight:900;color:#8A97AB">2차년 확장 설계 — 확정 이력을 관계 탐색까지 연결한다</div>
+              <div style="display:flex;gap:9px;margin-top:2px">
+                <div style="flex:1;display:flex;gap:6px;align-items:stretch">
+                  <div style="flex:none;width:74px;display:flex;flex-direction:column;gap:2px">
+                    <div style="border:1px solid #D7DEEA;border-left:3px solid #12B5B0;border-radius:0 3px 3px 0;padding:1px 5px;font-size:7.1px;color:#3E4C64">조사규칙 v12</div>
+                    <div style="border:1px solid #D7DEEA;border-left:3px solid #12B5B0;border-radius:0 3px 3px 0;padding:1px 5px;font-size:7.1px;color:#3E4C64">용어: ACI ↔ 세정 후 계측</div>
+                    <div style="border:1px solid #D7DEEA;border-left:3px solid #12B5B0;border-radius:0 3px 3px 0;padding:1px 5px;font-size:7.1px;color:#3E4C64">사고 2847 요약 ↔ 원문</div>
+                  </div>
+                  <div style="font-size:7.9px;line-height:1.5;color:#3E4C64"><b style="color:#0F1E3D">LLM Wiki</b> — 확정된 판정 결과와 현장 용어, 조사규칙을 계층형 문서로 관리한다. <b style="color:#0F1E3D">원문 출처와 관련 문서를 연결하고</b> 현업이 승인한 이력만 반영한다.</div>
+                </div>
+                <div style="width:1px;background:#EDF1F7"></div>
+                <div style="flex:1;display:flex;gap:6px;align-items:stretch">
+                  <svg viewBox="0 0 96 54" style="width:82px;flex:none;display:block">
+                    <line x1="24" y1="14" x2="48" y2="27" stroke="#7FD1CE" stroke-width="1"></line>
+                    <line x1="48" y1="27" x2="76" y2="12" stroke="#7FD1CE" stroke-width="1"></line>
+                    <line x1="48" y1="27" x2="30" y2="44" stroke="#7FD1CE" stroke-width="1"></line>
+                    <line x1="48" y1="27" x2="74" y2="44" stroke="#7FD1CE" stroke-width="1"></line>
+                    <circle cx="24" cy="14" r="6" fill="#1B3260"></circle>
+                    <circle cx="48" cy="27" r="7" fill="#12B5B0"></circle>
+                    <circle cx="76" cy="12" r="6" fill="#1B3260"></circle>
+                    <circle cx="30" cy="44" r="6" fill="#0F1E3D"></circle>
+                    <circle cx="74" cy="44" r="6" fill="#0F1E3D"></circle>
+                    <text x="24" y="16.5" font-size="4.2" fill="#FFFFFF" text-anchor="middle">설비</text>
+                    <text x="48" y="29.5" font-size="4.2" fill="#FFFFFF" text-anchor="middle">불량</text>
+                    <text x="76" y="14.5" font-size="4.2" fill="#FFFFFF" text-anchor="middle">PM</text>
+                    <text x="30" y="46.5" font-size="4.2" fill="#FFFFFF" text-anchor="middle">사고</text>
+                    <text x="74" y="46.5" font-size="4.2" fill="#FFFFFF" text-anchor="middle">조치</text>
+                  </svg>
+                  <div style="font-size:7.9px;line-height:1.5;color:#3E4C64"><b style="color:#0F1E3D">Graph RAG</b> — 설비, PM, 불량, 사고, 조치를 노드로 구성한다. <b style="color:#0F1E3D">발생, 선행, 원인, 조치 Edge를 multi-hop 탐색</b>해 벡터 검색만으로 찾기 어려운 다단 관계를 조회한다.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="font-size:12.5px;font-weight:700;color:#0F1E3D"><span style="color:#12B5B0">7.</span> 성능 지표와 검증 체계</div>
+          <div style="display:flex;gap:7px;align-items:stretch;margin:4px 0 3px">
+            <div style="flex:1;background:#F2F5FA;border-radius:5px;padding:4px 9px"><div style="font-size:7.1px;font-weight:700;color:#0E9C97">현재 회귀 기준선, recall@10</div><div style="font-size:15px;font-weight:900;color:#0F1E3D;line-height:1.1">0.500</div><div style="font-size:7.1px;color:#5A6B84;line-height:1.4">골든 4건, 색인 50건. 30건으로 확대 예정</div></div>
+            <div style="flex:1.5;background:#0F1E3D;border-radius:5px;padding:4px 9px"><div style="font-size:8.3px;font-weight:700;color:#FFFFFF">운영 목표 0건</div><div style="font-size:8.3px;color:#C6D2E6;line-height:1.55;margin-top:1px"><span style="color:#7FD1CE;font-weight:900">●</span> 근거 없는 판정 &nbsp;<span style="color:#7FD1CE;font-weight:900">●</span> 미승인 L2 조치 실행 &nbsp;<span style="color:#7FD1CE;font-weight:900">●</span> 무인 접수 누락 — 차단 로그로 집계</div></div>
+            <div style="flex:1.4;border:1px solid #D7DEEA;border-radius:5px;padding:4px 9px"><div style="font-size:7.1px;font-weight:700;color:#0E9C97">성능 관리 체계</div><div style="font-size:8.3px;color:#3E4C64;line-height:1.5;margin-top:1px">골든셋 확대 <b style="color:#0F1E3D">30건</b>, AI와 엔지니어 판정 <b style="color:#0F1E3D">일치율</b>, 건당 처리 시간 <b style="color:#0F1E3D">추적</b>, 조치 반려율과 기준 미달 배포 차단</div></div>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <div style="position:absolute;bottom:40px;left:0;right:0;text-align:center;font-size:11px;color:#8A97AB">- 4 -</div>
+</section>
+
+<section class="page" data-screen-label="5p — Tech 검증·경영효과" style="position:relative;padding:113px 96px 96px;font-family:'Noto Sans KR','Malgun Gothic',sans-serif;font-size:11px;line-height:1.6;color:#111827;overflow:hidden">
+
+  <table style="width:100%;border-collapse:collapse;margin-top:7px">
+    <tbody>
+      <tr><td colspan="2" style="border:1px solid #33415E;background:#F2F5FA;padding:3px 10px"><div style="display:flex;align-items:center;gap:9px"><span style="width:5px;height:12px;background:#12B5B0;flex:none"></span><span style="font-weight:700;font-size:13.5px;color:#0F1E3D">IIII. 경영효과</span><sc-if value="{{ rubricOn }}" hint-placeholder-val="{{ false }}"><span style="margin-left:auto;font-size:7.9px;font-weight:700;color:#12B5B0;border:1px solid #B7E6E4;border-radius:999px;padding:0.5px 8px;background:#FFFFFF">심사 10 — 신규 과제는 예상 성과의 구체성</span></sc-if></div></td></tr>
+      <tr>
+        <td style="width:85px;border:1px solid #33415E;background:#F2F5FA;padding:5px 3px;font-weight:700;font-size:14.7px;color:#0F1E3D;text-align:center;vertical-align:middle">예상<br>성과</td>
+        <td style="border:1px solid #33415E;padding:6px 9px;vertical-align:top">
+          <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:3px"><span style="flex:none;font-size:8.3px;font-weight:700;color:#FFFFFF;background:#0F1E3D;border-radius:3px;padding:0 7px">1. 유형효과</span><span style="font-size:7.9px;color:#5A6B84">예상 업무시간 환산 가치 기준</span></div>
+          <div style="display:flex;gap:7px;align-items:stretch"><div style="font-size:17px;font-weight:900;color:#0F1E3D;line-height:1.05">200억 <span style="font-size:10px;font-weight:700">원/년</span></div><div style="font-size:8.3px;font-weight:700;color:#5A6B84;margin-top:1px">예상 업무시간 환산 가치 — 확산 완료 후 약 1,000명 기준</div></div>
+            <div style="flex:1;border:1px solid #D7DEEA;border-top:5px solid #12B5B0;border-radius:5px;padding:4px 9px"><div style="font-size:17px;font-weight:900;color:#0F1E3D;line-height:1.05">57.5배</div><div style="font-size:8.3px;font-weight:700;color:#5A6B84;margin-top:1px">예상 연간 편익 / 연간 투자비</div></div>
+            <div style="flex:1;border:1px solid #D7DEEA;border-top:5px solid #12B5B0;border-radius:5px;padding:4px 9px"><div style="font-size:17px;font-weight:900;color:#0F1E3D;line-height:1.05">6.3일</div><div style="font-size:8.3px;font-weight:700;color:#5A6B84;margin-top:1px">연간 투자비 기준 예상 회수 기간 — 2개년 총투자비 기준 12.7일</div></div>
+          </div>
+          <div style="border:1px solid #D7DEEA;border-radius:5px;padding:3px 9px;text-align:center;margin:4px 0">
+            <div style="font-size:8.3px;font-weight:700;color:#0F1E3D">[ (개선 전 4h ÷ 8h) − (개선 후 2h ÷ 8h) ] × 연봉 80,000,000원 × 1,000명 = 연 200억 원</div>
+            <div style="font-size:7.1px;color:#5A6B84;margin-top:1px">인력 감축 효과가 아니라 반복 조사 업무시간의 환산 가치다. 4h→2h와 1,000명 적용은 사전 산정 가정이며, <b style="color:#0F1E3D">3Q Shadow 운영에서 실제 처리 시간, 사용 빈도, 적용 인원을 측정해 보정한다</b></div>
+          </div>
+          <div style="display:flex;gap:9px;align-items:stretch;margin-bottom:5px">
+            <div style="flex:1.2;display:flex;flex-direction:column;gap:2.5px">
+              <div style="display:flex;gap:6px;align-items:center"><span style="flex:none;width:52px;font-size:8.3px;font-weight:700;color:#0F1E3D;text-align:right">2.0h 절감</span><div style="flex:1;height:8px;background:#F2F5FA;border-radius:2px;overflow:hidden"><div style="width:100%;height:100%;background:#12B5B0"></div></div><span style="flex:none;width:70px;font-size:8.3px;font-weight:700;color:#0F1E3D">200억, 57.5배</span></div>
+              <div style="display:flex;gap:6px;align-items:center"><span style="flex:none;width:52px;font-size:8.3px;color:#5A6B84;text-align:right">1.5h 절감</span><div style="flex:1;height:8px;background:#F2F5FA;border-radius:2px;overflow:hidden"><div style="width:75%;height:100%;background:#1B3260"></div></div><span style="flex:none;width:70px;font-size:8.3px;color:#3E4C64">150억, 43.1배</span></div>
+              <div style="display:flex;gap:6px;align-items:center"><span style="flex:none;width:52px;font-size:8.3px;color:#5A6B84;text-align:right">1.0h 절감</span><div style="flex:1;height:8px;background:#F2F5FA;border-radius:2px;overflow:hidden"><div style="width:50%;height:100%;background:#1B3260"></div></div><span style="flex:none;width:70px;font-size:8.3px;color:#3E4C64">100억, 28.8배</span></div>
+              <div style="display:flex;gap:6px;align-items:center"><span style="flex:none;width:52px;font-size:8.3px;color:#5A6B84;text-align:right">0.5h 절감</span><div style="flex:1;height:8px;background:#F2F5FA;border-radius:2px;overflow:hidden"><div style="width:25%;height:100%;background:#1B3260"></div></div><span style="flex:none;width:70px;font-size:8.3px;color:#3E4C64">50억, 14.4배</span></div>
+              <div style="font-size:7px;color:#8A97AB">업무시간 절감 폭에 따른 예상값이며, 실제 값은 3Q Shadow 운영에서 보정한다.</div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:2.5px;font-size:8.3px;line-height:1.45;color:#3E4C64">
+              <div style="margin-bottom:1px"><span style="font-size:8.3px;font-weight:700;color:#FFFFFF;background:#12B5B0;border-radius:3px;padding:0 7px">2. 무형효과</span></div>
+              <div><span style="color:#12B5B0;font-weight:900">●</span> <b style="color:#0F1E3D">야간 공백 해소</b> — 야간과 주말에도 즉시 조사 착수</div>
+              <div><span style="color:#12B5B0;font-weight:900">●</span> <b style="color:#0F1E3D">판단 편차 축소</b> — 동일 현상에 동일한 조사 기준 적용</div>
+              <div><span style="color:#12B5B0;font-weight:900">●</span> <b style="color:#0F1E3D">감사 대응력</b> — 근거 원문, 신뢰도, 모델 버전이 판정마다 남는다</div>
+              <div><span style="color:#12B5B0;font-weight:900">●</span> <b style="color:#0F1E3D">노하우 자산화</b> — 조사규칙과 EngrNote를 축적해 개인 경험에 대한 의존도 감소</div>
+              <div><span style="color:#12B5B0;font-weight:900">●</span> <b style="color:#0F1E3D">타 조직 이관</b> — 공통 Core를 재사용해 타 조직으로 확산</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1.4fr 1fr;gap:6px;margin-bottom:5px">
+            <div style="border:1px solid #D7DEEA;border-radius:5px;padding:3px 7px"><div style="font-size:7px;font-weight:700;color:#0E9C97">구현</div><div style="font-size:8.3px;font-weight:900;color:#0F1E3D">검증기 5칙 가동</div><div style="font-size:7.1px;color:#5A6B84;line-height:1.4">조사 코어 스켈레톤 실행, prod 백엔드 4종</div></div>
+            <div style="border:1px solid #D7DEEA;border-radius:5px;padding:3px 7px"><div style="font-size:7px;font-weight:700;color:#0E9C97">평가</div><div style="font-size:8.3px;font-weight:900;color:#0F1E3D">recall@10 0.500</div><div style="font-size:7.1px;color:#5A6B84;line-height:1.4">골든 4건/색인 50건, 회귀 러너 실측</div></div>
+            <div style="border:1px solid #D7DEEA;border-radius:5px;padding:3px 7px"><div style="font-size:7px;font-weight:700;color:#0E9C97">연계 검증</div><div style="font-size:8.3px;font-weight:900;color:#0F1E3D">RAG, 유사 검색 연계 검증</div><div style="font-size:7.1px;color:#5A6B84;line-height:1.4">사고 원장, 문서 검색, 이미지 유사 검색, 메타 키 조회 흐름을 선행 구현</div></div>
+            <div style="border:1px solid #D7DEEA;border-radius:5px;padding:3px 7px"><div style="font-size:7px;font-weight:700;color:#0E9C97">설계</div><div style="font-size:8.3px;font-weight:900;color:#0F1E3D">설계 문서 31종</div><div style="font-size:7.1px;color:#5A6B84;line-height:1.4">시스템설계서, 로드맵, Tool 카탈로그, 조사규칙</div></div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:stretch">
+            <div style="flex:1;border:1px solid #D7DEEA;border-radius:5px;padding:3px 7px"><div style="display:flex;align-items:baseline;gap:5px"><span style="font-size:8.3px;font-weight:700;color:#0F1E3D">3Q 그림자 운영</span><span style="font-size:7px;font-weight:700;color:#5A6B84;border:1px solid #AEBBCB;border-radius:999px;padding:0 5px">조치 미실행</span></div><div style="font-size:7.1px;color:#5A6B84;line-height:1.45;margin-top:1px">공정 담당 판정을 정답으로 일치율 기준선, 4h 가정 실측</div></div>
+            <div style="display:flex;align-items:center;font-size:10px;font-weight:900;color:#12B5B0">→</div>
+            <div style="flex:1;border:1px solid #D7DEEA;border-radius:5px;padding:3px 7px"><div style="display:flex;align-items:baseline;gap:5px"><span style="font-size:8.3px;font-weight:700;color:#0F1E3D">4Q 무인 접수</span><span style="font-size:7px;font-weight:700;color:#5A6B84;border:1px solid #AEBBCB;border-radius:999px;padding:0 5px">2주 연속 누락 0건</span></div><div style="font-size:7.1px;color:#5A6B84;line-height:1.45;margin-top:1px">처리 시간, 누락, 조치 승인율 분기 보고</div></div>
+            <div style="display:flex;align-items:center;font-size:10px;font-weight:900;color:#12B5B0">→</div>
+            <div style="flex:1;border:1px solid #12B5B0;background:#E6F7F6;border-radius:5px;padding:3px 7px"><div style="display:flex;align-items:baseline;gap:5px"><span style="font-size:8.3px;font-weight:700;color:#0F1E3D">2차년 자동조치 개방</span><span style="font-size:7px;font-weight:700;color:#FFFFFF;background:#12B5B0;border-radius:999px;padding:0 5px">전건 감사</span></div><div style="font-size:7.1px;color:#5A6B84;line-height:1.45;margin-top:1px">승인율, 오탐율 기준 넘은 시나리오만 개별 심의 승격</div></div>
+          </div>
+          <div style="font-size:12.5px;font-weight:700;color:#0F1E3D;margin-top:7px"><span style="color:#12B5B0">3.</span> 선행 추진 실적</div>
+          <div style="border:1px solid #D7DEEA;border-radius:6px;padding:5px 8px;margin-top:4px">
+            <div style="display:flex;gap:5px;align-items:stretch">
+              <div style="flex:1;border:1px solid #D7DEEA;border-top:4px solid #12B5B0;border-radius:0 0 5px 5px;padding:3px 7px"><div style="font-size:7.1px;font-weight:900;color:#0E9C97">설계</div><div style="font-size:9px;font-weight:900;color:#0F1E3D;line-height:1.25">설계 문서 31종</div><div style="font-size:7.5px;color:#5A6B84;line-height:1.4">시스템설계서, 로드맵, Tool 카탈로그, 조사규칙</div></div>
+              <div style="flex:1;border:1px solid #D7DEEA;border-top:4px solid #12B5B0;border-radius:0 0 5px 5px;padding:3px 7px"><div style="font-size:7.1px;font-weight:900;color:#0E9C97">구현</div><div style="font-size:9px;font-weight:900;color:#0F1E3D;line-height:1.25">조사 코어 스켈레톤 실행</div><div style="font-size:7.5px;color:#5A6B84;line-height:1.4">검증기 5칙 가동, prod 백엔드 4종 연결</div></div>
+              <div style="flex:1;border:1px solid #D7DEEA;border-top:4px solid #12B5B0;border-radius:0 0 5px 5px;padding:3px 7px"><div style="font-size:7.1px;font-weight:900;color:#0E9C97">평가</div><div style="font-size:9px;font-weight:900;color:#0F1E3D;line-height:1.25">회귀 러너 + recall 실측</div><div style="font-size:7.5px;color:#5A6B84;line-height:1.4">recall@10 0.500, 골든 4건, 색인 50건</div></div>
+              <div style="flex:1;border:1px solid #D7DEEA;border-top:4px solid #12B5B0;border-radius:0 0 5px 5px;padding:3px 7px"><div style="font-size:7.1px;font-weight:900;color:#0E9C97">데이터</div><div style="font-size:9px;font-weight:900;color:#0F1E3D;line-height:1.25">사고 DB, 색인 구축</div><div style="font-size:7.5px;color:#5A6B84;line-height:1.4">원장 테이블, 문서 파싱 색인, 이미지 갤러리</div></div>
+              <div style="flex:1;border:1px solid #D7DEEA;border-top:4px solid #12B5B0;border-radius:0 0 5px 5px;padding:3px 7px"><div style="font-size:7.1px;font-weight:900;color:#0E9C97">자원</div><div style="font-size:9px;font-weight:900;color:#0F1E3D;line-height:1.25">GPU 수요 등록 완료</div><div style="font-size:7.5px;color:#5A6B84;line-height:1.4">1차년 학습 및 추론 물량을 인프라 수요에 반영</div></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:5px">
+              <span style="flex:none;font-size:8.3px;font-weight:900;color:#0F1E3D">검증 게이트</span>
+              <div style="flex:1;display:flex;gap:3px;align-items:center">
+                <div style="flex:1;background:#F2F5FA;border-radius:3px;padding:2px 7px;font-size:7.5px;color:#3E4C64;line-height:1.4"><b style="color:#0F1E3D">3Q 그림자 운영</b> 조치 미실행, 담당 판정을 정답으로 일치율 기준선과 4h 가정 실측</div>
+                <span style="font-size:10px;font-weight:900;color:#12B5B0">→</span>
+                <div style="flex:1;background:#F2F5FA;border-radius:3px;padding:2px 7px;font-size:7.5px;color:#3E4C64;line-height:1.4"><b style="color:#0F1E3D">4Q 무인 접수</b> 2주 연속 누락 0건, 처리 시간과 조치 승인율 분기 보고</div>
+                <span style="font-size:10px;font-weight:900;color:#12B5B0">→</span>
+                <div style="flex:1;background:#E6F7F6;border:1px solid #12B5B0;border-radius:3px;padding:2px 7px;font-size:7.5px;color:#3E4C64;line-height:1.4"><b style="color:#0F1E3D">2차년 자동조치</b> 승인율과 오탐율 기준 통과 시나리오만 개별 심의로 승격, 전건 사후 감사</div>
+              </div>
+            </div>
+            <div style="font-size:7.9px;color:#3E4C64;line-height:1.5;border-top:1px solid #EDF1F7;margin-top:4px;padding-top:3px">성과 수치는 Shadow 운영에서 확정한다. 일치율, recall@10, 건당 처리 시간, 반려율을 회귀 Gate로 관리하고 <b style="color:#0F1E3D">기준 미달 버전은 배포하지 않는다.</b></div>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <div style="position:absolute;bottom:40px;left:0;right:0;text-align:center;font-size:11px;color:#8A97AB">- 5 -</div>
+</section>
+
+</doc-page>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;rubricHints&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;표시&quot;}, &quot;draftWatermark&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;표시&quot;}}">
+class Component extends DCLogic {
+  componentDidMount() {
+    const kick = () => {
+      document.querySelectorAll('doc-page').forEach((dp) => {
+        if (typeof dp._scheduleMeasure === 'function') dp._scheduleMeasure();
+      });
+    };
+    if (window.customElements && customElements.whenDefined) {
+      customElements.whenDefined('doc-page').then(() => {
+        kick();
+        setTimeout(kick, 300);
+        setTimeout(kick, 1200);
+      });
+    } else {
+      setTimeout(kick, 300);
+    }
+  }
+  renderVals() {
+    return {
+      rubricOn: this.props.rubricHints ?? true,
+      draftOn: this.props.draftWatermark ?? false
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -26,6 +26,7 @@ v49 에서 더한 것 — 세로 정렬(flex align-items) 반영, 넘치는 글�
 from __future__ import annotations
 
 import json
+import os
 import pathlib
 import sys
 import time
@@ -35,12 +36,19 @@ import win32com.client as win32
 HERE = pathlib.Path(__file__).parent
 BOXES = pathlib.Path(sys.argv[2]) if len(sys.argv) > 2 else HERE / "out" / "boxes.json"
 SVGDIR = pathlib.Path(sys.argv[3]) if len(sys.argv) > 3 else HERE / "out" / "fig_v48"
+EXACT_FORMAT = len(sys.argv) > 4 and sys.argv[4].lower() == "exact"
+SKIP_TEXT_MEASURE = os.environ.get("AX_SKIP_TEXT_MEASURE") == "1"
+EXACT_FONT = os.environ.get("AX_EXACT_FONT", "Batang")
 OUTDIR = HERE / "out"
 
 CM = 28.3464567                       # 1cm in points
 M_L, M_T, M_R, M_B = 2.54, 3.0, 2.54, 2.54
 PAGE_W_CM, PAGE_H_CM = 21.0, 29.7
-SRC = dict(x0=96, y0=88, x1=698, y1=1071)          # HTML 내용 상자(px)
+SRC = (
+    dict(x0=96, y0=113.3858, x1=698, y1=1027.0)
+    if EXACT_FORMAT
+    else dict(x0=96, y0=88, x1=698, y1=1071)
+)                                                           # HTML 내용 상자(px)
 
 # Word 상수
 WD_REL_PAGE = 1                       # wdRelativeHorizontal/VerticalPositionPage
@@ -112,7 +120,7 @@ def main(version: int):
             anchors.append(p.Range)
 
         made = failed = 0
-        stat = {"shrunk": 0, "nobound": 0}
+        stat = {"shrunk": 0, "nobound": 0, "overflow": 0}
         for pinfo, anc in zip(pages, anchors):
             for it in pinfo["items"]:
                 try:
@@ -179,7 +187,7 @@ def main(version: int):
                         pf.Alignment = ALIGN.get(it.get("align", "left"), 0)
                         if it.get("lh"):
                             pf.LineSpacingRule = WD_LINE_EXACT
-                            pf.LineSpacing = it["lh"] * s
+                            pf.LineSpacing = it["lh"] * (0.75 if EXACT_FORMAT else s)
                         base = tr.Start
                         off = 0
                         for r in runs:
@@ -191,10 +199,24 @@ def main(version: int):
                                 sub = tr.Duplicate
                                 sub.SetRange(base + off, base + off + n)
                                 f = sub.Font
-                                f.Size = max(r["size"] * s * FONT_K, 4)
+                                if EXACT_FORMAT:
+                                    f.Size = r["size"] * 0.75
+                                else:
+                                    f.Size = max(r["size"] * s * FONT_K, 4)
                                 f.Bold = MSO_TRUE if r.get("bold") else MSO_FALSE
+                                f.Underline = 1 if r.get("underline") else 0
                                 f.Color = bgr(r["color"])
-                                f.Name = "Consolas" if r.get("mono") else "Noto Sans KR"
+                                if EXACT_FORMAT:
+                                    face = "Consolas" if r.get("mono") else EXACT_FONT
+                                    f.Name = face
+                                    try:
+                                        f.NameFarEast = EXACT_FONT
+                                        f.NameAscii = face
+                                        f.NameOther = face
+                                    except Exception:
+                                        pass
+                                else:
+                                    f.Name = "Consolas" if r.get("mono") else "Noto Sans KR"
                             off += n
                         # 세로 정렬
                         try:
@@ -205,25 +227,42 @@ def main(version: int):
                         # 넘치면 글자를 줄인다. BoundHeight 는 고정 크기 상자에서 못 쓰므로
                         # AutoSize 를 잠깐 켜 Word 가 필요로 하는 높이를 재고 되돌린다.
                         try:
-                            for _ in range(4):
+                            if SKIP_TEXT_MEASURE:
+                                raise RuntimeError("skip-text-measure")
+                            if EXACT_FORMAT:
                                 tf.AutoSize = True
                                 need = sh.Height
                                 tf.AutoSize = False
                                 sh.Width = w
                                 sh.Height = h
-                                if need <= h + 0.6:
-                                    break
-                                k = max(h / need, 0.86)
-                                tr.Font.Size = max(tr.Font.Size * k, 4.0)
-                                if it.get("lh"):
-                                    pf.LineSpacing = max(pf.LineSpacing * k, 4.0)
-                                stat["shrunk"] += 1
-                            sh.Width = w
-                            sh.Height = h
+                                if need > h + 0.6:
+                                    stat["overflow"] += 1
+                                    if stat["overflow"] <= 8:
+                                        sample = raw_text.strip().replace("\n", " ")[:45]
+                                        print(f"    글자 넘침 {need - h:.1f}pt: {sample}")
+                            else:
+                                for _ in range(4):
+                                    tf.AutoSize = True
+                                    need = sh.Height
+                                    tf.AutoSize = False
+                                    sh.Width = w
+                                    sh.Height = h
+                                    if need <= h + 0.6:
+                                        break
+                                    k = max(h / need, 0.86)
+                                    tr.Font.Size = max(tr.Font.Size * k, 4.0)
+                                    if it.get("lh"):
+                                        pf.LineSpacing = max(pf.LineSpacing * k, 4.0)
+                                    stat["shrunk"] += 1
+                                sh.Width = w
+                                sh.Height = h
                         except Exception as ex:
-                            stat["nobound"] += 1
-                            if stat["nobound"] <= 2:
-                                print(f"    높이 측정 불가: {ex}")
+                            if str(ex) == "skip-text-measure":
+                                pass
+                            else:
+                                stat["nobound"] += 1
+                                if stat["nobound"] <= 2:
+                                    print(f"    높이 측정 불가: {ex}")
                     sh.RelativeHorizontalPosition = WD_REL_PAGE
                     sh.RelativeVerticalPosition = WD_REL_PAGE
                     sh.Left, sh.Top = l, t
@@ -243,7 +282,8 @@ def main(version: int):
         doc.ExportAsFixedFormat(str(out.with_suffix(".pdf")), ExportFormat=17)
         pgs = doc.ComputeStatistics(2)
         print(f"  개체 {made}개 생성 (실패 {failed}) · {pgs}장"
-              f" · 축소 {stat['shrunk']}회 · 측정불가 {stat['nobound']}")
+              f" · 축소 {stat['shrunk']}회 · 넘침 {stat['overflow']}개"
+              f" · 측정불가 {stat['nobound']}")
         print(f"OK {out}")
     finally:
         try:
