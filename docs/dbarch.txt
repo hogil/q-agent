@@ -1,0 +1,24 @@
+DBQIE DATABASE ARCHITECTURE - system of record for Q-AGENT (PostgreSQL + pgvector)
+==================================================================================================================================================
+
++------------------------------+           +--------------------------------------------------------+           +--------------------------------+
+| WRITERS (data in)            |           | dbqie - PostgreSQL 16 (managed, class C)               |           | READERS (data out)             |
+| data01 ETL: docs/GPM/notes   | -write--> | 32 vCore / 128 GB / 4,000 GB      W748,153/mo          | -read---> | agent tools: hybrid search     |
+| svc01/02 : judgement + ver   | -write--> | ------------------------------------------------------ | -read---> | vector + keyword + WHERE       |
+| agent    : session ckpt      | -write--> | store                                     size         | -read---> | svc cache : warm-up load       |
+| batch    : trend summary     | -write--> | docs + master data (GPM, notes)           200 GB       | -read---> | train01 : dataset export       |
++------------------------------+           | vector index (50M chunks, HNSW)           300 GB       |           | audit : history query          |
+                                           | keyword index (tsvector)                  200 GB       |           +--------------------------------+
+                                           | judgement history (3 years)               274 GB       |
+                                           | session checkpoints (90 days)             450 GB       |
+                                           | trend summary / precompute                500 GB       |
+                                           | WAL / vacuum / reindex headroom         2,076 GB       |
+                                           | total                                   4,000 GB       |
+                                           +--------------------------------------------------------+
+
+HA: DBaaS standby option | BACKUP: service default policy | REINDEX: monthly x4, night batch (synced with training cycle)
+CACHE LAYER: hot data resides in BIG VM memory (svc/data nodes) - dbqie is the single source of truth
+
+※ 주의(2026-07-29): 관리형 dbqie 신청은 **반려**됨 → data01/02 에 PostgreSQL 16 + pgvector **직접 설치**로 확정.
+   위 용량 설계(총 4TB)는 그대로 유지하되, 스펙은 64c/1TB VM 로 상향되어 인덱스 전량 상주가 가능해짐.
+   상세는 docs/INFRA_발급정보.md §4 참조.

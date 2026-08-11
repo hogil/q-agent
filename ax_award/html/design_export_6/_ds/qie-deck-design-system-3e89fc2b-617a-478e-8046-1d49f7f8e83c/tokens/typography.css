@@ -1,0 +1,47 @@
+/* ===========================================================================
+   TYPOGRAPHY — scale lifted from build.py (pt sizes on a 13.33"×7.5" canvas).
+   Tokens are expressed in px at 1:1 deck scale (1280×720 frame). Weights:
+   400 body · 700 bold emphasis · 900 hero numerals (P1/P2/P3, big stats).
+   =========================================================================== */
+:root {
+  --font-sans: "Malgun Gothic", "맑은 고딕", "Noto Sans KR", -apple-system, "Segoe UI", system-ui, sans-serif;
+
+  /* ---- weights ---- */
+  --fw-regular: 400; /* @kind font */
+  --fw-medium:  500; /* @kind font */
+  --fw-bold:    700; /* @kind font */
+  --fw-black:   900; /* @kind font */
+
+  /* ---- type scale (px, deck-scale) ---- */
+  --fs-hero:      80px;  /* section P-number */
+  --fs-display:   40px;  /* title-slide headline */
+  --fs-stat:      52px;  /* big stat numeral */
+  --fs-title:     32px;  /* section / closing title */
+  --fs-heading:   27px;  /* content-slide title */
+  --fs-stat-sm:   22px;  /* compact stat numeral (cards) */
+  --fs-lead:      17px;  /* lead / subtitle / dense body */
+  --fs-body:      16px;  /* default bullet body */
+  --fs-body-sm:   14px;  /* two-column body, secondary */
+  --fs-label:     13px;  /* chip / kicker / column head */
+  --fs-kicker:    12.5px;/* eyebrow label */
+  --fs-caption:   11px;  /* image caption */
+  --fs-footer:    9px;   /* footer / page number */
+
+  /* ---- line heights ---- */
+  --lh-tight:   1.08; /* @kind other */  /* hero numerals & display */
+  --lh-heading: 1.18; /* @kind other */  /* titles */
+  --lh-body:    1.45; /* @kind other */  /* body copy */
+
+  /* ---- letter spacing ---- */
+  --ls-tight:   -0.01em; /* @kind other */ /* large display / numerals */
+  --ls-normal:  0; /* @kind other */
+  --ls-kicker:  0.02em; /* @kind other */ /* eyebrow labels */
+
+  /* ---- semantic roles ---- */
+  --type-display:  var(--fw-black)   var(--fs-display)/var(--lh-tight)   var(--font-sans);
+  --type-hero:     var(--fw-black)   var(--fs-hero)/var(--lh-tight)      var(--font-sans);
+  --type-title:    var(--fw-bold)    var(--fs-title)/var(--lh-heading)   var(--font-sans);
+  --type-heading:  var(--fw-bold)    var(--fs-heading)/var(--lh-heading) var(--font-sans);
+  --type-body:     var(--fw-regular) var(--fs-body)/var(--lh-body)       var(--font-sans);
+  --type-kicker:   var(--fw-bold)    var(--fs-kicker)/1.2                var(--font-sans);
+}

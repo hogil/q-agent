@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>과제 한 장 요약 — 반도체 품질 이상감지·판단 AI Agent Orchestration 구축</title>
+<style>
+  :root{
+    --ink:#17263A; --ink2:#24374F; --steel:#5B7891; --mist:#C9D6E2;
+    --amber:#E8A33D; --amberd:#B87A20; --green:#3F7D58; --red:#B4453C;
+    --paper:#FFFFFF; --soft:#F3F6F9; --text:#1B2733; --mute:#5F7080; --line:#DCE4EC;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:#EDF1F5; color:var(--text);
+    font-family:"맑은 고딕","Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    font-size:14px; line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  .page{max-width:1180px; margin:0 auto; background:var(--paper);
+        box-shadow:0 2px 24px rgba(23,38,58,.10);}
+  /* ── 머리 ── */
+  header{background:var(--ink); color:#fff; padding:30px 40px 26px;}
+  .eyebrow{font-size:12px; letter-spacing:5px; color:var(--amber); font-weight:700; margin:0 0 12px;}
+  h1{margin:0 0 6px; font-size:31px; line-height:1.28; font-weight:700; letter-spacing:-.4px;}
+  .sub{margin:0; font-size:14px; color:var(--mist);}
+  .meta{margin-top:18px; font-size:12px; color:var(--steel);}
+  .tiles{display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-top:20px;}
+  .tile{background:var(--ink2); border-radius:8px; padding:13px 15px;}
+  .tile b{display:block; font-size:20px; color:var(--amber); font-weight:700; line-height:1.25;}
+  .tile span{display:block; font-size:11px; color:var(--mist); margin-top:4px;}
+  /* ── 본문 ── */
+  main{padding:30px 40px 36px;}
+  section{margin-bottom:28px;}
+  h2{margin:0 0 12px; font-size:17px; color:var(--ink); font-weight:700;
+     display:flex; align-items:center; gap:10px;}
+  h2 i{display:inline-flex; align-items:center; justify-content:center;
+       width:24px; height:24px; border-radius:50%; background:var(--amber);
+       color:#fff; font-size:12px; font-weight:700; font-style:normal; flex:none;}
+  .lead{margin:0 0 14px; color:var(--mute); font-size:13px;}
+  .grid4{display:grid; grid-template-columns:repeat(4,1fr); gap:12px;}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:12px;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  .card{background:var(--soft); border-radius:9px; padding:15px 17px;}
+  .card h3{margin:0 0 7px; font-size:14px; color:var(--ink); font-weight:700;}
+  .card p{margin:0; font-size:12.5px; color:var(--text); line-height:1.55;}
+  .card.hi{background:#FBF1E0; box-shadow:inset 0 0 0 1px var(--amber);}
+  .card.hi h3{color:var(--amberd);}
+  .card.dark{background:var(--ink2); color:#fff;}
+  .card.dark h3{color:var(--amber);} .card.dark p{color:var(--mist);}
+  /* 흐름 */
+  .flow{display:grid; grid-template-columns:repeat(6,1fr); gap:8px;}
+  .step{background:var(--soft); border-radius:9px; padding:13px 11px; text-align:center;}
+  .step.key{background:#FBF1E0; box-shadow:inset 0 0 0 1px var(--amber);}
+  .step i{display:inline-flex; align-items:center; justify-content:center;
+          width:22px; height:22px; border-radius:50%; background:var(--steel);
+          color:#fff; font-size:11px; font-weight:700; font-style:normal; margin-bottom:7px;}
+  .step.key i{background:var(--amber);}
+  .step b{display:block; font-size:12px; color:var(--ink);}
+  .step span{display:block; font-size:10.5px; color:var(--mute); margin-top:4px; line-height:1.35;}
+  .entries{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;}
+  .entry{background:var(--ink2); color:#fff; border-radius:8px; padding:10px 15px; font-size:12.5px; font-weight:700;}
+  /* 표 */
+  table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  th{background:#DCE6F1; color:var(--ink); font-weight:700; text-align:left;
+     padding:8px 11px; border:1px solid #C5D3E2; white-space:nowrap;}
+  td{padding:8px 11px; border:1px solid var(--line); vertical-align:top;}
+  td.c,th.c{text-align:center;}
+  tr:nth-child(even) td{background:#FAFCFD;}
+  .ok{background:#E2EFDA !important; font-weight:700;}
+  .warn{background:#FFF2CC !important;}
+  .bad{background:#FCE4E4 !important;}
+  /* 배너 */
+  .banner{background:var(--ink); color:#fff; border-radius:10px; padding:18px 24px;
+          font-size:15px; font-weight:700; line-height:1.5;}
+  .banner small{display:block; font-weight:400; font-size:12.5px; color:var(--mist); margin-top:7px;}
+  .callout{border-left:5px solid var(--amber); background:#FBF1E0; border-radius:0 8px 8px 0;
+           padding:13px 17px; font-size:12.5px;}
+  .formula{background:var(--ink2); color:#fff; border-radius:9px; padding:17px 20px; text-align:center;}
+  .formula .f{font-size:13px; color:var(--mist);}
+  .formula .r{font-size:26px; font-weight:700; color:var(--amber); margin-top:7px;}
+  .pill{display:inline-block; padding:2px 9px; border-radius:11px; font-size:11px; font-weight:700;}
+  .p-ok{background:#E2EFDA; color:#3F7D58;} .p-wait{background:#FFF2CC; color:#9C5700;}
+  .p-no{background:#FCE4E4; color:#B4453C;}
+  footer{background:var(--soft); border-top:1px solid var(--line);
+         padding:16px 40px; font-size:11.5px; color:var(--mute);}
+  @media print{ body{background:#fff;} .page{box-shadow:none; max-width:none;} section{break-inside:avoid;} }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <p class="eyebrow">과 제 지 원 서 &nbsp;·&nbsp; 한 장 요 약</p>
+  <h1>반도체 품질 이상감지·판단 AI Agent Orchestration 구축</h1>
+  <p class="sub">확인 → 판단 → 조치까지 스스로 수행하는 살아있는 품질 관리 시스템</p>
+  <div class="tiles">
+    <div class="tile"><b>1,000명</b><span>적용 대상 엔지니어</span></div>
+    <div class="tile"><b>연 200억</b><span>기대효과 (원/년)</span></div>
+    <div class="tile"><b>57.5배</b><span>ROI · 회수 약 6.3일</span></div>
+    <div class="tile"><b>H100 20장</b><span>수요등록 완료</span></div>
+    <div class="tile"><b>12개월</b><span>수행 기간 (제안)</span></div>
+  </div>
+  <p class="meta">제조기술센터 품질·공정 ◇ &nbsp;·&nbsp; 과제 책임자 ◇ &nbsp;·&nbsp; 2026-09-01 ~ 2027-08-31 (제안) &nbsp;·&nbsp; 작성일 2026-08-07</p>
+</header>
+
+<main>
+
+<!-- 1 문제 -->
+<section>
+  <h2><i>1</i>지금 무엇이 문제인가</h2>
+  <p class="lead">불량 하나를 판단하려면 SPC 트렌드 · wafer map · 결함 이미지 · Inform Note · 기준정보를 서로 다른 시스템에서 하나씩 열어 대조해야 한다.</p>
+  <div class="grid4">
+    <div class="card"><h3>시간</h3><p>시스템 사이를 오가며 손으로 대조하는 데 판정 시간의 대부분이 쓰인다. 정작 판단에 쓰는 시간은 그 일부다.</p></div>
+    <div class="card"><h3>편차</h3><p>같은 현상을 놓고도 사람에 따라 결론이 다르다. 무엇을 봤고 무엇을 안 봤는지가 사람마다 다르다.</p></div>
+    <div class="card"><h3>공백</h3><p>야간과 주말에는 대응이 다음 근무까지 밀린다. 그 사이 같은 원인의 불량이 계속 생산된다.</p></div>
+    <div class="card"><h3>휘발</h3><p>왜 그렇게 판단했는지가 사람 머릿속에 남고 쌓이지 않는다. 담당자가 바뀌면 처음부터 다시 푼다.</p></div>
+  </div>
+</section>
+
+<!-- 2 목표 -->
+<section>
+  <h2><i>2</i>무엇을 만드는가</h2>
+  <div class="banner">
+    확인 → 판단 → 조치까지 스스로 하되, 모든 판단은 근거를 인용하고 현장 조치는 반드시 사람 승인을 거친다.
+    <small>입구는 둘(Chat · 무인 감시), 분석 코어는 하나. Chat에서 검증한 능력이 어댑터 하나로 24시간 감시가 된다.</small>
+  </div>
+</section>
+
+<!-- 3 구조 -->
+<section>
+  <h2><i>3</i>한 사건이 흐르는 경로</h2>
+  <div class="entries">
+    <div class="entry">Chat &nbsp;·&nbsp; 엔지니어가 묻는다</div>
+    <div class="entry">무인 &nbsp;·&nbsp; 감지 이벤트를 질문으로 변환</div>
+  </div>
+  <div class="flow">
+    <div class="step"><i>1</i><b>adapter</b><span>증상 분류 →<br>조사규칙 로드</span></div>
+    <div class="step"><i>2</i><b>investigator</b><span>ReAct 루프 —<br>도구 반복 호출</span></div>
+    <div class="step key"><i>3</i><b>judgment</b><span>증거팩 → 판단서<br>→ 검증기 5칙</span></div>
+    <div class="step"><i>4</i><b>action</b><span>등급 결정 →<br>L2는 승인 대기</span></div>
+    <div class="step"><i>5</i><b>answer</b><span>검증 통과분만<br>렌더링 ([EV-n])</span></div>
+    <div class="step"><i>6</i><b>register</b><span>Inform Note 초안<br>→ 현업 확정</span></div>
+  </div>
+  <p class="lead" style="margin:12px 0 0;">도구가 기간시스템(SPC·MES·YMS·EES·QMS + vision CNN + RAG)을 조회해 판단하고, 그 결과가 현업 확정을 거쳐 다시 검색 자산이 된다. 등록이 멈추면 시스템은 자라지 않는다.</p>
+</section>
+
+<!-- 4 차별화 -->
+<section>
+  <h2><i>4</i>다른 접근과 무엇이 다른가</h2>
+  <div class="grid3">
+    <div class="card hi"><h3>자동화가 별도 개발이 아니다</h3><p>분석 코어를 Chat과 무인이 공유한다. 파일럿에서 검증한 능력이 어댑터 하나로 24시간 감시가 된다. Phase 2에서 분석 로직을 다시 만들지 않는다.</p></div>
+    <div class="card hi"><h3>수치 환각의 발생원을 없앴다</h3><p>통계·공통성 분석·map 분류·SQL은 전부 코드가 한다. LLM에게는 결과만 넘긴다. LLM이 숫자를 지어낼 자리가 구조적으로 없다.</p></div>
+    <div class="card hi"><h3>그럴듯한 오답이 채택되지 않는다</h3><p>판단서는 근거 인용을 강제하고 검증기 5칙이 코드로 검사한다. 계속 실패하면 판단 불가로 강등한다. 품질에서 그럴듯한 오답은 무응답보다 위험하다.</p></div>
+  </div>
+</section>
+
+<!-- 5 안전장치 -->
+<section>
+  <h2><i>5</i>틀린 판단이 조치로 이어지지 않게</h2>
+  <div class="grid2">
+    <div>
+      <table>
+        <tr><th colspan="2">판단 — 검증기 5칙 (코드가 검사)</th></tr>
+        <tr><td style="width:32%"><b>스키마</b></td><td>정해진 형식이 아니면 거부</td></tr>
+        <tr><td><b>근거 실재</b></td><td>없는 증거를 인용하면 거부</td></tr>
+        <tr><td><b>사실 대조</b></td><td>원문에 없는 수치를 쓰면 거부</td></tr>
+        <tr><td><b>신뢰도 규칙</b></td><td>High는 근거 3개 이상 · 반증 0</td></tr>
+        <tr><td><b>공백 금지</b></td><td>가설이 없으면 부족한 정보를 명시</td></tr>
+      </table>
+    </div>
+    <div>
+      <table>
+        <tr><th class="c" style="width:14%">등급</th><th>조치</th><th style="width:34%">실행</th></tr>
+        <tr><td class="c"><b>L0</b></td><td>정보 제공 — 분석 답변, 리포트</td><td>즉시</td></tr>
+        <tr><td class="c"><b>L1</b></td><td>알림 — 담당자 통보, 교대 브리핑</td><td>즉시 (규칙 기반)</td></tr>
+        <tr class="warn"><td class="c"><b>L2</b></td><td>현장 영향 조치 제안 — Lot Hold, dose 보정</td><td><b>승인 후 실행</b></td></tr>
+        <tr><td class="c"><b>L3</b></td><td>자동 조치 — 검증된 시나리오만</td><td>실측 근거 후 개별 승격</td></tr>
+      </table>
+    </div>
+  </div>
+  <p class="lead" style="margin:12px 0 0;">조치 등급을 LLM이 정하지 않는 이유 — 조치는 감사 대상이고, 감사는 설명 가능한 규칙을 요구한다. 모든 시나리오는 L2에서 시작한다.</p>
+</section>
+
+<!-- 6 일정 -->
+<section>
+  <h2><i>6</i>12개월, 다섯 단계</h2>
+  <table>
+    <tr><th class="c" style="width:8%">단계</th><th style="width:10%">기간</th><th style="width:18%">만드는 것</th><th style="width:28%">내용</th><th>통과 조건</th></tr>
+    <tr class="warn"><td class="c"><b>Phase 0</b></td><td>1~2개월</td><td><b>뼈대 · 그림자 운영</b></td><td>그래프 골격, 조회 도구, 검증기</td><td>골든셋 30건 일치율 기준선 실측 (조치 미실행)</td></tr>
+    <tr><td class="c"><b>Phase 1</b></td><td>3~5개월</td><td><b>Chat 파일럿</b></td><td>포토 1개 공정, 모든 조치 승인 필수</td><td>엔지니어가 실제로 쓰는가 · 반려율 · 재사용률</td></tr>
+    <tr><td class="c"><b>Phase 2</b></td><td>6~8개월</td><td><b>무인 접수</b></td><td>Event-to-Question Adapter, 알림 · 교대 브리핑</td><td>야간 · 주말 이벤트 처리 누락 0건</td></tr>
+    <tr><td class="c"><b>Phase 3</b></td><td>9~10개월</td><td><b>저위험 자동조치</b></td><td>되돌릴 수 있는 조치부터 자동화</td><td>자동 실행 로그 전건 감사 · 오판율 측정</td></tr>
+    <tr><td class="c"><b>Phase 4</b></td><td>11~12개월</td><td><b>확산</b></td><td>etch · CMP (코어 그대로, 조사규칙만 추가)</td><td>신규 공정 골든셋 회귀 통과</td></tr>
+  </table>
+  <p class="callout" style="margin-top:12px;"><b>상시 안전망</b> — 프롬프트 · 모델 · 색인을 바꿀 때마다 골든셋 회귀 러너를 돌린다. 통과 못하면 배포하지 않는다. 금지 조치를 건드리면 즉시 실패 처리한다.</p>
+</section>
+
+<!-- 7 자원·효과 -->
+<section>
+  <h2><i>7</i>소요 자원과 기대효과</h2>
+  <div class="grid2">
+    <div>
+      <table>
+        <tr><th style="width:26%">항목</th><th>내용</th><th style="width:26%" class="c">상태</th></tr>
+        <tr><td><b>GPU</b></td><td>H100 20장 — 서빙 12 + VLM 5 + 경량 2 + 평가 1</td><td class="c ok">수요등록 완료</td></tr>
+        <tr><td><b>VM</b></td><td>BIG VM 5대 · 320 vCPU · 5,120GB · 153,600GB</td><td class="c ok">산출근거 제출</td></tr>
+        <tr><td><b>스토리지</b></td><td>NAS 102,400GB + OBJ 51,200GB</td><td class="c ok">신청 포함</td></tr>
+        <tr><td><b>DB</b></td><td>PostgreSQL 16 + pgvector (data01 주 / data02 복제)</td><td class="c ok">테스트 구축 완료</td></tr>
+        <tr><td><b>투자</b></td><td>347,794,165원/년 (VM · 스토리지 사내 과금)</td><td class="c">—</td></tr>
+      </table>
+    </div>
+    <div>
+      <div class="formula">
+        <div class="f">[ (4h / 8h) − (2h / 8h) ] × 연봉 80,000,000원 × 1,000명</div>
+        <div class="r">= 연 200억 원 / 년</div>
+      </div>
+      <table style="margin-top:12px;">
+        <tr><th class="c">목표 판정 시간</th><th class="c">기대효과</th><th class="c">ROI</th></tr>
+        <tr class="ok"><td class="c"><b>2.0시간 (기준)</b></td><td class="c"><b>200억</b></td><td class="c"><b>57.5배</b></td></tr>
+        <tr><td class="c">2.5시간</td><td class="c">150억</td><td class="c">43.1배</td></tr>
+        <tr><td class="c">3.0시간</td><td class="c">100억</td><td class="c">28.8배</td></tr>
+        <tr><td class="c">3.5시간</td><td class="c">50억</td><td class="c">14.4배</td></tr>
+      </table>
+      <p class="lead" style="margin:9px 0 0; font-size:12px;">목표를 절반만 달성해 하루 3.5시간까지만 줄어도 투자 대비 효과는 크게 남는다. 가동 후 건당 처리 시간을 실측해 분기 단위로 보고하고 산정치와의 차이를 조정한다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 8 선행 실적 -->
+<section>
+  <h2><i>8</i>백지에서 시작하지 않는다</h2>
+  <table>
+    <tr><th style="width:14%">구분</th><th>이미 완료한 것</th></tr>
+    <tr><td><b>설계 문서</b></td><td>시스템설계서, 상세 구축 로드맵, Tool 카탈로그, 그라운딩 설계, 조사규칙 5종, 구현명세서 등 31종</td></tr>
+    <tr><td><b>구현</b></td><td>LangGraph 조사 코어 스켈레톤 실행 확인, 검증기 5칙 구현, prod 백엔드 4종</td></tr>
+    <tr><td><b>평가</b></td><td>골든 시나리오 4건 + 회귀 러너 구축, 회귀 검출 동작 확인. 검색 <b>recall@10 = 0.500 실측</b> (골든 4건 / 색인 50건)</td></tr>
+    <tr><td><b>DB</b></td><td>테스트 VM에 <b>PostgreSQL 16.14 + pgvector 0.8.1</b> 구축, 스키마 · 가드 · 평가 동작 확인. halfvec 사용 확정</td></tr>
+    <tr><td><b>인프라</b></td><td>GPU 수요등록 완료(H100 20장), BIG VM 5대 산출근거 제출, 스토리지 신청 포함</td></tr>
+  </table>
+  <p class="callout" style="margin-top:12px;"><b>이 과제가 하는 일</b> — 설계 · 스켈레톤 · 평가 체계 · DB 까지는 이미 서 있다. 그 위에 실데이터와 실도구를 연결하는 단계다.</p>
+</section>
+
+<!-- 9 착수 전 -->
+<section>
+  <h2><i>9</i>착수 전 정리할 것</h2>
+  <table>
+    <tr><th class="c" style="width:5%">#</th><th style="width:34%">항목</th><th class="c" style="width:14%">상태</th><th>필요한 조치</th></tr>
+    <tr><td class="c">1</td><td>pgvector 버전</td><td class="c"><span class="pill p-ok">종료</span></td><td>실측 0.8.1 확인 → halfvec 사용 확정</td></tr>
+    <tr><td class="c">2</td><td>모니터링 도구 사내 미러 등록</td><td class="c"><span class="pill p-wait">확인 중</span></td><td>미등록 시 바이너리 반입 절차</td></tr>
+    <tr><td class="c">3</td><td>H100 반입 일정</td><td class="c"><span class="pill p-no">미정</span></td><td>과제 마감일과 동기 — Phase 0 착수일 결정 요소</td></tr>
+    <tr><td class="c">4</td><td>정보계 접속점 계정 · 권한</td><td class="c"><span class="pill p-no">미정</span></td><td>IT 확인 후 조회 전용 계정 · 뷰 발급</td></tr>
+    <tr><td class="c">5</td><td>고정밀 VLM 이미지 입력 지원</td><td class="c"><span class="pill p-wait">확인 중</span></td><td>모델 카드 확인 (대안 후보 확보 완료)</td></tr>
+    <tr><td class="c">6</td><td>수행 인원 (현업 · 개발 · 인프라 · 거버넌스)</td><td class="c"><span class="pill p-no">미정</span></td><td>심사 확정 시 배정</td></tr>
+  </table>
+</section>
+
+<div class="banner">
+  설계는 끝났고 검증 체계도 서 있다. 남은 것은 실데이터를 붙여 그림자 운영으로 신뢰를 버는 일이다.
+  <small>조치는 Phase 0에서 실행하지 않는다. 일치율로 신뢰를 먼저 벌고, 권한은 위험도 순으로 천천히 연다.</small>
+</div>
+
+</main>
+
+<footer>
+  ◇ 는 심사 확정 시 채워 넣는 자리입니다. &nbsp;·&nbsp;
+  상세 근거는 붙임 문서 참조 — 과제지원서 본문 / 추진일정·자원·예산 워크북 / 심사 발표자료 / 심사 예상질문 대응집 / GPU·인프라 산출근거 종합정리.
+</footer>
+
+</div>
+</body>
+</html>

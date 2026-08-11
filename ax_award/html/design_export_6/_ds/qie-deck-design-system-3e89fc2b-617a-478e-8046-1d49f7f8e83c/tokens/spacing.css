@@ -1,0 +1,53 @@
+/* ===========================================================================
+   SPACING, RADII, BARS & ELEVATION
+   The deck system is deliberately FLAT — surfaces carry NO drop shadow
+   (build.py sets shadow.inherit = False everywhere). Depth comes from fill +
+   a single hairline + a teal accent bar, never from shadow.
+   Spacing scale = inch gutters from build.py translated to px (96px = 1in).
+   =========================================================================== */
+:root {
+  /* ---- spacing scale (px) ---- */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-7:  29px;   /* 0.30in — standard card gutter */
+  --space-8:  40px;
+  --space-9:  52px;
+  --space-10: 67px;   /* 0.70in — slide content inset (left margin) */
+
+  /* ---- slide geometry ---- */
+  --slide-w:        1280px;
+  --slide-h:        720px;
+  --slide-pad-x:    67px;   /* matches 0.70in content inset */
+  --slide-pad-y:    52px;
+
+  /* ---- radii ---- */
+  --radius-xs:   4px;
+  --radius-sm:   6px;   /* chips, badges */
+  --radius-md:   10px;  /* flow boxes, KPI cards */
+  --radius-lg:   14px;
+  --radius-pill: 999px;
+
+  /* ---- accent bars (the core depth motif) ---- */
+  --bar-w:        9px;   /* left vertical bar beside titles */
+  --bar-w-thick:  15px;  /* section / hero bar */
+  --bar-top:      10px;  /* top accent strip on stat cards */
+  --bar-h-title:  60px;  /* title bar height */
+
+  /* ---- borders ---- */
+  --border-w:     1px;
+  --hairline:     1px solid var(--line);
+
+  /* ---- "elevation": flat system, kept for API parity ---- */
+  --elev-flat:   none;
+  --elev-card:   none;            /* cards are flat — fill + hairline only */
+  --elev-hover:  0 2px 10px rgba(15, 30, 61, 0.08); /* the ONE allowed lift, on interactive hover */
+
+  /* ---- motion ---- */
+  --ease:        cubic-bezier(0.4, 0.0, 0.2, 1); /* @kind other */
+  --dur-fast:    120ms; /* @kind other */
+  --dur:         200ms; /* @kind other */
+}

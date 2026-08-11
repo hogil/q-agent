@@ -1,0 +1,21 @@
+Q-AGENT SERVICE SYSTEM ARCHITECTURE - resource utilization map (H100 x 20 + BIG VM x 5 + NAS 100TB + OBJ 50TB)
+=====================================================================================================================================================================================
+
++--------------------------+           +----------------------------------------------------------------+                +--------------------------------------------------------+
+| USERS                    |           | SERVICE LAYER - BIG VM x 5 (each 64 core / 1TB / 30TB)         |                | GPU CLUSTER - H100 x 20 (separate request)             |
+| quality / process        | --ask---> | ------------------------------------------------------------   | -prompt/tool-> | serve: judge LLM FP8 x12 | deep-read VLM x5           |
+| engineers ~1,000         | <-answer- | [LB]-> svc01 : agent API #1 + chat gateway + in-mem cache      | <-text result- | lite VLM + retrievers x2 | eval x1                    |
+| web chat + auto alert    |           | [LB]-> svc02 : agent API #2 + monitoring + regression eval     |                | train: 16 GPUs SFT/DPO (monthly x4)                    |
++--------------------------+           | cache: trend 90d + image features + case precompute            |                | lite serving stays up while training                   |
+                                       | ------------------------------------------------------------   |                +--------------------------------------------------------+
++--------------------------+           | data01 : PostgreSQL + pgvector (primary) + ETL ingest          |                            | weights load / checkpoint save
+| DATA SOURCES (read)      |           | data02 : PostgreSQL (standby) + audit log + backup             |                            v
+| MES / SPC / YMS (DW)     |           | train01: dataset build + weight merge (time-shared)            | -build/merge-> +--------------------------------------------------------+
+| FDC sensor, metrology    | -collect->| ------------------------------------------------------------   |                | SHARED STORAGE (NAS + OBJ)                             |
+| defect image / map       |           | HA: API x2 (svc01/02), DB x2 (data01/02)                       |                | NAS 100TB : weights(3 gen), ckpt, datasets             |
+| drawings, work notes     |           | audit: every judgement logged with model version               |                | mounted by GPU nodes + train01                         |
++--------------------------+           | all tool results return as TEXT to the agent                   |                | OBJ 50TB : image / map archive (20 months)             |
+                                       +----------------------------------------------------------------+                +--------------------------------------------------------+
+
+LEARNING LOOP : engineer feedback (adopt/fix) -> train01 monthly retrain (x4) -> improved weights -> GPU redeploy -> better judgement
+BACKUP        : VM disk x5 (daily) | DB replication -> data02 | long-term archive -> OBJ
