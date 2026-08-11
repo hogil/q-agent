@@ -11,6 +11,18 @@ Claude Design 프로젝트 `사내 AI 프로젝트 디자인 개선`
 | `AX_Award_지원서.pdf` | 위를 인쇄 경로로 뽑은 것 (210×297mm 5장) |
 | `preview/page{1..5}.png` | 페이지별 확인용 |
 
+### 제출용 docx 두 가지 (`build_docx.py` / `html_to_docx.py`)
+| 파일 | 장수 | 쓸모 |
+|---|---|---|
+| `AX_Award_지원서.docx` | **5장** | 페이지를 240dpi 로 떠서 여백 0 A4 에 full-bleed. **화면과 1:1** — 그대로 제출. 대신 글자 복사·편집 불가 |
+| `AX_Award_지원서_편집용.docx` | 8장 | Word 가 HTML 을 직접 읽어 변환. **글자·표를 복사·수정 가능**(3,170단어). flex 로 짠 칸은 Word 가 다시 흘려 장수가 늘고 SVG 그래프는 빠진다 |
+
+제출은 5장짜리, 사내 양식에 옮겨 붙일 땐 편집용을 쓴다.
+```bash
+python build_docx.py 240     # 이미지 5장 docx
+python html_to_docx.py       # 편집용 docx + 확인용 PDF
+```
+
 ## 원본과 달라진 점 3가지
 1. **디자인 앱 껍데기 제거** — `<x-dc>` `<doc-page>` `<sc-if>`(심사 루브릭 배지, 원래 숨김)
    와 외부 css/js 링크를 걷어내고 `@page A4 / margin 0` 로 직접 고정했다.
