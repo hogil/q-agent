@@ -164,7 +164,11 @@ def main(version: int):
                         sh.Line.Visible = MSO_FALSE
                         tf = sh.TextFrame
                         tf.MarginLeft = tf.MarginRight = tf.MarginTop = tf.MarginBottom = 0
-                        tf.WordWrap = True
+                        # 단어 하나짜리 상자는 줄바꿈을 끈다. 켜두면 좁은 칸에서 Word 가
+                        # 'adapter' 를 'adapte/r' 로 쪼갠다 — 넘쳐도 투명 상자라 겹쳐 보이지 않는다.
+                        one_word = " " not in "".join(
+                            r.get("t", "") for r in it["runs"]).strip()
+                        tf.WordWrap = not one_word
                         tf.AutoSize = False
                         runs = it["runs"]
                         text = "".join(r.get("t", "") for r in runs).replace("\n", "\v")

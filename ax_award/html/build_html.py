@@ -112,6 +112,36 @@ if FORM_ORDER:
     sections[0], sections[1] = swap_tail_head(
         sections[0], sections[1], "구조적 문제 4가지", "기존 대안 검토", "왜 중요한가", "왜 지금인가")
 
+def slim_why_now(section_html):
+    """`왜 지금인가` 카드 묶음을 한 줄로 줄인다.
+
+    심사 기준(문제 정의 / 중요도·개선 필요성)에 없는 항목이라 지면 우선순위가 가장 낮다.
+    지우지는 않고 근거 한 줄만 남긴다.
+    """
+    soup = BeautifulSoup(section_html, "html.parser")
+    hits = [td for td in soup.find_all("td") if "왜 지금인가" in td.get_text()]
+    if not hits:
+        return section_html
+    td = min(hits, key=lambda x: len(x.find_all(True)))
+    kids = [c for c in td.children if getattr(c, "name", None)]
+    i = next((n for n, c in enumerate(kids) if "왜 지금인가" in c.get_text()), None)
+    if i is None or i + 1 >= len(kids):
+        return section_html
+    for c in kids[i + 1:]:
+        c.extract()
+    line = BeautifulSoup(
+        '<div style="font-size:8px;line-height:1.5;color:#3E4C64;margin-top:2px">'
+        '사고 이력, 설비 이력, Trend, 이미지와 문서 데이터가 이미 축적되어 있어 현재 업무를 '
+        'AI Agent 기반으로 전환할 수 있는 데이터 기반이 확보되어 있다. 회귀 평가 환경과 '
+        'recall 측정 체계도 함께 구축했다.</div>', "html.parser")
+    td.append(line)
+    return str(soup)
+
+
+SLIM_WHY_NOW = True
+if SLIM_WHY_NOW:
+    sections[1] = slim_why_now(sections[1])
+
 # --- Tech 두 장 교체 ----------------------------------------------------
 # overrides/*.html 이 3·4페이지의 '기술적 해결 방안' 칸 내용을 통째로 갈아끼운다.
 # (Router 6결정 / Agentic RAG 2트랙 / 이미지 대조학습 / 프롬프트 성장 / 학습 3단)
