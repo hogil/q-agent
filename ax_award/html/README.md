@@ -17,7 +17,11 @@ Claude Design 프로젝트 `사내 AI 프로젝트 디자인 개선`
 | `AX_Award_지원서.docx` | **5장** | 페이지를 240dpi 로 떠서 여백 0 A4 에 full-bleed. **화면과 1:1** — 그대로 제출. 대신 글자 복사·편집 불가 |
 | `AX_Award_지원서_편집용.docx` | 8장 | Word 가 HTML 을 직접 읽어 변환. **글자·표를 복사·수정 가능**(3,170단어). flex 로 짠 칸은 Word 가 다시 흘려 장수가 늘고 SVG 그래프는 빠진다 |
 
-제출은 5장짜리, 사내 양식에 옮겨 붙일 땐 편집용을 쓴다.
+**제출본은 `../build_docx_v46.py` 로 만든 `../out/AX_Award_지원서_Q-Agent_v46.docx` 다** —
+v45 와 같은 방식(python-docx 로 Word 표를 직접 짜는 §3 규격 골격)에 현재 내용을 얹은 것.
+`I. 개요` 는 진짜 텍스트 표라 지원부문·팀·대표자·제목을 Word 에서 바로 고칠 수 있고,
+절 내용은 HTML 의 해당 칸만 잘라 그림으로 넣었다(v45 도 그림을 셀에 넣었다).
+아래 둘은 보조본이다.
 ```bash
 python build_docx.py 240     # 이미지 5장 docx
 python html_to_docx.py       # 편집용 docx + 확인용 PDF
