@@ -80,6 +80,38 @@ REPAGINATE_V1 = False
 if REPAGINATE_V1:
     sections[1], sections[0] = move_block(sections[1], sections[0], "왜 중요한가", "동선 안에 반복")
 
+def _td(section_html, kw):
+    soup = BeautifulSoup(section_html, "html.parser")
+    return soup, deepest_td(soup, kw)
+
+
+def swap_tail_head(p1_html, p2_html, kw1, cut1, kw2, cut2):
+    """p1 칸의 뒤쪽 덩이와 p2 칸의 앞쪽 덩이를 맞바꾼다.
+
+    양식은 `문제 정의 -> 현업 관점 중요도·개선 필요성` 순서를 요구하는데 원본은
+    `동선 / 구조결함 / 기존 대안` 다음 장에 `왜 중요한가` 가 온다. 중요도가 다음 장으로
+    밀려 있어 심사가 페이지를 넘겨야 찾는다 — 두 덩이를 맞바꿔 순서를 맞춘다.
+    """
+    s1, td1 = _td(p1_html, kw1)
+    s2, td2 = _td(p2_html, kw2)
+    k1 = [c for c in td1.children if getattr(c, "name", None)]
+    k2 = [c for c in td2.children if getattr(c, "name", None)]
+    i1 = next(n for n, c in enumerate(k1) if cut1 in c.get_text())
+    i2 = next(n for n, c in enumerate(k2) if cut2 in c.get_text())
+    tail1 = [c.extract() for c in k1[i1:]]      # p1 뒤쪽 (기존 대안 검토)
+    head2 = [c.extract() for c in k2[:i2]]      # p2 앞쪽 (왜 중요한가)
+    for c in head2:
+        td1.append(c)
+    for c in reversed(tail1):
+        td2.insert(0, c)
+    return str(s1), str(s2)
+
+
+FORM_ORDER = True
+if FORM_ORDER:
+    sections[0], sections[1] = swap_tail_head(
+        sections[0], sections[1], "구조적 문제 4가지", "기존 대안 검토", "왜 중요한가", "왜 지금인가")
+
 # --- Tech 두 장 교체 ----------------------------------------------------
 # overrides/*.html 이 3·4페이지의 '기술적 해결 방안' 칸 내용을 통째로 갈아끼운다.
 # (Router 6결정 / Agentic RAG 2트랙 / 이미지 대조학습 / 프롬프트 성장 / 학습 3단)

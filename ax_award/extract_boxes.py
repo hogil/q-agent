@@ -7,13 +7,13 @@
 
   box   배경색·테두리가 있는 요소     -> 둥근 사각형 도형 (글자 없음)
   text  자기 줄에 글자가 있는 요소     -> 투명 텍스트 상자 (글자만)
-  svg   스파크라인·웨이퍼 맵          -> 도형으로 옮길 수 없어 그림 (몇 개 안 된다)
+  svg   스파크라인·웨이퍼 맵          -> SVG 벡터 개체 (문구는 별도 텍스트 상자)
 
 둘을 분리하는 이유: 칸 배경과 글자를 한 도형에 넣으면 Word 의 줄바꿈이 브라우저와
 달라질 때 배경까지 같이 틀어진다. 배경은 좌표로 고정하고 글자만 흐르게 둔다.
 좌표는 페이지 좌상단 기준 px (96dpi) 다.
 
-사용: python extract_boxes.py [출력.json]
+사용: python extract_boxes.py [출력.json] [입력.html] [SVG출력폴더]
 """
 from __future__ import annotations
 
@@ -23,9 +23,9 @@ import pathlib
 import sys
 
 HERE = pathlib.Path(__file__).parent
-HTML = HERE / "html" / "AX_Award_지원서.html"
+HTML = pathlib.Path(sys.argv[2]) if len(sys.argv) > 2 else HERE / "html" / "AX_Award_지원서.html"
 OUT = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else HERE / "out" / "boxes.json"
-SVGDIR = HERE / "out" / "fig_v48"
+SVGDIR = pathlib.Path(sys.argv[3]) if len(sys.argv) > 3 else HERE / "out" / "fig_v48"
 
 JS = r"""() => {
   const TRANSPARENT = new Set(['rgba(0, 0, 0, 0)', 'transparent']);
@@ -88,8 +88,29 @@ JS = r"""() => {
 
       if (el.tagName.toLowerCase() === 'svg') {
         const id = `p${pi + 1}_svg${svgN++}`;
-        el.setAttribute('data-svg', id);
-        items.push({ kind: 'svg', id, ...box });
+        const clone = el.cloneNode(true);
+        clone.querySelectorAll('text').forEach(t => t.remove());
+        clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        clone.setAttribute('width', String(box.w));
+        clone.setAttribute('height', String(box.h));
+        clone.removeAttribute('style');
+        items.push({ kind: 'svg', id, asset: `${id}.svg`, markup: clone.outerHTML, ...box });
+        // SVG 안의 문구도 Word 에서 직접 고칠 수 있도록 별도 텍스트 상자로 뽑는다.
+        for (const tx of el.querySelectorAll('text')) {
+          const tr = tx.getBoundingClientRect();
+          const tcs = getComputedStyle(tx);
+          const value = (tx.textContent || '').replace(/\s+/g, ' ').trim();
+          if (!value || tr.width < 0.2 || tr.height < 0.2) continue;
+          items.push({
+            kind: 'text', x: tr.left - P.left, y: tr.top - P.top,
+            w: Math.max(tr.width + 2, 4), h: Math.max(tr.height + 2, 4),
+            align: 'left', valign: 'top', lh: parseFloat(tcs.lineHeight) || 0,
+            runs: [{ t: value, size: parseFloat(tcs.fontSize) || 8,
+                     bold: parseInt(tcs.fontWeight, 10) >= 600,
+                     color: rgb(tcs.fill) || rgb(tcs.color) || [17, 24, 39],
+                     mono: /mono|Consolas/i.test(tcs.fontFamily) }]
+          });
+        }
         return;
       }
 
@@ -124,10 +145,19 @@ JS = r"""() => {
         // 글자는 안쪽 여백을 뺀 자리에 앉힌다
         const pl = parseFloat(cs.paddingLeft) || 0, pr = parseFloat(cs.paddingRight) || 0;
         const pt = parseFloat(cs.paddingTop) || 0, pb = parseFloat(cs.paddingBottom) || 0;
+        // 세로 정렬 — flex/grid 가 가운데 정렬이면 Word 도 가운데로 앉혀야 자리가 맞는다
+        const flexy = cs.display === 'flex' || cs.display === 'inline-flex' ||
+                      cs.display === 'grid';
+        const ai = cs.alignItems;
+        let valign = 'top';
+        if (flexy && (ai === 'center' || ai === 'baseline')) valign = 'middle';
+        else if (flexy && ai === 'flex-end') valign = 'bottom';
+        else if (el.tagName === 'TD' && cs.verticalAlign === 'middle') valign = 'middle';
         items.push({ kind: 'text',
                      x: box.x + pl, y: box.y + pt,
                      w: Math.max(box.w - pl - pr, 4), h: Math.max(box.h - pt - pb, 4),
-                     align: cs.textAlign, lh: parseFloat(cs.lineHeight) || 0, runs });
+                     align: cs.textAlign, valign,
+                     lh: parseFloat(cs.lineHeight) || 0, runs });
       }
 
       for (const c of el.children) if (isBlockish(c)) visit(c);
@@ -152,9 +182,7 @@ async def main():
         for p in pages:
             for it in p["items"]:
                 if it["kind"] == "svg":
-                    el = await pg.query_selector(f'[data-svg="{it["id"]}"]')
-                    if el:
-                        await el.screenshot(path=str(SVGDIR / f'{it["id"]}.png'))
+                    (SVGDIR / it["asset"]).write_text(it.pop("markup"), encoding="utf-8")
         await b.close()
 
     OUT.parent.mkdir(parents=True, exist_ok=True)

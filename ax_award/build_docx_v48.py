@@ -7,7 +7,7 @@ pptx 가 도형 266개를 전부 진짜 AutoShape 로 갖고 있듯이, Word 도
 
   box  -> AddShape(둥근 사각형)   채우기·선만, 글자 없음
   text -> AddTextbox(투명)        글자만, 칸마다 run 단위로 크기·굵기·색·등폭 유지
-  svg  -> AddPicture              스파크라인·웨이퍼 맵 6개. 도형으로 못 옮긴다
+  svg  -> AddPicture              스파크라인·웨이퍼 맵 6개를 SVG 벡터로 유지
 
 배경과 글자를 다른 개체로 나눈 이유: 한 도형에 같이 넣으면 Word 의 줄바꿈이 브라우저와
 어긋날 때 배경까지 따라 틀어진다. 배경은 좌표로 못 박고 글자만 흐르게 둔다.
@@ -18,7 +18,10 @@ pptx 가 도형 266개를 전부 진짜 AutoShape 로 갖고 있듯이, Word 도
   1px = 0.75pt 지만 HTML 이 세로로 26.0cm 를 쓰고 양식은 24.16cm 뿐이라 s = 0.697pt/px.
   도형은 텍스트 단이 아니라 '페이지' 기준으로 놓으므로 여백 규격은 그대로 지켜진다.
 
-사용: python build_docx_v48.py [버전번호]
+사용: python build_docx_v48.py [버전번호] [boxes.json] [SVG폴더]
+
+v49 에서 더한 것 — 세로 정렬(flex align-items) 반영, 넘치는 글상자는 글자를 자동
+축소해 옆 칸을 침범하지 않게 했다(최대 3단, 0.78배까지).
 """
 from __future__ import annotations
 
@@ -30,8 +33,8 @@ import time
 import win32com.client as win32
 
 HERE = pathlib.Path(__file__).parent
-BOXES = HERE / "out" / "boxes.json"
-SVGDIR = HERE / "out" / "fig_v48"
+BOXES = pathlib.Path(sys.argv[2]) if len(sys.argv) > 2 else HERE / "out" / "boxes.json"
+SVGDIR = pathlib.Path(sys.argv[3]) if len(sys.argv) > 3 else HERE / "out" / "fig_v48"
 OUTDIR = HERE / "out"
 
 CM = 28.3464567                       # 1cm in points
@@ -45,6 +48,7 @@ WD_WRAP_NONE = 3
 MSO_ROUNDED, MSO_RECT = 5, 1
 MSO_TRUE, MSO_FALSE = -1, 0
 WD_LINE_EXACT = 4
+VANCHOR = {"top": 1, "middle": 3, "bottom": 4}   # msoAnchorTop/Middle/Bottom
 ALIGN = {"left": 0, "center": 1, "right": 2, "start": 0, "end": 2}
 PAD_X, PAD_Y = 0.0, 1.5          # 글상자 여유(pt). 좌우는 0 — 늘리면 옆 칸 글자와 겹친다
 FONT_K = 0.955                   # Word 한글 폭이 브라우저보다 넓다. 줄바꿈이 어긋나 겹치는
@@ -108,6 +112,7 @@ def main(version: int):
             anchors.append(p.Range)
 
         made = failed = 0
+        stat = {"shrunk": 0, "nobound": 0}
         for pinfo, anc in zip(pages, anchors):
             for it in pinfo["items"]:
                 try:
@@ -116,10 +121,10 @@ def main(version: int):
                     w, h = max(it["w"] * s, 1.0), max(it["h"] * s, 1.0)
 
                     if it["kind"] == "svg":
-                        png = SVGDIR / f'{it["id"]}.png'
-                        if not png.exists():
+                        vector = SVGDIR / it.get("asset", f'{it["id"]}.svg')
+                        if not vector.exists():
                             return
-                        sh = doc.Shapes.AddPicture(str(png), False, True, l, t, w, h, anc)
+                        sh = doc.Shapes.AddPicture(str(vector), False, True, l, t, w, h, anc)
                     elif it["kind"] == "box":
                         kind = MSO_ROUNDED if it.get("radius", 0) >= 2 else MSO_RECT
                         sh = doc.Shapes.AddShape(kind, l, t, w, h, anc)
@@ -185,8 +190,33 @@ def main(version: int):
                                 f.Size = max(r["size"] * s * FONT_K, 4)
                                 f.Bold = MSO_TRUE if r.get("bold") else MSO_FALSE
                                 f.Color = bgr(r["color"])
-                                f.Name = "Consolas" if r.get("mono") else "맑은 고딕"
+                                f.Name = "Consolas" if r.get("mono") else "Noto Sans KR"
                             off += n
+                        # 세로 정렬
+                        try:
+                            sh.TextFrame2.VerticalAnchor = VANCHOR.get(
+                                it.get("valign", "top"), 1)
+                        except Exception:
+                            pass
+                        # 넘치면 글자를 줄인다. BoundHeight 는 고정 크기 상자에서 못 쓰므로
+                        # AutoSize 를 잠깐 켜 Word 가 필요로 하는 높이를 재고 되돌린다.
+                        try:
+                            for _ in range(4):
+                                tf.AutoSize = True
+                                need = sh.Height
+                                tf.AutoSize = False
+                                sh.Height = h
+                                if need <= h + 0.6:
+                                    break
+                                k = max(h / need, 0.86)
+                                tr.Font.Size = max(tr.Font.Size * k, 4.0)
+                                if it.get("lh"):
+                                    pf.LineSpacing = max(pf.LineSpacing * k, 4.0)
+                                stat["shrunk"] += 1
+                        except Exception as ex:
+                            stat["nobound"] += 1
+                            if stat["nobound"] <= 2:
+                                print(f"    높이 측정 불가: {ex}")
                     sh.RelativeHorizontalPosition = WD_REL_PAGE
                     sh.RelativeVerticalPosition = WD_REL_PAGE
                     sh.Left, sh.Top = l, t
@@ -205,7 +235,8 @@ def main(version: int):
         doc.SaveAs2(str(out), FileFormat=16)
         doc.ExportAsFixedFormat(str(out.with_suffix(".pdf")), ExportFormat=17)
         pgs = doc.ComputeStatistics(2)
-        print(f"  개체 {made}개 생성 (실패 {failed}) · {pgs}장")
+        print(f"  개체 {made}개 생성 (실패 {failed}) · {pgs}장"
+              f" · 축소 {stat['shrunk']}회 · 측정불가 {stat['nobound']}")
         print(f"OK {out}")
     finally:
         try:
