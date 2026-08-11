@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup, NavigableString, Tag
 
 HERE = Path(__file__).parent
 SOURCE = HERE / "html" / "ax_dc_v3.html"
-OUTPUT = HERE / "html" / "AX_Award_지원서_v52.html"
+OUTPUT = HERE / "html" / "AX_Award_지원서_v53.html"
 
 
 def direct_tags(parent: Tag) -> list[Tag]:
@@ -653,6 +653,8 @@ def revise() -> BeautifulSoup:
         "입력 근거 구성에 좌우된": "입력 근거 구성의 영향을 받는",
         "반복 실패 시 판단 불가로 반환해 사람에게 넘긴다.":
             "반복 실패 시 판단 불가를 반환하고 사람 검토로 넘긴다.",
+        "판단 불가로 강등해 사람에게 넘긴다.":
+            "판단 불가를 반환하고 사람 검토로 넘긴다.",
         "trend만 스펙 안으로": "Trend 수치만 규격 범위로",
         "야간 알람은 \"이상이다\"에서 멈춘다": "야간 알람은 이상 발생만 통보한다",
         "야간·주말도 그 자리에서 조사": "야간과 주말에도 즉시 조사 착수",
@@ -703,6 +705,7 @@ def lint(text: str) -> list[str]:
         "끝이 다음 시작을 키운다", "침묵 실패", "쓸수록 정확해진다", "SFT", "DPO", "KTO", "·",
         "통짜", "뭉개", "손잡이", "할 손이", "사장된다", "상향 평준화", "사람 머릿속",
         "각자 알아서", "답의 수준", "그림자 운영", "현업 몫", "오탐 남발", "원인 확정",
+        "강등",
         "GPU", " VM ", "스토리지", "인프라",
     ]
     return [token for token in forbidden if token in text]

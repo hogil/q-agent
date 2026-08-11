@@ -166,8 +166,8 @@ def main(version: int):
                         tf.MarginLeft = tf.MarginRight = tf.MarginTop = tf.MarginBottom = 0
                         # 단어 하나짜리 상자는 줄바꿈을 끈다. 켜두면 좁은 칸에서 Word 가
                         # 'adapter' 를 'adapte/r' 로 쪼갠다 — 넘쳐도 투명 상자라 겹쳐 보이지 않는다.
-                        one_word = " " not in "".join(
-                            r.get("t", "") for r in it["runs"]).strip()
+                        raw_text = "".join(r.get("t", "") for r in it["runs"])
+                        one_word = " " not in raw_text.strip() and "\n" not in raw_text
                         tf.WordWrap = not one_word
                         tf.AutoSize = False
                         runs = it["runs"]
@@ -209,6 +209,7 @@ def main(version: int):
                                 tf.AutoSize = True
                                 need = sh.Height
                                 tf.AutoSize = False
+                                sh.Width = w
                                 sh.Height = h
                                 if need <= h + 0.6:
                                     break
@@ -217,6 +218,8 @@ def main(version: int):
                                 if it.get("lh"):
                                     pf.LineSpacing = max(pf.LineSpacing * k, 4.0)
                                 stat["shrunk"] += 1
+                            sh.Width = w
+                            sh.Height = h
                         except Exception as ex:
                             stat["nobound"] += 1
                             if stat["nobound"] <= 2:

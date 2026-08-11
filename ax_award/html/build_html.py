@@ -142,6 +142,73 @@ SLIM_WHY_NOW = True
 if SLIM_WHY_NOW:
     sections[1] = slim_why_now(sections[1])
 
+def move_all(src_html, dst_html, src_kw, dst_kw, to_front=False):
+    """src 칸 내용을 통째로 dst 칸으로 옮기고 빈 표는 없앤다."""
+    src, dst = BeautifulSoup(src_html, "html.parser"), BeautifulSoup(dst_html, "html.parser")
+    s_td, d_td = deepest_td(src, src_kw), deepest_td(dst, dst_kw)
+    kids = [c for c in s_td.children if getattr(c, "name", None)]
+    if to_front:
+        for c in reversed(kids):
+            d_td.insert(0, c.extract())
+    else:
+        for c in kids:
+            d_td.append(c.extract())
+    tbl = s_td.find_parent("table")
+    if tbl:
+        tbl.decompose()
+    return str(src), str(dst)
+
+
+# 사용자 지정 배치: p1 문제정의 / p2 재설계 / p3·p4 Tech / p5 예상성과
+SECTION_PER_PAGE = True
+if SECTION_PER_PAGE:
+    # 2페이지에 남은 문제정의(기존 대안, 왜 지금인가) -> 1페이지로
+    sections[1], sections[0] = move_all(sections[1], sections[0], "기존 대안 검토", "구조적 문제 4가지")
+    # 5페이지 앞머리 Tech(검증 규칙, Agentic RAG, 성능 지표) -> 4페이지로
+    sections[4], sections[3] = move_all(sections[4], sections[3], "5개 검증 규칙", "대표 실행 시나리오")
+
+def drop_block(section_html, kw):
+    """제목 kw 부터 다음 번호 제목 직전까지를 덜어낸다."""
+    import re as _re
+    soup = BeautifulSoup(section_html, "html.parser")
+    hits = [td for td in soup.find_all("td") if kw in td.get_text()]
+    if not hits:
+        return section_html
+    td = min(hits, key=lambda x: len(x.find_all(True)))
+    kids = [c for c in td.children if getattr(c, "name", None)]
+    i = next((n for n, c in enumerate(kids) if kw in c.get_text()), None)
+    if i is None:
+        return section_html
+    j = next((n for n in range(i + 1, len(kids))
+              if _re.match(r"^\s*\d+\.", kids[n].get_text())), len(kids))
+    for c in kids[i:j]:
+        c.extract()
+    return str(soup)
+
+
+def renumber(section_html, start):
+    """Tech 절 번호를 앞에서부터 다시 매긴다(중간을 덜어내면 번호가 튄다)."""
+    import re as _re
+    n = [start]
+
+    def sub(m):
+        out = f'{m.group(1)}{n[0]}.{m.group(3)}'
+        n[0] += 1
+        return out
+
+    return _re.sub(r'(<span style="color:#12B5B0">)(\d+)\.(</span>)', sub, section_html), n[0]
+
+
+# Tech 를 2페이지에 앉히려면 253% -> 200% 로 줄여야 한다.
+# 심사 4항목(당위성/선택 근거/성능 지표/개선 과정) 밖이면서 다른 절과 겹치는 것을 덜어낸다.
+TRIM_TECH = True
+if TRIM_TECH:
+    sections[2] = drop_block(sections[2], "기술적 차별점 3가지")        # §1·§9 와 중복
+    sections[3] = drop_block(sections[3], "조치안 출력")                # §5 트레이스 끝 판정서와 중복
+    sections[3] = drop_block(sections[3], "Agent·Tool 추가에 따른")     # §4 ablation·§5 와 중복
+    sections[2], nxt = renumber(sections[2], 1)
+    sections[3], _ = renumber(sections[3], nxt)
+
 # --- Tech 두 장 교체 ----------------------------------------------------
 # overrides/*.html 이 3·4페이지의 '기술적 해결 방안' 칸 내용을 통째로 갈아끼운다.
 # (Router 6결정 / Agentic RAG 2트랙 / 이미지 대조학습 / 프롬프트 성장 / 학습 3단)
