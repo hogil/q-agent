@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
@@ -13,8 +14,16 @@ from lxml import etree
 
 
 HERE = Path(__file__).resolve().parent
-SOURCE = HERE / "out" / "AX_Award_지원서_ref11_v3_editable_v3.docx"
-TARGET = HERE / "out" / "AX_Award_지원서_ref11_v3_editable_v4.docx"
+SOURCE = (
+    Path(sys.argv[1]).resolve()
+    if len(sys.argv) > 1
+    else HERE / "out" / "AX_Award_지원서_ref11_v3_editable_v3.docx"
+)
+TARGET = (
+    Path(sys.argv[2]).resolve()
+    if len(sys.argv) > 2
+    else HERE / "out" / "AX_Award_지원서_ref11_v3_editable_v4.docx"
+)
 PDF = TARGET.with_suffix(".pdf")
 
 REL_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
@@ -90,7 +99,7 @@ def rewrite_package() -> tuple[int, int]:
 
 
 def verify_with_word() -> int:
-    word = win32.gencache.EnsureDispatch("Word.Application")
+    word = win32.DispatchEx("Word.Application")
     word.Visible = False
     word.DisplayAlerts = 0
     doc = word.Documents.Open(str(TARGET), ReadOnly=True, OpenAndRepair=False)

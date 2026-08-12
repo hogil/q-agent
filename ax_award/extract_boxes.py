@@ -13,7 +13,7 @@
 달라질 때 배경까지 같이 틀어진다. 배경은 좌표로 고정하고 글자만 흐르게 둔다.
 좌표는 페이지 좌상단 기준 px (96dpi) 다.
 
-사용: python extract_boxes.py [출력.json] [입력.html] [SVG출력폴더]
+사용: python extract_boxes.py [입력.html] [출력.json] [SVG출력폴더]
 """
 from __future__ import annotations
 
@@ -23,8 +23,8 @@ import pathlib
 import sys
 
 HERE = pathlib.Path(__file__).parent
-HTML = pathlib.Path(sys.argv[2]) if len(sys.argv) > 2 else HERE / "html" / "AX_Award_지원서.html"
-OUT = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else HERE / "out" / "boxes.json"
+HTML = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else HERE / "html" / "AX_Award_지원서.html"
+OUT = pathlib.Path(sys.argv[2]) if len(sys.argv) > 2 else HERE / "out" / "boxes.json"
 SVGDIR = pathlib.Path(sys.argv[3]) if len(sys.argv) > 3 else HERE / "out" / "fig_v48"
 
 JS = r"""() => {

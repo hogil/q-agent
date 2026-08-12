@@ -34,6 +34,8 @@ import time
 import win32com.client as win32
 
 HERE = pathlib.Path(__file__).parent
+# 인자: [이름] [boxes.json] [svg폴더] — 이름이 숫자면 v{N}, 아니면 그 이름 그대로
+_NAME = sys.argv[1] if len(sys.argv) > 1 else "48"
 BOXES = pathlib.Path(sys.argv[2]) if len(sys.argv) > 2 else HERE / "out" / "boxes.json"
 SVGDIR = pathlib.Path(sys.argv[3]) if len(sys.argv) > 3 else HERE / "out" / "fig_v48"
 EXACT_FORMAT = len(sys.argv) > 4 and sys.argv[4].lower() == "exact"
@@ -58,7 +60,11 @@ MSO_TRUE, MSO_FALSE = -1, 0
 WD_LINE_EXACT = 4
 VANCHOR = {"top": 1, "middle": 3, "bottom": 4}   # msoAnchorTop/Middle/Bottom
 ALIGN = {"left": 0, "center": 1, "right": 2, "start": 0, "end": 2}
-PAD_X, PAD_Y = 0.0, 1.5          # 글상자 여유(pt). 좌우는 0 — 늘리면 옆 칸 글자와 겹친다
+PAD_X = float(os.environ.get("AX_TEXT_PAD_X", "0.0"))
+PAD_Y = float(os.environ.get("AX_TEXT_PAD_Y", "1.5"))
+EXACT_FONT_K = float(os.environ.get("AX_EXACT_FONT_K", "1.0"))
+TEXT_TOP_SHIFT = float(os.environ.get("AX_TEXT_TOP_SHIFT", "0.0"))
+TEXT_EXTRA_H = float(os.environ.get("AX_TEXT_EXTRA_H", "3.0"))
 FONT_K = 0.955                   # Word 한글 폭이 브라우저보다 넓다. 줄바꿈이 어긋나 겹치는
                                  # 것을 막으려고 글자만 살짝 줄인다(상자 크기는 그대로).
 
@@ -69,7 +75,7 @@ def retry(fn, tries=8):
         try:
             return fn()
         except Exception as e:
-            if "거부" not in str(e) and "0x80010001" not in str(e) and i == tries - 1:
+            if i == tries - 1:
                 raise
             time.sleep(0.12 * (i + 1))
     raise RuntimeError("Word 가 계속 호출을 거부한다")
@@ -94,7 +100,7 @@ def main(version: int):
     Y = lambda px: off_y + (px - SRC["y0"]) * s
     print(f"  배율 {s:.4f} pt/px  (1:1 이면 0.75)")
 
-    word = win32.gencache.EnsureDispatch("Word.Application")
+    word = win32.DispatchEx("Word.Application")
     word.Visible = False
     word.DisplayAlerts = 0
     word.ScreenUpdating = False
@@ -165,18 +171,18 @@ def main(version: int):
                         # Word 글꼴 폭이 브라우저와 미세하게 달라 딱 맞는 상자는 글자를 자른다
                         # (I. 개'요' 가 잘렸다). 좌우 위아래로 여유를 준다 — 상자는 투명이라
                         # 겹쳐도 보이지 않는다.
-                        l, t = l - PAD_X, t - PAD_Y
-                        w, h = w + 2 * PAD_X, h + 2 * PAD_Y + 3
+                        l, t = l - PAD_X, t - PAD_Y + TEXT_TOP_SHIFT
+                        w, h = w + 2 * PAD_X, h + 2 * PAD_Y + TEXT_EXTRA_H
                         sh = doc.Shapes.AddTextbox(1, l, t, w, h, anc)
                         sh.Fill.Visible = MSO_FALSE
                         sh.Line.Visible = MSO_FALSE
                         tf = sh.TextFrame
                         tf.MarginLeft = tf.MarginRight = tf.MarginTop = tf.MarginBottom = 0
-                        # 단어 하나짜리 상자는 줄바꿈을 끈다. 켜두면 좁은 칸에서 Word 가
-                        # 'adapter' 를 'adapte/r' 로 쪼갠다 — 넘쳐도 투명 상자라 겹쳐 보이지 않는다.
+                        # WordWrap=False는 저장 시 텍스트 상자 폭을 글자 폭으로 줄여 가운데
+                        # 정렬과 페이지 번호 위치를 무너뜨린다. 좌표 기반 레이아웃에서는
+                        # 텍스트 상자 폭을 고정해야 하므로 모든 상자에서 줄바꿈을 유지한다.
                         raw_text = "".join(r.get("t", "") for r in it["runs"])
-                        one_word = " " not in raw_text.strip() and "\n" not in raw_text
-                        tf.WordWrap = not one_word
+                        tf.WordWrap = True
                         tf.AutoSize = False
                         runs = it["runs"]
                         text = "".join(r.get("t", "") for r in runs).replace("\n", "\v")
@@ -200,7 +206,7 @@ def main(version: int):
                                 sub.SetRange(base + off, base + off + n)
                                 f = sub.Font
                                 if EXACT_FORMAT:
-                                    f.Size = r["size"] * 0.75
+                                    f.Size = r["size"] * 0.75 * EXACT_FONT_K
                                 else:
                                     f.Size = max(r["size"] * s * FONT_K, 4)
                                 f.Bold = MSO_TRUE if r.get("bold") else MSO_FALSE
@@ -263,6 +269,7 @@ def main(version: int):
                                 stat["nobound"] += 1
                                 if stat["nobound"] <= 2:
                                     print(f"    높이 측정 불가: {ex}")
+                    sh.Name = f"AX{made + 1:04d}_{it['kind']}"
                     sh.RelativeHorizontalPosition = WD_REL_PAGE
                     sh.RelativeVerticalPosition = WD_REL_PAGE
                     sh.Left, sh.Top = l, t
@@ -271,16 +278,23 @@ def main(version: int):
                     sh.LockAnchor = True
                   retry(make)
                   made += 1
+                  if made % 50 == 0:                 # 진행이 보여야 죽었는지 안다
+                      print(f"    {made}개…", flush=True)
                 except Exception as e:
                     failed += 1
                     if failed <= 5:
                         print(f"    건너뜀 {it['kind']}: {e}")
 
         OUTDIR.mkdir(parents=True, exist_ok=True)
-        out = OUTDIR / f"AX_Award_지원서_Q-Agent_v{version}.docx"
-        doc.SaveAs2(str(out), FileFormat=16)
-        doc.ExportAsFixedFormat(str(out.with_suffix(".pdf")), ExportFormat=17)
-        pgs = doc.ComputeStatistics(2)
+        stem = (f"AX_Award_지원서_Q-Agent_v{version}" if str(version).isdigit()
+                else f"AX_Award_지원서_{version}")
+        out = OUTDIR / f"{stem}.docx"
+        # 저장·내보내기도 재시도로 감싼다 — 개체를 700개 넘게 앉힌 직후 Word 가
+        # 아직 바빠서 호출을 거부한다(RPC_E_CALL_REJECTED). 여기서 죽으면 4분이 통째로 날아간다.
+        retry(lambda: doc.SaveAs2(str(out), FileFormat=16), tries=20)
+        retry(lambda: doc.ExportAsFixedFormat(str(out.with_suffix(".pdf")),
+                                              ExportFormat=17), tries=20)
+        pgs = retry(lambda: doc.ComputeStatistics(2), tries=20)
         print(f"  개체 {made}개 생성 (실패 {failed}) · {pgs}장"
               f" · 축소 {stat['shrunk']}회 · 넘침 {stat['overflow']}개"
               f" · 측정불가 {stat['nobound']}")
@@ -294,4 +308,4 @@ def main(version: int):
         word.Quit()
 
 
-main(int(sys.argv[1]) if len(sys.argv) > 1 else 48)
+main(int(_NAME) if _NAME.isdigit() else _NAME)
