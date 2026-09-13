@@ -2,6 +2,8 @@
 
 이 패키지는 사내 서비스 구축용 소스 초안이다. 개인 ChatGPT에 Skill을 설치하거나 사내 시스템에 접속하지 않았다. 모든 데이터와 물리 스키마 이름은 가상이다. 실제 LLM 호출 및 운영 성능 평가도 아직 수행하지 않았다.
 
+최신 배포 설정은 [CONFIGURATION.md](CONFIGURATION.md), 전체 16개 Skill과 49개 컬럼 명세는 [SKILLS.md](SKILLS.md)를 기준으로 읽는다. 아래 mapping.example.json과 demo.py 설명은 이전 독립 Lot 회귀 예제다. 새 실행 경로는 config/default.toml + site overlay → generate_dummy.py / query_demo.py / skill_loader.py다.
+
 ## 1. 이번 변경과 이전 설계의 유지
 
 현재 설계는 ARCHITECTURE_AND_PLAN.md를 참조한다. 제품세대는 기존 배열을 유지하며, 사내문서와 Eng’r Inform Note는 기존 chunk의 BM25 + vector similarity Hybrid RAG를 연결한다. 이 문서의 구현 범위는 별도 Lot 테이블 연결과 Router/Answer/Judge의 Skill 소스 관리다. 모든 기능이 통합된 운영 앱은 아니다.
@@ -45,7 +47,7 @@
 
 `lot_list`는 논리 엔티티 이름이지 반드시 그대로 설치해야 하는 테이블명이 아니다. `mapping.example.json`은 모든 테이블/컬럼/Join과 페이지 제한을 모아 둔다. `mapping.renamed-demo.json`은 물리 이름을 전부 변경한 동작 검증용 설정이다.
 
-기존 원본 테이블을 ALTER하거나 덮어쓸 필요는 없다. 의미 차이가 있으면 읽기 전용 View 또는 Adapter에서 정규화한다. 선택 컬럼이 실제로 없으면 대응하는 NULL과 availability 정보를 제공하고 없는 데이터를 다른 컬럼으로 임의 대체하지 않는다. 이 데모는 expected_lot_count 매핑을 요구하므로 없으면 SQLite 시범 View에 NULL AS 컬럼을 제공한다.
+기존 원본 테이블을 ALTER하거나 덮어쓸 필요는 없다. 의미 차이가 있으면 읽기 전용 View 또는 Adapter에서 정규화한다. 선택 컬럼이 실제로 없으면 대응하는 NULL과 availability 정보를 제공하고 없는 데이터를 다른 컬럼으로 임의 대체하지 않는다. 새 통합 설정에서 expected_lot_count를 빈 문자열로 두면 Adapter가 NULL을 반환한다.
 
 ## 4. 사고와 Lot 연결키
 
@@ -70,7 +72,7 @@ Lot 상세 결과의 product_code/status는 가상 코드다. 현재 Lot 진행 
 1. DDL/컬럼 설명/코드 기준정보/익명 표본으로 사고-Lot 관계와 데이터 단위를 확정한다.
 2. 읽기 전용 계정과 네트워크·인증 방식을 서비스 설정으로 준비한다. 비밀번호는 비밀정보 관리 또는 환경변수로 주입하고 Skill/매핑/로그에 기록하지 않는다.
 3. DB 엔진을 확인한다. 제공 Adapter는 SQLite 전용이다. Oracle/PostgreSQL/SQL Server 등은 드라이버, placeholder, 식별자 quoting, 스키마 검증, pagination, timeout, 날짜 처리, snapshot/transaction Adapter를 구현한다. dialect 값만 바꾼다고 호환되지 않는다.
-4. mapping.example.json을 사내 설정으로 복사해 물리 이름과 Join 기준을 교체한다. SQL identifier는 사용자 입력으로 바꾸지 않는다. 현재 예제는 단순 ASCII 이름만 허용한다. schema.table, 공백/한글 이름 등은 해당 DB Adapter의 검증·quoting 또는 표준 View로 처리한다.
+4. mapping.example.json을 사내 설정으로 복사해 물리 이름과 Join 기준을 교체한다. SQL identifier는 사용자 입력으로 바꾸지 않는다. 현재 예제는 단순 Unicode 이름을 허용한다. schema.table, 공백/한글 이름 등은 해당 DB Adapter의 검증·quoting 또는 표준 View로 처리한다.
 5. 허용 도시/라인/제품 등 실제 ACL을 사고 조회와 Lot 조회 모두 서버에서 적용한다. actor-scope 바인딩은 ACL을 대신하지 않는다.
 6. source_completeness를 담당자/ETL 보장으로 확인한다. 실제 기간 필터/보관 범위가 일부면 partial/unknown으로 선언한다.
 7. 스키마 검증, 기준 SQL 대조, 미등록·오류·중복·불일치, 페이지/권한 테스트를 수행한다.
@@ -130,7 +132,7 @@ Tool definitions와 출력 JSON Schema는 API가 지원하는 구조화 인터�
 
 Loader는 동일 topic의 중복 shared Skill을 1번만 포함한다. 순서를 고정하고 누락/변경된 파일을 hash로 검사한다. context 예산을 넘으면 지침을 몰래 잘라내지 않고 더 좁은 topic을 선택하게 한다. 현재는 문자 수 상한이며 실제 운영은 해당 모델 tokenizer 기준 token 예산으로 교체한다.
 
-역할간 정책 충돌은 우선순위를 임의 생성하지 않고 릴리스 오류로 취급한다. Registry metadata만 먼저 제공하고 필요한 Skill을 요청하는 2단계 Router 로딩은 향후 Orchestrator 구현 항목이다. 현재 compiler는 topics를 호출자가 명시한다.
+역할간 정책 충돌은 우선순위를 임의 생성하지 않고 릴리스 오류로 취급한다. Registry metadata만 먼저 제공하고 필요한 Skill을 요청하는 2단계 Router 로딩은 향후 Orchestrator 구현 항목이다. 현재 compiler는 topics를 호출자가 명시한다. 새 코드에서는 모델 profile과 경로를 config에서 읽고 JSON reference의 공백만 축약한다.
 
 ## 10. 랜덤성과 지속 최적화
 
@@ -143,7 +145,7 @@ Skill 관리가 줄이는 것은 지침의 임의 변경과 누락이다. temper
 - 조회 기준시각 및 가능하면 데이터 snapshot
 - 검색 인덱스/embedding/reranker 버전과 top-k
 
-현재 release.lock.json은 소스·사전 예시·매핑·Loader/Tool 코드 hash를 고정한다. 모델 ID는 사내 모델로 설정해야 하며 아직 운영 모델을 지정하지 않았다. 기존 세션은 같은 lock을 유지하고 새 릴리스가 진행 중 조사에 섞이지 않게 한다.
+현재 release.lock.json은 Skill 소스·사전 예시·registry·Loader/Tool 코드 hash를 고정한다. 배포 매핑·경로·모델 설정은 별도 config_hash로 기록한다. 모델 ID는 config의 models/roles에서 지정하며 아직 운영 모델을 연결하지 않았다. 기존 세션은 같은 lock을 유지하고 새 릴리스가 진행 중 조사에 섞이지 않게 한다.
 
 ## 11. 변경 절차
 
@@ -159,7 +161,7 @@ Skill 관리가 줄이는 것은 지침의 임의 변경과 누락이다. temper
 
 Lot Tool 19개 검사: 선조회, PK/표시번호 Join, 중복 제거, 페이지와 전체 ID, 완전성, 다른 사용자 scope, 페이지 상한, 사고 미등록, 기대수 불일치, 여러 사고 고유 Lot, 값/식별자 삽입 방지, 전 테이블/컬럼 교체, 다른 Join 기준, 없는 컬럼, 상충 상태.
 
-Skill 구성 26개 검사: 역할별 동일 프롬프트 hash, 공유 Lot Skill, 불필요 문서 미로딩, 대형 사전 미주입, 공유 Schema 중복 제거, 온라인 Judge의 maintenance 로딩 차단, lock 이후 소스 변경 차단, 11개 Skill metadata.
+Skill 구성 31개 검사: 역할별 동일 프롬프트 hash, 공유 Lot Skill, 불필요 문서 미로딩, 대형 사전 미주입, 공유 Schema 중복 제거, 온라인 Judge의 maintenance 로딩 차단, lock 이후 소스 변경 차단, 16개 Skill metadata.
 
 이 수치는 실제 Router/Answer/Judge LLM 품질 테스트 수가 아니다. 실제 모델 통합, JSON Schema 검증기 연결, Judge/code Gate, 운영 ACL, 동시 데이터 snapshot, 대량 export, 사전 검색 서비스, versioned deployment는 아직 구현하지 않았다.
 

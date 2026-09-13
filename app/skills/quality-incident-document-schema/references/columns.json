@@ -1,0 +1,95 @@
+{
+  "schema_version": "0.6",
+  "logical_entity": "incident_document",
+  "description": "합성 예제와 사내 매핑을 연결하는 논리 컬럼 명세. 실제 물리 스키마는 config로 확인한다.",
+  "grain": "사고에 연결된 문서 버전 한 건",
+  "identity": "document_id + version",
+  "physical_mapping": "tables.incident_document.columns",
+  "missing_mapping": "빈 문자열 매핑은 사용 불가. 필수 필드는 설정 검증에서 차단한다.",
+  "operation_notice": "allowed_operations는 논리적으로 허용할 연산이며 실제 Tool 구현 여부는 별도다.",
+  "columns": {
+    "document_id": {
+      "description": "문서 버전을 연결할 내부 문서 ID. 현재 fixture에서는 한 ID가 한 버전에 대응한다.",
+      "type": "string",
+      "nullable": false,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "eq",
+        "in"
+      ],
+      "null_meaning": "필수값 누락 시 데이터 품질 오류",
+      "synthetic_example": "SYN-DOC-0001-incident"
+    },
+    "incident_ref": {
+      "description": "연결된 사고 FK. 사고명 검색으로 찾았으면 사고/도시/라인/시점 일치 검증 후 연결한다.",
+      "type": "string",
+      "nullable": false,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "eq",
+        "in"
+      ],
+      "null_meaning": "필수값 누락 시 데이터 품질 오류",
+      "synthetic_example": "synthetic-pk-0001"
+    },
+    "title": {
+      "description": "문서 제목. 사고명과 다르거나 중복될 수 있다.",
+      "type": "string",
+      "nullable": false,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "eq",
+        "text_search"
+      ],
+      "null_meaning": "필수값 누락 시 데이터 품질 오류",
+      "synthetic_example": null
+    },
+    "version": {
+      "description": "원문 버전. 같은 내용의 PPT/PDF는 독립 근거 두 건으로 세지 않는다.",
+      "type": "string",
+      "nullable": true,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "eq",
+        "in"
+      ],
+      "null_meaning": "버전 미확인. 최신이라고 단정하지 않는다",
+      "synthetic_example": null
+    },
+    "storage_ref": {
+      "description": "원문 저장 참조. local 파일 또는 object key의 해석은 Storage Adapter 책임이다.",
+      "type": "string",
+      "nullable": false,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "resolve_storage_ref"
+      ],
+      "null_meaning": "필수값 누락 시 데이터 품질 오류",
+      "synthetic_example": null
+    },
+    "format": {
+      "description": "실제 원문 형식. fixture는 markdown이며 ppt/pdf로 가장하지 않는다.",
+      "type": "string",
+      "nullable": false,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "eq",
+        "in"
+      ],
+      "null_meaning": "필수값 누락 시 데이터 품질 오류",
+      "synthetic_example": "markdown"
+    },
+    "source": {
+      "description": "원문 출처 구분. 사고문서, 사내문서, Eng’r Inform Note를 분리한다.",
+      "type": "string",
+      "nullable": false,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "eq",
+        "in"
+      ],
+      "null_meaning": "필수값 누락 시 데이터 품질 오류",
+      "synthetic_example": "internal_documents"
+    }
+  }
+}

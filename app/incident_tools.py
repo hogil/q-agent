@@ -1,26 +1,30 @@
 """물리 스키마 교체 가능한 읽기 전용 SQLite Tool 예제.
 Production ACL/connection/snapshot/LLM Tool 등록은 별도 구현 대상.
 """
-import re, secrets, sqlite3
+import re, secrets, sqlite3, time
 
 class ToolError(ValueError):
     pass
 
 def ident(value):
     # Identifiers never come from a user's prompt. Mapping files are administrator-controlled.
-    if not isinstance(value,str) or not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*',value):
-        raise ToolError('INVALID_IDENTIFIER: simple ASCII identifier required by this adapter')
+    if not isinstance(value,str) or not re.fullmatch(r'[^\W\d]\w*',value):
+        raise ToolError('INVALID_IDENTIFIER: simple Unicode identifier required by this adapter')
     return '"'+value+'"'
 
 class IncidentTools:
-    def __init__(self, connection, mapping):
+    def __init__(self, connection, mapping, scope_ttl_seconds=1800):
         self.db=connection;self.db.row_factory=sqlite3.Row;self.m=mapping;self.scopes={}
+        self.scope_ttl_seconds=scope_ttl_seconds
         self.validate()
     def table(self,entity):return ident(self.m['entities'][entity]['table'])
-    def col(self,entity,logical,alias):return alias+'.'+ident(self.m['entities'][entity]['columns'][logical])
+    def col(self,entity,logical,alias):
+        columns=self.m['entities'][entity]['columns']
+        if entity=='incident' and logical=='expected_lot_count' and logical not in columns:return 'NULL'
+        return alias+'.'+ident(columns[logical])
     def validate(self):
         if self.m['dialect']!='sqlite':raise ToolError('UNSUPPORTED_DIALECT: implement a database adapter')
-        required={'incident':{'incident_id','incident_number','title','city','line','expected_lot_count'},'lot_list':{'incident_ref','lot_id','product_code','status'}}
+        required={'incident':{'incident_id','incident_number','title','city','line'},'lot_list':{'incident_ref','lot_id','product_code','status'}}
         for name,fields in required.items():
             ent=self.m['entities'][name]
             if not fields.issubset(ent['columns']):raise ToolError('MISSING_LOGICAL_MAPPING: '+name)
@@ -53,11 +57,15 @@ class IncidentTools:
         sql+=' ORDER BY '+self.col('incident','incident_id','i')+' LIMIT ?';params.append(self.m['limits']['max_scope_incidents']+1)
         rows=[dict(r) for r in self.db.execute(sql,params)]
         if len(rows)>self.m['limits']['max_scope_incidents']:raise ToolError('SCOPE_TOO_LARGE: use server-side query scope')
-        scope=secrets.token_hex(12);self.scopes[scope]={'actor':actor,'ids':tuple(r['incident_id'] for r in rows)}
+        now=time.monotonic()
+        self.scopes={key:value for key,value in self.scopes.items() if value['expires_at']>now}
+        scope=secrets.token_hex(12);self.scopes[scope]={'actor':actor,'ids':tuple(r['incident_id'] for r in rows),'expires_at':now+self.scope_ttl_seconds}
         return {'status':'OK' if rows else 'NO_MATCH','scope_id':scope,'data':rows,'mapping_version':self.m['mapping_version']}
     def list_incident_lots(self,actor,scope_id,page_size=None,offset=0):
         scope=self.scopes.get(scope_id)
-        if not scope:raise ToolError('INCIDENT_LOOKUP_REQUIRED_OR_SCOPE_EXPIRED')
+        if not scope or scope['expires_at']<=time.monotonic():
+            self.scopes.pop(scope_id,None)
+            raise ToolError('INCIDENT_LOOKUP_REQUIRED_OR_SCOPE_EXPIRED')
         if scope['actor']!=actor:raise ToolError('SCOPE_ACTOR_MISMATCH')
         size=self.m['limits']['default_page_size'] if page_size is None else page_size
         if type(size) is not int or not 1<=size<=self.m['limits']['max_page_size'] or type(offset) is not int or offset<0:raise ToolError('INVALID_PAGINATION')

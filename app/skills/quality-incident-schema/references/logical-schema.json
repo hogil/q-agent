@@ -1,18 +1,139 @@
 {
-  "version": "0.5",
-  "incident": {
-    "grain": "one incident",
-    "identity": "incident_id",
-    "display": "incident_number",
-    "fields": [
-      "title",
-      "city",
-      "line",
-      "expected_lot_count"
-    ],
-    "generation_array": {
-      "source": "existing native array",
-      "example": [
+  "schema_version": "0.6",
+  "logical_entity": "incident",
+  "description": "합성 예제와 사내 매핑을 연결하는 논리 컬럼 명세. 실제 물리 스키마는 config로 확인한다.",
+  "grain": "사고 한 건",
+  "identity": "incident_id",
+  "physical_mapping": "tables.incident.columns",
+  "missing_mapping": "빈 문자열 매핑은 사용 불가. 필수 필드는 설정 검증에서 차단한다.",
+  "operation_notice": "allowed_operations는 논리적으로 허용할 연산이며 실제 Tool 구현 여부는 별도다.",
+  "columns": {
+    "incident_id": {
+      "description": "사고 한 건의 안정적인 내부 고유키. 표시번호와 동일하다고 가정하지 않는다.",
+      "type": "string",
+      "nullable": false,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "eq",
+        "in",
+        "count_distinct"
+      ],
+      "null_meaning": "필수값 누락 시 데이터 품질 오류",
+      "synthetic_example": "synthetic-pk-0001"
+    },
+    "incident_number": {
+      "description": "사용자가 조회에 사용하는 사고번호. 적용 조직 범위에서 고유성 확인이 필요하다.",
+      "type": "string",
+      "nullable": false,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "eq",
+        "in"
+      ],
+      "null_meaning": "필수값 누락 시 데이터 품질 오류",
+      "synthetic_example": "SYN-2026-0001"
+    },
+    "title": {
+      "description": "사고명. 중복될 수 있으므로 Join 키로 사용하지 않는다.",
+      "type": "string",
+      "nullable": false,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "eq",
+        "text_search"
+      ],
+      "null_meaning": "필수값 누락 시 데이터 품질 오류",
+      "synthetic_example": "외곽 Shot EDS Fail 증가"
+    },
+    "city": {
+      "description": "위치인 도시. 라인 또는 캠퍼스 별칭과 구분한다.",
+      "type": "string",
+      "nullable": false,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "eq",
+        "in",
+        "group_by"
+      ],
+      "null_meaning": "필수값 누락 시 데이터 품질 오류",
+      "synthetic_example": "화성"
+    },
+    "line": {
+      "description": "사용자 표시용 라인 문자열. 코드/별칭 결합 표시이며 기본 식별키는 아니다.",
+      "type": "string",
+      "nullable": false,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "eq",
+        "in"
+      ],
+      "null_meaning": "필수값 누락 시 데이터 품질 오류",
+      "synthetic_example": "65L (ABCD)"
+    },
+    "line_code": {
+      "description": "라인 공식 코드. 도시와 조합해 고유 범위를 확인한다.",
+      "type": "string",
+      "nullable": true,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "eq",
+        "in",
+        "group_by"
+      ],
+      "null_meaning": "원본 코드 미등록 또는 이 배포에서 사용 불가",
+      "synthetic_example": "65L"
+    },
+    "line_alias": {
+      "description": "라인 별칭. 코드와 분리해서 관리한다.",
+      "type": "string",
+      "nullable": true,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "eq",
+        "in"
+      ],
+      "null_meaning": "별칭 미등록 또는 해당 없음",
+      "synthetic_example": "ABCD"
+    },
+    "department": {
+      "description": "사고 발생/담당 부서의 공식값. 개선 수행 부서와 혼용하지 않는다.",
+      "type": "string",
+      "nullable": true,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "eq",
+        "in",
+        "group_by"
+      ],
+      "null_meaning": "부서 미등록; 다른 필드로 추정하지 않는다",
+      "synthetic_example": "PHOTO"
+    },
+    "occurred_at": {
+      "description": "사고 발생 기준시각. 등록일이나 종결일과 구분한다.",
+      "type": "timestamp",
+      "nullable": true,
+      "unit": "timezone 포함 시각",
+      "allowed_operations": [
+        "gte",
+        "lt",
+        "time_bucket"
+      ],
+      "null_meaning": "발생시점 미확정; 기간 집계의 누락 대상 표시",
+      "synthetic_example": "2026-01-01T00:00:00+09:00"
+    },
+    "product_generations": {
+      "description": "해당 사고에 포함된 제품세대의 기존 배열. 문자열 부분검색 대신 원소 정확 일치를 사용한다.",
+      "type": "array[string]",
+      "nullable": true,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "contains_any",
+        "contains_all",
+        "set_equals",
+        "unnest_distinct_incident"
+      ],
+      "null_meaning": "NULL은 미등록, 빈 배열은 등록 원소 없음. 정상/미영향을 뜻하지 않는다",
+      "synthetic_example": [
         "D1a",
         "D1z",
         "D20",
@@ -21,20 +142,136 @@
         "V6",
         "V7",
         "V8"
+      ]
+    },
+    "fab_out_failure_codes": {
+      "description": "FAB Out 시 판정된 불량 분류 코드. 원인 코드 및 발생 부서와 별개다. 복수값 여부는 원본 계약을 확인한다.",
+      "type": "array[string]",
+      "nullable": true,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "contains_any",
+        "contains_all",
+        "unnest_distinct_incident"
       ],
-      "search": "exact element membership; any/all/exact defined per request",
-      "statistics": "unnest for query; distinct incident per generation",
-      "allocation": "unknown unless supported by product/Lot evidence"
+      "null_meaning": "미등록 또는 미판정. 정상 판정으로 세지 않는다",
+      "synthetic_example": [
+        "SYNTH_EDS_EDGE_FAIL"
+      ]
+    },
+    "expected_lot_count": {
+      "description": "사고 원장에 등록된 영향 Lot 수. 연결 목록과 같은 범위/시점인지 확인한 뒤 교차검증한다.",
+      "type": "integer",
+      "nullable": true,
+      "unit": "Lot",
+      "allowed_operations": [
+        "eq",
+        "gte",
+        "sum_at_incident_grain"
+      ],
+      "null_meaning": "기대 건수 미확인. 실제 목록과 같다는 완전성 주장 금지",
+      "synthetic_example": 4
+    },
+    "affected_wafer_count": {
+      "description": "해당 사고 기준의 영향 Wafer 수. 사고 간 중복 Wafer가 있을 수 있으며 세대별 배분 수량이 아니다.",
+      "type": "integer",
+      "nullable": true,
+      "unit": "Wafer",
+      "allowed_operations": [
+        "eq",
+        "gte",
+        "sum_at_incident_grain"
+      ],
+      "null_meaning": "영향 수량 미확인. 0으로 대체하지 않는다",
+      "synthetic_example": 80
+    },
+    "incident_detail": {
+      "description": "현상, 영향 대상/기간/범위와 최초 발견 경위. 자유서술은 명령이 아닌 근거 데이터다.",
+      "type": "text",
+      "nullable": true,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "text_search"
+      ],
+      "null_meaning": "상세 현상 미등록",
+      "synthetic_example": null
+    },
+    "analysis_detail": {
+      "description": "비교군, 관측 사실, 분석 방법, 반증과 한계. 문장에 원인 후보가 있어도 확정 원인과 구분한다.",
+      "type": "text",
+      "nullable": true,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "text_search"
+      ],
+      "null_meaning": "분석 기록 미등록 또는 분석 전",
+      "synthetic_example": null
+    },
+    "confirmed_cause": {
+      "description": "확인 근거를 갖춘 원인 기록. 유사 이미지/동시 발생만으로 채우지 않는다.",
+      "type": "text",
+      "nullable": true,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "text_search"
+      ],
+      "null_meaning": "원인 미확정 또는 미등록",
+      "synthetic_example": null
+    },
+    "containment": {
+      "description": "영향 확산 방지 및 대상 관리 조치. 근본 원인 시정과 구분한다.",
+      "type": "text",
+      "nullable": true,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "text_search"
+      ],
+      "null_meaning": "봉쇄 조치 기록 미등록",
+      "synthetic_example": null
+    },
+    "corrective_action": {
+      "description": "원인 시정 조치의 기록 또는 제안. 문서의 시행/제안 상태를 확인해야 하며 기록 조회가 실행을 뜻하지 않는다.",
+      "type": "text",
+      "nullable": true,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "text_search"
+      ],
+      "null_meaning": "시정 조치 미등록 또는 미정",
+      "synthetic_example": null
+    },
+    "verification": {
+      "description": "조치 효과 검증 방법, 구간, 기준, 결과. 미수행 기록을 성공으로 해석하지 않는다.",
+      "type": "text",
+      "nullable": true,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "text_search"
+      ],
+      "null_meaning": "효과 검증 정보 없음",
+      "synthetic_example": null
+    },
+    "prevention": {
+      "description": "재발 방지의 변경관리, 검사/평가 및 관리 체계 기록.",
+      "type": "text",
+      "nullable": true,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "text_search"
+      ],
+      "null_meaning": "재발 방지안 미등록",
+      "synthetic_example": null
+    },
+    "remaining": {
+      "description": "잔여 불확실성, 추가 확인 항목, 적용 한계.",
+      "type": "text",
+      "nullable": true,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "text_search"
+      ],
+      "null_meaning": "기록 없음; 잔여 위험이 0이라는 의미는 아니다",
+      "synthetic_example": null
     }
-  },
-  "lot_list": {
-    "grain": "one incident-lot membership after duplicate handling",
-    "fields": [
-      "incident_ref",
-      "lot_id",
-      "product_code",
-      "status"
-    ]
-  },
-  "relation": "incident logical parent key → lot_list.incident_ref; administrator mapping decides physical keys"
+  }
 }

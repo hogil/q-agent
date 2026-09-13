@@ -9,3 +9,7 @@
 - 사내 테이블/컬럼/Join은 매핑 설정을 통해 연결한다. 비밀정보, 실제 Lot/이미지/사내 문서 내용을 합성 데이터 예제에 넣지 않는다.
 - 구현하지 않은 LLM, ACL, 생산계 조치, 이미지/Trend 모델을 구현 완료로 표시하지 않는다.
 - 검증 명령: cd app 후 python demo.py, python array_demo.py, python check_skills.py. Skill 변경 시 먼저 python skill_loader.py freeze.
+
+- 배포 설정의 단일 진입점은 config/default.toml + site overlay다. DB/폴더/모델명을 코드나 Skill 지침에 하드코딩하지 않는다.
+- 6개 테이블의 논리 컬럼 명세는 각 Schema Skill의 references에서 관리하고 check_config.py로 누락/불일치를 검사한다.
+- 추가 검증: python app/check_config.py. 사내 *.local.toml, var/ 생성 DB와 전체 결과는 Git에 올리지 않는다.

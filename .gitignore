@@ -5,3 +5,6 @@ __pycache__/
 .env.*
 app/results.json
 app/skill_checks.json
+var/
+config/*.local.toml
+config/private/

@@ -6,6 +6,11 @@
 
 ## 시작하기
 
+- [설정 변경 안내: DB, 폴더, 모델 경로와 파일명](docs/current/CONFIGURATION.md)
+- [전체 Skill 16개와 테이블별 컬럼 명세](docs/current/SKILLS.md)
+- [공통 기본 설정](config/default.toml) / [사내 변경 설정 예시](config/site.example.toml)
+- [100건 더미 생성 설정](config/demo.batch.toml) / [생성된 실제 합성 샘플](examples/generated/generation_summary.json)
+
 - [현재 아키텍처와 상세 구현 계획](docs/current/ARCHITECTURE_AND_PLAN.md)
 - [사내 설치: 물리 테이블·컬럼 교체 및 Skill 관리](docs/current/INSTALLATION_AND_SKILLS.md)
 - [도시·라인·다중세대·FAB Out 합성 사고 데이터](app/data/incident_cases.json)
@@ -14,12 +19,14 @@
 - [원본 보존 파일 및 Git 해시](docs/current/RESOURCE_PRESERVATION.json)
 
 ```bash
-cd app
-python demo.py
-python array_demo.py
-python check_skills.py
-python skill_loader.py router --topics terminology,lots
+python app/config_loader.py --check-paths
+python app/generate_dummy.py
+python app/query_demo.py --all-pages
+python app/check_config.py
+python app/skill_loader.py router --topics terminology,lots
 ```
+
+예제는 Python 3.11+ 표준 라이브러리와 SQLite를 사용합니다. 기본값과 사내 overlay TOML을 합쳐 모든 새 CLI가 같은 설정을 읽습니다. 설정 변경 검증 31개, 기존 Lot 검증 19개, 배열 검증 7개, Skill 검증 31개를 제공합니다. 반복 더미 생성은 새 data/output 폴더를 지정합니다.
 
 예제는 Python 표준 라이브러리와 SQLite를 사용합니다. 사내 운영용 비동기 API/DB Adapter는 별도 구현 대상입니다. `demo.py`는 사고→별도 Lot 테이블 연결, `array_demo.py`는 배열 원소 조회와 중복 없는 세대 통계, `check_skills.py`는 Skill 로딩·버전·변조 검출을 확인합니다. 실 LLM 품질 평가를 대신하지 않습니다.
 

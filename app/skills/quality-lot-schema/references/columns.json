@@ -1,0 +1,63 @@
+{
+  "schema_version": "0.6",
+  "logical_entity": "lot_list",
+  "description": "합성 예제와 사내 매핑을 연결하는 논리 컬럼 명세. 실제 물리 스키마는 config로 확인한다.",
+  "grain": "사고-Lot 관계 한 건",
+  "identity": "incident_ref + lot_id",
+  "physical_mapping": "tables.lot_list.columns",
+  "missing_mapping": "빈 문자열 매핑은 사용 불가. 필수 필드는 설정 검증에서 차단한다.",
+  "operation_notice": "allowed_operations는 논리적으로 허용할 연산이며 실제 Tool 구현 여부는 별도다.",
+  "columns": {
+    "incident_ref": {
+      "description": "사고를 참조하는 FK. config의 incident_parent_key가 내부키인지 표시번호인지 결정한다.",
+      "type": "string",
+      "nullable": false,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "eq",
+        "in"
+      ],
+      "null_meaning": "필수값 누락 시 데이터 품질 오류",
+      "synthetic_example": "synthetic-pk-0001"
+    },
+    "lot_id": {
+      "description": "Lot 식별자. 현재 데모는 전사 고유를 가정한다. 사내 재사용/사이트 중복이면 복합키 구현 필요.",
+      "type": "string",
+      "nullable": false,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "eq",
+        "in",
+        "count_distinct"
+      ],
+      "null_meaning": "필수값 누락 시 데이터 품질 오류",
+      "synthetic_example": "SYN-LOT-0001-001"
+    },
+    "product_code": {
+      "description": "Lot의 제품 코드. 제품세대와 다르며 제품명/세대로 임의 변환하지 않는다.",
+      "type": "string",
+      "nullable": true,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "eq",
+        "in",
+        "group_by"
+      ],
+      "null_meaning": "제품 코드 미등록",
+      "synthetic_example": "SYNTH_PRODUCT"
+    },
+    "status": {
+      "description": "사고 목록에 기록된 Lot 상태와 그 기준시점. 현재 MES 진행 상태가 필요하면 기간시스템을 다시 조회한다.",
+      "type": "string",
+      "nullable": true,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "eq",
+        "in",
+        "group_by"
+      ],
+      "null_meaning": "상태 미등록",
+      "synthetic_example": "REGISTERED"
+    }
+  }
+}

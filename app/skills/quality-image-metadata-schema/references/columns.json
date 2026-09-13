@@ -1,0 +1,95 @@
+{
+  "schema_version": "0.6",
+  "logical_entity": "image_metadata",
+  "description": "합성 예제와 사내 매핑을 연결하는 논리 컬럼 명세. 실제 물리 스키마는 config로 확인한다.",
+  "grain": "이미지 자산 한 건",
+  "identity": "image_id",
+  "physical_mapping": "tables.image_metadata.columns",
+  "missing_mapping": "빈 문자열 매핑은 사용 불가. 필수 필드는 설정 검증에서 차단한다.",
+  "operation_notice": "allowed_operations는 논리적으로 허용할 연산이며 실제 Tool 구현 여부는 별도다.",
+  "columns": {
+    "image_id": {
+      "description": "이미지 자산 고유 ID. URL의 수명과 독립된 식별자다.",
+      "type": "string",
+      "nullable": false,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "eq",
+        "in"
+      ],
+      "null_meaning": "필수값 누락 시 데이터 품질 오류",
+      "synthetic_example": null
+    },
+    "incident_ref": {
+      "description": "등록 사고 참조. 신규 관측에서 미연결일 수 있으나 현재 fixture는 전부 연결된다.",
+      "type": "string",
+      "nullable": true,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "eq",
+        "in"
+      ],
+      "null_meaning": "등록 사고 미연결; 사고가 없다는 증거가 아니다",
+      "synthetic_example": null
+    },
+    "lot_id": {
+      "description": "이미지 대상 Lot. 사내 Lot 고유 범위와 같은 키 정의를 적용한다.",
+      "type": "string",
+      "nullable": true,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "eq",
+        "in"
+      ],
+      "null_meaning": "Lot 연결 미확인",
+      "synthetic_example": null
+    },
+    "wafer_id": {
+      "description": "이미지 대상 Wafer. Lot 내부 번호인지 전사 ID인지 원본 기준을 확인한다.",
+      "type": "string",
+      "nullable": true,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "eq",
+        "in"
+      ],
+      "null_meaning": "Wafer 연결 미확인",
+      "synthetic_example": null
+    },
+    "stage": {
+      "description": "FAB 또는 EDS 등 이미지 생성/검사 단계. 불량 원인 분류와 구분한다.",
+      "type": "string",
+      "nullable": false,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "eq",
+        "in"
+      ],
+      "null_meaning": "필수값 누락 시 데이터 품질 오류",
+      "synthetic_example": "EDS"
+    },
+    "storage_ref": {
+      "description": "이미지 파일/object 참조. 접근권한 확인 후 서비스가 사용자 접근 경로를 발급한다.",
+      "type": "string",
+      "nullable": false,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "resolve_storage_ref"
+      ],
+      "null_meaning": "필수값 누락 시 데이터 품질 오류",
+      "synthetic_example": null
+    },
+    "coordinate_system": {
+      "description": "좌표 단위/원점/축/회전 등을 식별하는 좌표계 참조. FAB/EDS 대응 검증에 필요하다.",
+      "type": "string",
+      "nullable": true,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "eq",
+        "in"
+      ],
+      "null_meaning": "좌표 대응 검증 불가; 같은 좌표라고 단정하지 않는다",
+      "synthetic_example": "SYNTHETIC_GRID_NOT_PHYSICAL"
+    }
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "schema_version": "0.6",
+  "logical_entity": "trend_metadata",
+  "description": "합성 예제와 사내 매핑을 연결하는 논리 컬럼 명세. 실제 물리 스키마는 config로 확인한다.",
+  "grain": "시계열 자산 한 건",
+  "identity": "trend_id",
+  "physical_mapping": "tables.trend_metadata.columns",
+  "missing_mapping": "빈 문자열 매핑은 사용 불가. 필수 필드는 설정 검증에서 차단한다.",
+  "operation_notice": "allowed_operations는 논리적으로 허용할 연산이며 실제 Tool 구현 여부는 별도다.",
+  "columns": {
+    "trend_id": {
+      "description": "분석할 시계열 자산 ID. 이상사고 ID나 판정 결과 ID와 구분한다.",
+      "type": "string",
+      "nullable": false,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "eq",
+        "in"
+      ],
+      "null_meaning": "필수값 누락 시 데이터 품질 오류",
+      "synthetic_example": null
+    },
+    "incident_ref": {
+      "description": "연관 사고 FK. 시간적 연관성이 인과관계 확정을 뜻하지 않는다.",
+      "type": "string",
+      "nullable": true,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "eq",
+        "in"
+      ],
+      "null_meaning": "등록 사고와 미연결",
+      "synthetic_example": null
+    },
+    "metric": {
+      "description": "시계열 측정 지표명. 평균/분산 등 집계 지표이면 원본 정의를 확인한다.",
+      "type": "string",
+      "nullable": false,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "eq",
+        "in"
+      ],
+      "null_meaning": "필수값 누락 시 데이터 품질 오류",
+      "synthetic_example": "synthetic_measurement"
+    },
+    "unit": {
+      "description": "측정값의 물리/통계 단위. 다른 단위끼리 단순 합산하거나 비교하지 않는다.",
+      "type": "string",
+      "nullable": true,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "eq",
+        "in"
+      ],
+      "null_meaning": "단위 미확인; 임의 단위 부여 금지",
+      "synthetic_example": "synthetic_unit"
+    },
+    "storage_ref": {
+      "description": "원시 시계열 데이터 위치. fixture는 timestamp/value/unit/scenario CSV다.",
+      "type": "string",
+      "nullable": false,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "resolve_storage_ref"
+      ],
+      "null_meaning": "필수값 누락 시 데이터 품질 오류",
+      "synthetic_example": null
+    },
+    "timezone": {
+      "description": "시간 해석 기준. Interlock/처리이력과 결합할 때 timezone을 정렬한다.",
+      "type": "string",
+      "nullable": false,
+      "unit": "해당 없음",
+      "allowed_operations": [
+        "eq",
+        "in"
+      ],
+      "null_meaning": "필수값 누락 시 데이터 품질 오류",
+      "synthetic_example": "Asia/Seoul"
+    }
+  }
+}
