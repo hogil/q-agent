@@ -21,3 +21,5 @@
 - LLM 호출 순서는 Router → Tool 조회 → Judge 근거 검토 → Answer 최종 답변이다. 사고 DB 선조회 후 후속 Tool을 허용한다. Judge의 근거 부족은 Router로 돌리고 Answer는 마지막 LLM으로 배치한다.
 
 - 아키텍처 도식은 사용자 질문부터 아래로 배치하며 Router 노드는 최상단 한 개만 둔다. Judge의 모든 재조회는 그 Router로 연결한다. Answer 아래에는 최종 조회 상태/사고 범위 표시를 둔다. 실행 전 사고 DB 범위 검증과 최종 결과 표시는 구분한다.
+
+- 사용자 확인을 받은 주 흐름은 세로 표로 표시한다. Router → 사고 DB → 후속 Tool → Judge → Answer의 행 순서를 유지하고 재조회는 별도 규칙 표로 설명한다. 자동 도식 배치로 Judge가 Router 위에 나타나는 표현을 반복하지 않는다.

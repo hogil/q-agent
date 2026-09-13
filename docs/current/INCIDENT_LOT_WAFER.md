@@ -2,20 +2,21 @@
 
 사용자가 사고명을 말하면 사고 DB에서 해당 사고를 찾고, 별도 Lot 목록과 Wafer 목록 테이블을 조회한다. 아래 구조의 LLM/문서/멀티모달은 목표 서비스 구조이고, 이번에 실행되는 것은 config 기반 SQLite 사고명 검색과 별도 Lot/Wafer 조회다.
 
-```mermaid
-flowchart TB
-    Q["사용자 질문"]
-    R["Router LLM"]
-    DB["1계층: 사고 DB 조회"]
-    T["2계층: 필요한 추가 Tool 조회"]
-    J{"Judge LLM: 근거 검토"}
-    A["Answer LLM: 최종 답변 작성"]
-    F["최종 결과: 조회 상태와 확정된 사고 범위 표시"]
-    Q --> R --> DB --> T --> J
-    J -->|근거 부족 또는 사고 오류: 재조회| R
-    J -->|검토 통과| A
-    A --> F
-```
+| 위에서 아래 순서 | 처리 내용 |
+|---|---|
+| 사용자 질문 / 이미지 / Trend 의뢰 | 원문, 첨부 자료, 사고명/번호, 도시, 라인, 기간, 대상 제품을 받는다. |
+| ↓ | |
+| **Router LLM** | 질문의 요구사항, 논리 검색 조건, 필요한 Tool과 Skill을 결정한다. |
+| ↓ | |
+| **1계층: 사고 DB 우선 조회** | 정형 사고 검색 또는 SQL 집계를 실행하고 사고 범위와 조회 상태를 기록한다. |
+| ↓ | |
+| **2계층: 필요한 추가 Tool 조회** | Lot/Wafer, 사고문서, 사내문서, Eng’r Inform Note, 이미지, Trend, 기간시스템을 필요한 만큼 조회한다. |
+| ↓ | |
+| **Judge LLM** | 원문 질문에 답할 근거가 충분한지, 사고 범위가 맞는지, 누락/모순이 있는지 검토한다. |
+| ↓ | 검토 통과 후 진행한다. 근거 부족이나 사고 오류는 맨 위 Router로 돌린다. |
+| **Answer LLM** | 검토된 근거로 최종 답변을 작성한다. 마지막 LLM이다. |
+| ↓ | |
+| **최종 결과 표시** | 답변, 조회 상태, 확정된 사고 범위, Lot/Wafer 목록, 문서 출처와 이미지, 미확인 항목을 표시한다. |
 
 Router는 위의 한 노드만 사용하고 Judge 재조회도 그 Router로 복귀한다. 추가 Tool은 Lot/Wafer, 문서 RAG, 이미지, Trend, 기간시스템이며 불필요하면 생략한다. 사고 DB 선조회/범위 검증은 실행 코드에서 검사한다. Answer 아래에는 검증된 조회 상태와 사고 범위를 최종 표시한다.
 
@@ -88,3 +89,5 @@ python app/check_wafers.py
 100건 fixture는 사고-Lot 관계 400건, 사고-Lot-Wafer 관계 8,000건이다. 일부 Lot가 두 사고에 속하므로 고유 Lot 350개, 고유 Lot/Wafer 7,000개다. 대표 사고 한 건은 4 Lot와 80 Wafer를 반환한다. 실제 조회 샘플은 examples/generated/incident_lot_wafer.json이다.
 
 기존 0.6 fixture DB에는 wafer_list 테이블이 없으므로 새 demo.wafer.toml의 별도 경로로 생성한다. 기존 데이터나 GPU 자원 자료는 삭제하지 않는다. 실제 사내 DB Adapter, 권한 정책, 대량 export와 안정적인 운영 snapshot, 실 LLM 라우팅은 별도 통합 대상이다.
+
+상세 단계, Judge 복귀 조건, 통계/문서/목록 계약과 구현 순서는 [DETAILED_REQUEST_FLOW.md](DETAILED_REQUEST_FLOW.md)를 따른다. 사용자와 확인한 세로 배치를 유지하도록 주 흐름은 표로 표시한다.

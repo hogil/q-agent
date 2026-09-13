@@ -6,6 +6,8 @@
 
 ## 시작하기
 
+- [질문부터 최종 답변까지 상세 구조: Router → Judge → Answer](docs/current/DETAILED_REQUEST_FLOW.md)
+
 - [Router / Judge / Answer 호출 위치와 모델 서버 배치](docs/current/LLM_PLACEMENT.md)
 
 - [전체 구조와 사고명 → Lot → Wafer 조회](docs/current/INCIDENT_LOT_WAFER.md)
