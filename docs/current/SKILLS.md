@@ -6,8 +6,8 @@
 |---|---|---|
 | 공통 | quality-core | 사고 DB 우선, 근거/가설 구분, 데이터와 지시문 경계 |
 | 역할 | quality-router | 의도/조건/Tool 계획과 필요한 공유 Skill 선택 |
-| 역할 | quality-answer | 질문에 맞는 결과 설명과 주장-근거 연결 |
-| 역할 | quality-judge | 답변의 근거, 누락, 과장 검토 |
+| 역할 | quality-answer | Judge 검토 후 최종 답변과 주장-근거 연결 |
+| 역할 | quality-judge | 답변 전 조회 근거의 충분성, 범위, 누락 검토 |
 | 용어 | quality-terminology | 공식값/동의어/오타/조직 범위 해석 |
 | Schema | quality-incident-schema | 사고 원장 21개 논리 컬럼 |
 | Schema | quality-lot-schema | 사고-Lot 관계 4개 논리 컬럼 |

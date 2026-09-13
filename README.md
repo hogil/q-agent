@@ -6,7 +6,7 @@
 
 ## 시작하기
 
-- [Router / Answer / Judge 호출 위치와 모델 서버 배치](docs/current/LLM_PLACEMENT.md)
+- [Router / Judge / Answer 호출 위치와 모델 서버 배치](docs/current/LLM_PLACEMENT.md)
 
 - [전체 구조와 사고명 → Lot → Wafer 조회](docs/current/INCIDENT_LOT_WAFER.md)
 - [실제 더미 조회 결과: 4 Lot / 80 Wafer](examples/generated/incident_lot_wafer.json)
@@ -41,7 +41,7 @@ python app/skill_loader.py router --topics terminology,lots
 2. 최초 업무 조회는 사고 DB 검색 또는 DB 집계입니다. 그 결과로 범위를 확정한 뒤 필요한 다른 Tool을 호출합니다.
 3. 제품세대는 기존 배열 `{D1a,D1z,D20,FET,V5,V6,V7,V8}`을 유지합니다. 배열 원소를 이용해 검색·집계하며 관계 테이블로의 이전을 요구하지 않습니다.
 4. 사내문서와 Eng’r Inform Note는 기존 chunk 및 **BM25 + vector similarity Hybrid RAG**를 연결합니다.
-5. Router / Answer / Judge 시스템 프롬프트는 `app/skills`의 분절된 Skill과 공통 참조 파일로 조립하고 릴리스 해시를 검증합니다.
+5. Router / Judge / Answer 시스템 프롬프트는 `app/skills`의 분절된 Skill과 공통 참조 파일로 조립하고 릴리스 해시를 검증합니다.
 6. 물리 테이블명·컬럼명·Join 키는 설정으로 교체합니다. 기간시스템 조회와 승인 기반 조치 실행을 분리합니다.
 
 ## 기존 자료 보존

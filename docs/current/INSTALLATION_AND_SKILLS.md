@@ -9,7 +9,7 @@
 현재 설계는 ARCHITECTURE_AND_PLAN.md를 참조한다. 제품세대는 기존 배열을 유지하며, 사내문서와 Eng’r Inform Note는 기존 chunk의 BM25 + vector similarity Hybrid RAG를 연결한다. 이 문서의 구현 범위는 별도 Lot 테이블 연결과 Router/Answer/Judge의 Skill 소스 관리다. 모든 기능이 통합된 운영 앱은 아니다.
 
 사용자: “INC-001의 사고 내용과 사고 Lot 목록까지 보여줘.”
-흐름: Router가 사고+Lot 의도를 분류 → 사고 조회로 내부키/표시번호 확보 → scope_id 생성 → Lot Tool이 설정된 관계로 lot_list 조회 → 코드가 중복/건수/페이지/완전성 검사 → Answer 초안 → Judge 의미 검토 → 코드 Gate가 최종 전달 또는 추가 확인을 결정.
+흐름: Router가 사고+Lot 의도를 분류 → 사고 조회로 내부키/표시번호 확보 → scope_id 생성 → Lot Tool이 설정된 관계로 lot_list 조회 → 코드가 중복/건수/페이지/완전성 검사 → Judge 근거 검토 → 부족하면 Router로 재조회 → 검토 통과 후 Answer가 최종 답변.
 
 후속 질문 “그 사고 랏도 보여줘”는 대화의 선택 사고를 사용한다. 선택 사고가 여러 개면 어느 사고인지 확인하거나 명시된 전체 집합을 사용한다. 마지막 메시지의 사고명을 근거 없이 다시 추정하지 않는다.
 
@@ -21,10 +21,10 @@
 | Orchestrator 코드 | 상태, 허용 Tool, 선조회 Gate, 권한/범위, 재시도 | 근거 없는 원인 생성 |
 | Tool Adapter | 물리 매핑으로 쿼리, 건수/페이지 반환 | 권한을 LLM에게 위임 |
 | Answer LLM | 확인 결과와 출처를 사용자 요청에 맞게 설명 | Lot ID/수치/조치 결과 창작 |
-| Judge LLM | 주장-근거, 질문 충족, 과장/누락 검토 | 정답 창작, 코드 FAIL 무효화, 실행 승인 |
+| Judge LLM | 답변 전 근거 충분성, 질문 충족, 범위/누락 검토 | 정답 창작, 코드 FAIL 무효화, 실행 승인 |
 | Deterministic Checks | ID 집합, 합계, 페이지, 계약, ACL 상태 검증 | 자연어 의미 판단 대체 |
 
-초기 서비스에서는 Answer 후 Judge를 기본 경로로 둘 수 있다. 짧은 정확 조회의 Judge 생략은 평가 후 별도 정책 버전으로 결정한다. Judge가 모든 요청을 무조건 더 정확하게 만든다고 가정하지 않는다. max_answer_revisions=2는 초기 설정이며 초과 시 검증되지 않은 상태를 유지한다.
+호출 순서는 Router → Tool → Judge → Answer로 고정한다. Judge는 근거를 검토하고 부족하면 Router로 되돌린다. Answer가 마지막 LLM이다. 기존 max_answer_revisions=2는 예약 설정이며 이 흐름의 Answer-Judge 반복을 의미하지 않는다. 전체 Orchestrator와 예산 집행은 아직 미구현이다.
 
 ## 3. 논리 이름과 사내 물리 이름
 
