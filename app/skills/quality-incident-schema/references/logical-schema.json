@@ -160,7 +160,7 @@
       ]
     },
     "expected_lot_count": {
-      "description": "사고 원장에 등록된 영향 Lot 수. 연결 목록과 같은 범위/시점인지 확인한 뒤 교차검증한다.",
+      "description": "사고 테이블에 등록된 영향 Lot 수. 연결 목록과 같은 범위/시점인지 확인한 뒤 교차검증한다.",
       "type": "integer",
       "nullable": true,
       "unit": "Lot",

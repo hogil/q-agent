@@ -27,11 +27,12 @@ def run_query(settings, question, selected=None, dictionary=None, effective_at=N
             result['tool_trace'].append({'tool': 'find_incidents', 'status': found['status'], 'count': len(found['data'])})
             result['incidents'] = found['data']; result['incident_ids'] = [r['incident_id'] for r in found['data']]
             scope = found['scope_id']
-            if selected:
-                scope = tool.select_incidents('variant-demo-user', scope, selected)['scope_id']
-                result['tool_trace'].append({'tool': 'select_incidents', 'count': len(selected)})
-                result['incident_ids'] = list(selected)
-                result['incidents'] = [r for r in result['incidents'] if r['incident_id'] in selected]
+            if selected is not None:
+                selection = tool.select_incidents('variant-demo-user', scope, selected)
+                scope = selection['scope_id']
+                result['tool_trace'].append({'tool': 'select_incidents', 'count': len(selection['incident_ids'])})
+                result['incident_ids'] = selection['incident_ids']
+                result['incidents'] = [r for r in result['incidents'] if r['incident_id'] in result['incident_ids']]
             elif found['requires_selection'] and normalized['request'] in ('lots', 'wafers'):
                 return {**result, 'status': 'NEEDS_SELECTION'}
             if not result['incident_ids']:

@@ -8,16 +8,16 @@
 | 역할 | quality-router | 의도/조건/Tool 계획과 필요한 공유 Skill 선택 |
 | 역할 | quality-answer | Judge 검토 후 최종 답변과 주장-근거 연결 |
 | 역할 | quality-judge | 답변 전 조회 근거의 충분성, 범위, 누락 검토 |
-| 조회 절차 | quality-incident-search | SQL/Hybrid/혼합 선택, 후보 원장 확인, 통계 모집단 제한 |
+| 조회 절차 | quality-incident-search | SQL/Hybrid/혼합 선택, 후보 사고 테이블 확인, 통계 모집단 제한 |
 | 용어 | quality-terminology | 공식값/동의어/오타/조직 범위 해석 |
-| Schema | quality-incident-schema | 사고 원장 21개 논리 컬럼 |
+| Schema | quality-incident-schema | 사고 테이블 21개 논리 컬럼 |
 | Schema | quality-lot-schema | 사고-Lot 관계 4개 논리 컬럼 |
 | Schema | quality-wafer-schema | 별도 Wafer 목록 4개 논리 컬럼 |
 | Schema | quality-incident-document-schema | 사고문서 7개 논리 컬럼 |
 | Schema | quality-document-chunk-schema | 기존 문서 chunk 4개 논리 컬럼 |
 | Schema | quality-image-metadata-schema | 이미지 메타데이터 7개 논리 컬럼 |
 | Schema | quality-trend-metadata-schema | Trend 메타데이터 6개 논리 컬럼 |
-| 조회 절차 | quality-lot-retrieval | 사고 선조회 후 Lot 연결/중복/페이지/완전성 처리 |
+| 조회 절차 | quality-lot-retrieval | 사고 우선 조회 후 Lot 연결/중복/페이지/완전성 처리 |
 | 조회 절차 | quality-wafer-retrieval | 사고명 확정 → Lot 범위 → 별도 Wafer 목록, 영향/구성 구분 |
 | 통계 | quality-statistics | 사고/세대/FAB Out/Lot 집계, grain, 분모, 중복 |
 | 문서 근거 | quality-document-evidence | 사고문서 연결, 기존 사내문서/Eng’r Inform Note Hybrid RAG 근거/버전/인용 |
@@ -56,4 +56,4 @@ description(의미), type(논리 타입), nullable, null_meaning, unit, allowed_
 
 quality-demo-0.11에서 quality-terminology에 컬럼/값 별칭 구분, 미확인 필터 보존, 식별자 오보정 방지를 추가했다. 합성 사전 전체를 프롬프트에 넣지 않고 정규화 Tool에서 필요한 결과를 반환한다. 검증 범위는 [VARIANT_DATA_DEMO.md](VARIANT_DATA_DEMO.md)를 참고한다.
 
-quality-demo-0.12의 역할 본문, 조건별 예시와 출력 계약 v2는 [SYSTEM_PROMPTS.md](SYSTEM_PROMPTS.md)를 기준으로 한다.
+quality-demo-0.12의 역할 본문, 조건별 예시와 출력 형식 v2는 [SYSTEM_PROMPTS.md](SYSTEM_PROMPTS.md)를 기준으로 한다.

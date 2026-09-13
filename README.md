@@ -1,6 +1,6 @@
 # Q-Agent · 반도체 품질 사고 조사 Agent
 
-사고 원장 DB를 먼저 조회하고, Lot·사고 문서·사내문서·Eng’r Inform Note·이미지·Trend 근거를 연결해 원인 분석과 개선 조언을 지원하는 사내 품질 Agent 설계 및 실행 예제입니다.
+사고 DB를 먼저 조회하고, Lot·사고 문서·사내문서·Eng’r Inform Note·이미지·Trend 근거를 연결해 원인 분석과 개선 조언을 지원하는 사내 품질 Agent 설계 및 실행 예제입니다.
 
 **현재 상태: 설계 + 합성 데이터 + 독립 Tool/Skill 컴파일러 데모.** 실제 LLM, 사내 DB, Hybrid RAG, 이미지/Trend 모델 및 조치 시스템과 연결된 운영 서비스는 아직 아닙니다.
 

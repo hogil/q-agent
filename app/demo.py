@@ -29,7 +29,7 @@ def raises(name,fn):
  check(name,False)
 
 c=seed(mapping);t=IncidentTools(c,mapping)
-raises('선조회 없는 Lot 접근 차단',lambda:t.list_incident_lots('user','invalid'))
+raises('우선 조회 없는 Lot 접근 차단',lambda:t.list_incident_lots('user','invalid'))
 r=t.find_incidents('user',incident_number='INC-001');s=r['scope_id']
 a=t.list_incident_lots('user',s);b=t.list_incident_lots('user',s,offset=a['next_offset'])
 check('PK와 표시번호 분리 Join',a['total_memberships']==6)

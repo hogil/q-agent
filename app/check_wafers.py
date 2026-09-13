@@ -2,6 +2,7 @@
 import json
 import sqlite3
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 from check_config import ConfigTests
@@ -23,7 +24,7 @@ class WaferTests(unittest.TestCase):
         return settings
 
     def mutate(self, settings, sql, args=()):
-        with sqlite3.connect(settings.data['database']['sqlite_file']) as db:
+        with closing(sqlite3.connect(settings.data['database']['sqlite_file'])) as db, db:
             db.execute(sql, args)
 
     def title(self, settings):

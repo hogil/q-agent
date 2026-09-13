@@ -201,7 +201,7 @@
       "SYNTH_EDS_RING_FAIL"
     ],
     "title": "식각 Chamber 부품 교체 후 Ring 형태 EDS Fail 증가",
-    "incident_detail": "합성 사고: 식각 Chamber 부품 교체 후 Ring 형태 EDS Fail 증가. 동일 제품 조건을 기준으로 5개 Lot, 60 Wafer를 영향 후보로 등록했다. 원장 등록 범위와 실제 영향 확정 여부는 구분한다.",
+    "incident_detail": "합성 사고: 식각 Chamber 부품 교체 후 Ring 형태 EDS Fail 증가. 동일 제품 조건을 기준으로 5개 Lot, 60 Wafer를 영향 후보로 등록했다. 사고 테이블 등록 범위와 실제 영향 확정 여부는 구분한다.",
     "analysis_detail": "부품 교체 시점별 처리 이력을 나누어 동일 제품과 Recipe의 Ring 패턴 분포를 비교했다. 합성 점검 기록에서 특정 Chamber의 Edge 조건 편차가 관찰됐다.",
     "confirmed_cause": "합성 조사 가설. 원인 확정에는 추가 확인 시험이 필요하다.",
     "containment": "영향 후보 목록과 처리 이력을 보존하고 승인된 절차로 후속 진행을 관리한다.",
@@ -225,7 +225,7 @@
       "SYNTH_FAB_SCRATCH"
     ],
     "title": "CMP Pad 교체 이후 선형 Scratch와 FAB 검사 이상",
-    "incident_detail": "합성 사고: CMP Pad 교체 이후 선형 Scratch와 FAB 검사 이상. 동일 제품 조건을 기준으로 5개 Lot, 60 Wafer를 영향 후보로 등록했다. 원장 등록 범위와 실제 영향 확정 여부는 구분한다.",
+    "incident_detail": "합성 사고: CMP Pad 교체 이후 선형 Scratch와 FAB 검사 이상. 동일 제품 조건을 기준으로 5개 Lot, 60 Wafer를 영향 후보로 등록했다. 사고 테이블 등록 범위와 실제 영향 확정 여부는 구분한다.",
     "analysis_detail": "Pad 사용 이력과 검사 좌표를 연결해 선형 Scratch 위치를 비교했다. 합성 자료에서는 교체 직후 처리군에 패턴이 집중되지만 인과관계는 추가 확인이 필요하다.",
     "confirmed_cause": "합성 조사 가설. 원인 확정에는 추가 확인 시험이 필요하다.",
     "containment": "영향 후보 목록과 처리 이력을 보존하고 승인된 절차로 후속 진행을 관리한다.",
@@ -248,7 +248,7 @@
       "SYNTH_EDS_LEAKAGE"
     ],
     "title": "열처리 온도 편차 구간의 Leakage 증가",
-    "incident_detail": "합성 사고: 열처리 온도 편차 구간의 Leakage 증가. 동일 제품 조건을 기준으로 5개 Lot, 60 Wafer를 영향 후보로 등록했다. 원장 등록 범위와 실제 영향 확정 여부는 구분한다.",
+    "incident_detail": "합성 사고: 열처리 온도 편차 구간의 Leakage 증가. 동일 제품 조건을 기준으로 5개 Lot, 60 Wafer를 영향 후보로 등록했다. 사고 테이블 등록 범위와 실제 영향 확정 여부는 구분한다.",
     "analysis_detail": "온도 이력과 처리시각을 정렬하고 제품 및 공정조건을 맞춘 비교군을 설정했다. 합성 Leakage 변화와 온도 편차가 함께 관찰되어 가설로 등록했다.",
     "confirmed_cause": "합성 조사 가설. 원인 확정에는 추가 확인 시험이 필요하다.",
     "containment": "영향 후보 목록과 처리 이력을 보존하고 승인된 절차로 후속 진행을 관리한다.",
@@ -273,7 +273,7 @@
       "SYNTH_EDS_RING_FAIL"
     ],
     "title": "증착 이후 Particle 집중과 EDS Ring 패턴 동반 관찰",
-    "incident_detail": "합성 사고: 증착 이후 Particle 집중과 EDS Ring 패턴 동반 관찰. 동일 제품 조건을 기준으로 5개 Lot, 60 Wafer를 영향 후보로 등록했다. 원장 등록 범위와 실제 영향 확정 여부는 구분한다.",
+    "incident_detail": "합성 사고: 증착 이후 Particle 집중과 EDS Ring 패턴 동반 관찰. 동일 제품 조건을 기준으로 5개 Lot, 60 Wafer를 영향 후보로 등록했다. 사고 테이블 등록 범위와 실제 영향 확정 여부는 구분한다.",
     "analysis_detail": "막 두께, Particle 위치 및 설비 정비 이력을 비교했다. 합성 이미지에서 공간적 중첩은 관찰되지만 Particle이 전기적 Fail의 원인인지는 확인되지 않았다.",
     "confirmed_cause": "합성 조사 가설. 원인 확정에는 추가 확인 시험이 필요하다.",
     "containment": "영향 후보 목록과 처리 이력을 보존하고 승인된 절차로 후속 진행을 관리한다.",
@@ -297,7 +297,7 @@
       "SYNTH_EDS_EDGE_FAIL"
     ],
     "title": "외곽 Shot Defocus 재발과 노광 보정 이력 조사",
-    "incident_detail": "합성 사고: 외곽 Shot Defocus 재발과 노광 보정 이력 조사. 동일 제품 조건을 기준으로 5개 Lot, 60 Wafer를 영향 후보로 등록했다. 원장 등록 범위와 실제 영향 확정 여부는 구분한다.",
+    "incident_detail": "합성 사고: 외곽 Shot Defocus 재발과 노광 보정 이력 조사. 동일 제품 조건을 기준으로 5개 Lot, 60 Wafer를 영향 후보로 등록했다. 사고 테이블 등록 범위와 실제 영향 확정 여부는 구분한다.",
     "analysis_detail": "보정 이력의 버전과 외곽 Focus 지표를 시간 정렬했다. 동일 위치 재발이 관찰됐지만 과거 사고의 원인을 그대로 적용하지 않고 기준군을 확보했다.",
     "confirmed_cause": "합성 조사 가설. 원인 확정에는 추가 확인 시험이 필요하다.",
     "containment": "영향 후보 목록과 처리 이력을 보존하고 승인된 절차로 후속 진행을 관리한다.",
@@ -321,7 +321,7 @@
       "SYNTH_EDS_OPEN"
     ],
     "title": "배선 공정 이후 Open Fail 집중 발생",
-    "incident_detail": "합성 사고: 배선 공정 이후 Open Fail 집중 발생. 동일 제품 조건을 기준으로 5개 Lot, 60 Wafer를 영향 후보로 등록했다. 원장 등록 범위와 실제 영향 확정 여부는 구분한다.",
+    "incident_detail": "합성 사고: 배선 공정 이후 Open Fail 집중 발생. 동일 제품 조건을 기준으로 5개 Lot, 60 Wafer를 영향 후보로 등록했다. 사고 테이블 등록 범위와 실제 영향 확정 여부는 구분한다.",
     "analysis_detail": "Wafer 좌표와 공정 이력을 연결하고 배선 검사 위치와 전기적 Open 위치를 비교했다. 합성 비교에서 특정 조건군의 차이를 관찰했다.",
     "confirmed_cause": "합성 조사 가설. 원인 확정에는 추가 확인 시험이 필요하다.",
     "containment": "영향 후보 목록과 처리 이력을 보존하고 승인된 절차로 후속 진행을 관리한다.",
@@ -345,7 +345,7 @@
       "SYNTH_EDS_CONTACT"
     ],
     "title": "Probe 교체 후 Contact Fail과 재측정 결과 불일치",
-    "incident_detail": "합성 사고: Probe 교체 후 Contact Fail과 재측정 결과 불일치. 동일 제품 조건을 기준으로 5개 Lot, 60 Wafer를 영향 후보로 등록했다. 원장 등록 범위와 실제 영향 확정 여부는 구분한다.",
+    "incident_detail": "합성 사고: Probe 교체 후 Contact Fail과 재측정 결과 불일치. 동일 제품 조건을 기준으로 5개 Lot, 60 Wafer를 영향 후보로 등록했다. 사고 테이블 등록 범위와 실제 영향 확정 여부는 구분한다.",
     "analysis_detail": "Probe 교체와 검사 순서를 기준으로 재측정 결과를 비교했다. 합성 결과에서 측정 조건의 영향을 확인했으나 제품 불량 여부는 별도로 판정한다.",
     "confirmed_cause": "합성 조사 가설. 원인 확정에는 추가 확인 시험이 필요하다.",
     "containment": "영향 후보 목록과 처리 이력을 보존하고 승인된 절차로 후속 진행을 관리한다.",
@@ -375,7 +375,7 @@
       "SYNTH_FAB_PARTICLE"
     ],
     "title": "식각 후 Particle 관찰 및 상류 공정 영향 조사",
-    "incident_detail": "합성 사고: 식각 후 Particle 관찰 및 상류 공정 영향 조사. 동일 제품 조건을 기준으로 5개 Lot, 60 Wafer를 영향 후보로 등록했다. 원장 등록 범위와 실제 영향 확정 여부는 구분한다.",
+    "incident_detail": "합성 사고: 식각 후 Particle 관찰 및 상류 공정 영향 조사. 동일 제품 조건을 기준으로 5개 Lot, 60 Wafer를 영향 후보로 등록했다. 사고 테이블 등록 범위와 실제 영향 확정 여부는 구분한다.",
     "analysis_detail": "상류 공정과 식각 설비 이력을 나누어 비교하고 Particle 위치와 Lot 군집을 확인했다. 합성 이력만으로 발생 공정을 확정할 수 없어 다중 가설을 유지했다.",
     "confirmed_cause": "합성 조사 가설. 원인 확정에는 추가 확인 시험이 필요하다.",
     "containment": "영향 후보 목록과 처리 이력을 보존하고 승인된 절차로 후속 진행을 관리한다.",

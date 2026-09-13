@@ -40,7 +40,7 @@ def inputs():
     for i, (city,line,alias,dept,gens,fails,title,analysis,action) in enumerate(extras,9):
         templates.append(dict(id=f'VAR-TEMPLATE-{i:03}',city=city,line_code=line,line_alias=alias,department=dept,
             product_generations=gens,fab_out_failure_codes=fails,title=title,
-            incident_detail=f'합성 사고: {title}. 동일 제품 조건을 기준으로 5개 Lot, 60 Wafer를 영향 후보로 등록했다. 원장 등록 범위와 실제 영향 확정 여부는 구분한다.',
+            incident_detail=f'합성 사고: {title}. 동일 제품 조건을 기준으로 5개 Lot, 60 Wafer를 영향 후보로 등록했다. 사고 테이블 등록 범위와 실제 영향 확정 여부는 구분한다.',
             analysis_detail=analysis,confirmed_cause='합성 조사 가설. 원인 확정에는 추가 확인 시험이 필요하다.',
             containment='영향 후보 목록과 처리 이력을 보존하고 승인된 절차로 후속 진행을 관리한다.',
             corrective_action=action,verification='합성 확인 시나리오. 실제 기준값과 운영 효과는 검증하지 않았다.',

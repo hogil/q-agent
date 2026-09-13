@@ -18,7 +18,7 @@
 | ↓ | |
 | **최종 결과 표시** | 답변, 조회 상태, 확정된 사고 범위, Lot/Wafer 목록, 문서 출처와 이미지, 미확인 항목을 표시한다. |
 
-Router는 위의 한 노드만 사용하고 Judge 재조회도 그 Router로 복귀한다. 추가 Tool은 Lot/Wafer, 문서 RAG, 이미지, Trend, 기간시스템이며 불필요하면 생략한다. 사고 DB 선조회/범위 검증은 실행 코드에서 검사한다. Answer 아래에는 검증된 조회 상태와 사고 범위를 최종 표시한다.
+Router는 위의 한 노드만 사용하고 Judge 재조회도 그 Router로 복귀한다. 추가 Tool은 Lot/Wafer, 문서 RAG, 이미지, Trend, 기간시스템이며 불필요하면 생략한다. 사고 DB 우선 조회/범위 검증은 실행 코드에서 검사한다. Answer 아래에는 검증된 조회 상태와 사고 범위를 최종 표시한다.
 
 LLM 호출 위치와 모델 서버 연결 설정은 [LLM_PLACEMENT.md](LLM_PLACEMENT.md)에 별도로 표시했다.
 
@@ -40,7 +40,7 @@ Wafer 번호 W01은 여러 Lot에 반복되므로 고유 Wafer 수는 `(lot_id, 
 2. 후보가 여러 개면 `NEEDS_SELECTION`과 사고번호/도시/라인/가능한 발생시각 반환. 해당 scope로 목록 조회를 바로 호출하면 오류.
 3. `select_incidents(scope_id, incident_ids)`로 후보 범위 내 하나 또는 명시한 여러 사고를 선택. 검색 밖 사고를 끼워 넣을 수 없다.
 4. `list_incident_lots(scope_id)`가 별도 Lot 테이블을 조회한다.
-5. `list_incident_wafers(scope_id, lot_ids=선택사항)`가 Lot 범위를 검증한 뒤 별도 Wafer 테이블을 조회한다. Lot 선조회는 Wafer Tool 내부에서도 수행한다.
+5. `list_incident_wafers(scope_id, lot_ids=선택사항)`가 Lot 범위를 검증한 뒤 별도 Wafer 테이블을 조회한다. Lot 우선 조회는 Wafer Tool 내부에서도 수행한다.
 6. 사고명/번호, Lot ID, Wafer ID를 유지해 표로 반환. 전체 목록은 마지막 페이지까지 조회한다.
 
 contains 검색의 `%`와 `_`는 SQL 와일드카드가 아닌 실제 문자로 취급한다. 사용자 값은 SQL 파라미터로 바인딩한다. 원본 상태가 충돌하는 같은 Wafer를 임의로 하나 선택하지 않는다.
@@ -68,13 +68,13 @@ wafer_parent_key = "title"
 wafer_scope = "incident_affected"
 ```
 
-Lot는 relations.incident_parent_key, Wafer는 relations.wafer_parent_key로 각각 원장의 연결 컬럼을 지정한다. Lot는 사고명, Wafer는 사고번호를 저장하는 서로 다른 구조도 지원한다.
+Lot는 relations.incident_parent_key, Wafer는 relations.wafer_parent_key로 각각 사고 테이블의 연결 컬럼을 지정한다. Lot는 사고명, Wafer는 사고번호를 저장하는 서로 다른 구조도 지원한다.
 
 위 이름은 예시다. 실제 DB에 내부키나 사고번호가 있다면 기본 incident_id 또는 incident_number 연결을 유지한다. source_completeness와 wafer_source_completeness는 각각 Lot/Wafer 원본의 적재 보장을 뜻하며 기본 unknown이다.
 
-별도 테이블이 사고 영향 목록이 아니라 Lot 전체 구성 목록이면 `wafer_scope = "lot_inventory"`로 지정한다. 사고 참조 컬럼이 없으면 `tables.wafer_list.columns.incident_ref = ""`로 둔다. 이 모드에서는 해당 Lot의 전체 Wafer를 가져오되 **사고 영향 Wafer 수로 단정하거나 원장의 영향 Wafer 수와 비교하지 않는다.**
+별도 테이블이 사고 영향 목록이 아니라 Lot 전체 구성 목록이면 `wafer_scope = "lot_inventory"`로 지정한다. 사고 참조 컬럼이 없으면 `tables.wafer_list.columns.incident_ref = ""`로 둔다. 이 모드에서는 해당 Lot의 전체 Wafer를 가져오되 **사고 영향 Wafer 수로 단정하거나 사고 테이블의 영향 Wafer 수와 비교하지 않는다.**
 
-특정 Lot만 요청하면 원장의 사고 전체 Wafer 수와 그 부분 목록을 비교하지 않는다. 연결 Wafer가 없는 Lot는 `lots_without_wafer_rows`에 표시한다. 등록 예상수와 다르면 0건이어도 PARTIAL/count_mismatch를 유지한다.
+특정 Lot만 요청하면 사고 테이블의 사고 전체 Wafer 수와 그 부분 목록을 비교하지 않는다. 연결 Wafer가 없는 Lot는 `lots_without_wafer_rows`에 표시한다. 등록 예상수와 다르면 0건이어도 PARTIAL/count_mismatch를 유지한다.
 
 ## 재현
 

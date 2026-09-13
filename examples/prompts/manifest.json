@@ -1,5 +1,5 @@
 {
-  "release": "quality-demo-0.12",
+  "release": "quality-demo-0.15",
   "notice": "Actual compiler output for incident_search topic. Not a deployed model or model evaluation. Add Schema/terminology/Lot/document topics as needed by phase.",
   "role_contract_version": 2,
   "configured_character_limit": 24000,
@@ -11,10 +11,11 @@
       "topics": [
         "incident_search"
       ],
-      "characters": 6751,
-      "sha256": "c6daa920f33b9a58d111f680acd20cc9ed0794a73ff3388dd0cb27b8d547615e",
+      "characters": 8445,
+      "sha256": "5b169f94134f12bf60c4e62fd3b66177144cacfbdd47a8c566899c209536a145",
       "loaded_files": [
         "skills/quality-core/SKILL.md",
+        "skills/quality-core/references/working-style.md",
         "skills/quality-incident-search/SKILL.md",
         "skills/quality-router/SKILL.md",
         "skills/quality-router/references/conditions.md",
@@ -27,10 +28,11 @@
       "topics": [
         "incident_search"
       ],
-      "characters": 5997,
-      "sha256": "fdd00c1647daf2d161e8b2019608355717c9a868ecc65bb98ba73c2808c6e276",
+      "characters": 7753,
+      "sha256": "bf408202478c621f5343fc733cd9d6a7dd2630940da0b56ee801871cb16688c0",
       "loaded_files": [
         "skills/quality-core/SKILL.md",
+        "skills/quality-core/references/working-style.md",
         "skills/quality-incident-search/SKILL.md",
         "skills/quality-judge/SKILL.md",
         "skills/quality-judge/references/conditions.md",
@@ -43,10 +45,11 @@
       "topics": [
         "incident_search"
       ],
-      "characters": 5696,
-      "sha256": "e2c4ac9e597d7943bd2557a80f084171e7a66759362bc040e3bee52807094760",
+      "characters": 7737,
+      "sha256": "4797d2b9428325927a7b2f001c2e3dcc89c913d87a692d6ee63d1052df672df3",
       "loaded_files": [
         "skills/quality-core/SKILL.md",
+        "skills/quality-core/references/working-style.md",
         "skills/quality-incident-search/SKILL.md",
         "skills/quality-answer/SKILL.md",
         "skills/quality-answer/references/conditions.md",

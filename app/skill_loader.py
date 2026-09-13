@@ -6,7 +6,9 @@ import argparse,json,hashlib
 from pathlib import Path
 P=Path(__file__).resolve().parent
 
-def digest(path):return hashlib.sha256(path.read_bytes()).hexdigest()
+def digest(path):
+ # Released files are text; Git checkout line endings must not change identity.
+ return hashlib.sha256(path.read_bytes().replace(b'\r\n',b'\n')).hexdigest()
 def locations(root,settings=None):
  if settings is None:return {'skills_root':root/'skills','dictionary_root':root/'domain-data','registry_file':root/'skill_registry.json','skill_lock_file':root/'release.lock.json'}
  return {key:Path(settings.data['paths'][key]) for key in ('skills_root','dictionary_root','registry_file','skill_lock_file')}
@@ -14,21 +16,21 @@ def release_files(root,settings=None):
  paths=locations(root,settings);files={}
  for label,key in [('skills','skills_root'),('domain-data','dictionary_root')]:
   if not paths[key].is_dir():raise ValueError('RELEASE_DIRECTORY_MISSING: '+key)
-  for f in sorted(paths[key].rglob('*')):
-   if f.is_file():files[label+'/'+str(f.relative_to(paths[key]))]=f
+  for f in sorted(paths[key].rglob('*'),key=lambda f:f.relative_to(paths[key]).as_posix()):
+   if f.is_file():files[label+'/'+f.relative_to(paths[key]).as_posix()]=f
  files['skill_registry.json']=paths['registry_file']
- for name in ['incident_tools.py','incident_filters.py','terminology.py','variant_query_demo.py','prompt_contracts.py','skill_loader.py','config_loader.py','runtime_factory.py']:
+ for name in ['incident_tools.py','incident_filters.py','terminology.py','variant_query_demo.py','prompt_contracts.py','plan_executor.py','skill_loader.py','config_loader.py','runtime_factory.py']:
   files[name]=root/name
  return files
 def freeze(root=P,settings=None):
  # Explicit build operation; not called automatically by compile after changes.
  paths=locations(root,settings)
- manifest={'release':json.loads(paths['registry_file'].read_text())['release'],'files':{name:digest(f) for name,f in release_files(root,settings).items()}}
- paths['skill_lock_file'].write_text(json.dumps(manifest,ensure_ascii=False,indent=2));return manifest
+ manifest={'release':json.loads(paths['registry_file'].read_text(encoding='utf-8'))['release'],'files':{name:digest(f) for name,f in release_files(root,settings).items()}}
+ paths['skill_lock_file'].write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding='utf-8');return manifest
 
 def compile_prompt(role,topics,root=P,settings=None):
  paths=locations(root,settings)
- lock=json.loads(paths['skill_lock_file'].read_text());reg=json.loads(paths['registry_file'].read_text())
+ lock=json.loads(paths['skill_lock_file'].read_text(encoding='utf-8'));reg=json.loads(paths['registry_file'].read_text(encoding='utf-8'))
  files=release_files(root,settings)
  if set(files)!=set(lock['files']):raise ValueError('RELEASE_FILE_SET_CHANGED')
  for name,expected in lock['files'].items():
@@ -44,12 +46,12 @@ def compile_prompt(role,topics,root=P,settings=None):
  for name in names:
   folder=paths['skills_root']/name;files=[folder/'SKILL.md']+sorted((folder/'references').glob('*'))
   for f in files:
-   label='skills/'+str(f.relative_to(paths['skills_root']))
-   content=f.read_text()
+   label='skills/'+f.relative_to(paths['skills_root']).as_posix()
+   content=f.read_text(encoding='utf-8')
    if f.suffix=='.json':content=json.dumps(json.loads(content),ensure_ascii=False,separators=(',',':'))
    parts.append('['+label+']\n'+content);loaded.append(label)
  prompt='\n\n'.join(parts)
- if len(prompt)>reg['max_prompt_characters']:raise ValueError('PROMPT_BUDGET_EXCEEDED: choose narrower topics; do not silently truncate rules')
+ if len(prompt)>reg['max_prompt_characters']:raise ValueError(f'PROMPT_BUDGET_EXCEEDED: {role} {topics}: {len(prompt)} > {reg["max_prompt_characters"]}; choose narrower topics; do not silently truncate rules')
  return {'role':role,'release':lock['release'],'topics':sorted(set(topics)),'loaded_files':loaded,'prompt_sha256':hashlib.sha256(prompt.encode()).hexdigest(),'system_prompt':prompt,'model_profile':settings.model_profile(role) if settings else {'status':'RUNTIME_CONFIG_NOT_ATTACHED'},'config_hash':settings.config_hash if settings else None}
 
 if __name__=='__main__':

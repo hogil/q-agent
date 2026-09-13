@@ -6,7 +6,7 @@
 
 | 구분 | 개수 | 의미 |
 |---|---:|---|
-| 사고 원장 | 128 | 16개 합성 사고 템플릿을 확장 |
+| 사고 테이블 | 128 | 16개 합성 사고 템플릿을 확장 |
 | 사고-Lot 관계 | 640 | 사고당 5개. 일부 사고는 같은 Lot 공유 |
 | 고유 Lot | 576 | 관계 수와 중복 제거 개수가 다름 |
 | 사고-Lot-Wafer 관계 | 7,680 | 사고당 60개, Lot당 12개 |
@@ -19,7 +19,7 @@
 | raw 변형 행 | 40 | 원래 컬럼명/값 표현과 기대 canonical 필터를 별도 저장 |
 | 입력 필드 / 사전 항목 | 14 / 72 | 컬럼 별칭, 값 별칭, 요청 종류, 배열 조건 포함 |
 
-원장 DB의 공식값은 보존한다. 오타/동의어를 섞은 질문과 raw 행은 별도 fixture다. 원본을 임의로 고치거나 다른 사고를 맞는 사고처럼 만드는 과정은 없다. 신설 템플릿에는 PHOTO, ETCH, CMP, DIFF, CVD, METAL, EDS 사례와 원인 미확정 상태, 확인 시험, 임시 조치, 개선, 효과 검증, 재발 방지 내용을 넣었다. 전부 가상 설정이다.
+사고 테이블의 공식값은 보존한다. 오타/동의어를 섞은 질문과 raw 행은 별도 fixture다. 원본을 임의로 고치거나 다른 사고를 맞는 사고처럼 만드는 과정은 없다. 신설 템플릿에는 PHOTO, ETCH, CMP, DIFF, CVD, METAL, EDS 사례와 원인 미확정 상태, 확인 시험, 임시 조치, 개선, 효과 검증, 재발 방지 내용을 넣었다. 전부 가상 설정이다.
 
 ## 2. 실행한 복합 질문
 
@@ -45,11 +45,11 @@
 | 세대조건=모두 | 배열 all 조건 |
 | 팹아웃=엣지페일 | fab_out_failure_codes=[SYNTH_EDS_EDGE_FAIL] |
 | 사고몀=외곽샷 | title_terms=[외곽 Shot] |
-| 요청=웨이펴목록 | Lot 선조회 후 Wafer 목록 |
+| 요청=웨이펴목록 | Lot 우선 조회 후 Wafer 목록 |
 
 결과: **SYN-2026-0001 한 건, 5 Lot, 60 Wafer**. 페이지당 7개이므로 Wafer 9페이지를 조회했다. 조건은 모두 SQL에 적용했고 사고번호만 맞는다고 다른 조건을 버리지 않았다. 번호/목록을 예상해서 출력하지 않고 실제 조회했다.
 
-실제 실행 결과와 정규화 audit, 목록, 페이지/출처 정보는 [complex_query_result.json](../../examples/generated/variants/complex_query_result.json)에 있다. 운영 원장 완전성은 unknown이므로 조회된 목록을 전사 영향 범위가 완전하다는 증거로 쓰지 않는다.
+실제 실행 결과와 정규화 audit, 목록, 페이지/출처 정보는 [complex_query_result.json](../../examples/generated/variants/complex_query_result.json)에 있다. 운영 source_completeness는 unknown이므로 조회된 목록을 전사 영향 범위가 완전하다는 증거로 쓰지 않는다.
 
 ## 3. 자동 변환과 확인 요청의 구분
 
@@ -146,6 +146,6 @@ python app/variant_query_demo.py --overlay config/demo.variants.toml --question 
 
 `quality-terminology` Skill과 출력 참조 계약을 보강했고 기존 '실제 데이터 확인 후 변경' 규칙을 유지했다. 릴리스는 quality-demo-0.11이다. 새 검색/정규화 모듈도 소스 해시에 포함했다. 사내 도입 시 실제 컬럼/관계/공식값/별칭을 확인해 사전을 교체해야 한다. 승인 표시를 포함해 이번 데이터는 전부 합성이다.
 
-Router → 사고 DB → 추가 Tool → Judge → Answer 배치는 유지한다. 이번 실행은 그 중 정규화와 정형 DB/Lot/Wafer Tool 부분이다. 자유 채팅의 조건 추출, 실제 LLM Judge의 재조회, SQL 통계 Tool 전체, 문서 RAG 및 기간시스템/조치 연결은 아직 통합하지 않았다. 현재 배열 원장 검증은 소규모 SQLite 전체 검사이므로 운영 규모에서는 검증된 View/ETL과 DB 인덱스/쿼리 비용 정책으로 바꿔야 한다.
+Router → 사고 DB → 추가 Tool → Judge → Answer 배치는 유지한다. 이번 실행은 그 중 정규화와 정형 DB/Lot/Wafer Tool 부분이다. 자유 채팅의 조건 추출, 실제 LLM Judge의 재조회, SQL 통계 Tool 전체, 문서 RAG 및 기간시스템/조치 연결은 아직 통합하지 않았다. 현재 배열 사고 테이블 검증은 소규모 SQLite 전체 검사이므로 운영 규모에서는 검증된 View/ETL과 DB 인덱스/쿼리 비용 정책으로 바꿔야 한다.
 
 GPU와 자원 원본 문서는 변경하지 않았다.

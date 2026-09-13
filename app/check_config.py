@@ -6,6 +6,7 @@ import shutil
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 from unittest.mock import patch
 
@@ -181,7 +182,7 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(result['counts'], {'incident': 4, 'lot_list': 16, 'wafer_list': 320, 'incident_document': 12,
                                           'document_chunk': 36, 'image_metadata': 8, 'trend_metadata': 4})
         self.assertEqual(result['unique_lots'], 14)
-        with sqlite3.connect(s.data['database']['sqlite_file']) as db:
+        with closing(sqlite3.connect(s.data['database']['sqlite_file'])) as db, db:
             tables = s.data['tables']
             parent = tables['incident'];pkey = ident(parent['columns']['incident_id'])
             for name in ('lot_list', 'wafer_list', 'incident_document', 'image_metadata', 'trend_metadata'):
@@ -212,7 +213,7 @@ class ConfigTests(unittest.TestCase):
     def test_null_and_empty_generation_arrays(self):
         s = self.settings({'demo': {'incident_count': 13}})
         generate(s)
-        with sqlite3.connect(s.data['database']['sqlite_file']) as db:
+        with closing(sqlite3.connect(s.data['database']['sqlite_file'])) as db, db:
             values = [r[0] for r in db.execute('SELECT product_generations FROM demo_incident')]
         self.assertIsNone(values[10])
         self.assertEqual(json.loads(values[12]), [])

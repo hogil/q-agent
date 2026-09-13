@@ -18,7 +18,7 @@
 | 구성 | 책임 | 수행하지 않는 일 |
 |---|---|---|
 | Router LLM | 의도, 논리 필터, Tool 순서와 필요한 Skill 선택 | 물리 SQL/테이블명 생성, 조회 결과 예상 |
-| Orchestrator 코드 | 상태, 허용 Tool, 선조회 Gate, 권한/범위, 재시도 | 근거 없는 원인 생성 |
+| Orchestrator 코드 | 상태, 허용 Tool, 우선 조회 Gate, 권한/범위, 재시도 | 근거 없는 원인 생성 |
 | Tool Adapter | 물리 매핑으로 쿼리, 건수/페이지 반환 | 권한을 LLM에게 위임 |
 | Answer LLM | 확인 결과와 출처를 사용자 요청에 맞게 설명 | Lot ID/수치/조치 결과 창작 |
 | Judge LLM | 답변 전 근거 충분성, 질문 충족, 범위/누락 검토 | 정답 창작, 코드 FAIL 무효화, 실행 승인 |
@@ -76,7 +76,7 @@ Lot 상세 결과의 product_code/status는 가상 코드다. 현재 Lot 진행 
 5. 허용 도시/라인/제품 등 실제 ACL을 사고 조회와 Lot 조회 모두 서버에서 적용한다. actor-scope 바인딩은 ACL을 대신하지 않는다.
 6. source_completeness를 담당자/ETL 보장으로 확인한다. 실제 기간 필터/보관 범위가 일부면 partial/unknown으로 선언한다.
 7. 스키마 검증, 기준 SQL 대조, 미등록·오류·중복·불일치, 페이지/권한 테스트를 수행한다.
-8. 사내 변경 사항을 관련 Schema Skill/사전/Tool 계약에 반영한 뒤 릴리스 lock을 새 버전으로 빌드한다.
+8. 사내 변경 사항을 관련 Schema Skill/사전/Tool 인터페이스에 반영한 뒤 릴리스 lock을 새 버전으로 빌드한다.
 9. 운영에서는 query_scope 만료·사용자·데이터 revision/snapshot을 고정하고 대량 Lot는 keyset pagination 또는 안정적인 서버 export로 처리한다.
 
 실행 확인용 명령(패키지 폴더에서):
@@ -140,7 +140,7 @@ Skill 관리가 줄이는 것은 지침의 임의 변경과 누락이다. temper
 
 - role Skill/공통 Skill/reference hash와 release
 - 용어/Schema Catalog/물리 mapping 버전
-- Tool 계약 및 실행 코드 버전
+- Tool 인터페이스 및 실행 코드 버전
 - 모델 ID/리비전, tokenizer/template, 추론 설정
 - 조회 기준시각 및 가능하면 데이터 snapshot
 - 검색 인덱스/embedding/reranker 버전과 top-k
@@ -159,7 +159,7 @@ Skill 관리가 줄이는 것은 지침의 임의 변경과 누락이다. temper
 
 ## 12. 현재 검증과 남은 구현
 
-Lot Tool 19개 검사: 선조회, PK/표시번호 Join, 중복 제거, 페이지와 전체 ID, 완전성, 다른 사용자 scope, 페이지 상한, 사고 미등록, 기대수 불일치, 여러 사고 고유 Lot, 값/식별자 삽입 방지, 전 테이블/컬럼 교체, 다른 Join 기준, 없는 컬럼, 상충 상태.
+Lot Tool 19개 검사: 우선 조회, PK/표시번호 Join, 중복 제거, 페이지와 전체 ID, 완전성, 다른 사용자 scope, 페이지 상한, 사고 미등록, 기대수 불일치, 여러 사고 고유 Lot, 값/식별자 삽입 방지, 전 테이블/컬럼 교체, 다른 Join 기준, 없는 컬럼, 상충 상태.
 
 Skill 구성 34개 검사: 역할별 동일 프롬프트 hash, 공유 Lot Skill, 불필요 문서 미로딩, 대형 사전 미주입, 공유 Schema 중복 제거, 온라인 Judge의 maintenance 로딩 차단, lock 이후 소스 변경 차단, 19개 Skill metadata.
 

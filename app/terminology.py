@@ -111,9 +111,9 @@ def month_range(raw, timezone):
 def normalize_request(question, dictionary, timezone='Asia/Seoul', effective_at=None):
     result = {'raw_question': question, 'dictionary_version': dictionary['version'],
               'synthetic_dictionary': dictionary.get('synthetic', False),
-              'effective_at': effective_at or dictionary['as_of'], 'audit': [], 'issues': [], 'filters': {}, 'request': 'incidents'}
+              'effective_at': dictionary['as_of'] if effective_at is None else effective_at, 'audit': [], 'issues': [], 'filters': {}, 'request': 'incidents'}
     try:
-        date.fromisoformat(result['effective_at'])
+        result['effective_at'] = date.fromisoformat(result['effective_at']).isoformat()
         raw, result['audit'] = parse_fields(question, dictionary)
     except (ValueError, TypeError) as exc:
         return {**result, 'status': 'INVALID_REQUEST', 'issues': [{'reason': str(exc)}]}

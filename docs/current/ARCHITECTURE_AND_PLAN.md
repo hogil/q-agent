@@ -24,7 +24,7 @@ LLM 세 역할의 입력/출력과 물리 모델 서버 참조는 [LLM_PLACEMENT
 | ↓ | |
 | **최종 결과 표시** | 답변, 조회 상태, 확정된 사고 범위, Lot/Wafer 목록, 문서 출처와 이미지, 미확인 항목을 표시한다. |
 
-Router는 위의 한 노드만 사용하고 Judge 재조회도 그 Router로 복귀한다. 추가 Tool은 Lot/Wafer, 문서 RAG, 이미지, Trend, 기간시스템이며 불필요하면 생략한다. 사고 DB 선조회/범위 검증은 실행 코드에서 검사한다. Answer 아래에는 검증된 조회 상태와 사고 범위를 최종 표시한다.
+Router는 위의 한 노드만 사용하고 Judge 재조회도 그 Router로 복귀한다. 추가 Tool은 Lot/Wafer, 문서 RAG, 이미지, Trend, 기간시스템이며 불필요하면 생략한다. 사고 DB 우선 조회/범위 검증은 실행 코드에서 검사한다. Answer 아래에는 검증된 조회 상태와 사고 범위를 최종 표시한다.
 
 인증, 파일 형식 검사, 논리 스키마/동의어 조회는 사전 준비다. 사고 관련 최초 **업무 데이터** 조회는 사고 DB다. 이미지/Trend 단독 의뢰도 사용자가 제공한 메타데이터로 사고 DB를 먼저 조회한다. 유효한 조건이 없으면 필요한 메타데이터를 요청한다. DB에 기존 사고가 없다는 확인 뒤 이상탐지로 새 관측을 생성할 수 있으며 이를 등록 사고로 단정하지 않는다. 향후 상시 탐지 작업은 별도 스케줄러에서 관측을 만들고 이 조사 흐름에 전달한다.
 
@@ -32,7 +32,7 @@ Router는 위의 한 노드만 사용하고 Judge 재조회도 그 Router로 복
 
 상태에는 request_id, actor/ACL, 원문·정규화 필터, scope_id, selected_incident_ids, as_of, 페이지 cursor, tool_budget, evidence IDs, skill release/hash를 저장한다. ReAct식 반복은 Tool 결과로 다음 조회를 결정하는 유한 루프로 구현한다. 자유로운 내부 추론은 저장·표시하지 않고 Tool 이름·조건·짧은 선택 근거·결과 상태를 기록한다. 재시도와 추가 조회 예산은 운영 설정으로 제한한다.
 
-## 2. Tool 계약과 호출 기준
+## 2. Tool 인터페이스과 호출 기준
 
 | Tool | 데이터·처리 | 호출 조건 / 핵심 반환값 |
 |---|---|---|
@@ -78,7 +78,7 @@ Hybrid RAG 두 소스는 이미 chunking되어 있으므로 초기에는 ingest/
 
 ## 5. 통계 처리
 
-통계는 별도 `aggregate_incidents` Tool을 사용하되 같은 원장 DB와 필터/권한 계층을 공유한다. RAG chunk 빈도로 사고 건수를 계산하지 않는다. LLM은 metric, group_by, time_range, filters를 선언하고 Adapter가 허용된 템플릿·바인딩으로 계산한다. 검색 top-k 결과만으로 전체 통계를 만들지 않는다.
+통계는 별도 `aggregate_incidents` Tool을 사용하되 같은 사고 DB와 필터/권한 검사를 공유한다. RAG chunk 빈도로 사고 건수를 계산하지 않는다. LLM은 metric, group_by, time_range, filters를 선언하고 Adapter가 허용된 템플릿·바인딩으로 계산한다. 검색 top-k 결과만으로 전체 통계를 만들지 않는다.
 
 - 사고 건수: `COUNT(DISTINCT incident_id)`. 조회 표본과 전체 모집단을 분리한다.
 - 세대별 사고: 배열 원소를 펼치고 `(incident_id, generation)`을 중복 제거한다. 한 사고가 여러 세대에 속하므로 세대별 합계가 고유 사고 수보다 클 수 있다.
@@ -117,7 +117,7 @@ Hybrid RAG 두 소스는 이미 chunking되어 있으므로 초기에는 ingest/
 |---|---|---|
 | 0. 자산 확인 | 보존 문서, 물리 스키마, 권한, 기존 RAG API, 승인 담당자 목록 | GPU/자원 원본 해시 동일; DB/RAG 실제 계약 확인 |
 | 1. 정형 조회 | semantic catalog, alias, mapping, 사고 검색/집계/Lot Adapter | 키/컬럼 전면 변경 테스트, 배열·중복·페이지·null·권한 평가 통과 |
-| 2. 제어 계층 | Router 계획 schema, 상태 저장, 선조회 Gate, Tool budget | 사고 선조회 우회·scope 사용자 혼용·무제한 재시도 차단 |
+| 2. 제어 계층 | Router 계획 schema, 상태 저장, 우선 조회 Gate, Tool budget | 사고 우선 조회 우회·scope 사용자 혼용·무제한 재시도 차단 |
 | 3. 근거 연결 | 사고문서, 두 기존 Hybrid RAG, provenance/ACL | ID/버전/페이지 추적, 무권한 chunk 배제, DB-문서 충돌 표시 |
 | 4. 멀티모달 | 이미지/Trend Tool Adapter, Storage 링크, 정상/불량 비교 | Wafer/좌표·시각 정합성, 사내 검증셋의 탐지/오탐 목표 충족 |
 | 5. 답변·UI | Judge/Answer, 코드 gate, 조사 workspace와 통계 drill-down | 질문-근거 회귀 평가, 누락/불확실성 표시, 브라우저/권한 테스트 |

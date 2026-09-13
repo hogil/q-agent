@@ -3,6 +3,7 @@ import copy
 import json
 import sqlite3
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 from check_config import ConfigTests
@@ -41,6 +42,34 @@ class VariantTests(unittest.TestCase):
         self.assertEqual(normalize_request('부서=구포토팀', d, effective_at='2024-12-31')['status'], 'READY')
         self.assertEqual(normalize_request('부서=구포토팀', d, effective_at='2025-01-01')['status'], 'NEEDS_CLARIFICATION')
 
+    def test_iso_week_date_uses_actual_calendar_date_for_alias_validity(self):
+        d = self.dictionary()
+        actual = normalize_request('부서=구포토팀', d, effective_at='2025-W01-1')
+        expected = normalize_request('부서=구포토팀', d, effective_at='2024-12-30')
+        self.assertEqual(actual['status'], expected['status'])
+        self.assertEqual(actual['filters'], expected['filters'])
+        self.assertEqual(actual['effective_at'], '2024-12-30')
+
+    def test_explicit_empty_effective_date_is_not_defaulted(self):
+        actual = normalize_request('부서=PHOTO', self.dictionary(), effective_at='')
+        self.assertEqual(actual['status'], 'INVALID_REQUEST')
+
+    def test_invalid_explicit_selection_is_not_ignored(self):
+        settings = self.fixture()
+        for selected in ([], '', False, 0):
+            with self.subTest(selected=selected):
+                actual = run_query(settings, '사고번호=SYN-2026-0001; 요청=웨이퍼목록', selected=selected)
+                self.assertEqual(actual['status'], 'TOOL_ERROR')
+                self.assertEqual([r['tool'] for r in actual['tool_trace']], ['find_incidents'])
+
+    def test_selected_ids_match_validated_scope_without_duplicates(self):
+        settings = self.fixture()
+        actual = run_query(settings, '사고번호=SYN-2026-0001',
+                           selected=['synthetic-pk-0001', 'synthetic-pk-0001'])
+        self.assertEqual(actual['status'], 'MATCHED')
+        self.assertEqual(actual['incident_ids'], ['synthetic-pk-0001'])
+        self.assertEqual(actual['tool_trace'][-1]['count'], 1)
+
     def test_fuzzy_candidate_does_not_become_a_filter(self):
         r = normalize_request('부서=photox', self.dictionary())
         self.assertEqual(r['status'], 'NEEDS_CLARIFICATION')
@@ -73,7 +102,7 @@ class VariantTests(unittest.TestCase):
             load_dictionary(settings)
 
     def test_all_columns_renamed_and_arrays_query_correctly(self):
-        settings = self.fixture({'tables': {'incident': {'name': '사고원장', 'columns': {
+        settings = self.fixture({'tables': {'incident': {'name': '사고테이블', 'columns': {
             'department': '담당조직', 'product_generations': '세대배열', 'title': '발생내용',
             'fab_out_failure_codes': '출하검사불량', 'line_code': '라인코드'}}}})
         r = run_query(settings, '사고번호=SYN-2026-0001; 부서=포토; 세대=디원에이,디원지; 세대조건=모두; 팹아웃=외곽불량; 요청=웨이퍼목록')
@@ -121,7 +150,7 @@ class VariantTests(unittest.TestCase):
 
     def test_month_boundary_compares_instants(self):
         settings = self.fixture()
-        with sqlite3.connect(settings.data['database']['sqlite_file']) as db:
+        with closing(sqlite3.connect(settings.data['database']['sqlite_file'])) as db, db:
             db.execute('UPDATE demo_incident SET occurred_at=? WHERE accident_no=?', ('2026-01-31T15:00:00+00:00', 'SYN-2026-0001'))
         self.assertEqual(run_query(settings, '사고번호=SYN-2026-0001; 기간=2026-01')['status'], 'NO_MATCH')
         self.assertEqual(run_query(settings, '사고번호=SYN-2026-0001; 기간=2026-02')['status'], 'MATCHED')
@@ -129,7 +158,7 @@ class VariantTests(unittest.TestCase):
     def test_malformed_arrays_are_errors_not_empty_matches(self):
         settings = self.fixture()
         for value in ['{bad', '{}', '"D1a"', '[1]', '["D1a",null]']:
-            with sqlite3.connect(settings.data['database']['sqlite_file']) as db:
+            with closing(sqlite3.connect(settings.data['database']['sqlite_file'])) as db, db:
                 db.execute('UPDATE demo_incident SET product_generations=? WHERE accident_no=?', (value, 'SYN-2026-0001'))
             r = run_query(settings, '세대=D1a')
             self.assertEqual(r['status'], 'TOOL_ERROR', value)

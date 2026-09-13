@@ -1,14 +1,16 @@
 {
-  "release": "quality-demo-0.12",
+  "release": "quality-demo-0.15",
   "source_checked_date": "2026-09-13",
   "scope": "Repository sources and synthetic fixtures; no on-prem data or LLM runs.",
   "checks": {
-    "prompt_contracts": 41,
-    "skills": 34,
+    "prompt_contracts": 48,
+    "skills": 57,
+    "variants": 25,
     "configuration": 31,
     "wafer": 15,
     "lot": 19,
-    "arrays": 7
+    "arrays": 7,
+    "request_scope": 8
   },
   "passed": true,
   "prompt_profiles": [
@@ -17,7 +19,7 @@
       "topics": [
         "incident_search"
       ],
-      "characters": 6751
+      "characters": 8445
     },
     {
       "role": "router",
@@ -25,7 +27,7 @@
         "incident_search",
         "schema"
       ],
-      "characters": 13140
+      "characters": 14835
     },
     {
       "role": "router",
@@ -34,7 +36,7 @@
         "lots",
         "documents"
       ],
-      "characters": 22150
+      "characters": 23941
     },
     {
       "role": "router",
@@ -42,7 +44,7 @@
         "incident_search",
         "wafers"
       ],
-      "characters": 19455
+      "characters": 21152
     },
     {
       "role": "router",
@@ -50,14 +52,14 @@
         "incident_search",
         "statistics"
       ],
-      "characters": 13852
+      "characters": 15547
     },
     {
       "role": "judge",
       "topics": [
         "incident_search"
       ],
-      "characters": 5997
+      "characters": 7753
     },
     {
       "role": "judge",
@@ -65,7 +67,7 @@
         "incident_search",
         "schema"
       ],
-      "characters": 12386
+      "characters": 14143
     },
     {
       "role": "judge",
@@ -74,7 +76,7 @@
         "lots",
         "documents"
       ],
-      "characters": 21396
+      "characters": 23249
     },
     {
       "role": "judge",
@@ -82,7 +84,7 @@
         "incident_search",
         "wafers"
       ],
-      "characters": 18701
+      "characters": 20460
     },
     {
       "role": "judge",
@@ -90,14 +92,14 @@
         "incident_search",
         "statistics"
       ],
-      "characters": 13098
+      "characters": 14855
     },
     {
       "role": "answer",
       "topics": [
         "incident_search"
       ],
-      "characters": 5696
+      "characters": 7737
     },
     {
       "role": "answer",
@@ -105,7 +107,7 @@
         "incident_search",
         "schema"
       ],
-      "characters": 12085
+      "characters": 14127
     },
     {
       "role": "answer",
@@ -114,7 +116,7 @@
         "lots",
         "documents"
       ],
-      "characters": 21095
+      "characters": 23233
     },
     {
       "role": "answer",
@@ -122,7 +124,7 @@
         "incident_search",
         "wafers"
       ],
-      "characters": 18400
+      "characters": 20444
     },
     {
       "role": "answer",
@@ -130,7 +132,7 @@
         "incident_search",
         "statistics"
       ],
-      "characters": 12797
+      "characters": 14839
     }
   ],
   "character_limit": 24000,

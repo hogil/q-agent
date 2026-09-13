@@ -1,5 +1,5 @@
 {
-  "release": "quality-demo-0.12",
+  "release": "quality-demo-0.15",
   "purpose": "on-prem application Skill sources; not personal ChatGPT skill installation",
   "base": [
     "quality-core"

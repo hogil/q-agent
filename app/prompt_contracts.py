@@ -35,6 +35,11 @@ def validate_output(role, output, context):
     structure(output,schema)
     if role=='router':
         decision=output['decision'];plan=output['plan']
+        request_scope=context.get('request_scope','incident')
+        if request_scope not in ('incident','independent'):raise ValueError('INVALID_REQUEST_SCOPE')
+        if request_scope=='independent':
+            if output['stage']!='independent' or output['filters'] or output['search_mode']!='none':raise ValueError('INDEPENDENT_REQUEST_CANNOT_QUERY_INCIDENTS')
+        elif output['stage']=='independent':raise ValueError('INCIDENT_REQUEST_CANNOT_SKIP_LOOKUP')
         if decision!='execute' and plan:raise ValueError('NON_EXECUTE_HAS_PLAN')
         if decision=='execute':
             if not plan:raise ValueError('EXECUTE_REQUIRES_PLAN')
@@ -50,10 +55,10 @@ def validate_output(role, output, context):
                 if any(j>=i for j in step['depends_on']):raise ValueError('DEPENDENCY_MUST_PRECEDE_STEP')
                 if 'fields' in step['arguments'] and not set(step['arguments']['fields']).issubset(context.get('mapped_fields',[])):
                     raise ValueError('SEARCH_FIELD_UNAVAILABLE')
-        if decision=='clarify' and not output['clarification']:raise ValueError('CLARIFICATION_REQUIRED')
+        if decision=='clarify' and (not output['clarification'] or not output['clarification'].strip()):raise ValueError('CLARIFICATION_REQUIRED')
         if decision=='blocked' and not output['limitations']:raise ValueError('BLOCK_REASON_REQUIRED')
         if decision=='load_skills' and not output['needs_skills']:raise ValueError('SKILL_REQUEST_REQUIRED')
-        if decision=='ready_for_judge' and not context.get('incident_checked'):raise ValueError('INCIDENT_CHECK_REQUIRED')
+        if decision=='ready_for_judge' and request_scope=='incident' and not context.get('incident_checked'):raise ValueError('INCIDENT_CHECK_REQUIRED')
     elif role=='judge':
         verdict=output['verdict']
         expected='router' if verdict in ('need_evidence','revise') else 'answer'
@@ -64,11 +69,15 @@ def validate_output(role, output, context):
         for row in [*coverage,*output['issues']]:
             if not set(row['evidence_ids']).issubset(context.get('evidence_ids',[])):raise ValueError('UNKNOWN_EVIDENCE')
         if verdict=='pass':
+            if output['issues']:raise ValueError('PASS_HAS_UNRESOLVED_ISSUES')
             if context.get('code_gate')!='PASS':raise ValueError('CODE_GATE_NOT_PASSED')
             if not coverage or any(r['status']!='satisfied' or not r['evidence_ids'] for r in coverage):raise ValueError('MISSING_PASS_EVIDENCE')
         if verdict in ('need_evidence','revise') and context.get('budget_remaining',0)<=0:raise ValueError('NO_RETRIEVAL_BUDGET')
         if verdict!='pass' and not output['issues']:raise ValueError('ISSUE_REQUIRED')
     elif role=='answer':
+        if not output['answer'].strip():raise ValueError('EMPTY_ANSWER')
+        if any(not item.strip() for item in output['limitations']):raise ValueError('EMPTY_LIMITATION')
+        if output['status'] in ('answered','partial') and not output['claims']:raise ValueError('CLAIMS_REQUIRED')
         verdict=context.get('judge_verdict')
         if verdict not in ('pass','abstain') and (output['status']!='unavailable' or output['claims']):raise ValueError('ANSWER_CALLED_BEFORE_JUDGE')
         if output['status']=='answered' and verdict!='pass':raise ValueError('ANSWERED_REQUIRES_JUDGE_PASS')
@@ -76,6 +85,7 @@ def validate_output(role, output, context):
         if output['status'] in ('partial','unavailable') and not output['limitations']:raise ValueError('LIMITATION_REQUIRED')
         ids=[]
         for claim in output['claims']:
+            if not claim['claim_id'].strip() or not claim['text'].strip():raise ValueError('EMPTY_CLAIM')
             ids.append(claim['claim_id'])
             if not claim['evidence_ids'] or not set(claim['evidence_ids']).issubset(context.get('evidence_ids',[])):raise ValueError('UNKNOWN_EVIDENCE')
         if len(ids)!=len(set(ids)):raise ValueError('DUPLICATE_CLAIM_ID')
