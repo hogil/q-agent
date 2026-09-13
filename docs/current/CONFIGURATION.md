@@ -2,6 +2,8 @@
 
 DB 테이블/컬럼, 폴더, 모델 파일명, API 모델 이름을 바꿀 때 Python 코드를 고치지 않는 것이 목적이다. 기본 파일은 `config/default.toml`, 사용자가 관리할 사내 변경값은 `config/site.local.toml`이다. `site.local.toml`은 Git에서 제외한다. Python 3.11 이상에서 표준 `tomllib`을 사용하며 권장 실행 환경은 기존 계획대로 Python 3.12다.
 
+최신 사고명 → Lot → Wafer 연결과 실행 예시는 [INCIDENT_LOT_WAFER.md](INCIDENT_LOT_WAFER.md)를 참고한다. wafer_list와 relations.wafer_parent_key/wafer_scope가 추가됐다.
+
 ## 1. 무엇을 어디서 변경하는가
 
 | 변경 대상 | 설정 위치 | 설명 |
@@ -12,8 +14,8 @@ DB 테이블/컬럼, 폴더, 모델 파일명, API 모델 이름을 바꿀 때 P
 | DB 파일/엔진/schema | database.sqlite_file / dialect / schema | SQLite는 구현됨. 다른 엔진은 Adapter 필요 |
 | 사고 테이블 | tables.incident.name | 오른쪽 물리 이름 변경 |
 | 사고 컬럼 | tables.incident.columns.<논리키> | 논리키는 유지하고 오른쪽 실제 컬럼명 변경 |
-| Lot/문서/chunk/이미지/Trend 테이블 | tables.<entity>.name / columns | 총 6개 논리 엔티티의 매핑 |
-| 사고-Lot 연결 | relations.incident_parent_key | 내부키 incident_id 또는 표시번호 incident_number |
+| Lot/문서/chunk/이미지/Trend 테이블 | tables.<entity>.name / columns | 총 7개 논리 엔티티의 매핑 |
+| 사고-Lot 연결 | relations.incident_parent_key | 내부키 incident_id, 표시번호 incident_number, 고유성 검증된 title |
 | 제품세대 저장 타입 | arrays.product_generations | 기존 배열 유지. native_array/json_array/json_text 구분 |
 | 모델 공통 폴더 | paths.model_root | 개별 모델 local_dir의 기준 |
 | 개별 모델 폴더 | models.<name>.local_dir | 모델별 독립 경로 가능 |
@@ -109,7 +111,7 @@ python app/generate_dummy.py --overlay config/demo.batch.toml
 python app/query_demo.py --overlay config/demo.batch.toml --all-pages
 ```
 
-기본 세트는 사고 24건, 사고-Lot 관계 96건, 고유 Lot 84개, 합성 문서 72개, chunk 216개, SVG 48개, Trend CSV 24개다. batch 설정은 사고 100건, 관계 400건, 고유 Lot 350개, 문서 300개, chunk 900개, SVG 200개, Trend CSV 100개다.
+기본 세트는 사고 24건, 사고-Lot 관계 96건, 고유 Lot 84개, 사고-Wafer 관계 1,920건, 합성 문서 72개, chunk 216개, SVG 48개, Trend CSV 24개다. batch 설정은 사고 100건, 관계 400건, 고유 Lot 350개, 사고-Wafer 관계 8,000건, 문서 300개, chunk 900개, SVG 200개, Trend CSV 100개다.
 
 실제 문서 저장소나 BM25/vector 인덱스는 만들거나 변경하지 않는다. 문서는 합성 Markdown이고, chunk는 DB fixture다. SVG는 절차적으로 만든 가상 격자이며 실제 FAB/EDS 계측 이미지가 아니다. Trend는 normal/drift/spike/variance/step/missing 시나리오의 합성 수치다. 생성기에서 이상을 심었다는 정보는 탐지 모델의 정답 성능을 의미하지 않는다.
 

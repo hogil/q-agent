@@ -178,13 +178,13 @@ class ConfigTests(unittest.TestCase):
     def test_connected_fixture_counts_and_no_orphans(self):
         s = self.settings()
         result = generate(s)
-        self.assertEqual(result['counts'], {'incident': 4, 'lot_list': 16, 'incident_document': 12,
+        self.assertEqual(result['counts'], {'incident': 4, 'lot_list': 16, 'wafer_list': 320, 'incident_document': 12,
                                           'document_chunk': 36, 'image_metadata': 8, 'trend_metadata': 4})
         self.assertEqual(result['unique_lots'], 14)
         with sqlite3.connect(s.data['database']['sqlite_file']) as db:
             tables = s.data['tables']
             parent = tables['incident'];pkey = ident(parent['columns']['incident_id'])
-            for name in ('lot_list', 'incident_document', 'image_metadata', 'trend_metadata'):
+            for name in ('lot_list', 'wafer_list', 'incident_document', 'image_metadata', 'trend_metadata'):
                 child = tables[name];fk = ident(child['columns']['incident_ref'])
                 query = f'SELECT COUNT(*) FROM {ident(child["name"])} c LEFT JOIN {ident(parent["name"])} p ON c.{fk}=p.{pkey} WHERE p.{pkey} IS NULL'
                 self.assertEqual(db.execute(query).fetchone()[0], 0)

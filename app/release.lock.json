@@ -1,5 +1,5 @@
 {
-  "release": "quality-demo-0.6",
+  "release": "quality-demo-0.7",
   "files": {
     "skills/quality-actions/SKILL.md": "20314d12420b0b8bee0dde83ca93def211e07fe3f1c811eb7ba4bca2dc88895b",
     "skills/quality-answer/SKILL.md": "37306d79be8a09ca5aeb17a2fc8b7b751e74f022be0e86d5365cf8b2fdd25fcf",
@@ -16,22 +16,25 @@
     "skills/quality-incident-schema/references/logical-schema.json": "5cdb686c2852b106a08a088a7a423debc016b4c022940d1d7f3092892cee34c9",
     "skills/quality-judge/SKILL.md": "aa7e947e3822c59bec0274cfaa5ada0ce0589157cd64f4716732fa481cf268e1",
     "skills/quality-judge/references/output.schema.json": "d6f08ef6cff84ede7536596d273d4cb172e657a2e376af47fac74a0148cb93bd",
-    "skills/quality-lot-retrieval/SKILL.md": "f88c6523eb8819b82df3a6beed7e40217f3c89a4e33e9e7f8f19a12fb4ffd1a3",
+    "skills/quality-lot-retrieval/SKILL.md": "40c87f21bd360ba73a4b0ee08d899dca15ddb8671530df55efff7671589c4962",
     "skills/quality-lot-schema/SKILL.md": "6a8ccea85dd498450925d81b83e3bfe4bcd482a35bb1ef3abeed6948de680f44",
     "skills/quality-lot-schema/references/columns.json": "3e5de1f9390759cd1c45e55c96c7a0bdb5c03cb623736f9854b2d1532df477a0",
-    "skills/quality-router/SKILL.md": "7f3b312e8349b4dc9118a3d1e43e78c2339fce52a1016693989a6769b0a9e11f",
-    "skills/quality-router/references/output.schema.json": "a8ed47b2bb1b3b227ce70fccad680ba19384db2dfa6460a9276ae98651886a05",
+    "skills/quality-router/SKILL.md": "2d88ec5478827fa5d3f91f181d974cbec30957d4349fac223bedee0b09381f91",
+    "skills/quality-router/references/output.schema.json": "521b4dad0be3cc1aa60cf59637cedd190f6902e316a3f4acecdd4cc3dad268de",
     "skills/quality-skill-maintenance/SKILL.md": "9b564d92ab4076a6af8518ad5bff0d3c36e534c09541cf884bc307e12da9cea7",
     "skills/quality-statistics/SKILL.md": "72c797bc0ea5b1924665985c0ef2232551d1913307b4550252dc4c9b813764e8",
     "skills/quality-terminology/SKILL.md": "8bc1fcaa3eff36bbaa725a29df3d0c2abe52518c6487666d8a9e9ed0e7366e63",
     "skills/quality-terminology/references/dictionary-contract.json": "002a50b27f51e126d451c988cb6fd5880db03139472b9964af3afac75de59d68",
     "skills/quality-trend-metadata-schema/SKILL.md": "aff9a960a6d25887d0436b3fe9879f519703a3a5a2986d8b098f0d4063644306",
     "skills/quality-trend-metadata-schema/references/columns.json": "a65115b80f251d44c8c159861473dbffcfe4aa45a328ed3ab370b920496bdaa8",
+    "skills/quality-wafer-retrieval/SKILL.md": "35da0847294ac9dd183d3429eb5e01267f760e441f7341f35b609328ac9fd329",
+    "skills/quality-wafer-schema/SKILL.md": "d90d394825e645590c90e8f79bb3ad2e4002f078028b4653b8a650c48823d727",
+    "skills/quality-wafer-schema/references/columns.json": "a53e3b4387abe203545aa56662be04e19765a54d4020c922724a8df6e3aa414c",
     "domain-data/aliases.example.json": "63d215627abcd46f92a8ced97283f3af93e93db9c9fd8fe733c33e0df6e0bec7",
-    "skill_registry.json": "d69d8b045c89cc0a3d1ab92705ea03b112c949bb0db0f65909331bfe013c3e6b",
-    "incident_tools.py": "0e82e39a46185a043a9a3c6d541c710eced72516d3fe309225c213aae26cd55c",
+    "skill_registry.json": "3b60fcbd15b0778cebb72ab3223d73a9cc9923f9984fe10c53c20991656b3188",
+    "incident_tools.py": "1ec55ad7af34afd7fd93c339798546196d8bd84ddf25723b3aefc79f93557a6a",
     "skill_loader.py": "cd1e23fa6bb7540d6b8c366eceac9c55b38480108c18dd70b8486ed939709004",
-    "config_loader.py": "5f325bee4961a61fc9cebac57789929b57b406e1682fd366ebe46b9dc9f6f149",
-    "runtime_factory.py": "55d50a7f5c7cc194a20896395e717c12000c5f2dc9f2c26918a93f0fa3630c94"
+    "config_loader.py": "d260445914289ebcbf384260b925e494c7a81330cedf8fc56eaea0e1d9713112",
+    "runtime_factory.py": "9674f192b0df73d7650ad53c0141746493f26ba79caed98a8450165204a0efb3"
   }
 }

@@ -1,5 +1,5 @@
 {
-  "release": "quality-demo-0.6",
+  "release": "quality-demo-0.7",
   "purpose": "on-prem application Skill sources; not personal ChatGPT skill installation",
   "base": [
     "quality-core"
@@ -41,6 +41,13 @@
     ],
     "trends": [
       "quality-trend-metadata-schema"
+    ],
+    "wafers": [
+      "quality-incident-schema",
+      "quality-lot-schema",
+      "quality-wafer-schema",
+      "quality-lot-retrieval",
+      "quality-wafer-retrieval"
     ]
   },
   "role_allowed_topics": {
@@ -52,7 +59,8 @@
       "documents",
       "actions",
       "images",
-      "trends"
+      "trends",
+      "wafers"
     ],
     "answer": [
       "terminology",
@@ -62,7 +70,8 @@
       "documents",
       "actions",
       "images",
-      "trends"
+      "trends",
+      "wafers"
     ],
     "judge": [
       "schema",
@@ -71,7 +80,8 @@
       "documents",
       "actions",
       "images",
-      "trends"
+      "trends",
+      "wafers"
     ]
   },
   "max_prompt_characters": 18000,

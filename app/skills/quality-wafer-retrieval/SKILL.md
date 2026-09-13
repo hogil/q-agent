@@ -1,0 +1,11 @@
+---
+name: quality-wafer-retrieval
+description: 사고명 또는 사고번호로 요청한 Lot별 Wafer 목록을 별도 테이블에서 조회하고 결과 범위를 검증한다.
+---
+
+사고명은 find_incidents에서 검색한다. exact 결과가 없으면 제한된 contains 검색으로 후보를 찾을 수 있다. 후보가 여러 건이면 도시/라인/발생시점/번호로 구분하고 select_incidents로 선택한다. 사용자가 전체 후보를 명시한 경우에만 모두 선택한다.
+선택 scope로 list_incident_lots를 조회한 뒤 list_incident_wafers를 호출한다. Wafer Tool도 내부적으로 Lot 선조회를 검증한다. lot_ids는 선택 사고에 속한 Lot만 허용한다. 요청에 없는 Lot 범위로 확장하지 않는다.
+사고 영향 Wafer 테이블은 사고 참조와 Lot ID를 함께 연결한다. Lot 구성 테이블이면 lot_inventory임을 표시하고 전체 Wafer를 모두 사고 불량으로 서술하지 않는다.
+사고명만 가진 원본 테이블은 관리자가 title Join을 명시하고 고유성이 검증된 경우 사용한다. 중복 사고명을 가진 title Join은 임의로 결합하지 않고 고유키/복합키 View가 필요하다고 알린다.
+출력에는 사고번호/사고명, Lot ID, Wafer ID를 유지한다. 사고-Wafer 관계 수와 고유 Lot+Wafer 수를 구분하고 목록이 없는 Lot도 숨기지 않는다. 0행/미등록/건수 불일치를 정상 또는 영향 없음으로 바꾸지 않는다.
+전체 목록 요청은 마지막 페이지까지 전달한다. 대량 데이터는 표/파일 내보내기를 사용하며 LLM이 Wafer 번호를 생성하지 않는다. source_completeness와 예상수 비교는 ID 정확성의 완전한 증명이 아니다.

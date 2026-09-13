@@ -80,7 +80,7 @@ def generate(settings):
             incident_id, number = f'synthetic-pk-{n:04}', f'SYN-2026-{n:04}'
             parent = incident_id if d['relations']['incident_parent_key'] == 'incident_id' else number
             lot_count = d['demo']['lots_per_incident']
-            wafer_count = lot_count * 20
+            wafer_count = lot_count * d['demo']['wafers_per_lot']
             detail = re.sub(r'\d+개 Lot', f'{lot_count}개 Lot', template['incident_detail'])
             detail = re.sub(r'\d+ Wafer', f'{wafer_count} Wafer', detail)
             start = datetime(2026, 1, 1, tzinfo=ZoneInfo(d['runtime']['timezone'])) + timedelta(days=index)
@@ -101,6 +101,7 @@ def generate(settings):
             for key in ('analysis_detail', 'confirmed_cause', 'containment', 'corrective_action', 'verification', 'prevention', 'remaining'):
                 row[key] = template[key]
             rows['incident'].append(row)
+            parent=row[d['relations']['incident_parent_key']]
             for lot_index in range(lot_count):
                 # One shared Lot on each even incident tests membership vs unique counts.
                 lot_id = f'SYN-LOT-{n:04}-{lot_index + 1:03}'
@@ -108,6 +109,9 @@ def generate(settings):
                     lot_id = f'SYN-LOT-{n - 1:04}-001'
                 rows['lot_list'].append(dict(incident_ref=parent, lot_id=lot_id,
                                              product_code='SYNTH_PRODUCT', status='REGISTERED'))
+                for wafer_index in range(d['demo']['wafers_per_lot']):
+                    rows['wafer_list'].append(dict(incident_ref=row[d['relations']['wafer_parent_key']] if d['relations']['wafer_scope']=='incident_affected' else None,
+                        lot_id=lot_id,wafer_id=f'W{wafer_index+1:02}',status='REGISTERED'))
             first_lot = rows['lot_list'][-lot_count]['lot_id']
 
             for source in ('incident', 'internal_documents', 'engineer_notes'):
@@ -139,7 +143,7 @@ def generate(settings):
                 svg += '<text x="12" y="298" fill="#ffaabb">SYNTHETIC GRID / NOT MEASURED</text></svg>'
                 write(path, svg)
                 rows['image_metadata'].append(dict(image_id=f'SYN-IMG-{n:04}-{stage}', incident_ref=parent,
-                    lot_id=first_lot, wafer_id=f'{first_lot}-W01', stage=stage,
+                    lot_id=first_lot, wafer_id='W01', stage=stage,
                     storage_ref=str(path), coordinate_system='SYNTHETIC_GRID_NOT_PHYSICAL'))
 
             path = Path(d['paths']['trend_root']) / f'SYN-{n:04}.csv'
@@ -172,6 +176,8 @@ def generate(settings):
         'notice': NOTICE, 'config_hash': settings.config_hash, 'seed': d['demo']['seed'],
         'counts': {name: len(records) for name, records in rows.items()},
         'unique_lots': len({r['lot_id'] for r in rows['lot_list']}),
+        'unique_wafers': len({(r['lot_id'],r['wafer_id']) for r in rows['wafer_list']}),
+        'wafer_scope': d['relations']['wafer_scope'],
         'source_completeness': d['relations']['source_completeness'],
         'retrieval': 'Source fixtures only; no BM25/vector index or scoring implemented',
         'image_notice': 'Procedural SVG grids. FAB/EDS pairing is synthetic, not a validated coordinate transform.',

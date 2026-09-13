@@ -62,6 +62,14 @@ lot_id = "lot_no"
 product_code = "product_name"
 status = "lot_state"
 
+[tables.wafer_list]
+name = "demo_wafer_list"
+[tables.wafer_list.columns]
+incident_ref = "accident_ref"
+lot_id = "lot_no"
+wafer_id = "wafer_no"
+status = "wafer_state"
+
 [tables.incident_document]
 name = "demo_incident_document"
 [tables.incident_document.columns]
@@ -103,8 +111,13 @@ storage_ref = "storage_ref"
 timezone = "timezone"
 
 [relations]
-incident_parent_key = "incident_id" # incident_number로 교체 가능. 실제 FK 의미 확인 필수.
+incident_parent_key = "incident_id" # incident_number 또는 title 가능. title은 전역 고유성 검증 필수.
 lot_incident_key = "incident_ref"
+wafer_parent_key = "incident_id" # Wafer 테이블의 사고 FK가 가리키는 컬럼. Lot 연결키와 달라도 됨.
+wafer_incident_key = "incident_ref"
+wafer_lot_key = "lot_id"
+wafer_scope = "incident_affected" # lot_inventory이면 해당 Lot의 전체 구성 목록이며 사고 영향 확정 목록이 아님.
+wafer_source_completeness = "unknown"
 document_incident_key = "incident_ref"
 image_incident_key = "incident_ref"
 trend_incident_key = "incident_ref"
@@ -221,5 +234,6 @@ max_answer_revisions = 2
 [demo]
 incident_count = 24
 lots_per_incident = 4
+wafers_per_lot = 20
 trend_points = 48
 seed = 20260913

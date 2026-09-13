@@ -1,6 +1,6 @@
 # 전체 Skill 목록과 컬럼 설명 관리
 
-현재 16개 application Skill이 있다. 개인 ChatGPT에 설치하는 Skill이 아니며 `app/skill_registry.json`과 `app/skill_loader.py`가 필요한 소스를 조합한다. 아직 실제 LLM 호출 서비스가 통합된 것은 아니다.
+현재 18개 application Skill이 있다. 개인 ChatGPT에 설치하는 Skill이 아니며 `app/skill_registry.json`과 `app/skill_loader.py`가 필요한 소스를 조합한다. 아직 실제 LLM 호출 서비스가 통합된 것은 아니다.
 
 | 구분 | Skill | 책임 |
 |---|---|---|
@@ -11,17 +11,19 @@
 | 용어 | quality-terminology | 공식값/동의어/오타/조직 범위 해석 |
 | Schema | quality-incident-schema | 사고 원장 21개 논리 컬럼 |
 | Schema | quality-lot-schema | 사고-Lot 관계 4개 논리 컬럼 |
+| Schema | quality-wafer-schema | 별도 Wafer 목록 4개 논리 컬럼 |
 | Schema | quality-incident-document-schema | 사고문서 7개 논리 컬럼 |
 | Schema | quality-document-chunk-schema | 기존 문서 chunk 4개 논리 컬럼 |
 | Schema | quality-image-metadata-schema | 이미지 메타데이터 7개 논리 컬럼 |
 | Schema | quality-trend-metadata-schema | Trend 메타데이터 6개 논리 컬럼 |
 | 조회 절차 | quality-lot-retrieval | 사고 선조회 후 Lot 연결/중복/페이지/완전성 처리 |
+| 조회 절차 | quality-wafer-retrieval | 사고명 확정 → Lot 범위 → 별도 Wafer 목록, 영향/구성 구분 |
 | 통계 | quality-statistics | 사고/세대/FAB Out/Lot 집계, grain, 분모, 중복 |
 | 문서 근거 | quality-document-evidence | 사고문서 연결, 기존 사내문서/Eng’r Inform Note Hybrid RAG 근거/버전/인용 |
 | 조치 | quality-actions | 조치 제안, 승인, 실행과 결과 구분 |
 | 개발/관리 | quality-skill-maintenance | 수정 범위 판별, 회귀 평가, 릴리스 관리 |
 
-Schema Skill 6개에 총 49개 논리 컬럼 정의가 있다. `SKILL.md`는 해석 규칙을, 각 `references/*.json`은 상세 컬럼 Catalog를 가진다. `check_config.py`가 config에 정의된 컬럼 목록과 Catalog 목록의 완전 일치를 검사한다.
+Schema Skill 7개에 총 53개 논리 컬럼 정의가 있다. `SKILL.md`는 해석 규칙을, 각 `references/*.json`은 상세 컬럼 Catalog를 가진다. `check_config.py`가 config에 정의된 컬럼 목록과 Catalog 목록의 완전 일치를 검사한다.
 
 ## 컬럼별 필수 설명
 
@@ -35,6 +37,7 @@ description(의미), type(논리 타입), nullable, null_meaning, unit, allowed_
 
 - 모든 역할: core + 자신의 role Skill.
 - Lot 질문: incident-schema + lot-schema + lot-retrieval.
+- Wafer 질문: incident-schema + lot-schema + wafer-schema + lot-retrieval + wafer-retrieval.
 - 문서 질문: incident-document-schema + document-chunk-schema + document-evidence.
 - 통계 질문: incident-schema + statistics; Lot 통계면 Lot 관련 Skill 추가.
 - 이미지/Trend 메타데이터 질문: image-metadata-schema / trend-metadata-schema.

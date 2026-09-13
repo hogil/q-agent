@@ -11,5 +11,7 @@
 - 검증 명령: cd app 후 python demo.py, python array_demo.py, python check_skills.py. Skill 변경 시 먼저 python skill_loader.py freeze.
 
 - 배포 설정의 단일 진입점은 config/default.toml + site overlay다. DB/폴더/모델명을 코드나 Skill 지침에 하드코딩하지 않는다.
-- 6개 테이블의 논리 컬럼 명세는 각 Schema Skill의 references에서 관리하고 check_config.py로 누락/불일치를 검사한다.
+- 7개 테이블의 논리 컬럼 명세는 각 Schema Skill의 references에서 관리하고 check_config.py로 누락/불일치를 검사한다.
 - 추가 검증: python app/check_config.py. 사내 *.local.toml, var/ 생성 DB와 전체 결과는 Git에 올리지 않는다.
+
+- 사고명 복수 후보는 명시적으로 선택한다. Wafer 조회는 선택 사고와 Lot 범위를 함께 검증하고, lot_inventory를 사고 영향 Wafer로 단정하지 않는다. 추가 검증: python app/check_wafers.py.

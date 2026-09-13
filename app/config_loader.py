@@ -28,6 +28,7 @@ TABLE_FIELDS = {
                  'incident_detail analysis_detail confirmed_cause containment corrective_action '
                  'verification prevention remaining').split(),
     'lot_list': 'incident_ref lot_id product_code status'.split(),
+    'wafer_list': 'incident_ref lot_id wafer_id status'.split(),
     'incident_document': 'document_id incident_ref title version storage_ref format source'.split(),
     'document_chunk': 'chunk_id document_ref location content'.split(),
     'image_metadata': 'image_id incident_ref lot_id wafer_id stage storage_ref coordinate_system'.split(),
@@ -48,7 +49,8 @@ SPEC = {
                for name, fields in TABLE_FIELDS.items()},
     'relations': dict(incident_parent_key=str, lot_incident_key=str, document_incident_key=str,
                       image_incident_key=str, trend_incident_key=str, chunk_document_key=str,
-                      source_completeness=str),
+                      source_completeness=str, wafer_parent_key=str, wafer_incident_key=str, wafer_lot_key=str,
+                      wafer_scope=str, wafer_source_completeness=str),
     'arrays': dict(product_generations=str, fab_out_failure_codes=str),
     'storage': dict(backend=str, endpoint=str, bucket=str, prefix=str, credential_env=str,
                     signed_url_ttl_seconds=int),
@@ -61,7 +63,7 @@ SPEC = {
     'runtime': dict(timezone=str, default_page_size=int, max_page_size=int,
                     max_scope_incidents=int, scope_ttl_seconds=int, max_tool_calls=int,
                     max_parallel_tools=int, max_retries=int, max_answer_revisions=int),
-    'demo': dict(incident_count=int, lots_per_incident=int, trend_points=int, seed=int),
+    'demo': dict(incident_count=int, lots_per_incident=int, wafers_per_lot=int, trend_points=int, seed=int),
 }
 
 
@@ -121,7 +123,9 @@ def validate_values(data):
                 visit(item, place)
     visit(data)
     required_columns = {'incident': {'incident_id', 'incident_number', 'title', 'city', 'line'},
-                        'lot_list': set(TABLE_FIELDS['lot_list'])}
+                        'lot_list': set(TABLE_FIELDS['lot_list']), 'wafer_list': {'lot_id','wafer_id','status'}}
+    if data['relations']['wafer_scope'] == 'incident_affected':
+        required_columns['wafer_list'].add('incident_ref')
     for name, table in data['tables'].items():
         for key in required_columns.get(name, set()):
             if not table['columns'][key]:
@@ -141,15 +145,21 @@ def validate_values(data):
         raise ConfigError('database.schema: invalid identifier')
     if not db['read_only']:
         raise ConfigError('database.read_only must remain true for retrieval')
-    if data['relations']['incident_parent_key'] not in ('incident_id', 'incident_number'):
+    if data['relations']['incident_parent_key'] not in ('incident_id', 'incident_number', 'title'):
         raise ConfigError('relations.incident_parent_key: unsupported join')
-    for key in ('lot_incident_key', 'document_incident_key', 'image_incident_key', 'trend_incident_key'):
+    if data['relations']['wafer_parent_key'] not in ('incident_id', 'incident_number', 'title'):
+        raise ConfigError('relations.wafer_parent_key: unsupported join')
+    for key in ('lot_incident_key', 'wafer_incident_key', 'document_incident_key', 'image_incident_key', 'trend_incident_key'):
         if data['relations'][key] != 'incident_ref':
             raise ConfigError(f'relations.{key}: change physical mapping, not logical FK')
     if data['relations']['chunk_document_key'] != 'document_ref':
         raise ConfigError('relations.chunk_document_key: invalid logical FK')
     if data['relations']['source_completeness'] not in ('unknown', 'partial', 'declared_complete'):
         raise ConfigError('relations.source_completeness: invalid value')
+    if data['relations']['wafer_source_completeness'] not in ('unknown', 'partial', 'declared_complete'):
+        raise ConfigError('relations.wafer_source_completeness: invalid value')
+    if data['relations']['wafer_scope'] not in ('incident_affected','lot_inventory') or data['relations']['wafer_lot_key'] != 'lot_id':
+        raise ConfigError('relations: invalid wafer scope or logical Lot key')
     for value in data['arrays'].values():
         if value not in ('native_array', 'json_array', 'json_text'):
             raise ConfigError('arrays: invalid source representation')
@@ -218,7 +228,7 @@ def validate_values(data):
     except (ZoneInfoNotFoundError, ValueError):
         raise ConfigError('runtime.timezone: timezone unavailable; install system tzdata if needed') from None
     demo = data['demo']
-    if not (1 <= demo['incident_count'] <= 1000 and 1 <= demo['lots_per_incident'] <= 100 and 12 <= demo['trend_points'] <= 10000):
+    if not (1 <= demo['incident_count'] <= 1000 and 1 <= demo['lots_per_incident'] <= 100 and 1 <= demo['wafers_per_lot'] <= 100 and 12 <= demo['trend_points'] <= 10000):
         raise ConfigError('demo: counts exceed supported fixture bounds')
 
 
@@ -277,13 +287,16 @@ class Settings:
             'mapping_version': self.config_hash,
             'dialect': d['database']['dialect'],
             'entities': {key: {'table': d['tables'][key]['name'], 'columns': {k:v for k,v in d['tables'][key]['columns'].items() if v}}
-                         for key in ('incident', 'lot_list')},
+                         for key in ('incident', 'lot_list','wafer_list')},
             'relationships': {'incident_lots': {
                 'parent_entity': 'incident', 'parent_key': d['relations']['incident_parent_key'],
                 'child_entity': 'lot_list', 'child_key': d['relations']['lot_incident_key'],
                 'grain': ['incident_id', 'lot_id'], 'relation_scope': 'registered affected lots',
                 'source_completeness': d['relations']['source_completeness'],
-                'duplicate_policy': 'exact_rows_deduplicate_conflicts_error'}},
+                'duplicate_policy': 'exact_rows_deduplicate_conflicts_error'},
+                'incident_wafers': {'parent_key':d['relations']['wafer_parent_key'],
+                    'child_key':d['relations']['wafer_incident_key'], 'lot_key':d['relations']['wafer_lot_key'],
+                    'scope':d['relations']['wafer_scope'], 'source_completeness':d['relations']['wafer_source_completeness']}},
             'limits': {key: d['runtime'][key] for key in ('default_page_size', 'max_page_size', 'max_scope_incidents')},
         }
 

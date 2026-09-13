@@ -19,7 +19,8 @@
           "lot_list",
           "document",
           "analysis",
-          "action"
+          "action",
+          "wafer_list"
         ]
       }
     },

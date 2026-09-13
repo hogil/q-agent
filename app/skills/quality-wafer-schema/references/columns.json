@@ -1,0 +1,64 @@
+{
+  "schema_version": "0.7",
+  "logical_entity": "wafer_list",
+  "grain": "incident_ref + lot_id + wafer_id (incident_affected); lot_id + wafer_id (lot_inventory)",
+  "identity": [
+    "incident_ref",
+    "lot_id",
+    "wafer_id"
+  ],
+  "physical_mapping": "tables.wafer_list.columns",
+  "columns": {
+    "incident_ref": {
+      "description": "사고 FK. 내부키/표시번호/사고명 중 config가 지정한 의미다. lot_inventory 모드에서는 미매핑 가능.",
+      "type": "string",
+      "nullable": true,
+      "unit": "해당 없음",
+      "null_meaning": "Lot 구성 목록에서는 사고 미연결. 사고 영향 목록에서는 필수값 누락 오류.",
+      "allowed_operations": [
+        "eq",
+        "in"
+      ],
+      "synthetic_example": "synthetic-pk-0001"
+    },
+    "lot_id": {
+      "description": "Wafer가 속한 Lot. 조회된 사고-Lot 범위와 연결한다.",
+      "type": "string",
+      "nullable": false,
+      "unit": "해당 없음",
+      "null_meaning": "관계키 누락 오류",
+      "allowed_operations": [
+        "eq",
+        "in",
+        "group_by"
+      ],
+      "synthetic_example": "SYN-LOT-0001-001"
+    },
+    "wafer_id": {
+      "description": "Lot 내부 Wafer 식별자. W01 같은 앞자리 0을 유지하며 Lot ID와 함께 고유성을 판단한다.",
+      "type": "string",
+      "nullable": false,
+      "unit": "해당 없음",
+      "null_meaning": "Wafer 식별자 누락 오류",
+      "allowed_operations": [
+        "eq",
+        "in",
+        "count_distinct_lot_wafer"
+      ],
+      "synthetic_example": "W01"
+    },
+    "status": {
+      "description": "원본 Wafer 목록에 기록된 상태. 사고 영향/불량 여부 또는 현재 생산 상태로 임의 해석하지 않는다.",
+      "type": "string",
+      "nullable": true,
+      "unit": "해당 없음",
+      "null_meaning": "상태 미등록; 정상 판정 아님",
+      "allowed_operations": [
+        "eq",
+        "in",
+        "group_by"
+      ],
+      "synthetic_example": "REGISTERED"
+    }
+  }
+}

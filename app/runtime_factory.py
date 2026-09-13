@@ -32,6 +32,10 @@ def open_incident_tools(settings):
                 deadline[0] = time.monotonic() + data['database']['query_timeout_seconds']
                 return super().list_incident_lots(*args, **kwargs)
 
+            def list_incident_wafers(self, *args, **kwargs):
+                deadline[0] = time.monotonic() + data['database']['query_timeout_seconds']
+                return super().list_incident_wafers(*args, **kwargs)
+
         yield ConfiguredIncidentTools(connection, settings.mapping(),
                                       scope_ttl_seconds=data['runtime']['scope_ttl_seconds'])
     finally:

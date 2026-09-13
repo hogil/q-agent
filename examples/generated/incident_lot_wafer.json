@@ -1,0 +1,701 @@
+{
+  "notice": "합성 데이터. 사고명 검색 후 별도 Lot/Wafer 테이블에서 실제 조회한 결과.",
+  "request": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가 사고의 Lot와 Wafer 목록",
+  "incident": {
+    "incident_id": "synthetic-pk-0001",
+    "incident_number": "SYN-2026-0001",
+    "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+    "city": "화성",
+    "line": "65L (ABCD)",
+    "expected_lot_count": 4,
+    "occurred_at": "2026-01-01T00:00:00+09:00"
+  },
+  "lots": [
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-001",
+      "product_code": "SYNTH_PRODUCT",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-002",
+      "product_code": "SYNTH_PRODUCT",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-003",
+      "product_code": "SYNTH_PRODUCT",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-004",
+      "product_code": "SYNTH_PRODUCT",
+      "status": "REGISTERED"
+    }
+  ],
+  "wafers": [
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-001",
+      "wafer_id": "W01",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-001",
+      "wafer_id": "W02",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-001",
+      "wafer_id": "W03",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-001",
+      "wafer_id": "W04",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-001",
+      "wafer_id": "W05",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-001",
+      "wafer_id": "W06",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-001",
+      "wafer_id": "W07",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-001",
+      "wafer_id": "W08",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-001",
+      "wafer_id": "W09",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-001",
+      "wafer_id": "W10",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-001",
+      "wafer_id": "W11",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-001",
+      "wafer_id": "W12",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-001",
+      "wafer_id": "W13",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-001",
+      "wafer_id": "W14",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-001",
+      "wafer_id": "W15",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-001",
+      "wafer_id": "W16",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-001",
+      "wafer_id": "W17",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-001",
+      "wafer_id": "W18",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-001",
+      "wafer_id": "W19",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-001",
+      "wafer_id": "W20",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-002",
+      "wafer_id": "W01",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-002",
+      "wafer_id": "W02",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-002",
+      "wafer_id": "W03",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-002",
+      "wafer_id": "W04",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-002",
+      "wafer_id": "W05",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-002",
+      "wafer_id": "W06",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-002",
+      "wafer_id": "W07",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-002",
+      "wafer_id": "W08",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-002",
+      "wafer_id": "W09",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-002",
+      "wafer_id": "W10",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-002",
+      "wafer_id": "W11",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-002",
+      "wafer_id": "W12",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-002",
+      "wafer_id": "W13",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-002",
+      "wafer_id": "W14",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-002",
+      "wafer_id": "W15",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-002",
+      "wafer_id": "W16",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-002",
+      "wafer_id": "W17",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-002",
+      "wafer_id": "W18",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-002",
+      "wafer_id": "W19",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-002",
+      "wafer_id": "W20",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-003",
+      "wafer_id": "W01",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-003",
+      "wafer_id": "W02",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-003",
+      "wafer_id": "W03",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-003",
+      "wafer_id": "W04",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-003",
+      "wafer_id": "W05",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-003",
+      "wafer_id": "W06",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-003",
+      "wafer_id": "W07",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-003",
+      "wafer_id": "W08",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-003",
+      "wafer_id": "W09",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-003",
+      "wafer_id": "W10",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-003",
+      "wafer_id": "W11",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-003",
+      "wafer_id": "W12",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-003",
+      "wafer_id": "W13",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-003",
+      "wafer_id": "W14",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-003",
+      "wafer_id": "W15",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-003",
+      "wafer_id": "W16",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-003",
+      "wafer_id": "W17",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-003",
+      "wafer_id": "W18",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-003",
+      "wafer_id": "W19",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-003",
+      "wafer_id": "W20",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-004",
+      "wafer_id": "W01",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-004",
+      "wafer_id": "W02",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-004",
+      "wafer_id": "W03",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-004",
+      "wafer_id": "W04",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-004",
+      "wafer_id": "W05",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-004",
+      "wafer_id": "W06",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-004",
+      "wafer_id": "W07",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-004",
+      "wafer_id": "W08",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-004",
+      "wafer_id": "W09",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-004",
+      "wafer_id": "W10",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-004",
+      "wafer_id": "W11",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-004",
+      "wafer_id": "W12",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-004",
+      "wafer_id": "W13",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-004",
+      "wafer_id": "W14",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-004",
+      "wafer_id": "W15",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-004",
+      "wafer_id": "W16",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-004",
+      "wafer_id": "W17",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-004",
+      "wafer_id": "W18",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-004",
+      "wafer_id": "W19",
+      "status": "REGISTERED"
+    },
+    {
+      "incident_id": "synthetic-pk-0001",
+      "incident_number": "SYN-2026-0001",
+      "title": "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+      "lot_id": "SYN-LOT-0001-004",
+      "wafer_id": "W20",
+      "status": "REGISTERED"
+    }
+  ],
+  "wafer_scope": "incident_affected",
+  "total_lots": 4,
+  "total_wafer_memberships": 80,
+  "unique_wafers": 80,
+  "coverage": [
+    {
+      "incident_id": "synthetic-pk-0001",
+      "expected_wafers": 80,
+      "returned_total_wafers": 80,
+      "state": "unknown"
+    }
+  ]
+}

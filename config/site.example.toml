@@ -40,6 +40,13 @@ incident_ref = "YOUR_INCIDENT_FK"
 lot_id = "YOUR_LOT_NO"
 [tables.incident_document]
 name = "YOUR_INCIDENT_DOCUMENT_TABLE"
+[tables.wafer_list]
+name = "YOUR_WAFER_LIST_TABLE"
+[tables.wafer_list.columns]
+incident_ref = "YOUR_INCIDENT_FK"
+lot_id = "YOUR_LOT_NO"
+wafer_id = "YOUR_WAFER_NO"
+status = "YOUR_WAFER_STATUS"
 [tables.document_chunk]
 name = "YOUR_CHUNK_TABLE"
 [tables.image_metadata]

@@ -2,7 +2,7 @@
 
 이 패키지는 사내 서비스 구축용 소스 초안이다. 개인 ChatGPT에 Skill을 설치하거나 사내 시스템에 접속하지 않았다. 모든 데이터와 물리 스키마 이름은 가상이다. 실제 LLM 호출 및 운영 성능 평가도 아직 수행하지 않았다.
 
-최신 배포 설정은 [CONFIGURATION.md](CONFIGURATION.md), 전체 16개 Skill과 49개 컬럼 명세는 [SKILLS.md](SKILLS.md)를 기준으로 읽는다. 아래 mapping.example.json과 demo.py 설명은 이전 독립 Lot 회귀 예제다. 새 실행 경로는 config/default.toml + site overlay → generate_dummy.py / query_demo.py / skill_loader.py다.
+최신 배포 설정은 [CONFIGURATION.md](CONFIGURATION.md), 전체 18개 Skill과 53개 컬럼 명세는 [SKILLS.md](SKILLS.md)를 기준으로 읽는다. 아래 mapping.example.json과 demo.py 설명은 이전 독립 Lot 회귀 예제다. 새 실행 경로는 config/default.toml + site overlay → generate_dummy.py / query_demo.py / skill_loader.py다.
 
 ## 1. 이번 변경과 이전 설계의 유지
 
@@ -161,7 +161,7 @@ Skill 관리가 줄이는 것은 지침의 임의 변경과 누락이다. temper
 
 Lot Tool 19개 검사: 선조회, PK/표시번호 Join, 중복 제거, 페이지와 전체 ID, 완전성, 다른 사용자 scope, 페이지 상한, 사고 미등록, 기대수 불일치, 여러 사고 고유 Lot, 값/식별자 삽입 방지, 전 테이블/컬럼 교체, 다른 Join 기준, 없는 컬럼, 상충 상태.
 
-Skill 구성 31개 검사: 역할별 동일 프롬프트 hash, 공유 Lot Skill, 불필요 문서 미로딩, 대형 사전 미주입, 공유 Schema 중복 제거, 온라인 Judge의 maintenance 로딩 차단, lock 이후 소스 변경 차단, 16개 Skill metadata.
+Skill 구성 33개 검사: 역할별 동일 프롬프트 hash, 공유 Lot Skill, 불필요 문서 미로딩, 대형 사전 미주입, 공유 Schema 중복 제거, 온라인 Judge의 maintenance 로딩 차단, lock 이후 소스 변경 차단, 18개 Skill metadata.
 
 이 수치는 실제 Router/Answer/Judge LLM 품질 테스트 수가 아니다. 실제 모델 통합, JSON Schema 검증기 연결, Judge/code Gate, 운영 ACL, 동시 데이터 snapshot, 대량 export, 사전 검색 서비스, versioned deployment는 아직 구현하지 않았다.
 
