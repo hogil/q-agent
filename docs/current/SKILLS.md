@@ -47,3 +47,7 @@ description(의미), type(논리 타입), nullable, null_meaning, unit, allowed_
 공유는 같은 소스/버전을 읽는다는 의미다. 모델 간 컨텍스트가 자동 공유되는 것은 아니다. 현재 compiler는 선택 topic의 reference 전체를 읽으며 JSON은 공백만 축약한다. 대규모 사내 Catalog의 컬럼별 선택 로딩과 실제 tokenizer 예산 계산은 후속 작업이다. 예산 초과 시 규칙을 임의로 자르지 않는다.
 
 이미지/Trend 분석 알고리즘별 workflow Skill, 기간시스템별 상세 조회 Skill은 아직 별도로 작성하지 않았다. 현재 이미지/Trend Skill은 메타데이터 컬럼 설명이다. 이 구분을 구현 상태 보고에 유지한다.
+
+## 모든 Skill의 변경 전 확인
+
+18개 SKILL.md에 실제 원본/대표 데이터, 출처, 기준시점, 변경 근거를 확인하는 규칙을 직접 명시했다. 실제 자료에 접근하지 못하면 미확인으로 표시하고 설계/더미 초안만 관리한다. 상세 확인 대상과 LLM별 배치는 [LLM_PLACEMENT.md](LLM_PLACEMENT.md)를 참고한다. 이 문구가 존재한다고 실제 데이터 확인이 수행됐다는 뜻은 아니다.

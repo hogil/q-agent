@@ -6,6 +6,8 @@
 
 ## 시작하기
 
+- [Router / Answer / Judge 호출 위치와 모델 서버 배치](docs/current/LLM_PLACEMENT.md)
+
 - [전체 구조와 사고명 → Lot → Wafer 조회](docs/current/INCIDENT_LOT_WAFER.md)
 - [실제 더미 조회 결과: 4 Lot / 80 Wafer](examples/generated/incident_lot_wafer.json)
 

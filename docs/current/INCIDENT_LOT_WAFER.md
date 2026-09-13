@@ -20,6 +20,8 @@ flowchart TD
   M --> A
 ```
 
+LLM 호출 위치와 모델 서버 연결 설정은 [LLM_PLACEMENT.md](LLM_PLACEMENT.md)에 별도로 표시했다.
+
 ## 데이터 연결
 
 | 논리 테이블 | 한 행의 의미 | 연결 |

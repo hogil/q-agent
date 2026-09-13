@@ -15,3 +15,5 @@
 - 추가 검증: python app/check_config.py. 사내 *.local.toml, var/ 생성 DB와 전체 결과는 Git에 올리지 않는다.
 
 - 사고명 복수 후보는 명시적으로 선택한다. Wafer 조회는 선택 사고와 Lot 범위를 함께 검증하고, lot_inventory를 사고 영향 Wafer로 단정하지 않는다. 추가 검증: python app/check_wafers.py.
+
+- 모든 Skill 수정 전 관련 실제 자료의 출처/기준시점/변경 근거를 확인한다. 사내 데이터 접근이 없으면 미확인 설계/더미 초안임을 기록하고 실제 데이터 검증 완료를 주장하지 않는다. 온라인 Skill 자기 수정이나 원본 DB 수정 권한으로 해석하지 않는다.
