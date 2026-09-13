@@ -5,23 +5,19 @@
 ```mermaid
 flowchart TB
     Q["사용자 질문"]
-    R1["Router LLM: 사고 검색 조건 결정"]
-    DB["1계층: 사고 DB 검색 또는 집계"]
-    G{"조회 성공 · 사고 범위 확정?"}
-    R2["Router LLM: 후속 Tool 선택"]
-    T["2계층: Lot · Wafer · 문서 RAG · 이미지 · Trend · 기간시스템"]
-    J{"Judge LLM: 수집 근거가 충분한가?"}
-    A["Answer LLM: 최종 답변"]
-    Q --> R1 --> DB --> G
-    G -->|통과| R2
-    G -->|조건 재확인| R1
-    R2 -->|추가 조회 필요| T
-    R2 -->|DB 근거만으로 충분| J
-    T --> J
-    J -->|근거 부족| R2
-    J -->|사고 · 조건 오류| R1
+    R["Router LLM"]
+    DB["1계층: 사고 DB 조회"]
+    T["2계층: 필요한 추가 Tool 조회"]
+    J{"Judge LLM: 근거 검토"}
+    A["Answer LLM: 최종 답변 작성"]
+    F["최종 결과: 조회 상태와 확정된 사고 범위 표시"]
+    Q --> R --> DB --> T --> J
+    J -->|근거 부족 또는 사고 오류: 재조회| R
     J -->|검토 통과| A
+    A --> F
 ```
+
+Router는 위의 한 노드만 사용하고 Judge 재조회도 그 Router로 복귀한다. 추가 Tool은 Lot/Wafer, 문서 RAG, 이미지, Trend, 기간시스템이며 불필요하면 생략한다. 사고 DB 선조회/범위 검증은 실행 코드에서 검사한다. Answer 아래에는 검증된 조회 상태와 사고 범위를 최종 표시한다.
 
 LLM 호출 위치와 모델 서버 연결 설정은 [LLM_PLACEMENT.md](LLM_PLACEMENT.md)에 별도로 표시했다.
 
