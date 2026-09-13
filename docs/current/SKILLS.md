@@ -51,3 +51,5 @@ description(의미), type(논리 타입), nullable, null_meaning, unit, allowed_
 ## 모든 Skill의 변경 전 확인
 
 18개 SKILL.md에 실제 원본/대표 데이터, 출처, 기준시점, 변경 근거를 확인하는 규칙을 직접 명시했다. 실제 자료에 접근하지 못하면 미확인으로 표시하고 설계/더미 초안만 관리한다. 상세 확인 대상과 LLM별 배치는 [LLM_PLACEMENT.md](LLM_PLACEMENT.md)를 참고한다. 이 문구가 존재한다고 실제 데이터 확인이 수행됐다는 뜻은 아니다.
+
+quality-demo-0.11에서 quality-terminology에 컬럼/값 별칭 구분, 미확인 필터 보존, 식별자 오보정 방지를 추가했다. 합성 사전 전체를 프롬프트에 넣지 않고 정규화 Tool에서 필요한 결과를 반환한다. 검증 범위는 [VARIANT_DATA_DEMO.md](VARIANT_DATA_DEMO.md)를 참고한다.

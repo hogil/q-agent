@@ -1,0 +1,334 @@
+{
+  "notice": "합성 SQLite 실제 조회 프로파일. 사내 컬럼 의미/공식값 검증이 아님.",
+  "incidents": 128,
+  "columns": [
+    {
+      "column": "incident_id",
+      "null_count": 0,
+      "distinct_count": 128,
+      "sample_values": [
+        "synthetic-pk-0001",
+        "synthetic-pk-0002",
+        "synthetic-pk-0003",
+        "synthetic-pk-0004",
+        "synthetic-pk-0005",
+        "synthetic-pk-0006",
+        "synthetic-pk-0007",
+        "synthetic-pk-0008"
+      ]
+    },
+    {
+      "column": "incident_number",
+      "null_count": 0,
+      "distinct_count": 128,
+      "sample_values": [
+        "SYN-2026-0001",
+        "SYN-2026-0002",
+        "SYN-2026-0003",
+        "SYN-2026-0004",
+        "SYN-2026-0005",
+        "SYN-2026-0006",
+        "SYN-2026-0007",
+        "SYN-2026-0008"
+      ]
+    },
+    {
+      "column": "title",
+      "null_count": 0,
+      "distinct_count": 128,
+      "sample_values": [
+        "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가",
+        "[합성 0002] 동일 Shot 내부 상대좌표에서 반복되는 EDS Fail 패턴",
+        "[합성 0003] PM 이후 특정 Chamber 처리군의 Wafer 외곽 불량 증가",
+        "[합성 0004] Layer 간 Overlay 편차와 EDS Fail 증가의 동반 발생",
+        "[합성 0005] 외곽 EDS Fail 재검출: 과거 Focus 사고와의 동일 원인 여부 조사",
+        "[합성 0006] 공정 조건 조합 변경 후 특정 제품군의 전기적 Fail 증가",
+        "[합성 0007] 현상 후 잔류 패턴 관찰 및 후속 EDS 영향 평가",
+        "[합성 0008] 식각 후 발견된 패턴 이상: 상류 PHOTO 조건 영향 확인"
+      ]
+    },
+    {
+      "column": "city",
+      "null_count": 0,
+      "distinct_count": 3,
+      "sample_values": [
+        "용인",
+        "평택",
+        "화성"
+      ]
+    },
+    {
+      "column": "line",
+      "null_count": 0,
+      "distinct_count": 6,
+      "sample_values": [
+        "65L (ABCD)",
+        "65L (IJKL)",
+        "66L (EFGH)",
+        "66L (UVWX)",
+        "67L (MNOP)",
+        "68L (QRST)"
+      ]
+    },
+    {
+      "column": "line_code",
+      "null_count": 0,
+      "distinct_count": 4,
+      "sample_values": [
+        "65L",
+        "66L",
+        "67L",
+        "68L"
+      ]
+    },
+    {
+      "column": "line_alias",
+      "null_count": 0,
+      "distinct_count": 6,
+      "sample_values": [
+        "ABCD",
+        "EFGH",
+        "IJKL",
+        "MNOP",
+        "QRST",
+        "UVWX"
+      ]
+    },
+    {
+      "column": "department",
+      "null_count": 0,
+      "distinct_count": 8,
+      "sample_values": [
+        "CMP",
+        "CVD",
+        "DIFF",
+        "EDS",
+        "ETCH",
+        "METAL",
+        "PHOTO",
+        "UNASSIGNED"
+      ]
+    },
+    {
+      "column": "occurred_at",
+      "null_count": 0,
+      "distinct_count": 128,
+      "sample_values": [
+        "2026-01-01T00:00:00+09:00",
+        "2026-01-02T00:00:00+09:00",
+        "2026-01-03T00:00:00+09:00",
+        "2026-01-04T00:00:00+09:00",
+        "2026-01-05T00:00:00+09:00",
+        "2026-01-06T00:00:00+09:00",
+        "2026-01-07T00:00:00+09:00",
+        "2026-01-08T00:00:00+09:00"
+      ]
+    },
+    {
+      "column": "product_generations",
+      "null_count": 11,
+      "distinct_count": 12,
+      "sample_values": [
+        [
+          "D1a",
+          "D1z",
+          "D20",
+          "FET",
+          "V5",
+          "V6",
+          "V7",
+          "V8"
+        ],
+        [
+          "D1a",
+          "D1z"
+        ],
+        [
+          "D1a"
+        ],
+        [
+          "D1z",
+          "D20"
+        ],
+        [
+          "D1z"
+        ],
+        [
+          "D20",
+          "FET"
+        ],
+        [
+          "D20"
+        ],
+        [
+          "FET"
+        ]
+      ]
+    },
+    {
+      "column": "fab_out_failure_codes",
+      "null_count": 56,
+      "distinct_count": 8,
+      "sample_values": [
+        [
+          "SYNTH_EDS_CONTACT"
+        ],
+        [
+          "SYNTH_EDS_EDGE_FAIL"
+        ],
+        [
+          "SYNTH_EDS_LEAKAGE"
+        ],
+        [
+          "SYNTH_EDS_OPEN"
+        ],
+        [
+          "SYNTH_EDS_RING_FAIL"
+        ],
+        [
+          "SYNTH_FAB_PARTICLE",
+          "SYNTH_EDS_RING_FAIL"
+        ],
+        [
+          "SYNTH_FAB_PARTICLE"
+        ],
+        [
+          "SYNTH_FAB_SCRATCH"
+        ]
+      ]
+    },
+    {
+      "column": "expected_lot_count",
+      "null_count": 0,
+      "distinct_count": 1,
+      "sample_values": [
+        5
+      ]
+    },
+    {
+      "column": "affected_wafer_count",
+      "null_count": 0,
+      "distinct_count": 1,
+      "sample_values": [
+        60
+      ]
+    },
+    {
+      "column": "incident_detail",
+      "null_count": 0,
+      "distinct_count": 16,
+      "sample_values": [
+        "DRAM_X 5개 Lot, 60 Wafer에서 Shot 내부의 유사 상대좌표에 EDS Fail이 반복된 가상 사례. Wafer 전역에 무작위로 분산된 형태보다 Shot 주기의 반복성이 뚜렷하다.",
+        "DRAM_X 5개 Lot, 60 Wafer에서 외곽 EDS Fail 증가가 다시 관찰된 가상 사례. INC-001과 위치가 비슷해 관련 사고 후보로 등록했으나 동일 원인으로 확정하지 않았다.",
+        "DRAM_X 5개 Lot, 60 Wafer에서 외곽 불량이 증가한 가상 사고. 해당 기간의 식각 이력을 연결하니 특정 Chamber의 PM 이후 처리군에 영향이 집중됐다.",
+        "DRAM_X 5개 Lot, 60 Wafer에서 현상 후 잔류 패턴이 관찰된 가상 사고. 발생 부서는 PHOTO지만 공정은 DEVELOP이며 EXPOSURE가 아니다.",
+        "DRAM_X 제품의 동일 노광 Layer에서 조건 변경 이후 처리한 5개 Lot, 60 Wafer에 영향이 확인된 가상 사고. EDS Fail이 Wafer 외곽 Shot에 집중됐고 중앙 Shot에서는 같은 수준의 증가가 관찰되지 않았다. 영향 수량은 해당 사고의 판정 기준으로 집계한 값이다.",
+        "DRAM_Y 5개 Lot, 60 Wafer에서 특정 Layer의 Overlay 편차 증가와 EDS Fail 증가가 함께 관찰된 가상 사고. 위치는 평택이며 화성 65L과 구분되는 라인이다.",
+        "DRAM_Y의 공정 조건 조합 변경 구간에서 60 Wafer에 전기적 Fail 증가가 관찰된 가상 사례. 이 가상 조직에서 P기술팀은 PHOTO와 다른 P_INTEGRATION을 의미한다.",
+        "식각 후 검사에서 60 Wafer의 패턴 이상을 발견한 가상 사고. 사고 발생 담당 부서는 ETCH, 개선 담당 부서는 PHOTO로 등록했다. 발견 공정과 원인 공정은 다를 수 있다."
+      ]
+    },
+    {
+      "column": "analysis_detail",
+      "null_count": 0,
+      "distinct_count": 16,
+      "sample_values": [
+        "Pad 사용 이력과 검사 좌표를 연결해 선형 Scratch 위치를 비교했다. 합성 자료에서는 교체 직후 처리군에 패턴이 집중되지만 인과관계는 추가 확인이 필요하다.",
+        "Probe 교체와 검사 순서를 기준으로 재측정 결과를 비교했다. 합성 결과에서 측정 조건의 영향을 확인했으나 제품 불량 여부는 별도로 판정한다.",
+        "Wafer 좌표를 Shot 내부 좌표로 변환해 반복 위치를 비교했다. Reticle ID와 사용 이력을 조사 후보로 확보했으나 Reticle과 설비가 함께 사용되어 두 영향을 분리할 수 없다. 이미지 패턴만으로 Reticle 또는 Lens 원인을 확정하지 않는다.",
+        "Wafer 좌표와 공정 이력을 연결하고 배선 검사 위치와 전기적 Open 위치를 비교했다. 합성 비교에서 특정 조건군의 차이를 관찰했다.",
+        "공정 중간 검사에서 잔류 패턴을 확인하고 처리 Module 이력을 연결했다. 세정·점검 조치를 적용했으나 조치 후 EDS 평가가 완료되지 않아 원인 및 개선 효과를 확정하지 않았다.",
+        "과거 사고와 현재 Wafer의 외곽 분포를 비교할 대상으로 선정했다. 현재 Focus 계측, Recipe 변경, 설비·Chamber 이력을 아직 확보하지 못했으므로 재발 여부를 판단할 수 없다. 과거 개선조치를 현재 사고에 자동 적용하지 않는다.",
+        "동일 제품·Layer·Recipe 계열의 전후 구간을 비교하고 변경 시점과 각 Wafer의 실제 처리시각을 정렬했다. 가상 측정 기록에서 외곽 Focus 잔차와 외곽 EDS Fail 증가가 함께 관찰됐다. 변경 이전 조건을 적용한 확인 구간에서 두 지표가 함께 감소한 기록을 근거로 해당 조건 변경의 영향을 확정한 사례로 설정했다. 단순 이미지 유사성만으로 판단한 사례가 아니다.",
+        "동일 제품·Recipe 버전으로 정상군과 불량군의 Chamber별 처리량을 포함해 비교했다. PM 직후라는 시간적 연관성 외에 가상 점검 기록에서 부품 조립 상태 이상이 확인됐고, 조립 상태 시정 후 확인 구간에서 계측과 EDS가 함께 회복돼 원인을 확정한 사례다."
+      ]
+    },
+    {
+      "column": "confirmed_cause",
+      "null_count": 32,
+      "distinct_count": 5,
+      "sample_values": [
+        "PM 후 부품 조립 상태 이상. 가상 점검 및 시정 후 확인 결과로 영향 확인.",
+        "상류 PHOTO 패턴 조건 편차. 가상 전후 계측 및 복원 확인으로 영향 판정.",
+        "외곽 보정 조건 변경에 따른 Focus 잔차 증가. 가상 확인 시험으로 영향 확인.",
+        "합성 조사 가설. 원인 확정에는 추가 확인 시험이 필요하다.",
+        "해당 Layer에 승인 기준과 다른 정렬 기준 적용. 가상 변경 이력 및 확인 평가로 판정."
+      ]
+    },
+    {
+      "column": "containment",
+      "null_count": 0,
+      "distinct_count": 9,
+      "sample_values": [
+        "기준 변경 이후 해당 Layer를 처리한 대상과 후속 공정 진행 상태를 확인하여 영향 평가한다.",
+        "동일 Module의 해당 기간 처리 대상을 확보하고 잔류 패턴 검사를 보강한다.",
+        "동일 Reticle·Layer·처리 기간의 Lot 목록을 확보해 추가 검사 우선순위를 정하고, 이상 판정 대상은 담당자 검토로 전환한다.",
+        "변경 이후 처리 이력으로 영향 후보 Lot을 추출하고 중복 Wafer를 제거한 대상 목록을 작성한다. 후속 처리와 출하는 승인된 영향 판정 절차에 따라 관리한다.",
+        "변경 조합 적용 대상의 진행 상태와 검사 결과를 추적한다.",
+        "상류 조건 적용 이력을 기준으로 식각 전후 전체 영향 대상을 재산정한다.",
+        "영향 후보 목록과 처리 이력을 보존하고 승인된 절차로 후속 진행을 관리한다.",
+        "해당 Chamber의 PM 완료시각 이후 처리 대상을 추출해 영향 평가하며, 사용 제한 여부는 승인 절차에 따른다."
+      ]
+    },
+    {
+      "column": "corrective_action",
+      "null_count": 0,
+      "distinct_count": 16,
+      "sample_values": [
+        "PHOTO 담당이 승인된 패턴 조건으로 복원하고 ETCH 담당과 함께 전후 계측 및 후속 EDS 결과를 확인한다.",
+        "Pad와 세정 상태를 점검하고 확인용 Wafer의 Scratch 재발 여부를 평가한다. 판정 기준 충족과 담당 승인 후 적용하며 미확인 제품은 별도 평가한다.",
+        "Probe 상태와 접촉 조건을 점검하고 기준 Wafer로 재현성을 확인한다. 재측정 이력과 최초 결과를 모두 보존하고 승인 기준으로 최종 판정한다.",
+        "Reticle 검사 기록과 설비 점검 이력을 확보한 뒤 가능한 비교 조건을 설계한다. 검사 결과 전에는 세정·교체를 확정 조치로 제시하지 않는다.",
+        "대상 조건군의 검사 범위를 확대하고 배선 형상과 설비 이력을 재확인한다. 조치 전후 전기적 결과와 형상 평가를 함께 검증한다.",
+        "변경 이력과 승인 기준을 대조해 외곽 보정 조건을 복원하고, 확인용 Wafer에서 Focus 잔차 및 패턴 측정값을 확인한 뒤 승인 절차에 따라 적용 범위를 확대한다.",
+        "상류와 식각 공정의 확인군을 분리해 검사하고 원본 이미지를 연결한다. 발생 공정 확인 뒤 해당 범위에 한해 재발 방지 조건을 적용한다.",
+        "설비 표준 점검 절차에 따라 조립 상태를 시정하고 Chamber Qualification과 확인 Lot 평가를 완료한 뒤 사용 재개를 승인한다."
+      ]
+    },
+    {
+      "column": "verification",
+      "null_count": 0,
+      "distinct_count": 9,
+      "sample_values": [
+        "가상 결과: Qualification과 후속 3개 확인 Lot의 외곽 계측·EDS 평가가 내부 기준을 충족했다.",
+        "가상 결과: 복원 후 확인 Lot의 Overlay와 EDS 지표가 내부 기준을 충족했다.",
+        "가상 결과: 연속 3개 확인 Lot에서 Focus 잔차와 외곽 EDS Fail 지표가 내부 판정 기준을 충족했다. 실제 허용값은 이 더미에 정의하지 않았다.",
+        "가상 결과: 확인 평가에서 상류 계측, 식각 후 패턴 및 EDS가 내부 기준을 충족했다.",
+        "미수행. 동일 설비의 다른 Reticle 및 동일 Reticle의 다른 설비 사용 결과를 비교할 수 있는지 확인해야 한다.",
+        "미수행. 현상 유사성과 원인 동일성을 구분할 데이터가 부족하다.",
+        "적용 완료/효과 검증 중. 중간 검사와 최종 EDS의 대응 결과가 필요하다.",
+        "진행 중. 적용 완료 상태이며 후속 전기적 평가 결과는 아직 없다."
+      ]
+    },
+    {
+      "column": "prevention",
+      "null_count": 0,
+      "distinct_count": 9,
+      "sample_values": [
+        "Layer별 정렬 기준의 적용 버전 검증을 변경 승인 및 배포 확인 절차에 추가한다.",
+        "PM 후 조립 상태 확인 기록과 Qualification 결과를 사용 재개 승인 조건에 연결한다.",
+        "발견 공정·원인 공정·개선 담당을 별도 기록하고 공정 간 확인 항목을 공동 관리한다.",
+        "복수 조건 동시 변경 시 영향 분리 평가와 변경 조합 식별자를 남기는 절차를 검토한다.",
+        "원인 판정 이후 재발 여부와 기존 예방조치의 누락 여부를 검토한다.",
+        "원인 확인 후 Module 관리 항목과 검사 기준의 보완 여부를 결정한다.",
+        "원인 확인 후 검사 주기 또는 조건 변경 관리에 반영한다. 현재는 원인별 예방안을 후보로만 관리한다.",
+        "조건 변경 시 외곽 Shot 평가를 필수 항목으로 추가하고 변경 전후 Recipe 버전과 평가 결과를 연결해 보관한다."
+      ]
+    },
+    {
+      "column": "remaining",
+      "null_count": 0,
+      "distinct_count": 9,
+      "sample_values": [
+        "Reticle 검사 결과, 설비 간 비교 데이터, 공정 중간 검사와 EDS의 좌표 대응 확인 필요.",
+        "다른 Layer에 같은 기준이 적용됐는지 이력 확인 필요.",
+        "다른 제품 및 Layer에 같은 조치를 적용할 수 있는지는 별도 검증이 필요하다.",
+        "다른 제품, Layer 및 설비에 대한 적용 가능성은 별도 검증이 필요하다.",
+        "동일 부품을 사용한 다른 Chamber의 점검 이력 확인 필요.",
+        "조치 후 EDS 결과와 잔류 패턴 재발 여부 확인 필요.",
+        "해당 상류 조건을 공유한 다른 제품의 영향 검토 필요.",
+        "현재 계측값, 변경 이력, 이미지 비교 결과, 정상군 제조이력 필요."
+      ]
+    }
+  ]
+}

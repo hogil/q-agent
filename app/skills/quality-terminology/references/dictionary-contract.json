@@ -25,5 +25,13 @@
     "recipe",
     "location"
   ],
-  "storage": "approved terminology database or versioned shards, not all in system prompt"
+  "storage": "approved terminology database or versioned shards, not all in system prompt",
+  "demo_contract": {
+    "input": "field-labelled question; not free-chat parsing",
+    "config": "paths.terminology_file",
+    "result": "READY / NEEDS_CLARIFICATION / INVALID_REQUEST; raw fields, canonical filters, candidates, source/version",
+    "scope": "city and effective_at in current synthetic dictionary; line-specific aliases need explicit catalog entries",
+    "fuzzy_policy": "candidates only; never auto-approve",
+    "source_policy": "synthetic dictionary prohibited in onprem mode"
+  }
 }

@@ -1,0 +1,1104 @@
+{
+  "notice": "원본 테이블을 변조하지 않은 별도 raw 표현 fixture. 검증 후 canonical 필터와 대조한다.",
+  "rows": [
+    {
+      "source_incident_id": "synthetic-pk-0001",
+      "raw_columns": {
+        "사고번호": "syn-2026-0001",
+        "site": "화셩",
+        "라인코드": "65L",
+        "사고부서": "PHOTO",
+        "제품세대": "{d1a,d1z}",
+        "세대조건": "모두",
+        "fab-out": "SYNTH_EDS_EDGE_FAIL",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0001",
+        "city": "화성",
+        "line_code": "65L",
+        "department": "PHOTO",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "D1a",
+            "D1z"
+          ]
+        },
+        "fab_out_failure_codes": {
+          "mode": "any",
+          "values": [
+            "SYNTH_EDS_EDGE_FAIL"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0002",
+      "raw_columns": {
+        "사고번호": "syn-2026-0002",
+        "site": "화셩",
+        "라인코드": "65L",
+        "사고부서": "PHOTO",
+        "제품세대": "{d1a}",
+        "세대조건": "모두",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0002",
+        "city": "화성",
+        "line_code": "65L",
+        "department": "PHOTO",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "D1a"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0003",
+      "raw_columns": {
+        "사고번호": "syn-2026-0003",
+        "site": "화셩",
+        "라인코드": "66L",
+        "사고부서": "unassigned",
+        "제품세대": "{디이십}",
+        "세대조건": "모두",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0003",
+        "city": "화성",
+        "line_code": "66L",
+        "department": "UNASSIGNED",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "D20"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0004",
+      "raw_columns": {
+        "사고번호": "syn-2026-0004",
+        "site": "평텍",
+        "라인코드": "65L",
+        "사고부서": "unassigned",
+        "제품세대": "{에프이티}",
+        "세대조건": "모두",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0004",
+        "city": "평택",
+        "line_code": "65L",
+        "department": "UNASSIGNED",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "FET"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0005",
+      "raw_columns": {
+        "사고번호": "syn-2026-0005",
+        "site": "화셩",
+        "라인코드": "65L",
+        "사고부서": "unassigned",
+        "제품세대": "{v5,v6}",
+        "세대조건": "모두",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0005",
+        "city": "화성",
+        "line_code": "65L",
+        "department": "UNASSIGNED",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "V5",
+            "V6"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0006",
+      "raw_columns": {
+        "사고번호": "syn-2026-0006",
+        "site": "평텍",
+        "라인코드": "67L",
+        "사고부서": "unassigned",
+        "제품세대": "{v7,v8}",
+        "세대조건": "모두",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0006",
+        "city": "평택",
+        "line_code": "67L",
+        "department": "UNASSIGNED",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "V7",
+            "V8"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0007",
+      "raw_columns": {
+        "사고번호": "syn-2026-0007",
+        "site": "화셩",
+        "라인코드": "65L",
+        "사고부서": "PHOTO",
+        "제품세대": "{d1z}",
+        "세대조건": "모두",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0007",
+        "city": "화성",
+        "line_code": "65L",
+        "department": "PHOTO",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "D1z"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0008",
+      "raw_columns": {
+        "사고번호": "syn-2026-0008",
+        "site": "화셩",
+        "라인코드": "66L",
+        "사고부서": "unassigned",
+        "제품세대": "{d1a,d1z,디이십,에프이티,v5,v6,v7,v8}",
+        "세대조건": "모두",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0008",
+        "city": "화성",
+        "line_code": "66L",
+        "department": "UNASSIGNED",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "D1a",
+            "D1z",
+            "D20",
+            "FET",
+            "V5",
+            "V6",
+            "V7",
+            "V8"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0009",
+      "raw_columns": {
+        "사고번호": "syn-2026-0009",
+        "site": "평텍",
+        "라인코드": "65L",
+        "사고부서": "etchh",
+        "제품세대": "{d1z,디이십}",
+        "세대조건": "모두",
+        "fab-out": "synth_eds_ring_fail",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0009",
+        "city": "평택",
+        "line_code": "65L",
+        "department": "ETCH",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "D1z",
+            "D20"
+          ]
+        },
+        "fab_out_failure_codes": {
+          "mode": "any",
+          "values": [
+            "SYNTH_EDS_RING_FAIL"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0010",
+      "raw_columns": {
+        "사고번호": "syn-2026-0010",
+        "site": "화셩",
+        "라인코드": "66L",
+        "사고부서": "cmp",
+        "제품세대": "{v5,v6}",
+        "세대조건": "모두",
+        "fab-out": "synth_fab_scratch",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0010",
+        "city": "화성",
+        "line_code": "66L",
+        "department": "CMP",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "V5",
+            "V6"
+          ]
+        },
+        "fab_out_failure_codes": {
+          "mode": "any",
+          "values": [
+            "SYNTH_FAB_SCRATCH"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0011",
+      "raw_columns": {
+        "사고번호": "syn-2026-0011",
+        "site": "용잉",
+        "라인코드": "67L",
+        "사고부서": "diff",
+        "fab-out": "synth_eds_leakage",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0011",
+        "city": "용인",
+        "line_code": "67L",
+        "department": "DIFF",
+        "fab_out_failure_codes": {
+          "mode": "any",
+          "values": [
+            "SYNTH_EDS_LEAKAGE"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0012",
+      "raw_columns": {
+        "사고번호": "syn-2026-0012",
+        "site": "평텍",
+        "라인코드": "68L",
+        "사고부서": "cvd",
+        "제품세대": "{v7,v8}",
+        "세대조건": "모두",
+        "fab-out": "SYNTH_FAB_PARTICLE,synth_eds_ring_fail",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0012",
+        "city": "평택",
+        "line_code": "68L",
+        "department": "CVD",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "V7",
+            "V8"
+          ]
+        },
+        "fab_out_failure_codes": {
+          "mode": "any",
+          "values": [
+            "SYNTH_FAB_PARTICLE",
+            "SYNTH_EDS_RING_FAIL"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0013",
+      "raw_columns": {
+        "사고번호": "syn-2026-0013",
+        "site": "화셩",
+        "라인코드": "65L",
+        "사고부서": "PHOTO",
+        "fab-out": "SYNTH_EDS_EDGE_FAIL",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0013",
+        "city": "화성",
+        "line_code": "65L",
+        "department": "PHOTO",
+        "fab_out_failure_codes": {
+          "mode": "any",
+          "values": [
+            "SYNTH_EDS_EDGE_FAIL"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0014",
+      "raw_columns": {
+        "사고번호": "syn-2026-0014",
+        "site": "평텍",
+        "라인코드": "66L",
+        "사고부서": "metal",
+        "제품세대": "{디이십,에프이티}",
+        "세대조건": "모두",
+        "fab-out": "synth_eds_open",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0014",
+        "city": "평택",
+        "line_code": "66L",
+        "department": "METAL",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "D20",
+            "FET"
+          ]
+        },
+        "fab_out_failure_codes": {
+          "mode": "any",
+          "values": [
+            "SYNTH_EDS_OPEN"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0015",
+      "raw_columns": {
+        "사고번호": "syn-2026-0015",
+        "site": "용잉",
+        "라인코드": "68L",
+        "사고부서": "eds",
+        "제품세대": "{v5,v8}",
+        "세대조건": "모두",
+        "fab-out": "synth_eds_contact",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0015",
+        "city": "용인",
+        "line_code": "68L",
+        "department": "EDS",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "V5",
+            "V8"
+          ]
+        },
+        "fab_out_failure_codes": {
+          "mode": "any",
+          "values": [
+            "SYNTH_EDS_CONTACT"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0016",
+      "raw_columns": {
+        "사고번호": "syn-2026-0016",
+        "site": "화셩",
+        "라인코드": "67L",
+        "사고부서": "etchh",
+        "제품세대": "{d1a,d1z,디이십,에프이티,v5,v6,v7,v8}",
+        "세대조건": "모두",
+        "fab-out": "SYNTH_FAB_PARTICLE",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0016",
+        "city": "화성",
+        "line_code": "67L",
+        "department": "ETCH",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "D1a",
+            "D1z",
+            "D20",
+            "FET",
+            "V5",
+            "V6",
+            "V7",
+            "V8"
+          ]
+        },
+        "fab_out_failure_codes": {
+          "mode": "any",
+          "values": [
+            "SYNTH_FAB_PARTICLE"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0017",
+      "raw_columns": {
+        "사고번호": "syn-2026-0017",
+        "site": "화셩",
+        "라인코드": "65L",
+        "사고부서": "PHOTO",
+        "제품세대": "{d1a,d1z}",
+        "세대조건": "모두",
+        "fab-out": "SYNTH_EDS_EDGE_FAIL",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0017",
+        "city": "화성",
+        "line_code": "65L",
+        "department": "PHOTO",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "D1a",
+            "D1z"
+          ]
+        },
+        "fab_out_failure_codes": {
+          "mode": "any",
+          "values": [
+            "SYNTH_EDS_EDGE_FAIL"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0018",
+      "raw_columns": {
+        "사고번호": "syn-2026-0018",
+        "site": "화셩",
+        "라인코드": "65L",
+        "사고부서": "PHOTO",
+        "제품세대": "{d1a}",
+        "세대조건": "모두",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0018",
+        "city": "화성",
+        "line_code": "65L",
+        "department": "PHOTO",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "D1a"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0019",
+      "raw_columns": {
+        "사고번호": "syn-2026-0019",
+        "site": "화셩",
+        "라인코드": "66L",
+        "사고부서": "unassigned",
+        "제품세대": "{디이십}",
+        "세대조건": "모두",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0019",
+        "city": "화성",
+        "line_code": "66L",
+        "department": "UNASSIGNED",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "D20"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0020",
+      "raw_columns": {
+        "사고번호": "syn-2026-0020",
+        "site": "평텍",
+        "라인코드": "65L",
+        "사고부서": "unassigned",
+        "제품세대": "{에프이티}",
+        "세대조건": "모두",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0020",
+        "city": "평택",
+        "line_code": "65L",
+        "department": "UNASSIGNED",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "FET"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0021",
+      "raw_columns": {
+        "사고번호": "syn-2026-0021",
+        "site": "화셩",
+        "라인코드": "65L",
+        "사고부서": "unassigned",
+        "제품세대": "{v5,v6}",
+        "세대조건": "모두",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0021",
+        "city": "화성",
+        "line_code": "65L",
+        "department": "UNASSIGNED",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "V5",
+            "V6"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0022",
+      "raw_columns": {
+        "사고번호": "syn-2026-0022",
+        "site": "평텍",
+        "라인코드": "67L",
+        "사고부서": "unassigned",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0022",
+        "city": "평택",
+        "line_code": "67L",
+        "department": "UNASSIGNED"
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0023",
+      "raw_columns": {
+        "사고번호": "syn-2026-0023",
+        "site": "화셩",
+        "라인코드": "65L",
+        "사고부서": "PHOTO",
+        "제품세대": "{d1z}",
+        "세대조건": "모두",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0023",
+        "city": "화성",
+        "line_code": "65L",
+        "department": "PHOTO",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "D1z"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0024",
+      "raw_columns": {
+        "사고번호": "syn-2026-0024",
+        "site": "화셩",
+        "라인코드": "66L",
+        "사고부서": "unassigned",
+        "제품세대": "{d1a,d1z,디이십,에프이티,v5,v6,v7,v8}",
+        "세대조건": "모두",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0024",
+        "city": "화성",
+        "line_code": "66L",
+        "department": "UNASSIGNED",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "D1a",
+            "D1z",
+            "D20",
+            "FET",
+            "V5",
+            "V6",
+            "V7",
+            "V8"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0025",
+      "raw_columns": {
+        "사고번호": "syn-2026-0025",
+        "site": "평텍",
+        "라인코드": "65L",
+        "사고부서": "etchh",
+        "제품세대": "{d1z,디이십}",
+        "세대조건": "모두",
+        "fab-out": "synth_eds_ring_fail",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0025",
+        "city": "평택",
+        "line_code": "65L",
+        "department": "ETCH",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "D1z",
+            "D20"
+          ]
+        },
+        "fab_out_failure_codes": {
+          "mode": "any",
+          "values": [
+            "SYNTH_EDS_RING_FAIL"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0026",
+      "raw_columns": {
+        "사고번호": "syn-2026-0026",
+        "site": "화셩",
+        "라인코드": "66L",
+        "사고부서": "cmp",
+        "fab-out": "synth_fab_scratch",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0026",
+        "city": "화성",
+        "line_code": "66L",
+        "department": "CMP",
+        "fab_out_failure_codes": {
+          "mode": "any",
+          "values": [
+            "SYNTH_FAB_SCRATCH"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0027",
+      "raw_columns": {
+        "사고번호": "syn-2026-0027",
+        "site": "용잉",
+        "라인코드": "67L",
+        "사고부서": "diff",
+        "제품세대": "{에프이티}",
+        "세대조건": "모두",
+        "fab-out": "synth_eds_leakage",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0027",
+        "city": "용인",
+        "line_code": "67L",
+        "department": "DIFF",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "FET"
+          ]
+        },
+        "fab_out_failure_codes": {
+          "mode": "any",
+          "values": [
+            "SYNTH_EDS_LEAKAGE"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0028",
+      "raw_columns": {
+        "사고번호": "syn-2026-0028",
+        "site": "평텍",
+        "라인코드": "68L",
+        "사고부서": "cvd",
+        "제품세대": "{v7,v8}",
+        "세대조건": "모두",
+        "fab-out": "SYNTH_FAB_PARTICLE,synth_eds_ring_fail",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0028",
+        "city": "평택",
+        "line_code": "68L",
+        "department": "CVD",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "V7",
+            "V8"
+          ]
+        },
+        "fab_out_failure_codes": {
+          "mode": "any",
+          "values": [
+            "SYNTH_FAB_PARTICLE",
+            "SYNTH_EDS_RING_FAIL"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0029",
+      "raw_columns": {
+        "사고번호": "syn-2026-0029",
+        "site": "화셩",
+        "라인코드": "65L",
+        "사고부서": "PHOTO",
+        "제품세대": "{d1a,d1z}",
+        "세대조건": "모두",
+        "fab-out": "SYNTH_EDS_EDGE_FAIL",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0029",
+        "city": "화성",
+        "line_code": "65L",
+        "department": "PHOTO",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "D1a",
+            "D1z"
+          ]
+        },
+        "fab_out_failure_codes": {
+          "mode": "any",
+          "values": [
+            "SYNTH_EDS_EDGE_FAIL"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0030",
+      "raw_columns": {
+        "사고번호": "syn-2026-0030",
+        "site": "평텍",
+        "라인코드": "66L",
+        "사고부서": "metal",
+        "제품세대": "{디이십,에프이티}",
+        "세대조건": "모두",
+        "fab-out": "synth_eds_open",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0030",
+        "city": "평택",
+        "line_code": "66L",
+        "department": "METAL",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "D20",
+            "FET"
+          ]
+        },
+        "fab_out_failure_codes": {
+          "mode": "any",
+          "values": [
+            "SYNTH_EDS_OPEN"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0031",
+      "raw_columns": {
+        "사고번호": "syn-2026-0031",
+        "site": "용잉",
+        "라인코드": "68L",
+        "사고부서": "eds",
+        "제품세대": "{v5,v8}",
+        "세대조건": "모두",
+        "fab-out": "synth_eds_contact",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0031",
+        "city": "용인",
+        "line_code": "68L",
+        "department": "EDS",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "V5",
+            "V8"
+          ]
+        },
+        "fab_out_failure_codes": {
+          "mode": "any",
+          "values": [
+            "SYNTH_EDS_CONTACT"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0032",
+      "raw_columns": {
+        "사고번호": "syn-2026-0032",
+        "site": "화셩",
+        "라인코드": "67L",
+        "사고부서": "etchh",
+        "제품세대": "{d1a,d1z,디이십,에프이티,v5,v6,v7,v8}",
+        "세대조건": "모두",
+        "fab-out": "SYNTH_FAB_PARTICLE",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0032",
+        "city": "화성",
+        "line_code": "67L",
+        "department": "ETCH",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "D1a",
+            "D1z",
+            "D20",
+            "FET",
+            "V5",
+            "V6",
+            "V7",
+            "V8"
+          ]
+        },
+        "fab_out_failure_codes": {
+          "mode": "any",
+          "values": [
+            "SYNTH_FAB_PARTICLE"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0033",
+      "raw_columns": {
+        "사고번호": "syn-2026-0033",
+        "site": "화셩",
+        "라인코드": "65L",
+        "사고부서": "PHOTO",
+        "fab-out": "SYNTH_EDS_EDGE_FAIL",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0033",
+        "city": "화성",
+        "line_code": "65L",
+        "department": "PHOTO",
+        "fab_out_failure_codes": {
+          "mode": "any",
+          "values": [
+            "SYNTH_EDS_EDGE_FAIL"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0034",
+      "raw_columns": {
+        "사고번호": "syn-2026-0034",
+        "site": "화셩",
+        "라인코드": "65L",
+        "사고부서": "PHOTO",
+        "제품세대": "{d1a}",
+        "세대조건": "모두",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0034",
+        "city": "화성",
+        "line_code": "65L",
+        "department": "PHOTO",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "D1a"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0035",
+      "raw_columns": {
+        "사고번호": "syn-2026-0035",
+        "site": "화셩",
+        "라인코드": "66L",
+        "사고부서": "unassigned",
+        "제품세대": "{디이십}",
+        "세대조건": "모두",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0035",
+        "city": "화성",
+        "line_code": "66L",
+        "department": "UNASSIGNED",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "D20"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0036",
+      "raw_columns": {
+        "사고번호": "syn-2026-0036",
+        "site": "평텍",
+        "라인코드": "65L",
+        "사고부서": "unassigned",
+        "제품세대": "{에프이티}",
+        "세대조건": "모두",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0036",
+        "city": "평택",
+        "line_code": "65L",
+        "department": "UNASSIGNED",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "FET"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0037",
+      "raw_columns": {
+        "사고번호": "syn-2026-0037",
+        "site": "화셩",
+        "라인코드": "65L",
+        "사고부서": "unassigned",
+        "제품세대": "{v5,v6}",
+        "세대조건": "모두",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0037",
+        "city": "화성",
+        "line_code": "65L",
+        "department": "UNASSIGNED",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "V5",
+            "V6"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0038",
+      "raw_columns": {
+        "사고번호": "syn-2026-0038",
+        "site": "평텍",
+        "라인코드": "67L",
+        "사고부서": "unassigned",
+        "제품세대": "{v7,v8}",
+        "세대조건": "모두",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0038",
+        "city": "평택",
+        "line_code": "67L",
+        "department": "UNASSIGNED",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "V7",
+            "V8"
+          ]
+        }
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0039",
+      "raw_columns": {
+        "사고번호": "syn-2026-0039",
+        "site": "화셩",
+        "라인코드": "65L",
+        "사고부서": "PHOTO",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0039",
+        "city": "화성",
+        "line_code": "65L",
+        "department": "PHOTO"
+      }
+    },
+    {
+      "source_incident_id": "synthetic-pk-0040",
+      "raw_columns": {
+        "사고번호": "syn-2026-0040",
+        "site": "화셩",
+        "라인코드": "66L",
+        "사고부서": "unassigned",
+        "제품세대": "{d1a,d1z,디이십,에프이티,v5,v6,v7,v8}",
+        "세대조건": "모두",
+        "요청": "웨이펴목록"
+      },
+      "canonical_filters": {
+        "incident_number": "SYN-2026-0040",
+        "city": "화성",
+        "line_code": "66L",
+        "department": "UNASSIGNED",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "D1a",
+            "D1z",
+            "D20",
+            "FET",
+            "V5",
+            "V6",
+            "V7",
+            "V8"
+          ]
+        }
+      }
+    }
+  ]
+}

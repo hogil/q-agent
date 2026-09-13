@@ -19,6 +19,9 @@ registry_file = "../app/skill_registry.json"
 skill_lock_file = "../app/release.lock.json"
 incident_fixture_file = "../app/data/incident_cases.json"
 demo_manifest_file = "${paths.output_root}/demo_manifest.json"
+terminology_file = "${paths.dictionary_root}/variants.synthetic.json"
+variant_cases_file = "../app/data/variant_queries.json"
+variant_report_file = "${paths.output_root}/variant_report.json"
 
 [database]
 dialect = "sqlite" # 현재 Adapter는 SQLite만 지원. 다른 DB는 설정 검증만 지원하며 연결 Adapter 구현 필요.

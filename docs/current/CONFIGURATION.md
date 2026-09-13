@@ -155,3 +155,7 @@ python app/check_skills.py
 ```
 
 설정 회귀는 전체 테이블/컬럼/폴더 변경 후 동일 결과, 실제 생성 파일 연결, 모델 참조, 경로 순환, 오타, 필수값, 읽기 전용 연결, scope 만료, Skill 이동, config와 prompt hash 분리를 검사한다. 기존 GPU/자원 산정 문서는 이번 설정과 별개로 원본 그대로 보존한다.
+
+## 변형 입력 데모 설정
+
+`config/demo.variants.toml`은 128개 사고와 별도 Lot/Wafer를 생성한다. `paths.terminology_file`, `paths.variant_cases_file`, `paths.variant_report_file`로 사전/질문/보고서 파일명을 변경한다. 보고서는 output_root 내부에 저장한다. 기존 기본 설정을 별도로 복사해 관리하는 경우 이 세 path 키도 추가해야 한다. 자세한 실행 범위는 [VARIANT_DATA_DEMO.md](VARIANT_DATA_DEMO.md)를 따른다.

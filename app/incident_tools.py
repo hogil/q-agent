@@ -2,6 +2,7 @@
 Production ACL/connection/snapshot/LLM Tool 등록은 별도 구현 대상.
 """
 import re, secrets, sqlite3, time
+from incident_filters import fold, predicates
 
 class ToolError(ValueError):
     pass
@@ -15,6 +16,7 @@ def ident(value):
 class IncidentTools:
     def __init__(self, connection, mapping, scope_ttl_seconds=1800):
         self.db=connection;self.db.row_factory=sqlite3.Row;self.m=mapping;self.scopes={}
+        self.db.create_function('qagent_fold', 1, fold, deterministic=True)
         self.scope_ttl_seconds=scope_ttl_seconds
         self.validate()
     def table(self,entity):return ident(self.m['entities'][entity]['table'])
@@ -57,14 +59,16 @@ class IncidentTools:
         if wr and wr['scope']=='incident_affected' and wr['parent_key']!=rel['parent_key']:
             key=self.col('incident',wr['parent_key'],'i')
             if self.db.execute(f'SELECT {key} FROM {self.table("incident")} i GROUP BY {key} HAVING COUNT(*)>1 OR {key} IS NULL LIMIT 1').fetchone():raise ToolError('NON_UNIQUE_WAFER_PARENT_KEY')
-    def find_incidents(self,actor,incident_number=None,city=None,title=None,line=None,title_match='exact'):
-        if all(value is None for value in (incident_number,city,title,line)):raise ToolError('FILTER_REQUIRED')
+    def find_incidents(self,actor,incident_number=None,city=None,title=None,line=None,title_match='exact',filters=None):
+        if all(value is None for value in (incident_number,city,title,line,filters)):raise ToolError('FILTER_REQUIRED')
         if title_match not in ('exact','contains'):raise ToolError('INVALID_TITLE_MATCH')
         for value in (incident_number,city,title,line):
             if value is not None and (not isinstance(value,str) or not value.strip()):raise ToolError('INVALID_FILTER_VALUE')
         # actor binds scope only. It is NOT an access-control policy. Production requires DB/service ACL here.
         cols=['incident_id','incident_number','title','city','line','expected_lot_count']
         if 'occurred_at' in self.m['entities']['incident']['columns']:cols.append('occurred_at')
+        for key in ('department','line_code','line_alias','product_generations','fab_out_failure_codes'):
+            if key in self.m['entities']['incident']['columns']:cols.append(key)
         sql='SELECT '+','.join(self.col('incident',k,'i')+' AS '+ident(k) for k in cols)
         sql+=' FROM '+self.table('incident')+' i WHERE 1=1';params=[]
         for name,value in [('incident_number',incident_number),('city',city),('line',line)]:
@@ -73,12 +77,16 @@ class IncidentTools:
             column=self.col('incident','title','i')
             sql+=(' AND instr('+column+',?)>0') if title_match=='contains' else (' AND '+column+'=?')
             params.append(title)
+        if filters is not None:
+            clauses, bound = predicates(self, filters)
+            sql += ' AND ' + ' AND '.join('('+clause+')' for clause in clauses)
+            params.extend(bound)
         sql+=' ORDER BY '+self.col('incident','incident_id','i')+' LIMIT ?';params.append(self.m['limits']['max_scope_incidents']+1)
         rows=[dict(r) for r in self.db.execute(sql,params)]
         if len(rows)>self.m['limits']['max_scope_incidents']:raise ToolError('SCOPE_TOO_LARGE: use server-side query scope')
         now=time.monotonic()
         self.scopes={key:value for key,value in self.scopes.items() if value['expires_at']>now}
-        selection_required=title is not None and len(rows)>1
+        selection_required=(title is not None or filters is not None) and len(rows)>1
         scope=secrets.token_hex(12);self.scopes[scope]={'actor':actor,'ids':tuple(r['incident_id'] for r in rows),'expires_at':now+self.scope_ttl_seconds,'requires_selection':selection_required}
         return {'status':'NEEDS_SELECTION' if selection_required else ('OK' if rows else 'NO_MATCH'),'scope_id':scope,'data':rows,'requires_selection':selection_required,'mapping_version':self.m['mapping_version']}
 

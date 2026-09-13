@@ -16,6 +16,7 @@ log_root = "/appdata/qagent/logs"
 # registry_file = "/appdata/qagent/releases/current/skill_registry.json"
 # skill_lock_file = "/appdata/qagent/releases/current/release.lock.json"
 # dictionary_root = "/appdata/qagent/releases/current/domain-data"
+# terminology_file = "${paths.dictionary_root}/approved-terminology.json" # 실제 검증한 사내 사전. 합성 사전은 onprem에서 차단.
 
 [database]
 dialect = "postgresql" # 이 값만 변경하면 SQLite Adapter가 PostgreSQL로 바뀌는 것은 아닙니다.

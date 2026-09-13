@@ -1,0 +1,806 @@
+{
+  "notice": "Synthetic finite-grammar regression; not an LLM accuracy benchmark.",
+  "dictionary_version": "synthetic-variants-v1",
+  "config_hash": "112c0dd9b8e7d889bb289075044215411e459683d4f727cf736dca4f0e9588a5",
+  "total": 234,
+  "passed": 234,
+  "failed": 0,
+  "data_counts": {
+    "incident": 128,
+    "lot_list": 640,
+    "wafer_list": 7680,
+    "incident_document": 384,
+    "document_chunk": 1152,
+    "image_metadata": 256,
+    "trend_metadata": 128
+  },
+  "unique_lots": 576,
+  "unique_wafers": 6912,
+  "status_counts": {
+    "MATCHED": 173,
+    "NO_MATCH": 30,
+    "NEEDS_CLARIFICATION": 25,
+    "INVALID_REQUEST": 3,
+    "TOOL_ERROR": 2,
+    "NEEDS_SELECTION": 1
+  },
+  "field_count": 14,
+  "dictionary_entries": 72,
+  "raw_source_rows": 40,
+  "behavior_checks": 21,
+  "existing_checks": {
+    "config": 31,
+    "wafer": 15,
+    "lot": 19,
+    "array": 7,
+    "skills": 33
+  },
+  "category_results": {
+    "ambiguous_or_unverified": {
+      "total": 16,
+      "passed": 16
+    },
+    "array_all": {
+      "total": 1,
+      "passed": 1
+    },
+    "array_any": {
+      "total": 1,
+      "passed": 1
+    },
+    "array_exact": {
+      "total": 1,
+      "passed": 1
+    },
+    "contradicting_filters": {
+      "total": 24,
+      "passed": 24
+    },
+    "duplicate_filter": {
+      "total": 1,
+      "passed": 1
+    },
+    "empty_array": {
+      "total": 1,
+      "passed": 1
+    },
+    "empty_array_source": {
+      "total": 1,
+      "passed": 1
+    },
+    "explicit_incident_selection": {
+      "total": 1,
+      "passed": 1
+    },
+    "generation_typo": {
+      "total": 1,
+      "passed": 1
+    },
+    "hangul_jamo": {
+      "total": 1,
+      "passed": 1
+    },
+    "identifier_zero": {
+      "total": 2,
+      "passed": 2
+    },
+    "invalid_month": {
+      "total": 1,
+      "passed": 1
+    },
+    "line_alias": {
+      "total": 1,
+      "passed": 1
+    },
+    "line_alias_conflict": {
+      "total": 1,
+      "passed": 1
+    },
+    "literal_sql": {
+      "total": 1,
+      "passed": 1
+    },
+    "literal_wildcard": {
+      "total": 1,
+      "passed": 1
+    },
+    "lot_selection": {
+      "total": 1,
+      "passed": 1
+    },
+    "month": {
+      "total": 1,
+      "passed": 1
+    },
+    "multi_column_variants": {
+      "total": 160,
+      "passed": 160
+    },
+    "multiple_incidents": {
+      "total": 1,
+      "passed": 1
+    },
+    "not_free_chat": {
+      "total": 1,
+      "passed": 1
+    },
+    "null_array": {
+      "total": 1,
+      "passed": 1
+    },
+    "outside_selection": {
+      "total": 1,
+      "passed": 1
+    },
+    "relative_month": {
+      "total": 1,
+      "passed": 1
+    },
+    "scoped_alias": {
+      "total": 2,
+      "passed": 2
+    },
+    "title_alias": {
+      "total": 1,
+      "passed": 1
+    },
+    "title_typo": {
+      "total": 1,
+      "passed": 1
+    },
+    "unknown_failure": {
+      "total": 1,
+      "passed": 1
+    },
+    "unknown_filter": {
+      "total": 1,
+      "passed": 1
+    },
+    "unknown_request": {
+      "total": 1,
+      "passed": 1
+    },
+    "width_case": {
+      "total": 1,
+      "passed": 1
+    },
+    "wrong_lot": {
+      "total": 1,
+      "passed": 1
+    },
+    "wrong_month": {
+      "total": 1,
+      "passed": 1
+    },
+    "wrong_scope": {
+      "total": 1,
+      "passed": 1
+    }
+  },
+  "examples": [
+    {
+      "id": "VAR-0002",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0001; 위치=Hwaseong; 생산라인=65라인; 부셔=포토팀; 제품새대={D 1 a,D 1 z}; 세대조건=모두; 팹아웃=엣지페일; 요청=로트 웨이퍼 리스트",
+      "passed": true,
+      "errors": [],
+      "status": "MATCHED",
+      "filters": {
+        "city": "화성",
+        "line_code": "65L",
+        "incident_number": "SYN-2026-0001",
+        "department": "PHOTO",
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "D1a",
+            "D1z"
+          ]
+        },
+        "fab_out_failure_codes": {
+          "mode": "any",
+          "values": [
+            "SYNTH_EDS_EDGE_FAIL"
+          ]
+        }
+      },
+      "incident_ids": [
+        "synthetic-pk-0001"
+      ],
+      "lot_count": 5,
+      "wafer_count": 60,
+      "issues": [],
+      "tool_trace": [
+        {
+          "tool": "find_incidents",
+          "status": "OK",
+          "count": 1
+        },
+        {
+          "tool": "list_incident_lots",
+          "status": "PARTIAL",
+          "returned": 5,
+          "offset": 0
+        },
+        {
+          "tool": "list_incident_wafers",
+          "status": "PARTIAL",
+          "returned": 7,
+          "offset": 0
+        },
+        {
+          "tool": "list_incident_wafers",
+          "status": "PARTIAL",
+          "returned": 7,
+          "offset": 7
+        },
+        {
+          "tool": "list_incident_wafers",
+          "status": "PARTIAL",
+          "returned": 7,
+          "offset": 14
+        },
+        {
+          "tool": "list_incident_wafers",
+          "status": "PARTIAL",
+          "returned": 7,
+          "offset": 21
+        },
+        {
+          "tool": "list_incident_wafers",
+          "status": "PARTIAL",
+          "returned": 7,
+          "offset": 28
+        },
+        {
+          "tool": "list_incident_wafers",
+          "status": "PARTIAL",
+          "returned": 7,
+          "offset": 35
+        },
+        {
+          "tool": "list_incident_wafers",
+          "status": "PARTIAL",
+          "returned": 7,
+          "offset": 42
+        },
+        {
+          "tool": "list_incident_wafers",
+          "status": "PARTIAL",
+          "returned": 7,
+          "offset": 49
+        },
+        {
+          "tool": "list_incident_wafers",
+          "status": "PARTIAL",
+          "returned": 4,
+          "offset": 56
+        }
+      ]
+    },
+    {
+      "id": "VAR-0202",
+      "category": "scoped_alias",
+      "question": "부서=p기술팀; 위치=화성시; 사고번호=SYN-2026-0001; 요청=웨이퍼목록",
+      "passed": true,
+      "errors": [],
+      "status": "MATCHED",
+      "filters": {
+        "city": "화성",
+        "department": "PHOTO",
+        "incident_number": "SYN-2026-0001"
+      },
+      "incident_ids": [
+        "synthetic-pk-0001"
+      ],
+      "lot_count": 5,
+      "wafer_count": 60,
+      "issues": [],
+      "tool_trace": [
+        {
+          "tool": "find_incidents",
+          "status": "OK",
+          "count": 1
+        },
+        {
+          "tool": "list_incident_lots",
+          "status": "PARTIAL",
+          "returned": 5,
+          "offset": 0
+        },
+        {
+          "tool": "list_incident_wafers",
+          "status": "PARTIAL",
+          "returned": 7,
+          "offset": 0
+        },
+        {
+          "tool": "list_incident_wafers",
+          "status": "PARTIAL",
+          "returned": 7,
+          "offset": 7
+        },
+        {
+          "tool": "list_incident_wafers",
+          "status": "PARTIAL",
+          "returned": 7,
+          "offset": 14
+        },
+        {
+          "tool": "list_incident_wafers",
+          "status": "PARTIAL",
+          "returned": 7,
+          "offset": 21
+        },
+        {
+          "tool": "list_incident_wafers",
+          "status": "PARTIAL",
+          "returned": 7,
+          "offset": 28
+        },
+        {
+          "tool": "list_incident_wafers",
+          "status": "PARTIAL",
+          "returned": 7,
+          "offset": 35
+        },
+        {
+          "tool": "list_incident_wafers",
+          "status": "PARTIAL",
+          "returned": 7,
+          "offset": 42
+        },
+        {
+          "tool": "list_incident_wafers",
+          "status": "PARTIAL",
+          "returned": 7,
+          "offset": 49
+        },
+        {
+          "tool": "list_incident_wafers",
+          "status": "PARTIAL",
+          "returned": 4,
+          "offset": 56
+        }
+      ]
+    },
+    {
+      "id": "VAR-0203",
+      "category": "scoped_alias",
+      "question": "부서=p기술팀; 위치=평택시; 사고번호=SYN-2026-0009; 요청=웨이퍼목록",
+      "passed": true,
+      "errors": [],
+      "status": "MATCHED",
+      "filters": {
+        "city": "평택",
+        "department": "ETCH",
+        "incident_number": "SYN-2026-0009"
+      },
+      "incident_ids": [
+        "synthetic-pk-0009"
+      ],
+      "lot_count": 5,
+      "wafer_count": 60,
+      "issues": [],
+      "tool_trace": [
+        {
+          "tool": "find_incidents",
+          "status": "OK",
+          "count": 1
+        },
+        {
+          "tool": "list_incident_lots",
+          "status": "PARTIAL",
+          "returned": 5,
+          "offset": 0
+        },
+        {
+          "tool": "list_incident_wafers",
+          "status": "PARTIAL",
+          "returned": 7,
+          "offset": 0
+        },
+        {
+          "tool": "list_incident_wafers",
+          "status": "PARTIAL",
+          "returned": 7,
+          "offset": 7
+        },
+        {
+          "tool": "list_incident_wafers",
+          "status": "PARTIAL",
+          "returned": 7,
+          "offset": 14
+        },
+        {
+          "tool": "list_incident_wafers",
+          "status": "PARTIAL",
+          "returned": 7,
+          "offset": 21
+        },
+        {
+          "tool": "list_incident_wafers",
+          "status": "PARTIAL",
+          "returned": 7,
+          "offset": 28
+        },
+        {
+          "tool": "list_incident_wafers",
+          "status": "PARTIAL",
+          "returned": 7,
+          "offset": 35
+        },
+        {
+          "tool": "list_incident_wafers",
+          "status": "PARTIAL",
+          "returned": 7,
+          "offset": 42
+        },
+        {
+          "tool": "list_incident_wafers",
+          "status": "PARTIAL",
+          "returned": 7,
+          "offset": 49
+        },
+        {
+          "tool": "list_incident_wafers",
+          "status": "PARTIAL",
+          "returned": 4,
+          "offset": 56
+        }
+      ]
+    },
+    {
+      "id": "VAR-0205",
+      "category": "identifier_zero",
+      "question": "사고번호=SYN-2026-OOO1; 요청=랏목록",
+      "passed": true,
+      "errors": [],
+      "status": "NEEDS_CLARIFICATION",
+      "filters": {},
+      "incident_ids": [],
+      "lot_count": 0,
+      "wafer_count": 0,
+      "issues": [
+        {
+          "field": "incident_number",
+          "reason": "IDENTIFIER_REQUIRES_EXACT_FORMAT",
+          "raw": "SYN-2026-OOO1"
+        },
+        {
+          "reason": "INCIDENT_FILTER_REQUIRED"
+        }
+      ],
+      "tool_trace": []
+    },
+    {
+      "id": "VAR-0206",
+      "category": "identifier_zero",
+      "question": "사고번호=SYN-2026-1; 요청=랏목록",
+      "passed": true,
+      "errors": [],
+      "status": "NEEDS_CLARIFICATION",
+      "filters": {},
+      "incident_ids": [],
+      "lot_count": 0,
+      "wafer_count": 0,
+      "issues": [
+        {
+          "field": "incident_number",
+          "reason": "IDENTIFIER_REQUIRES_EXACT_FORMAT",
+          "raw": "SYN-2026-1"
+        },
+        {
+          "reason": "INCIDENT_FILTER_REQUIRED"
+        }
+      ],
+      "tool_trace": []
+    },
+    {
+      "id": "VAR-0207",
+      "category": "generation_typo",
+      "question": "사고번호=SYN-2026-0001; 세대=D1x",
+      "passed": true,
+      "errors": [],
+      "status": "NEEDS_CLARIFICATION",
+      "filters": {
+        "incident_number": "SYN-2026-0001"
+      },
+      "incident_ids": [],
+      "lot_count": 0,
+      "wafer_count": 0,
+      "issues": [
+        {
+          "field": "product_generations",
+          "raw": "D1x",
+          "status": "NEEDS_CLARIFICATION",
+          "reason": "UNKNOWN_TERM",
+          "candidates": []
+        }
+      ],
+      "tool_trace": []
+    },
+    {
+      "id": "VAR-0219",
+      "category": "lot_selection",
+      "question": "사고번호=SYN-2026-0001; 랏번호=SYN-LOT-0001-001; 요청=웨이퍼목록",
+      "passed": true,
+      "errors": [],
+      "status": "MATCHED",
+      "filters": {
+        "incident_number": "SYN-2026-0001"
+      },
+      "incident_ids": [
+        "synthetic-pk-0001"
+      ],
+      "lot_count": 5,
+      "wafer_count": 12,
+      "issues": [],
+      "tool_trace": [
+        {
+          "tool": "find_incidents",
+          "status": "OK",
+          "count": 1
+        },
+        {
+          "tool": "list_incident_lots",
+          "status": "PARTIAL",
+          "returned": 5,
+          "offset": 0
+        },
+        {
+          "tool": "list_incident_wafers",
+          "status": "PARTIAL",
+          "returned": 7,
+          "offset": 0
+        },
+        {
+          "tool": "list_incident_wafers",
+          "status": "PARTIAL",
+          "returned": 5,
+          "offset": 7
+        }
+      ]
+    },
+    {
+      "id": "VAR-0224",
+      "category": "title_alias",
+      "question": "사고번호=SYN-2026-0001; 사고몀=외곽샷+이디에스페일",
+      "passed": true,
+      "errors": [],
+      "status": "MATCHED",
+      "filters": {
+        "incident_number": "SYN-2026-0001",
+        "title_terms": [
+          "외곽 Shot",
+          "EDS Fail"
+        ]
+      },
+      "incident_ids": [
+        "synthetic-pk-0001"
+      ],
+      "lot_count": 0,
+      "wafer_count": 0,
+      "issues": [],
+      "tool_trace": [
+        {
+          "tool": "find_incidents",
+          "status": "OK",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "VAR-0229",
+      "category": "array_any",
+      "question": "세대=디원에이,디원지; 세대조건=any; 요청=사고목록",
+      "passed": true,
+      "errors": [],
+      "status": "MATCHED",
+      "filters": {
+        "product_generations": {
+          "mode": "any",
+          "values": [
+            "D1a",
+            "D1z"
+          ]
+        }
+      },
+      "incident_ids": [
+        "synthetic-pk-0001",
+        "synthetic-pk-0002",
+        "synthetic-pk-0007",
+        "synthetic-pk-0008",
+        "synthetic-pk-0009",
+        "synthetic-pk-0016",
+        "synthetic-pk-0017",
+        "synthetic-pk-0018",
+        "synthetic-pk-0023",
+        "synthetic-pk-0024",
+        "synthetic-pk-0025",
+        "synthetic-pk-0029",
+        "synthetic-pk-0032",
+        "synthetic-pk-0034",
+        "synthetic-pk-0040",
+        "synthetic-pk-0041",
+        "synthetic-pk-0045",
+        "synthetic-pk-0048",
+        "synthetic-pk-0049",
+        "synthetic-pk-0050",
+        "synthetic-pk-0056",
+        "synthetic-pk-0057",
+        "synthetic-pk-0061",
+        "synthetic-pk-0064",
+        "synthetic-pk-0071",
+        "synthetic-pk-0072",
+        "synthetic-pk-0073",
+        "synthetic-pk-0080",
+        "synthetic-pk-0081",
+        "synthetic-pk-0082",
+        "synthetic-pk-0087",
+        "synthetic-pk-0089",
+        "synthetic-pk-0093",
+        "synthetic-pk-0096",
+        "synthetic-pk-0097",
+        "synthetic-pk-0098",
+        "synthetic-pk-0103",
+        "synthetic-pk-0105",
+        "synthetic-pk-0109",
+        "synthetic-pk-0112",
+        "synthetic-pk-0113",
+        "synthetic-pk-0114",
+        "synthetic-pk-0119",
+        "synthetic-pk-0120",
+        "synthetic-pk-0125",
+        "synthetic-pk-0128"
+      ],
+      "lot_count": 0,
+      "wafer_count": 0,
+      "issues": [],
+      "tool_trace": [
+        {
+          "tool": "find_incidents",
+          "status": "NEEDS_SELECTION",
+          "count": 46
+        }
+      ]
+    },
+    {
+      "id": "VAR-0230",
+      "category": "array_all",
+      "question": "세대=디원에이,디원지; 세대조건=all; 요청=사고목록",
+      "passed": true,
+      "errors": [],
+      "status": "MATCHED",
+      "filters": {
+        "product_generations": {
+          "mode": "all",
+          "values": [
+            "D1a",
+            "D1z"
+          ]
+        }
+      },
+      "incident_ids": [
+        "synthetic-pk-0001",
+        "synthetic-pk-0008",
+        "synthetic-pk-0016",
+        "synthetic-pk-0017",
+        "synthetic-pk-0024",
+        "synthetic-pk-0029",
+        "synthetic-pk-0032",
+        "synthetic-pk-0040",
+        "synthetic-pk-0045",
+        "synthetic-pk-0048",
+        "synthetic-pk-0049",
+        "synthetic-pk-0056",
+        "synthetic-pk-0061",
+        "synthetic-pk-0064",
+        "synthetic-pk-0072",
+        "synthetic-pk-0080",
+        "synthetic-pk-0081",
+        "synthetic-pk-0093",
+        "synthetic-pk-0096",
+        "synthetic-pk-0097",
+        "synthetic-pk-0109",
+        "synthetic-pk-0112",
+        "synthetic-pk-0113",
+        "synthetic-pk-0120",
+        "synthetic-pk-0125",
+        "synthetic-pk-0128"
+      ],
+      "lot_count": 0,
+      "wafer_count": 0,
+      "issues": [],
+      "tool_trace": [
+        {
+          "tool": "find_incidents",
+          "status": "NEEDS_SELECTION",
+          "count": 26
+        }
+      ]
+    },
+    {
+      "id": "VAR-0231",
+      "category": "array_exact",
+      "question": "세대=디원에이,디원지; 세대조건=exact; 요청=사고목록",
+      "passed": true,
+      "errors": [],
+      "status": "MATCHED",
+      "filters": {
+        "product_generations": {
+          "mode": "exact",
+          "values": [
+            "D1a",
+            "D1z"
+          ]
+        }
+      },
+      "incident_ids": [
+        "synthetic-pk-0001",
+        "synthetic-pk-0017",
+        "synthetic-pk-0029",
+        "synthetic-pk-0045",
+        "synthetic-pk-0049",
+        "synthetic-pk-0061",
+        "synthetic-pk-0081",
+        "synthetic-pk-0093",
+        "synthetic-pk-0097",
+        "synthetic-pk-0109",
+        "synthetic-pk-0113",
+        "synthetic-pk-0125"
+      ],
+      "lot_count": 0,
+      "wafer_count": 0,
+      "issues": [],
+      "tool_trace": [
+        {
+          "tool": "find_incidents",
+          "status": "NEEDS_SELECTION",
+          "count": 12
+        }
+      ]
+    },
+    {
+      "id": "VAR-0232",
+      "category": "multiple_incidents",
+      "question": "사고명=외곽샷; 요청=웨이퍼목록",
+      "passed": true,
+      "errors": [],
+      "status": "NEEDS_SELECTION",
+      "filters": {
+        "title_terms": [
+          "외곽 Shot"
+        ]
+      },
+      "incident_ids": [
+        "synthetic-pk-0001",
+        "synthetic-pk-0013",
+        "synthetic-pk-0017",
+        "synthetic-pk-0029",
+        "synthetic-pk-0033",
+        "synthetic-pk-0045",
+        "synthetic-pk-0049",
+        "synthetic-pk-0061",
+        "synthetic-pk-0065",
+        "synthetic-pk-0077",
+        "synthetic-pk-0081",
+        "synthetic-pk-0093",
+        "synthetic-pk-0097",
+        "synthetic-pk-0109",
+        "synthetic-pk-0113",
+        "synthetic-pk-0125"
+      ],
+      "lot_count": 0,
+      "wafer_count": 0,
+      "issues": [],
+      "tool_trace": [
+        {
+          "tool": "find_incidents",
+          "status": "NEEDS_SELECTION",
+          "count": 16
+        }
+      ]
+    }
+  ]
+}

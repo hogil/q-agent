@@ -17,7 +17,7 @@ def release_files(root,settings=None):
   for f in sorted(paths[key].rglob('*')):
    if f.is_file():files[label+'/'+str(f.relative_to(paths[key]))]=f
  files['skill_registry.json']=paths['registry_file']
- for name in ['incident_tools.py','skill_loader.py','config_loader.py','runtime_factory.py']:
+ for name in ['incident_tools.py','incident_filters.py','terminology.py','variant_query_demo.py','skill_loader.py','config_loader.py','runtime_factory.py']:
   files[name]=root/name
  return files
 def freeze(root=P,settings=None):

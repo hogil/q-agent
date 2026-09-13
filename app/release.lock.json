@@ -1,5 +1,5 @@
 {
-  "release": "quality-demo-0.10",
+  "release": "quality-demo-0.11",
   "files": {
     "skills/quality-actions/SKILL.md": "3295ed2b48acf3c3b5ea0d0a0549d4608139dd0c53d47cfe14da7733f886d2bc",
     "skills/quality-answer/SKILL.md": "9595aecded30b6012ba669cee9d17dd799990a71dcb09d46f0b0507797e55ec9",
@@ -23,18 +23,22 @@
     "skills/quality-router/references/output.schema.json": "521b4dad0be3cc1aa60cf59637cedd190f6902e316a3f4acecdd4cc3dad268de",
     "skills/quality-skill-maintenance/SKILL.md": "b9fc2e6a760fb27b7bd573f481a52a0bba45c9c5d42c9b05d438819ec7602902",
     "skills/quality-statistics/SKILL.md": "835c491460d2ca6f455792445f47168a8e8d070b09f77511f2fd79e22d251522",
-    "skills/quality-terminology/SKILL.md": "ea3d2cf6dbea7ab7e04d872bab9d4ad02c4fa14afaf03b8a21fdf400d9ea537f",
-    "skills/quality-terminology/references/dictionary-contract.json": "002a50b27f51e126d451c988cb6fd5880db03139472b9964af3afac75de59d68",
+    "skills/quality-terminology/SKILL.md": "f9e2a34597e50ac82702de758ad5afb14df33fd8c01d7c32ca15dbd1ca8349dc",
+    "skills/quality-terminology/references/dictionary-contract.json": "c7ed54a7ebd320e5fe13f86ccebe16d4959264ecbca212d564100149be46ef22",
     "skills/quality-trend-metadata-schema/SKILL.md": "b4d41f38f5eb1c2c4912bbcf73c4558f4b44dc55c1f7147a3e95a6672cd77508",
     "skills/quality-trend-metadata-schema/references/columns.json": "a65115b80f251d44c8c159861473dbffcfe4aa45a328ed3ab370b920496bdaa8",
     "skills/quality-wafer-retrieval/SKILL.md": "8be29aa1f4d0a869cac148abf61a8d30f169173b82040f18dcae7b43037aa8d9",
     "skills/quality-wafer-schema/SKILL.md": "2381e043ad44ac0649cd60ccc38afff8a287453990bfa3ac88590a389362f518",
     "skills/quality-wafer-schema/references/columns.json": "a53e3b4387abe203545aa56662be04e19765a54d4020c922724a8df6e3aa414c",
     "domain-data/aliases.example.json": "63d215627abcd46f92a8ced97283f3af93e93db9c9fd8fe733c33e0df6e0bec7",
-    "skill_registry.json": "6790dc1a8e45a04fdf50bfd1b859b55f058f1975080b02d1c28b6dc880025230",
-    "incident_tools.py": "1ec55ad7af34afd7fd93c339798546196d8bd84ddf25723b3aefc79f93557a6a",
-    "skill_loader.py": "cd1e23fa6bb7540d6b8c366eceac9c55b38480108c18dd70b8486ed939709004",
-    "config_loader.py": "d260445914289ebcbf384260b925e494c7a81330cedf8fc56eaea0e1d9713112",
+    "domain-data/variants.synthetic.json": "d890fab92994315b20bbb691d2d35dcff8eb80114e9a97b0d02e9f88461de38b",
+    "skill_registry.json": "0a00bbffa8c58fd921650860e9eb15d015c6831bcac1a259bb5d7432561f4a7a",
+    "incident_tools.py": "16192cbb80fbd40e82bac070f60f99dbc44230b4a7c049afb222546b980dc1ab",
+    "incident_filters.py": "1ba05aabf6a7d6711fada742d05d976d409a9b25b448f7a1f37abac8187d701e",
+    "terminology.py": "f46b7ba781f5a4e6e7cf071cb3b77c2c25b7f5c7b6f2d66fec8e6e140d9d2b17",
+    "variant_query_demo.py": "3919b6a2fa9b382c0f50e748b8f98ab359006b7db83c333e6e295076f0baac24",
+    "skill_loader.py": "20d695582f077277ba11a1ef62dba537eaeff212646cc8158313e58ba49efe09",
+    "config_loader.py": "3ad4c4c547116c697ab3f6d7624bfe93c79d0213d6a0330e93ace7f8d53315aa",
     "runtime_factory.py": "9674f192b0df73d7650ad53c0141746493f26ba79caed98a8450165204a0efb3"
   }
 }

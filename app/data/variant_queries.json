@@ -1,0 +1,5347 @@
+{
+  "notice": "합성 한정 문법 회귀 세트. 정답은 실행 입력에 전달하지 않는다. 실제 LLM/자유 대화 정확도 평가가 아니다.",
+  "required_overlay": "config/demo.variants.toml",
+  "dictionary_version": "synthetic-variants-v1",
+  "cases": [
+    {
+      "id": "VAR-0001",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0001; 도시=화성시; 라인=65엘; 부서=포토; 세대={디원에이,디원지}; 세대조건=모두; fabout=외곽불량; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0001"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0001",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_EDGE_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0002",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0001; 위치=Hwaseong; 생산라인=65라인; 부셔=포토팀; 제품새대={D 1 a,D 1 z}; 세대조건=모두; 팹아웃=엣지페일; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0001"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0001",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_EDGE_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0003",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0001; 싸이트=화 성; line_code=65 L; dept=phpto; gen={D1a,D1z}; 세대조건=모두; FAB Out 불량=edge fail; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0001"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0001",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_EDGE_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0004",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0001; site=화셩; 라인코드=65L; 사고부서=PHOTO; 제품세대={d1a,d1z}; 세대조건=모두; fab-out=SYNTH_EDS_EDGE_FAIL; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0001"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0001",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_EDGE_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0005",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0002; 도시=화성시; 라인=65엘; 부서=포토; 세대={디원에이}; 세대조건=모두; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0002"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0002",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0006",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0002; 위치=Hwaseong; 생산라인=65라인; 부셔=포토팀; 제품새대={D 1 a}; 세대조건=모두; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0002"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0002",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0007",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0002; 싸이트=화 성; line_code=65 L; dept=phpto; gen={D1a}; 세대조건=모두; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0002"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0002",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0008",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0002; site=화셩; 라인코드=65L; 사고부서=PHOTO; 제품세대={d1a}; 세대조건=모두; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0002"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0002",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0009",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0003; 도시=화성시; 라인=66엘; 부서=미지정; 세대={디이십}; 세대조건=모두; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0003"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0003",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D20"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0010",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0003; 위치=Hwaseong; 생산라인=66라인; 부셔=담당미정; 제품새대={D20}; 세대조건=모두; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0003"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0003",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D20"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0011",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0003; 싸이트=화 성; line_code=66 L; dept=UNASSIGNED; gen={d20}; 세대조건=모두; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0003"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0003",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D20"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0012",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0003; site=화셩; 라인코드=66L; 사고부서=unassigned; 제품세대={디이십}; 세대조건=모두; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0003"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0003",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D20"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0013",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0004; 도시=평택시; 라인=65엘; 부서=미지정; 세대={에프이티}; 세대조건=모두; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0004"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0004",
+          "city": "평택",
+          "line_code": "65L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "FET"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0014",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0004; 위치=Pyeongtaek; 생산라인=65라인; 부셔=담당미정; 제품새대={FET}; 세대조건=모두; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0004"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0004",
+          "city": "평택",
+          "line_code": "65L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "FET"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0015",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0004; 싸이트=평 택; line_code=65 L; dept=UNASSIGNED; gen={fet}; 세대조건=모두; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0004"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0004",
+          "city": "평택",
+          "line_code": "65L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "FET"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0016",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0004; site=평텍; 라인코드=65L; 사고부서=unassigned; 제품세대={에프이티}; 세대조건=모두; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0004"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0004",
+          "city": "평택",
+          "line_code": "65L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "FET"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0017",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0005; 도시=화성시; 라인=65엘; 부서=미지정; 세대={브이파이브,브이식스}; 세대조건=모두; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0005"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0005",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V5",
+              "V6"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0018",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0005; 위치=Hwaseong; 생산라인=65라인; 부셔=담당미정; 제품새대={브이5,브이6}; 세대조건=모두; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0005"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0005",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V5",
+              "V6"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0019",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0005; 싸이트=화 성; line_code=65 L; dept=UNASSIGNED; gen={V5,V6}; 세대조건=모두; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0005"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0005",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V5",
+              "V6"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0020",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0005; site=화셩; 라인코드=65L; 사고부서=unassigned; 제품세대={v5,v6}; 세대조건=모두; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0005"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0005",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V5",
+              "V6"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0021",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0006; 도시=평택시; 라인=67엘; 부서=미지정; 세대={브이세븐,브이에이트}; 세대조건=모두; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0006"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0006",
+          "city": "평택",
+          "line_code": "67L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V7",
+              "V8"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0022",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0006; 위치=Pyeongtaek; 생산라인=67라인; 부셔=담당미정; 제품새대={브이7,브이8}; 세대조건=모두; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0006"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0006",
+          "city": "평택",
+          "line_code": "67L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V7",
+              "V8"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0023",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0006; 싸이트=평 택; line_code=67 L; dept=UNASSIGNED; gen={V7,V8}; 세대조건=모두; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0006"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0006",
+          "city": "평택",
+          "line_code": "67L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V7",
+              "V8"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0024",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0006; site=평텍; 라인코드=67L; 사고부서=unassigned; 제품세대={v7,v8}; 세대조건=모두; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0006"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0006",
+          "city": "평택",
+          "line_code": "67L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V7",
+              "V8"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0025",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0007; 도시=화성시; 라인=65엘; 부서=포토; 세대={디원지}; 세대조건=모두; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0007"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0007",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1z"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0026",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0007; 위치=Hwaseong; 생산라인=65라인; 부셔=포토팀; 제품새대={D 1 z}; 세대조건=모두; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0007"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0007",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1z"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0027",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0007; 싸이트=화 성; line_code=65 L; dept=phpto; gen={D1z}; 세대조건=모두; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0007"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0007",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1z"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0028",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0007; site=화셩; 라인코드=65L; 사고부서=PHOTO; 제품세대={d1z}; 세대조건=모두; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0007"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0007",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1z"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0029",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0008; 도시=화성시; 라인=66엘; 부서=미지정; 세대={디원에이,디원지,디이십,에프이티,브이파이브,브이식스,브이세븐,브이에이트}; 세대조건=모두; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0008"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0008",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z",
+              "D20",
+              "FET",
+              "V5",
+              "V6",
+              "V7",
+              "V8"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0030",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0008; 위치=Hwaseong; 생산라인=66라인; 부셔=담당미정; 제품새대={D 1 a,D 1 z,D20,FET,브이5,브이6,브이7,브이8}; 세대조건=모두; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0008"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0008",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z",
+              "D20",
+              "FET",
+              "V5",
+              "V6",
+              "V7",
+              "V8"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0031",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0008; 싸이트=화 성; line_code=66 L; dept=UNASSIGNED; gen={D1a,D1z,d20,fet,V5,V6,V7,V8}; 세대조건=모두; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0008"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0008",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z",
+              "D20",
+              "FET",
+              "V5",
+              "V6",
+              "V7",
+              "V8"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0032",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0008; site=화셩; 라인코드=66L; 사고부서=unassigned; 제품세대={d1a,d1z,디이십,에프이티,v5,v6,v7,v8}; 세대조건=모두; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0008"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0008",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z",
+              "D20",
+              "FET",
+              "V5",
+              "V6",
+              "V7",
+              "V8"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0033",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0009; 도시=평택시; 라인=65엘; 부서=에치; 세대={디원지,디이십}; 세대조건=모두; fabout=링불량; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0009"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0009",
+          "city": "평택",
+          "line_code": "65L",
+          "department": "ETCH",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1z",
+              "D20"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_RING_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0034",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0009; 위치=Pyeongtaek; 생산라인=65라인; 부셔=에칭; 제품새대={D 1 z,D20}; 세대조건=모두; 팹아웃=ring fail; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0009"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0009",
+          "city": "평택",
+          "line_code": "65L",
+          "department": "ETCH",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1z",
+              "D20"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_RING_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0035",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0009; 싸이트=평 택; line_code=65 L; dept=식각팀; gen={D1z,d20}; 세대조건=모두; FAB Out 불량=SYNTH_EDS_RING_FAIL; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0009"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0009",
+          "city": "평택",
+          "line_code": "65L",
+          "department": "ETCH",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1z",
+              "D20"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_RING_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0036",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0009; site=평텍; 라인코드=65L; 사고부서=etchh; 제품세대={d1z,디이십}; 세대조건=모두; fab-out=synth_eds_ring_fail; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0009"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0009",
+          "city": "평택",
+          "line_code": "65L",
+          "department": "ETCH",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1z",
+              "D20"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_RING_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0037",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0010; 도시=화성시; 라인=66엘; 부서=씨엠피; 세대={브이파이브,브이식스}; 세대조건=모두; fabout=스크래치; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0010"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0010",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "CMP",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V5",
+              "V6"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_FAB_SCRATCH"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0038",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0010; 위치=Hwaseong; 생산라인=66라인; 부셔=연마팀; 제품새대={브이5,브이6}; 세대조건=모두; 팹아웃=스크레치; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0010"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0010",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "CMP",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V5",
+              "V6"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_FAB_SCRATCH"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0039",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0010; 싸이트=화 성; line_code=66 L; dept=CMP; gen={V5,V6}; 세대조건=모두; FAB Out 불량=SYNTH_FAB_SCRATCH; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0010"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0010",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "CMP",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V5",
+              "V6"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_FAB_SCRATCH"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0040",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0010; site=화셩; 라인코드=66L; 사고부서=cmp; 제품세대={v5,v6}; 세대조건=모두; fab-out=synth_fab_scratch; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0010"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0010",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "CMP",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V5",
+              "V6"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_FAB_SCRATCH"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0041",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0011; 도시=용인시; 라인=67엘; 부서=디퓨전; fabout=누설; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0011"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0011",
+          "city": "용인",
+          "line_code": "67L",
+          "department": "DIFF",
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_LEAKAGE"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0042",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0011; 위치=Yongin; 생산라인=67라인; 부셔=확산팀; 팹아웃=리키지; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0011"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0011",
+          "city": "용인",
+          "line_code": "67L",
+          "department": "DIFF",
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_LEAKAGE"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0043",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0011; 싸이트=용 인; line_code=67 L; dept=DIFF; FAB Out 불량=SYNTH_EDS_LEAKAGE; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0011"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0011",
+          "city": "용인",
+          "line_code": "67L",
+          "department": "DIFF",
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_LEAKAGE"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0044",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0011; site=용잉; 라인코드=67L; 사고부서=diff; fab-out=synth_eds_leakage; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0011"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0011",
+          "city": "용인",
+          "line_code": "67L",
+          "department": "DIFF",
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_LEAKAGE"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0045",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0012; 도시=평택시; 라인=68엘; 부서=씨브이디; 세대={브이세븐,브이에이트}; 세대조건=모두; fabout=파티클,링불량; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0012"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0012",
+          "city": "평택",
+          "line_code": "68L",
+          "department": "CVD",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V7",
+              "V8"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_FAB_PARTICLE",
+              "SYNTH_EDS_RING_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0046",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0012; 위치=Pyeongtaek; 생산라인=68라인; 부셔=증착팀; 제품새대={브이7,브이8}; 세대조건=모두; 팹아웃=파티클불량,ring fail; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0012"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0012",
+          "city": "평택",
+          "line_code": "68L",
+          "department": "CVD",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V7",
+              "V8"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_FAB_PARTICLE",
+              "SYNTH_EDS_RING_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0047",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0012; 싸이트=평 택; line_code=68 L; dept=CVD; gen={V7,V8}; 세대조건=모두; FAB Out 불량=particle,SYNTH_EDS_RING_FAIL; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0012"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0012",
+          "city": "평택",
+          "line_code": "68L",
+          "department": "CVD",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V7",
+              "V8"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_FAB_PARTICLE",
+              "SYNTH_EDS_RING_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0048",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0012; site=평텍; 라인코드=68L; 사고부서=cvd; 제품세대={v7,v8}; 세대조건=모두; fab-out=SYNTH_FAB_PARTICLE,synth_eds_ring_fail; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0012"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0012",
+          "city": "평택",
+          "line_code": "68L",
+          "department": "CVD",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V7",
+              "V8"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_FAB_PARTICLE",
+              "SYNTH_EDS_RING_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0049",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0013; 도시=화성시; 라인=65엘; 부서=포토; fabout=외곽불량; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0013"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0013",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_EDGE_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0050",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0013; 위치=Hwaseong; 생산라인=65라인; 부셔=포토팀; 팹아웃=엣지페일; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0013"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0013",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_EDGE_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0051",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0013; 싸이트=화 성; line_code=65 L; dept=phpto; FAB Out 불량=edge fail; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0013"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0013",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_EDGE_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0052",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0013; site=화셩; 라인코드=65L; 사고부서=PHOTO; fab-out=SYNTH_EDS_EDGE_FAIL; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0013"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0013",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_EDGE_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0053",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0014; 도시=평택시; 라인=66엘; 부서=메탈; 세대={디이십,에프이티}; 세대조건=모두; fabout=오픈불량; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0014"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0014",
+          "city": "평택",
+          "line_code": "66L",
+          "department": "METAL",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D20",
+              "FET"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_OPEN"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0054",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0014; 위치=Pyeongtaek; 생산라인=66라인; 부셔=배선팀; 제품새대={D20,FET}; 세대조건=모두; 팹아웃=open fail; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0014"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0014",
+          "city": "평택",
+          "line_code": "66L",
+          "department": "METAL",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D20",
+              "FET"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_OPEN"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0055",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0014; 싸이트=평 택; line_code=66 L; dept=METAL; gen={d20,fet}; 세대조건=모두; FAB Out 불량=SYNTH_EDS_OPEN; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0014"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0014",
+          "city": "평택",
+          "line_code": "66L",
+          "department": "METAL",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D20",
+              "FET"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_OPEN"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0056",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0014; site=평텍; 라인코드=66L; 사고부서=metal; 제품세대={디이십,에프이티}; 세대조건=모두; fab-out=synth_eds_open; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0014"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0014",
+          "city": "평택",
+          "line_code": "66L",
+          "department": "METAL",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D20",
+              "FET"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_OPEN"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0057",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0015; 도시=용인시; 라인=68엘; 부서=이디에스; 세대={브이파이브,브이에이트}; 세대조건=모두; fabout=컨택불량; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0015"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0015",
+          "city": "용인",
+          "line_code": "68L",
+          "department": "EDS",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V5",
+              "V8"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_CONTACT"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0058",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0015; 위치=Yongin; 생산라인=68라인; 부셔=검사팀; 제품새대={브이5,브이8}; 세대조건=모두; 팹아웃=컨텍페일; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0015"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0015",
+          "city": "용인",
+          "line_code": "68L",
+          "department": "EDS",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V5",
+              "V8"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_CONTACT"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0059",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0015; 싸이트=용 인; line_code=68 L; dept=EDS; gen={V5,V8}; 세대조건=모두; FAB Out 불량=SYNTH_EDS_CONTACT; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0015"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0015",
+          "city": "용인",
+          "line_code": "68L",
+          "department": "EDS",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V5",
+              "V8"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_CONTACT"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0060",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0015; site=용잉; 라인코드=68L; 사고부서=eds; 제품세대={v5,v8}; 세대조건=모두; fab-out=synth_eds_contact; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0015"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0015",
+          "city": "용인",
+          "line_code": "68L",
+          "department": "EDS",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V5",
+              "V8"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_CONTACT"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0061",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0016; 도시=화성시; 라인=67엘; 부서=에치; 세대={디원에이,디원지,디이십,에프이티,브이파이브,브이식스,브이세븐,브이에이트}; 세대조건=모두; fabout=파티클; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0016"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0016",
+          "city": "화성",
+          "line_code": "67L",
+          "department": "ETCH",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z",
+              "D20",
+              "FET",
+              "V5",
+              "V6",
+              "V7",
+              "V8"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_FAB_PARTICLE"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0062",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0016; 위치=Hwaseong; 생산라인=67라인; 부셔=에칭; 제품새대={D 1 a,D 1 z,D20,FET,브이5,브이6,브이7,브이8}; 세대조건=모두; 팹아웃=파티클불량; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0016"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0016",
+          "city": "화성",
+          "line_code": "67L",
+          "department": "ETCH",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z",
+              "D20",
+              "FET",
+              "V5",
+              "V6",
+              "V7",
+              "V8"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_FAB_PARTICLE"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0063",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0016; 싸이트=화 성; line_code=67 L; dept=식각팀; gen={D1a,D1z,d20,fet,V5,V6,V7,V8}; 세대조건=모두; FAB Out 불량=particle; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0016"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0016",
+          "city": "화성",
+          "line_code": "67L",
+          "department": "ETCH",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z",
+              "D20",
+              "FET",
+              "V5",
+              "V6",
+              "V7",
+              "V8"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_FAB_PARTICLE"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0064",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0016; site=화셩; 라인코드=67L; 사고부서=etchh; 제품세대={d1a,d1z,디이십,에프이티,v5,v6,v7,v8}; 세대조건=모두; fab-out=SYNTH_FAB_PARTICLE; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0016"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0016",
+          "city": "화성",
+          "line_code": "67L",
+          "department": "ETCH",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z",
+              "D20",
+              "FET",
+              "V5",
+              "V6",
+              "V7",
+              "V8"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_FAB_PARTICLE"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0065",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0017; 도시=화성시; 라인=65엘; 부서=포토; 세대={디원에이,디원지}; 세대조건=모두; fabout=외곽불량; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0017"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0017",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_EDGE_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0066",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0017; 위치=Hwaseong; 생산라인=65라인; 부셔=포토팀; 제품새대={D 1 a,D 1 z}; 세대조건=모두; 팹아웃=엣지페일; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0017"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0017",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_EDGE_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0067",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0017; 싸이트=화 성; line_code=65 L; dept=phpto; gen={D1a,D1z}; 세대조건=모두; FAB Out 불량=edge fail; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0017"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0017",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_EDGE_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0068",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0017; site=화셩; 라인코드=65L; 사고부서=PHOTO; 제품세대={d1a,d1z}; 세대조건=모두; fab-out=SYNTH_EDS_EDGE_FAIL; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0017"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0017",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_EDGE_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0069",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0018; 도시=화성시; 라인=65엘; 부서=포토; 세대={디원에이}; 세대조건=모두; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0018"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0018",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0070",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0018; 위치=Hwaseong; 생산라인=65라인; 부셔=포토팀; 제품새대={D 1 a}; 세대조건=모두; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0018"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0018",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0071",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0018; 싸이트=화 성; line_code=65 L; dept=phpto; gen={D1a}; 세대조건=모두; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0018"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0018",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0072",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0018; site=화셩; 라인코드=65L; 사고부서=PHOTO; 제품세대={d1a}; 세대조건=모두; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0018"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0018",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0073",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0019; 도시=화성시; 라인=66엘; 부서=미지정; 세대={디이십}; 세대조건=모두; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0019"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0019",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D20"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0074",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0019; 위치=Hwaseong; 생산라인=66라인; 부셔=담당미정; 제품새대={D20}; 세대조건=모두; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0019"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0019",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D20"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0075",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0019; 싸이트=화 성; line_code=66 L; dept=UNASSIGNED; gen={d20}; 세대조건=모두; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0019"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0019",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D20"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0076",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0019; site=화셩; 라인코드=66L; 사고부서=unassigned; 제품세대={디이십}; 세대조건=모두; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0019"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0019",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D20"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0077",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0020; 도시=평택시; 라인=65엘; 부서=미지정; 세대={에프이티}; 세대조건=모두; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0020"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0020",
+          "city": "평택",
+          "line_code": "65L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "FET"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0078",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0020; 위치=Pyeongtaek; 생산라인=65라인; 부셔=담당미정; 제품새대={FET}; 세대조건=모두; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0020"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0020",
+          "city": "평택",
+          "line_code": "65L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "FET"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0079",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0020; 싸이트=평 택; line_code=65 L; dept=UNASSIGNED; gen={fet}; 세대조건=모두; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0020"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0020",
+          "city": "평택",
+          "line_code": "65L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "FET"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0080",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0020; site=평텍; 라인코드=65L; 사고부서=unassigned; 제품세대={에프이티}; 세대조건=모두; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0020"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0020",
+          "city": "평택",
+          "line_code": "65L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "FET"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0081",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0021; 도시=화성시; 라인=65엘; 부서=미지정; 세대={브이파이브,브이식스}; 세대조건=모두; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0021"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0021",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V5",
+              "V6"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0082",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0021; 위치=Hwaseong; 생산라인=65라인; 부셔=담당미정; 제품새대={브이5,브이6}; 세대조건=모두; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0021"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0021",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V5",
+              "V6"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0083",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0021; 싸이트=화 성; line_code=65 L; dept=UNASSIGNED; gen={V5,V6}; 세대조건=모두; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0021"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0021",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V5",
+              "V6"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0084",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0021; site=화셩; 라인코드=65L; 사고부서=unassigned; 제품세대={v5,v6}; 세대조건=모두; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0021"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0021",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V5",
+              "V6"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0085",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0022; 도시=평택시; 라인=67엘; 부서=미지정; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0022"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0022",
+          "city": "평택",
+          "line_code": "67L",
+          "department": "UNASSIGNED"
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0086",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0022; 위치=Pyeongtaek; 생산라인=67라인; 부셔=담당미정; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0022"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0022",
+          "city": "평택",
+          "line_code": "67L",
+          "department": "UNASSIGNED"
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0087",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0022; 싸이트=평 택; line_code=67 L; dept=UNASSIGNED; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0022"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0022",
+          "city": "평택",
+          "line_code": "67L",
+          "department": "UNASSIGNED"
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0088",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0022; site=평텍; 라인코드=67L; 사고부서=unassigned; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0022"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0022",
+          "city": "평택",
+          "line_code": "67L",
+          "department": "UNASSIGNED"
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0089",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0023; 도시=화성시; 라인=65엘; 부서=포토; 세대={디원지}; 세대조건=모두; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0023"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0023",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1z"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0090",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0023; 위치=Hwaseong; 생산라인=65라인; 부셔=포토팀; 제품새대={D 1 z}; 세대조건=모두; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0023"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0023",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1z"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0091",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0023; 싸이트=화 성; line_code=65 L; dept=phpto; gen={D1z}; 세대조건=모두; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0023"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0023",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1z"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0092",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0023; site=화셩; 라인코드=65L; 사고부서=PHOTO; 제품세대={d1z}; 세대조건=모두; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0023"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0023",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1z"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0093",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0024; 도시=화성시; 라인=66엘; 부서=미지정; 세대={디원에이,디원지,디이십,에프이티,브이파이브,브이식스,브이세븐,브이에이트}; 세대조건=모두; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0024"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0024",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z",
+              "D20",
+              "FET",
+              "V5",
+              "V6",
+              "V7",
+              "V8"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0094",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0024; 위치=Hwaseong; 생산라인=66라인; 부셔=담당미정; 제품새대={D 1 a,D 1 z,D20,FET,브이5,브이6,브이7,브이8}; 세대조건=모두; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0024"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0024",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z",
+              "D20",
+              "FET",
+              "V5",
+              "V6",
+              "V7",
+              "V8"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0095",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0024; 싸이트=화 성; line_code=66 L; dept=UNASSIGNED; gen={D1a,D1z,d20,fet,V5,V6,V7,V8}; 세대조건=모두; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0024"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0024",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z",
+              "D20",
+              "FET",
+              "V5",
+              "V6",
+              "V7",
+              "V8"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0096",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0024; site=화셩; 라인코드=66L; 사고부서=unassigned; 제품세대={d1a,d1z,디이십,에프이티,v5,v6,v7,v8}; 세대조건=모두; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0024"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0024",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z",
+              "D20",
+              "FET",
+              "V5",
+              "V6",
+              "V7",
+              "V8"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0097",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0025; 도시=평택시; 라인=65엘; 부서=에치; 세대={디원지,디이십}; 세대조건=모두; fabout=링불량; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0025"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0025",
+          "city": "평택",
+          "line_code": "65L",
+          "department": "ETCH",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1z",
+              "D20"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_RING_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0098",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0025; 위치=Pyeongtaek; 생산라인=65라인; 부셔=에칭; 제품새대={D 1 z,D20}; 세대조건=모두; 팹아웃=ring fail; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0025"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0025",
+          "city": "평택",
+          "line_code": "65L",
+          "department": "ETCH",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1z",
+              "D20"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_RING_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0099",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0025; 싸이트=평 택; line_code=65 L; dept=식각팀; gen={D1z,d20}; 세대조건=모두; FAB Out 불량=SYNTH_EDS_RING_FAIL; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0025"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0025",
+          "city": "평택",
+          "line_code": "65L",
+          "department": "ETCH",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1z",
+              "D20"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_RING_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0100",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0025; site=평텍; 라인코드=65L; 사고부서=etchh; 제품세대={d1z,디이십}; 세대조건=모두; fab-out=synth_eds_ring_fail; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0025"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0025",
+          "city": "평택",
+          "line_code": "65L",
+          "department": "ETCH",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1z",
+              "D20"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_RING_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0101",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0026; 도시=화성시; 라인=66엘; 부서=씨엠피; fabout=스크래치; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0026"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0026",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "CMP",
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_FAB_SCRATCH"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0102",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0026; 위치=Hwaseong; 생산라인=66라인; 부셔=연마팀; 팹아웃=스크레치; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0026"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0026",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "CMP",
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_FAB_SCRATCH"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0103",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0026; 싸이트=화 성; line_code=66 L; dept=CMP; FAB Out 불량=SYNTH_FAB_SCRATCH; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0026"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0026",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "CMP",
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_FAB_SCRATCH"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0104",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0026; site=화셩; 라인코드=66L; 사고부서=cmp; fab-out=synth_fab_scratch; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0026"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0026",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "CMP",
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_FAB_SCRATCH"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0105",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0027; 도시=용인시; 라인=67엘; 부서=디퓨전; 세대={에프이티}; 세대조건=모두; fabout=누설; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0027"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0027",
+          "city": "용인",
+          "line_code": "67L",
+          "department": "DIFF",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "FET"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_LEAKAGE"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0106",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0027; 위치=Yongin; 생산라인=67라인; 부셔=확산팀; 제품새대={FET}; 세대조건=모두; 팹아웃=리키지; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0027"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0027",
+          "city": "용인",
+          "line_code": "67L",
+          "department": "DIFF",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "FET"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_LEAKAGE"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0107",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0027; 싸이트=용 인; line_code=67 L; dept=DIFF; gen={fet}; 세대조건=모두; FAB Out 불량=SYNTH_EDS_LEAKAGE; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0027"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0027",
+          "city": "용인",
+          "line_code": "67L",
+          "department": "DIFF",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "FET"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_LEAKAGE"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0108",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0027; site=용잉; 라인코드=67L; 사고부서=diff; 제품세대={에프이티}; 세대조건=모두; fab-out=synth_eds_leakage; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0027"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0027",
+          "city": "용인",
+          "line_code": "67L",
+          "department": "DIFF",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "FET"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_LEAKAGE"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0109",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0028; 도시=평택시; 라인=68엘; 부서=씨브이디; 세대={브이세븐,브이에이트}; 세대조건=모두; fabout=파티클,링불량; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0028"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0028",
+          "city": "평택",
+          "line_code": "68L",
+          "department": "CVD",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V7",
+              "V8"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_FAB_PARTICLE",
+              "SYNTH_EDS_RING_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0110",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0028; 위치=Pyeongtaek; 생산라인=68라인; 부셔=증착팀; 제품새대={브이7,브이8}; 세대조건=모두; 팹아웃=파티클불량,ring fail; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0028"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0028",
+          "city": "평택",
+          "line_code": "68L",
+          "department": "CVD",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V7",
+              "V8"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_FAB_PARTICLE",
+              "SYNTH_EDS_RING_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0111",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0028; 싸이트=평 택; line_code=68 L; dept=CVD; gen={V7,V8}; 세대조건=모두; FAB Out 불량=particle,SYNTH_EDS_RING_FAIL; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0028"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0028",
+          "city": "평택",
+          "line_code": "68L",
+          "department": "CVD",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V7",
+              "V8"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_FAB_PARTICLE",
+              "SYNTH_EDS_RING_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0112",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0028; site=평텍; 라인코드=68L; 사고부서=cvd; 제품세대={v7,v8}; 세대조건=모두; fab-out=SYNTH_FAB_PARTICLE,synth_eds_ring_fail; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0028"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0028",
+          "city": "평택",
+          "line_code": "68L",
+          "department": "CVD",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V7",
+              "V8"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_FAB_PARTICLE",
+              "SYNTH_EDS_RING_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0113",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0029; 도시=화성시; 라인=65엘; 부서=포토; 세대={디원에이,디원지}; 세대조건=모두; fabout=외곽불량; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0029"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0029",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_EDGE_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0114",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0029; 위치=Hwaseong; 생산라인=65라인; 부셔=포토팀; 제품새대={D 1 a,D 1 z}; 세대조건=모두; 팹아웃=엣지페일; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0029"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0029",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_EDGE_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0115",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0029; 싸이트=화 성; line_code=65 L; dept=phpto; gen={D1a,D1z}; 세대조건=모두; FAB Out 불량=edge fail; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0029"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0029",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_EDGE_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0116",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0029; site=화셩; 라인코드=65L; 사고부서=PHOTO; 제품세대={d1a,d1z}; 세대조건=모두; fab-out=SYNTH_EDS_EDGE_FAIL; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0029"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0029",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_EDGE_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0117",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0030; 도시=평택시; 라인=66엘; 부서=메탈; 세대={디이십,에프이티}; 세대조건=모두; fabout=오픈불량; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0030"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0030",
+          "city": "평택",
+          "line_code": "66L",
+          "department": "METAL",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D20",
+              "FET"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_OPEN"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0118",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0030; 위치=Pyeongtaek; 생산라인=66라인; 부셔=배선팀; 제품새대={D20,FET}; 세대조건=모두; 팹아웃=open fail; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0030"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0030",
+          "city": "평택",
+          "line_code": "66L",
+          "department": "METAL",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D20",
+              "FET"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_OPEN"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0119",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0030; 싸이트=평 택; line_code=66 L; dept=METAL; gen={d20,fet}; 세대조건=모두; FAB Out 불량=SYNTH_EDS_OPEN; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0030"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0030",
+          "city": "평택",
+          "line_code": "66L",
+          "department": "METAL",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D20",
+              "FET"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_OPEN"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0120",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0030; site=평텍; 라인코드=66L; 사고부서=metal; 제품세대={디이십,에프이티}; 세대조건=모두; fab-out=synth_eds_open; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0030"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0030",
+          "city": "평택",
+          "line_code": "66L",
+          "department": "METAL",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D20",
+              "FET"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_OPEN"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0121",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0031; 도시=용인시; 라인=68엘; 부서=이디에스; 세대={브이파이브,브이에이트}; 세대조건=모두; fabout=컨택불량; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0031"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0031",
+          "city": "용인",
+          "line_code": "68L",
+          "department": "EDS",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V5",
+              "V8"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_CONTACT"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0122",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0031; 위치=Yongin; 생산라인=68라인; 부셔=검사팀; 제품새대={브이5,브이8}; 세대조건=모두; 팹아웃=컨텍페일; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0031"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0031",
+          "city": "용인",
+          "line_code": "68L",
+          "department": "EDS",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V5",
+              "V8"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_CONTACT"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0123",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0031; 싸이트=용 인; line_code=68 L; dept=EDS; gen={V5,V8}; 세대조건=모두; FAB Out 불량=SYNTH_EDS_CONTACT; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0031"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0031",
+          "city": "용인",
+          "line_code": "68L",
+          "department": "EDS",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V5",
+              "V8"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_CONTACT"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0124",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0031; site=용잉; 라인코드=68L; 사고부서=eds; 제품세대={v5,v8}; 세대조건=모두; fab-out=synth_eds_contact; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0031"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0031",
+          "city": "용인",
+          "line_code": "68L",
+          "department": "EDS",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V5",
+              "V8"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_CONTACT"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0125",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0032; 도시=화성시; 라인=67엘; 부서=에치; 세대={디원에이,디원지,디이십,에프이티,브이파이브,브이식스,브이세븐,브이에이트}; 세대조건=모두; fabout=파티클; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0032"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0032",
+          "city": "화성",
+          "line_code": "67L",
+          "department": "ETCH",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z",
+              "D20",
+              "FET",
+              "V5",
+              "V6",
+              "V7",
+              "V8"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_FAB_PARTICLE"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0126",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0032; 위치=Hwaseong; 생산라인=67라인; 부셔=에칭; 제품새대={D 1 a,D 1 z,D20,FET,브이5,브이6,브이7,브이8}; 세대조건=모두; 팹아웃=파티클불량; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0032"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0032",
+          "city": "화성",
+          "line_code": "67L",
+          "department": "ETCH",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z",
+              "D20",
+              "FET",
+              "V5",
+              "V6",
+              "V7",
+              "V8"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_FAB_PARTICLE"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0127",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0032; 싸이트=화 성; line_code=67 L; dept=식각팀; gen={D1a,D1z,d20,fet,V5,V6,V7,V8}; 세대조건=모두; FAB Out 불량=particle; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0032"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0032",
+          "city": "화성",
+          "line_code": "67L",
+          "department": "ETCH",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z",
+              "D20",
+              "FET",
+              "V5",
+              "V6",
+              "V7",
+              "V8"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_FAB_PARTICLE"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0128",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0032; site=화셩; 라인코드=67L; 사고부서=etchh; 제품세대={d1a,d1z,디이십,에프이티,v5,v6,v7,v8}; 세대조건=모두; fab-out=SYNTH_FAB_PARTICLE; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0032"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0032",
+          "city": "화성",
+          "line_code": "67L",
+          "department": "ETCH",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z",
+              "D20",
+              "FET",
+              "V5",
+              "V6",
+              "V7",
+              "V8"
+            ]
+          },
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_FAB_PARTICLE"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0129",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0033; 도시=화성시; 라인=65엘; 부서=포토; fabout=외곽불량; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0033"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0033",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_EDGE_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0130",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0033; 위치=Hwaseong; 생산라인=65라인; 부셔=포토팀; 팹아웃=엣지페일; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0033"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0033",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_EDGE_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0131",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0033; 싸이트=화 성; line_code=65 L; dept=phpto; FAB Out 불량=edge fail; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0033"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0033",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_EDGE_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0132",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0033; site=화셩; 라인코드=65L; 사고부서=PHOTO; fab-out=SYNTH_EDS_EDGE_FAIL; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0033"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0033",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "fab_out_failure_codes": {
+            "mode": "any",
+            "values": [
+              "SYNTH_EDS_EDGE_FAIL"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0133",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0034; 도시=화성시; 라인=65엘; 부서=포토; 세대={디원에이}; 세대조건=모두; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0034"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0034",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0134",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0034; 위치=Hwaseong; 생산라인=65라인; 부셔=포토팀; 제품새대={D 1 a}; 세대조건=모두; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0034"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0034",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0135",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0034; 싸이트=화 성; line_code=65 L; dept=phpto; gen={D1a}; 세대조건=모두; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0034"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0034",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0136",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0034; site=화셩; 라인코드=65L; 사고부서=PHOTO; 제품세대={d1a}; 세대조건=모두; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0034"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0034",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0137",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0035; 도시=화성시; 라인=66엘; 부서=미지정; 세대={디이십}; 세대조건=모두; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0035"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0035",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D20"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0138",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0035; 위치=Hwaseong; 생산라인=66라인; 부셔=담당미정; 제품새대={D20}; 세대조건=모두; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0035"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0035",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D20"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0139",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0035; 싸이트=화 성; line_code=66 L; dept=UNASSIGNED; gen={d20}; 세대조건=모두; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0035"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0035",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D20"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0140",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0035; site=화셩; 라인코드=66L; 사고부서=unassigned; 제품세대={디이십}; 세대조건=모두; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0035"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0035",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D20"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0141",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0036; 도시=평택시; 라인=65엘; 부서=미지정; 세대={에프이티}; 세대조건=모두; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0036"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0036",
+          "city": "평택",
+          "line_code": "65L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "FET"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0142",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0036; 위치=Pyeongtaek; 생산라인=65라인; 부셔=담당미정; 제품새대={FET}; 세대조건=모두; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0036"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0036",
+          "city": "평택",
+          "line_code": "65L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "FET"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0143",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0036; 싸이트=평 택; line_code=65 L; dept=UNASSIGNED; gen={fet}; 세대조건=모두; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0036"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0036",
+          "city": "평택",
+          "line_code": "65L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "FET"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0144",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0036; site=평텍; 라인코드=65L; 사고부서=unassigned; 제품세대={에프이티}; 세대조건=모두; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0036"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0036",
+          "city": "평택",
+          "line_code": "65L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "FET"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0145",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0037; 도시=화성시; 라인=65엘; 부서=미지정; 세대={브이파이브,브이식스}; 세대조건=모두; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0037"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0037",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V5",
+              "V6"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0146",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0037; 위치=Hwaseong; 생산라인=65라인; 부셔=담당미정; 제품새대={브이5,브이6}; 세대조건=모두; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0037"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0037",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V5",
+              "V6"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0147",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0037; 싸이트=화 성; line_code=65 L; dept=UNASSIGNED; gen={V5,V6}; 세대조건=모두; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0037"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0037",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V5",
+              "V6"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0148",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0037; site=화셩; 라인코드=65L; 사고부서=unassigned; 제품세대={v5,v6}; 세대조건=모두; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0037"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0037",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V5",
+              "V6"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0149",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0038; 도시=평택시; 라인=67엘; 부서=미지정; 세대={브이세븐,브이에이트}; 세대조건=모두; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0038"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0038",
+          "city": "평택",
+          "line_code": "67L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V7",
+              "V8"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0150",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0038; 위치=Pyeongtaek; 생산라인=67라인; 부셔=담당미정; 제품새대={브이7,브이8}; 세대조건=모두; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0038"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0038",
+          "city": "평택",
+          "line_code": "67L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V7",
+              "V8"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0151",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0038; 싸이트=평 택; line_code=67 L; dept=UNASSIGNED; gen={V7,V8}; 세대조건=모두; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0038"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0038",
+          "city": "평택",
+          "line_code": "67L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V7",
+              "V8"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0152",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0038; site=평텍; 라인코드=67L; 사고부서=unassigned; 제품세대={v7,v8}; 세대조건=모두; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0038"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0038",
+          "city": "평택",
+          "line_code": "67L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "V7",
+              "V8"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0153",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0039; 도시=화성시; 라인=65엘; 부서=포토; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0039"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0039",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO"
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0154",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0039; 위치=Hwaseong; 생산라인=65라인; 부셔=포토팀; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0039"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0039",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO"
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0155",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0039; 싸이트=화 성; line_code=65 L; dept=phpto; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0039"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0039",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO"
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0156",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0039; site=화셩; 라인코드=65L; 사고부서=PHOTO; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0039"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0039",
+          "city": "화성",
+          "line_code": "65L",
+          "department": "PHOTO"
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0157",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0040; 도시=화성시; 라인=66엘; 부서=미지정; 세대={디원에이,디원지,디이십,에프이티,브이파이브,브이식스,브이세븐,브이에이트}; 세대조건=모두; 요청=랏과 웨이퍼 목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0040"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0040",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z",
+              "D20",
+              "FET",
+              "V5",
+              "V6",
+              "V7",
+              "V8"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0158",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0040; 위치=Hwaseong; 생산라인=66라인; 부셔=담당미정; 제품새대={D 1 a,D 1 z,D20,FET,브이5,브이6,브이7,브이8}; 세대조건=모두; 요청=로트 웨이퍼 리스트",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0040"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0040",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z",
+              "D20",
+              "FET",
+              "V5",
+              "V6",
+              "V7",
+              "V8"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0159",
+      "category": "multi_column_variants",
+      "question": "사고번호=SYN-2026-0040; 싸이트=화 성; line_code=66 L; dept=UNASSIGNED; gen={D1a,D1z,d20,fet,V5,V6,V7,V8}; 세대조건=모두; 요청=LOT & WAFER",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0040"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0040",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z",
+              "D20",
+              "FET",
+              "V5",
+              "V6",
+              "V7",
+              "V8"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0160",
+      "category": "multi_column_variants",
+      "question": "사고번호=syn-2026-0040; site=화셩; 라인코드=66L; 사고부서=unassigned; 제품세대={d1a,d1z,디이십,에프이티,v5,v6,v7,v8}; 세대조건=모두; 요청=웨이펴목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0040"
+        ],
+        "filters": {
+          "incident_number": "SYN-2026-0040",
+          "city": "화성",
+          "line_code": "66L",
+          "department": "UNASSIGNED",
+          "product_generations": {
+            "mode": "all",
+            "values": [
+              "D1a",
+              "D1z",
+              "D20",
+              "FET",
+              "V5",
+              "V6",
+              "V7",
+              "V8"
+            ]
+          }
+        },
+        "lot_count": 5,
+        "wafer_count": 60
+      }
+    },
+    {
+      "id": "VAR-0161",
+      "category": "contradicting_filters",
+      "question": "사고번호=SYN-2026-0001; 부서=ETCH; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0162",
+      "category": "contradicting_filters",
+      "question": "사고번호=SYN-2026-0002; 부서=ETCH; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0163",
+      "category": "contradicting_filters",
+      "question": "사고번호=SYN-2026-0003; 부서=PHOTO; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0164",
+      "category": "contradicting_filters",
+      "question": "사고번호=SYN-2026-0004; 부서=PHOTO; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0165",
+      "category": "contradicting_filters",
+      "question": "사고번호=SYN-2026-0005; 부서=PHOTO; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0166",
+      "category": "contradicting_filters",
+      "question": "사고번호=SYN-2026-0006; 부서=PHOTO; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0167",
+      "category": "contradicting_filters",
+      "question": "사고번호=SYN-2026-0007; 부서=ETCH; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0168",
+      "category": "contradicting_filters",
+      "question": "사고번호=SYN-2026-0008; 부서=PHOTO; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0169",
+      "category": "contradicting_filters",
+      "question": "사고번호=SYN-2026-0009; 부서=PHOTO; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0170",
+      "category": "contradicting_filters",
+      "question": "사고번호=SYN-2026-0010; 부서=PHOTO; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0171",
+      "category": "contradicting_filters",
+      "question": "사고번호=SYN-2026-0011; 부서=PHOTO; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0172",
+      "category": "contradicting_filters",
+      "question": "사고번호=SYN-2026-0012; 부서=PHOTO; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0173",
+      "category": "contradicting_filters",
+      "question": "사고번호=SYN-2026-0013; 부서=ETCH; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0174",
+      "category": "contradicting_filters",
+      "question": "사고번호=SYN-2026-0014; 부서=PHOTO; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0175",
+      "category": "contradicting_filters",
+      "question": "사고번호=SYN-2026-0015; 부서=PHOTO; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0176",
+      "category": "contradicting_filters",
+      "question": "사고번호=SYN-2026-0016; 부서=PHOTO; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0177",
+      "category": "contradicting_filters",
+      "question": "사고번호=SYN-2026-0017; 부서=ETCH; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0178",
+      "category": "contradicting_filters",
+      "question": "사고번호=SYN-2026-0018; 부서=ETCH; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0179",
+      "category": "contradicting_filters",
+      "question": "사고번호=SYN-2026-0019; 부서=PHOTO; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0180",
+      "category": "contradicting_filters",
+      "question": "사고번호=SYN-2026-0020; 부서=PHOTO; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0181",
+      "category": "contradicting_filters",
+      "question": "사고번호=SYN-2026-0021; 부서=PHOTO; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0182",
+      "category": "contradicting_filters",
+      "question": "사고번호=SYN-2026-0022; 부서=PHOTO; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0183",
+      "category": "contradicting_filters",
+      "question": "사고번호=SYN-2026-0023; 부서=ETCH; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0184",
+      "category": "contradicting_filters",
+      "question": "사고번호=SYN-2026-0024; 부서=PHOTO; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0185",
+      "category": "ambiguous_or_unverified",
+      "question": "부서=photox; 사고번호=SYN-2026-0001; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NEEDS_CLARIFICATION",
+        "reason": "UNCONFIRMED_TYPO",
+        "no_business_tools": true
+      }
+    },
+    {
+      "id": "VAR-0186",
+      "category": "ambiguous_or_unverified",
+      "question": "사고부서=photox; 사고번호=SYN-2026-0001; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NEEDS_CLARIFICATION",
+        "reason": "UNCONFIRMED_TYPO",
+        "no_business_tools": true
+      }
+    },
+    {
+      "id": "VAR-0187",
+      "category": "ambiguous_or_unverified",
+      "question": "부서=공정기술팀; 사고번호=SYN-2026-0001; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NEEDS_CLARIFICATION",
+        "reason": "AMBIGUOUS_ALIAS",
+        "no_business_tools": true
+      }
+    },
+    {
+      "id": "VAR-0188",
+      "category": "ambiguous_or_unverified",
+      "question": "사고부서=공정기술팀; 사고번호=SYN-2026-0001; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NEEDS_CLARIFICATION",
+        "reason": "AMBIGUOUS_ALIAS",
+        "no_business_tools": true
+      }
+    },
+    {
+      "id": "VAR-0189",
+      "category": "ambiguous_or_unverified",
+      "question": "부서=p기술팀; 사고번호=SYN-2026-0001; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NEEDS_CLARIFICATION",
+        "reason": "SCOPE_CONTEXT_REQUIRED",
+        "no_business_tools": true
+      }
+    },
+    {
+      "id": "VAR-0190",
+      "category": "ambiguous_or_unverified",
+      "question": "사고부서=p기술팀; 사고번호=SYN-2026-0001; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NEEDS_CLARIFICATION",
+        "reason": "SCOPE_CONTEXT_REQUIRED",
+        "no_business_tools": true
+      }
+    },
+    {
+      "id": "VAR-0191",
+      "category": "ambiguous_or_unverified",
+      "question": "부서=구포토팀; 사고번호=SYN-2026-0001; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NEEDS_CLARIFICATION",
+        "reason": "EXPIRED_ALIAS",
+        "no_business_tools": true
+      }
+    },
+    {
+      "id": "VAR-0192",
+      "category": "ambiguous_or_unverified",
+      "question": "사고부서=구포토팀; 사고번호=SYN-2026-0001; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NEEDS_CLARIFICATION",
+        "reason": "EXPIRED_ALIAS",
+        "no_business_tools": true
+      }
+    },
+    {
+      "id": "VAR-0193",
+      "category": "ambiguous_or_unverified",
+      "question": "부서=신포토팀; 사고번호=SYN-2026-0001; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NEEDS_CLARIFICATION",
+        "reason": "ALIAS_NOT_YET_VALID",
+        "no_business_tools": true
+      }
+    },
+    {
+      "id": "VAR-0194",
+      "category": "ambiguous_or_unverified",
+      "question": "사고부서=신포토팀; 사고번호=SYN-2026-0001; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NEEDS_CLARIFICATION",
+        "reason": "ALIAS_NOT_YET_VALID",
+        "no_business_tools": true
+      }
+    },
+    {
+      "id": "VAR-0195",
+      "category": "ambiguous_or_unverified",
+      "question": "부서=피팀; 사고번호=SYN-2026-0001; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NEEDS_CLARIFICATION",
+        "reason": "UNAPPROVED_ALIAS",
+        "no_business_tools": true
+      }
+    },
+    {
+      "id": "VAR-0196",
+      "category": "ambiguous_or_unverified",
+      "question": "사고부서=피팀; 사고번호=SYN-2026-0001; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NEEDS_CLARIFICATION",
+        "reason": "UNAPPROVED_ALIAS",
+        "no_business_tools": true
+      }
+    },
+    {
+      "id": "VAR-0197",
+      "category": "ambiguous_or_unverified",
+      "question": "부서=노광; 사고번호=SYN-2026-0001; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NEEDS_CLARIFICATION",
+        "reason": "UNKNOWN_TERM",
+        "no_business_tools": true
+      }
+    },
+    {
+      "id": "VAR-0198",
+      "category": "ambiguous_or_unverified",
+      "question": "사고부서=노광; 사고번호=SYN-2026-0001; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NEEDS_CLARIFICATION",
+        "reason": "UNKNOWN_TERM",
+        "no_business_tools": true
+      }
+    },
+    {
+      "id": "VAR-0199",
+      "category": "ambiguous_or_unverified",
+      "question": "부서=미확인조직; 사고번호=SYN-2026-0001; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NEEDS_CLARIFICATION",
+        "reason": "UNKNOWN_TERM",
+        "no_business_tools": true
+      }
+    },
+    {
+      "id": "VAR-0200",
+      "category": "ambiguous_or_unverified",
+      "question": "사고부서=미확인조직; 사고번호=SYN-2026-0001; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NEEDS_CLARIFICATION",
+        "reason": "UNKNOWN_TERM",
+        "no_business_tools": true
+      }
+    },
+    {
+      "id": "VAR-0201",
+      "category": "width_case",
+      "question": "사고번호=ＳＹＮ－２０２６－０００１; 부서=ＰＨＯＴＯ; 세대=ｄ１ａ; 요청=랏목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0001"
+        ]
+      }
+    },
+    {
+      "id": "VAR-0202",
+      "category": "scoped_alias",
+      "question": "부서=p기술팀; 위치=화성시; 사고번호=SYN-2026-0001; 요청=웨이퍼목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0001"
+        ]
+      }
+    },
+    {
+      "id": "VAR-0203",
+      "category": "scoped_alias",
+      "question": "부서=p기술팀; 위치=평택시; 사고번호=SYN-2026-0009; 요청=웨이퍼목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0009"
+        ]
+      }
+    },
+    {
+      "id": "VAR-0204",
+      "category": "wrong_scope",
+      "question": "부서=p기술팀; 도시=용인; 사고번호=SYN-2026-0001",
+      "expected": {
+        "status": "NEEDS_CLARIFICATION",
+        "no_business_tools": true
+      }
+    },
+    {
+      "id": "VAR-0205",
+      "category": "identifier_zero",
+      "question": "사고번호=SYN-2026-OOO1; 요청=랏목록",
+      "expected": {
+        "status": "NEEDS_CLARIFICATION",
+        "no_business_tools": true
+      }
+    },
+    {
+      "id": "VAR-0206",
+      "category": "identifier_zero",
+      "question": "사고번호=SYN-2026-1; 요청=랏목록",
+      "expected": {
+        "status": "NEEDS_CLARIFICATION",
+        "no_business_tools": true
+      }
+    },
+    {
+      "id": "VAR-0207",
+      "category": "generation_typo",
+      "question": "사고번호=SYN-2026-0001; 세대=D1x",
+      "expected": {
+        "status": "NEEDS_CLARIFICATION",
+        "no_business_tools": true
+      }
+    },
+    {
+      "id": "VAR-0208",
+      "category": "hangul_jamo",
+      "question": "사고번호=SYN-2026-0001; 부ㅅㅓ=PHOTO",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0001"
+        ]
+      }
+    },
+    {
+      "id": "VAR-0209",
+      "category": "unknown_filter",
+      "question": "사고번호=SYN-2026-0001; 미등록컬럼=PHOTO",
+      "expected": {
+        "status": "INVALID_REQUEST",
+        "no_business_tools": true
+      }
+    },
+    {
+      "id": "VAR-0210",
+      "category": "duplicate_filter",
+      "question": "도시=화성; 위치=평택; 사고번호=SYN-2026-0001",
+      "expected": {
+        "status": "INVALID_REQUEST",
+        "no_business_tools": true
+      }
+    },
+    {
+      "id": "VAR-0211",
+      "category": "unknown_request",
+      "question": "사고번호=SYN-2026-0001; 요청=긴급조치실행",
+      "expected": {
+        "status": "NEEDS_CLARIFICATION",
+        "no_business_tools": true
+      }
+    },
+    {
+      "id": "VAR-0212",
+      "category": "literal_sql",
+      "question": "사고명=' OR 1=1 --; 요청=사고목록",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0213",
+      "category": "literal_wildcard",
+      "question": "사고명=%_; 요청=사고목록",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0214",
+      "category": "empty_array",
+      "question": "사고번호=SYN-2026-0001; 세대={}",
+      "expected": {
+        "status": "NEEDS_CLARIFICATION",
+        "no_business_tools": true
+      }
+    },
+    {
+      "id": "VAR-0215",
+      "category": "unknown_failure",
+      "question": "사고번호=SYN-2026-0002; 팹아웃=정상",
+      "expected": {
+        "status": "NEEDS_CLARIFICATION",
+        "no_business_tools": true
+      }
+    },
+    {
+      "id": "VAR-0216",
+      "category": "null_array",
+      "question": "사고번호=SYN-2026-0011; 세대=FET",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0217",
+      "category": "empty_array_source",
+      "question": "사고번호=SYN-2026-0013; 세대=D1a",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0218",
+      "category": "wrong_lot",
+      "question": "사고번호=SYN-2026-0001; 랏번호=SYN-LOT-0009-001; 요청=웨이퍼목록",
+      "expected": {
+        "status": "TOOL_ERROR"
+      }
+    },
+    {
+      "id": "VAR-0219",
+      "category": "lot_selection",
+      "question": "사고번호=SYN-2026-0001; 랏번호=SYN-LOT-0001-001; 요청=웨이퍼목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0001"
+        ],
+        "wafer_count": 12
+      }
+    },
+    {
+      "id": "VAR-0220",
+      "category": "month",
+      "question": "사고번호=SYN-2026-0001; 발생월=2026년 1월",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0001"
+        ]
+      }
+    },
+    {
+      "id": "VAR-0221",
+      "category": "wrong_month",
+      "question": "사고번호=SYN-2026-0001; 기간=2026/02",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0222",
+      "category": "invalid_month",
+      "question": "사고번호=SYN-2026-0001; 기간=2026-13",
+      "expected": {
+        "status": "NEEDS_CLARIFICATION",
+        "no_business_tools": true
+      }
+    },
+    {
+      "id": "VAR-0223",
+      "category": "relative_month",
+      "question": "사고번호=SYN-2026-0001; 기간=최근",
+      "expected": {
+        "status": "NEEDS_CLARIFICATION",
+        "no_business_tools": true
+      }
+    },
+    {
+      "id": "VAR-0224",
+      "category": "title_alias",
+      "question": "사고번호=SYN-2026-0001; 사고몀=외곽샷+이디에스페일",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0001"
+        ]
+      }
+    },
+    {
+      "id": "VAR-0225",
+      "category": "title_typo",
+      "question": "사고번호=SYN-2026-0003; 검색어=chmaber",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0003"
+        ]
+      }
+    },
+    {
+      "id": "VAR-0226",
+      "category": "line_alias",
+      "question": "사고번호=SYN-2026-0001; 라인명=65l (abcd); 라인별칭=a b c d",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0001"
+        ]
+      }
+    },
+    {
+      "id": "VAR-0227",
+      "category": "line_alias_conflict",
+      "question": "사고번호=SYN-2026-0001; 라인별칭=IJKL",
+      "expected": {
+        "status": "NO_MATCH",
+        "incident_ids": []
+      }
+    },
+    {
+      "id": "VAR-0228",
+      "category": "not_free_chat",
+      "question": "화성 포토 사고 좀 찾아줘",
+      "expected": {
+        "status": "INVALID_REQUEST",
+        "no_business_tools": true
+      }
+    },
+    {
+      "id": "VAR-0229",
+      "category": "array_any",
+      "question": "세대=디원에이,디원지; 세대조건=any; 요청=사고목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0001",
+          "synthetic-pk-0002",
+          "synthetic-pk-0007",
+          "synthetic-pk-0008",
+          "synthetic-pk-0009",
+          "synthetic-pk-0016",
+          "synthetic-pk-0017",
+          "synthetic-pk-0018",
+          "synthetic-pk-0023",
+          "synthetic-pk-0024",
+          "synthetic-pk-0025",
+          "synthetic-pk-0029",
+          "synthetic-pk-0032",
+          "synthetic-pk-0034",
+          "synthetic-pk-0040",
+          "synthetic-pk-0041",
+          "synthetic-pk-0045",
+          "synthetic-pk-0048",
+          "synthetic-pk-0049",
+          "synthetic-pk-0050",
+          "synthetic-pk-0056",
+          "synthetic-pk-0057",
+          "synthetic-pk-0061",
+          "synthetic-pk-0064",
+          "synthetic-pk-0071",
+          "synthetic-pk-0072",
+          "synthetic-pk-0073",
+          "synthetic-pk-0080",
+          "synthetic-pk-0081",
+          "synthetic-pk-0082",
+          "synthetic-pk-0087",
+          "synthetic-pk-0089",
+          "synthetic-pk-0093",
+          "synthetic-pk-0096",
+          "synthetic-pk-0097",
+          "synthetic-pk-0098",
+          "synthetic-pk-0103",
+          "synthetic-pk-0105",
+          "synthetic-pk-0109",
+          "synthetic-pk-0112",
+          "synthetic-pk-0113",
+          "synthetic-pk-0114",
+          "synthetic-pk-0119",
+          "synthetic-pk-0120",
+          "synthetic-pk-0125",
+          "synthetic-pk-0128"
+        ]
+      }
+    },
+    {
+      "id": "VAR-0230",
+      "category": "array_all",
+      "question": "세대=디원에이,디원지; 세대조건=all; 요청=사고목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0001",
+          "synthetic-pk-0008",
+          "synthetic-pk-0016",
+          "synthetic-pk-0017",
+          "synthetic-pk-0024",
+          "synthetic-pk-0029",
+          "synthetic-pk-0032",
+          "synthetic-pk-0040",
+          "synthetic-pk-0045",
+          "synthetic-pk-0048",
+          "synthetic-pk-0049",
+          "synthetic-pk-0056",
+          "synthetic-pk-0061",
+          "synthetic-pk-0064",
+          "synthetic-pk-0072",
+          "synthetic-pk-0080",
+          "synthetic-pk-0081",
+          "synthetic-pk-0093",
+          "synthetic-pk-0096",
+          "synthetic-pk-0097",
+          "synthetic-pk-0109",
+          "synthetic-pk-0112",
+          "synthetic-pk-0113",
+          "synthetic-pk-0120",
+          "synthetic-pk-0125",
+          "synthetic-pk-0128"
+        ]
+      }
+    },
+    {
+      "id": "VAR-0231",
+      "category": "array_exact",
+      "question": "세대=디원에이,디원지; 세대조건=exact; 요청=사고목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0001",
+          "synthetic-pk-0017",
+          "synthetic-pk-0029",
+          "synthetic-pk-0045",
+          "synthetic-pk-0049",
+          "synthetic-pk-0061",
+          "synthetic-pk-0081",
+          "synthetic-pk-0093",
+          "synthetic-pk-0097",
+          "synthetic-pk-0109",
+          "synthetic-pk-0113",
+          "synthetic-pk-0125"
+        ]
+      }
+    },
+    {
+      "id": "VAR-0232",
+      "category": "multiple_incidents",
+      "question": "사고명=외곽샷; 요청=웨이퍼목록",
+      "expected": {
+        "status": "NEEDS_SELECTION",
+        "incident_ids": [
+          "synthetic-pk-0001",
+          "synthetic-pk-0013",
+          "synthetic-pk-0017",
+          "synthetic-pk-0029",
+          "synthetic-pk-0033",
+          "synthetic-pk-0045",
+          "synthetic-pk-0049",
+          "synthetic-pk-0061",
+          "synthetic-pk-0065",
+          "synthetic-pk-0077",
+          "synthetic-pk-0081",
+          "synthetic-pk-0093",
+          "synthetic-pk-0097",
+          "synthetic-pk-0109",
+          "synthetic-pk-0113",
+          "synthetic-pk-0125"
+        ]
+      }
+    },
+    {
+      "id": "VAR-0233",
+      "category": "explicit_incident_selection",
+      "question": "사고명=외곽샷; 요청=웨이퍼목록",
+      "expected": {
+        "status": "MATCHED",
+        "incident_ids": [
+          "synthetic-pk-0001"
+        ],
+        "wafer_count": 60
+      },
+      "selected": [
+        "synthetic-pk-0001"
+      ]
+    },
+    {
+      "id": "VAR-0234",
+      "category": "outside_selection",
+      "question": "사고명=외곽샷; 요청=웨이퍼목록",
+      "expected": {
+        "status": "TOOL_ERROR"
+      },
+      "selected": [
+        "synthetic-pk-0002"
+      ]
+    }
+  ]
+}

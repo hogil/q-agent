@@ -21,7 +21,7 @@ class ConfigError(ValueError):
 
 PATH_KEYS = ('data_root output_root model_root image_root document_root trend_root cache_root '
              'log_root skills_root dictionary_root registry_file skill_lock_file '
-             'incident_fixture_file demo_manifest_file').split()
+             'incident_fixture_file demo_manifest_file terminology_file variant_cases_file variant_report_file').split()
 TABLE_FIELDS = {
     'incident': ('incident_id incident_number title city line line_code line_alias department occurred_at '
                  'product_generations fab_out_failure_codes expected_lot_count affected_wafer_count '

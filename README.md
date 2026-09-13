@@ -6,6 +6,8 @@
 
 ## 시작하기
 
+- [오타/동의어 234개 질문 실행: 다중 컬럼 → 사고 → Lot/Wafer](docs/current/VARIANT_DATA_DEMO.md)
+
 - [질문부터 최종 답변까지 상세 구조: Router → Judge → Answer](docs/current/DETAILED_REQUEST_FLOW.md)
 
 - [Router / Judge / Answer 호출 위치와 모델 서버 배치](docs/current/LLM_PLACEMENT.md)
