@@ -1,0 +1,32 @@
+{
+  "version": "demo-0.4",
+  "notice": "가상 승인 사전 예시. 사내 확인 전 운영 사용 금지",
+  "entries": [
+    {
+      "alias": "포토",
+      "canonical": "PHOTO",
+      "type": "department",
+      "city": "화성",
+      "approved": true
+    },
+    {
+      "alias": "p기술팀",
+      "canonical": "PHOTO",
+      "type": "department",
+      "city": "화성",
+      "approved": true
+    },
+    {
+      "alias": "노광",
+      "canonical": "EXPOSURE",
+      "type": "process",
+      "approved": true
+    },
+    {
+      "alias": "랏",
+      "canonical": "lot",
+      "type": "entity",
+      "approved": true
+    }
+  ]
+}

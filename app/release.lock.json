@@ -1,0 +1,27 @@
+{
+  "release": "quality-demo-0.5",
+  "files": {
+    "domain-data/aliases.example.json": "63d215627abcd46f92a8ced97283f3af93e93db9c9fd8fe733c33e0df6e0bec7",
+    "incident_tools.py": "f15fdcd51def95c2db0e4ae9f4a869b8ef5db9e9566a6cf37b0df4945e0b04e2",
+    "mapping.example.json": "e5385a8a21697a67f05e62016a43cb11996946653f50c7566203ff1d92c5e935",
+    "rag_sources.example.json": "e9313ecc2f4cb9fbc6d218082d5d7618ef8acfc58bb964c4994924dc44fb506b",
+    "skill_loader.py": "4e0951ae365893c774515b35b6c3a7d6a23dbd3463141cc3275b4239b9ad0af3",
+    "skill_registry.json": "9c916eb86539c97dcc2b32df60e01080d92178d187cccbd18d4e13090ea7c0cd",
+    "skills/quality-actions/SKILL.md": "20314d12420b0b8bee0dde83ca93def211e07fe3f1c811eb7ba4bca2dc88895b",
+    "skills/quality-answer/SKILL.md": "37306d79be8a09ca5aeb17a2fc8b7b751e74f022be0e86d5365cf8b2fdd25fcf",
+    "skills/quality-answer/references/output.schema.json": "e248dee227b90e4056b827fa1308499e761821811dbd611aa79035ad83b3e82d",
+    "skills/quality-core/SKILL.md": "bc2bbb8773834236f3749518c77b71b4c4851a59239de2281eb9f0129c183dd7",
+    "skills/quality-document-evidence/SKILL.md": "5abf43dc1c10dbfff8bbe17cc73440bf2db9a4805f679104832a7433801bffa1",
+    "skills/quality-incident-schema/SKILL.md": "ac95a3412bf25acd13c33e9cdd27c9cc9b3d5a18856f0d437403c588dd83f165",
+    "skills/quality-incident-schema/references/logical-schema.json": "c384c517fc9c459cad9b9744184f439da4e99d4b316832f9f67404282beef6ce",
+    "skills/quality-judge/SKILL.md": "aa7e947e3822c59bec0274cfaa5ada0ce0589157cd64f4716732fa481cf268e1",
+    "skills/quality-judge/references/output.schema.json": "d6f08ef6cff84ede7536596d273d4cb172e657a2e376af47fac74a0148cb93bd",
+    "skills/quality-lot-retrieval/SKILL.md": "f88c6523eb8819b82df3a6beed7e40217f3c89a4e33e9e7f8f19a12fb4ffd1a3",
+    "skills/quality-router/SKILL.md": "7f3b312e8349b4dc9118a3d1e43e78c2339fce52a1016693989a6769b0a9e11f",
+    "skills/quality-router/references/output.schema.json": "a8ed47b2bb1b3b227ce70fccad680ba19384db2dfa6460a9276ae98651886a05",
+    "skills/quality-skill-maintenance/SKILL.md": "f4290c0c4b1f1d8ff06bcd04b2d81b8d21ff958e0dcdff4b7d4529dbed6e4153",
+    "skills/quality-statistics/SKILL.md": "72c797bc0ea5b1924665985c0ef2232551d1913307b4550252dc4c9b813764e8",
+    "skills/quality-terminology/SKILL.md": "8bc1fcaa3eff36bbaa725a29df3d0c2abe52518c6487666d8a9e9ed0e7366e63",
+    "skills/quality-terminology/references/dictionary-contract.json": "002a50b27f51e126d451c988cb6fd5880db03139472b9964af3afac75de59d68"
+  }
+}

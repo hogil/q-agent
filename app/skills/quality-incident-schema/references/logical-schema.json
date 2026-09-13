@@ -1,0 +1,40 @@
+{
+  "version": "0.5",
+  "incident": {
+    "grain": "one incident",
+    "identity": "incident_id",
+    "display": "incident_number",
+    "fields": [
+      "title",
+      "city",
+      "line",
+      "expected_lot_count"
+    ],
+    "generation_array": {
+      "source": "existing native array",
+      "example": [
+        "D1a",
+        "D1z",
+        "D20",
+        "FET",
+        "V5",
+        "V6",
+        "V7",
+        "V8"
+      ],
+      "search": "exact element membership; any/all/exact defined per request",
+      "statistics": "unnest for query; distinct incident per generation",
+      "allocation": "unknown unless supported by product/Lot evidence"
+    }
+  },
+  "lot_list": {
+    "grain": "one incident-lot membership after duplicate handling",
+    "fields": [
+      "incident_ref",
+      "lot_id",
+      "product_code",
+      "status"
+    ]
+  },
+  "relation": "incident logical parent key → lot_list.incident_ref; administrator mapping decides physical keys"
+}

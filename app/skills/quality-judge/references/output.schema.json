@@ -1,0 +1,44 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "verdict",
+    "issues"
+  ],
+  "properties": {
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "revise",
+        "need_evidence",
+        "abstain"
+      ]
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "claim_id",
+          "type",
+          "reason"
+        ],
+        "properties": {
+          "claim_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "type": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

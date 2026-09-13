@@ -1,0 +1,45 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "answer",
+    "claims",
+    "limitations"
+  ],
+  "properties": {
+    "answer": {
+      "type": "string"
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "claim_id",
+          "text",
+          "evidence_ids"
+        ],
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "evidence_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

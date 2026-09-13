@@ -1,0 +1,83 @@
+{
+  "release": "quality-demo-0.5",
+  "purpose": "on-prem application Skill sources; not personal ChatGPT skill installation",
+  "base": [
+    "quality-core"
+  ],
+  "roles": {
+    "router": "quality-router",
+    "answer": "quality-answer",
+    "judge": "quality-judge"
+  },
+  "topics": {
+    "terminology": [
+      "quality-terminology"
+    ],
+    "schema": [
+      "quality-incident-schema"
+    ],
+    "lots": [
+      "quality-incident-schema",
+      "quality-lot-retrieval"
+    ],
+    "statistics": [
+      "quality-incident-schema",
+      "quality-statistics"
+    ],
+    "documents": [
+      "quality-document-evidence"
+    ],
+    "actions": [
+      "quality-actions"
+    ],
+    "maintenance": [
+      "quality-skill-maintenance"
+    ]
+  },
+  "role_allowed_topics": {
+    "router": [
+      "terminology",
+      "schema",
+      "lots",
+      "statistics",
+      "documents",
+      "actions"
+    ],
+    "answer": [
+      "terminology",
+      "schema",
+      "lots",
+      "statistics",
+      "documents",
+      "actions"
+    ],
+    "judge": [
+      "schema",
+      "lots",
+      "statistics",
+      "documents",
+      "actions"
+    ]
+  },
+  "max_prompt_characters": 18000,
+  "max_answer_revisions": 2,
+  "model_profile": {
+    "router": {
+      "model_id": "CONFIGURE_INTERNAL_MODEL",
+      "temperature": 0
+    },
+    "answer": {
+      "model_id": "CONFIGURE_INTERNAL_MODEL",
+      "temperature": 0
+    },
+    "judge": {
+      "model_id": "CONFIGURE_INTERNAL_MODEL",
+      "temperature": 0
+    }
+  },
+  "notes": [
+    "temperature=0 reduces sampling variability but does not guarantee deterministic serving",
+    "topic/reference loads are explicit; arbitrary filesystem paths are prohibited",
+    "Maintenance is an offline development workflow, not an online user-triggered role"
+  ]
+}

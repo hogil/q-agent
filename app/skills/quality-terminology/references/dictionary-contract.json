@@ -1,0 +1,29 @@
+{
+  "request": [
+    "raw_text",
+    "entity_type",
+    "city",
+    "line",
+    "effective_at",
+    "dictionary_version"
+  ],
+  "response": [
+    "canonical_code",
+    "candidates",
+    "match_method",
+    "scope",
+    "approval",
+    "source_id",
+    "version"
+  ],
+  "categories": [
+    "department",
+    "process",
+    "failure",
+    "generation",
+    "equipment",
+    "recipe",
+    "location"
+  ],
+  "storage": "approved terminology database or versioned shards, not all in system prompt"
+}

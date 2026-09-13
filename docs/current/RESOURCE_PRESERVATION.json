@@ -1,0 +1,797 @@
+{
+  "source_commit": "995aca61eaca5f62f0cf7684f84c77b9f31efb06",
+  "backup_branch": "archive/pre-quality-rebuild-20260913",
+  "policy": "Preserve all original docs/ and Markdown/Office/text documents at original paths with identical Git blob hashes; original complete tree retained on backup branch.",
+  "files": [
+    {
+      "path": "CLAUDE.md",
+      "sha": "c0ef94e70b8eacc6f4c842c9c4215cc07df8184f",
+      "size": 14296
+    },
+    {
+      "path": "ax_award/CLAUDE.md",
+      "sha": "acd600b21a87decb3f9994b7b2ab3f00f94adcca",
+      "size": 43828
+    },
+    {
+      "path": "ax_award/HANDOVER.md",
+      "sha": "be35280ef87b083e9d0965a820656a410a0fca66",
+      "size": 16332
+    },
+    {
+      "path": "ax_award/html/AX_Award_지원서.docx",
+      "sha": "c44fb9a6274f7ad3ad68be36141f7dee987b97c0",
+      "size": 2705566
+    },
+    {
+      "path": "ax_award/html/AX_Award_지원서_편집용.docx",
+      "sha": "9ea358f4b2f7d801e9886e87b8b2dd0261159574",
+      "size": 66322
+    },
+    {
+      "path": "ax_award/html/README.md",
+      "sha": "0ee6a3c5ccd180c2a8045ee4150cb88d17ad8c14",
+      "size": 6489
+    },
+    {
+      "path": "ax_award/html/_ds/qie-deck-design-system-3e89fc2b-617a-478e-8046-1d49f7f8e83c/readme.md",
+      "sha": "13b8082aa01115b2f843d570a7ef1323369689b9",
+      "size": 11267
+    },
+    {
+      "path": "ax_award/html/design_export_6/_ds/qie-deck-design-system-3e89fc2b-617a-478e-8046-1d49f7f8e83c/readme.md",
+      "sha": "13b8082aa01115b2f843d570a7ef1323369689b9",
+      "size": 11267
+    },
+    {
+      "path": "ax_award/html/design_export_6/extracted/v45.docx",
+      "sha": "f79934350573d54116887babf70b6cf13bced180",
+      "size": 1106039
+    },
+    {
+      "path": "ax_award/html/design_export_6/extracted/v45_content.md",
+      "sha": "470fd3bedb406d97b4ee5f599df45375cee39d32",
+      "size": 8175
+    },
+    {
+      "path": "ax_award/html/design_export_6/extracted/v45b.docx",
+      "sha": "f79934350573d54116887babf70b6cf13bced180",
+      "size": 1106039
+    },
+    {
+      "path": "ax_award/html/design_export_6/extracted/v45b_content.md",
+      "sha": "5c455fb24ffb15a92bf0f4d123b6fbef5b464335",
+      "size": 7937
+    },
+    {
+      "path": "ax_award/html/design_export_6/notes/fig_inventory.md",
+      "sha": "8af75341ee24e82320655b4cb5c0827f6b9629e2",
+      "size": 11596
+    },
+    {
+      "path": "ax_award/html/design_export_6/uploads/ABLATION_PLAN.md",
+      "sha": "bdcfea98ca0b25d07a34774f08031af4246cc830",
+      "size": 15204
+    },
+    {
+      "path": "ax_award/html/design_export_6/uploads/ABLATION_TABLE_UMAPFREE.md",
+      "sha": "1c80d3ce0a79bddcfbd76f06ba644b8f9cfba547",
+      "size": 4400
+    },
+    {
+      "path": "ax_award/html/design_export_6/uploads/ABSOLUTE_RULES.md",
+      "sha": "2da519c64fe1533d0f8eede4b3f2713eaab30026",
+      "size": 5932
+    },
+    {
+      "path": "ax_award/html/design_export_6/uploads/ARCHITECTURE.md",
+      "sha": "c2b987f71acdbebeac669650e2532d16974f223a",
+      "size": 4237
+    },
+    {
+      "path": "ax_award/html/design_export_6/uploads/AX_Award_지원서_Q-Agent_v45-99ce69f1.docx",
+      "sha": "f79934350573d54116887babf70b6cf13bced180",
+      "size": 1106039
+    },
+    {
+      "path": "ax_award/html/design_export_6/uploads/AX_Award_지원서_Q-Agent_v45.docx",
+      "sha": "f79934350573d54116887babf70b6cf13bced180",
+      "size": 1106039
+    },
+    {
+      "path": "ax_award/html/design_export_6/uploads/CLAUDE-14bffcf1.md",
+      "sha": "29818bc3763ba255e9154059e9dc8807ad6983b5",
+      "size": 41946
+    },
+    {
+      "path": "ax_award/html/design_export_6/uploads/CLAUDE-70bef2c2.md",
+      "sha": "c0ef94e70b8eacc6f4c842c9c4215cc07df8184f",
+      "size": 14296
+    },
+    {
+      "path": "ax_award/html/design_export_6/uploads/CLAUDE.md",
+      "sha": "c0ef94e70b8eacc6f4c842c9c4215cc07df8184f",
+      "size": 14296
+    },
+    {
+      "path": "ax_award/html/design_export_6/uploads/HANDOFF_260726.md",
+      "sha": "49b6f65d7756cf60c5cffa66dde497843ab081cb",
+      "size": 25775
+    },
+    {
+      "path": "ax_award/html/design_export_6/uploads/HANDOVER.md",
+      "sha": "be35280ef87b083e9d0965a820656a410a0fca66",
+      "size": 16332
+    },
+    {
+      "path": "ax_award/html/design_export_6/uploads/MEMORY.md",
+      "sha": "d6f1411b1a64b2823d8ae9cfafbb28cf98a5bf9f",
+      "size": 1276
+    },
+    {
+      "path": "ax_award/html/design_export_6/uploads/META_SCHEMA.md",
+      "sha": "3d873914e694400f13c03ad06d9cea8db774dcff",
+      "size": 4547
+    },
+    {
+      "path": "ax_award/html/design_export_6/uploads/README-a3de3ae9.md",
+      "sha": "a0c8ae864c84e561f4f610f8076c547311a2d63a",
+      "size": 5478
+    },
+    {
+      "path": "ax_award/html/design_export_6/uploads/README.md",
+      "sha": "de59184490e3b0744b3b3c0b1c360e83758b3df3",
+      "size": 1126
+    },
+    {
+      "path": "ax_award/html/design_export_6/uploads/TROUBLESHOOTING.md",
+      "sha": "2f42fe126529b48833002cbbd59d33bc26f03102",
+      "size": 3927
+    },
+    {
+      "path": "ax_award/html/design_export_6/uploads/USAGE.md",
+      "sha": "3c66f06808d350a90379be4ea2b59f3a0265cd73",
+      "size": 3067
+    },
+    {
+      "path": "ax_award/html/design_export_6/uploads/bkm_field_predict.md",
+      "sha": "1bc5e88e0b9c2b3e8eb58e84953c583049301138",
+      "size": 4554
+    },
+    {
+      "path": "ax_award/html/design_export_6/uploads/cleanup_state_260726.md",
+      "sha": "a7ce2879c06677ec1c82b000220533d58bba0161",
+      "size": 8744
+    },
+    {
+      "path": "ax_award/html/design_export_6/uploads/problem_setting.md",
+      "sha": "436c4435bbfddcb5e5c24fe8c01ba676b1e7a9c5",
+      "size": 7684
+    },
+    {
+      "path": "ax_award/html/design_export_6/uploads/server_full_run_and_field_data.md",
+      "sha": "d5305162270e14d56d1b41630d247b93ef21aa7d",
+      "size": 8698
+    },
+    {
+      "path": "ax_award/html/design_export_6/uploads/summary.md",
+      "sha": "6a46f7980c2ea6587d1a35a22922ad8ddad27ab2",
+      "size": 36014
+    },
+    {
+      "path": "ax_award/html/design_export_6/uploads/two_stage_workflow.md",
+      "sha": "6a01275ae2ba46eb5d738d499c2f09cbe5c2d2b5",
+      "size": 13267
+    },
+    {
+      "path": "ax_award/html/design_export_6/uploads/자산조사_2026-08-08.md",
+      "sha": "15256ca0db0acfcd63f619f6d2f72f847102ca53",
+      "size": 14069
+    },
+    {
+      "path": "ax_award/html/design_export_7/_ds/qie-deck-design-system-3e89fc2b-617a-478e-8046-1d49f7f8e83c/readme.md",
+      "sha": "13b8082aa01115b2f843d570a7ef1323369689b9",
+      "size": 11267
+    },
+    {
+      "path": "ax_award/html/design_export_7/extracted/v45.docx",
+      "sha": "f79934350573d54116887babf70b6cf13bced180",
+      "size": 1106039
+    },
+    {
+      "path": "ax_award/html/design_export_7/extracted/v45_content.md",
+      "sha": "470fd3bedb406d97b4ee5f599df45375cee39d32",
+      "size": 8175
+    },
+    {
+      "path": "ax_award/html/design_export_7/extracted/v45b.docx",
+      "sha": "f79934350573d54116887babf70b6cf13bced180",
+      "size": 1106039
+    },
+    {
+      "path": "ax_award/html/design_export_7/extracted/v45b_content.md",
+      "sha": "5c455fb24ffb15a92bf0f4d123b6fbef5b464335",
+      "size": 7937
+    },
+    {
+      "path": "ax_award/html/design_export_7/notes/fig_inventory.md",
+      "sha": "8af75341ee24e82320655b4cb5c0827f6b9629e2",
+      "size": 11596
+    },
+    {
+      "path": "ax_award/html/design_export_7/uploads/ABLATION_PLAN.md",
+      "sha": "bdcfea98ca0b25d07a34774f08031af4246cc830",
+      "size": 15204
+    },
+    {
+      "path": "ax_award/html/design_export_7/uploads/ABLATION_TABLE_UMAPFREE.md",
+      "sha": "1c80d3ce0a79bddcfbd76f06ba644b8f9cfba547",
+      "size": 4400
+    },
+    {
+      "path": "ax_award/html/design_export_7/uploads/ABSOLUTE_RULES.md",
+      "sha": "2da519c64fe1533d0f8eede4b3f2713eaab30026",
+      "size": 5932
+    },
+    {
+      "path": "ax_award/html/design_export_7/uploads/ARCHITECTURE.md",
+      "sha": "c2b987f71acdbebeac669650e2532d16974f223a",
+      "size": 4237
+    },
+    {
+      "path": "ax_award/html/design_export_7/uploads/AX_Award_지원서_Q-Agent_v45-99ce69f1.docx",
+      "sha": "f79934350573d54116887babf70b6cf13bced180",
+      "size": 1106039
+    },
+    {
+      "path": "ax_award/html/design_export_7/uploads/AX_Award_지원서_Q-Agent_v45.docx",
+      "sha": "f79934350573d54116887babf70b6cf13bced180",
+      "size": 1106039
+    },
+    {
+      "path": "ax_award/html/design_export_7/uploads/CLAUDE-14bffcf1.md",
+      "sha": "29818bc3763ba255e9154059e9dc8807ad6983b5",
+      "size": 41946
+    },
+    {
+      "path": "ax_award/html/design_export_7/uploads/CLAUDE-70bef2c2.md",
+      "sha": "c0ef94e70b8eacc6f4c842c9c4215cc07df8184f",
+      "size": 14296
+    },
+    {
+      "path": "ax_award/html/design_export_7/uploads/CLAUDE.md",
+      "sha": "c0ef94e70b8eacc6f4c842c9c4215cc07df8184f",
+      "size": 14296
+    },
+    {
+      "path": "ax_award/html/design_export_7/uploads/HANDOFF_260726.md",
+      "sha": "49b6f65d7756cf60c5cffa66dde497843ab081cb",
+      "size": 25775
+    },
+    {
+      "path": "ax_award/html/design_export_7/uploads/HANDOVER.md",
+      "sha": "be35280ef87b083e9d0965a820656a410a0fca66",
+      "size": 16332
+    },
+    {
+      "path": "ax_award/html/design_export_7/uploads/MEMORY.md",
+      "sha": "d6f1411b1a64b2823d8ae9cfafbb28cf98a5bf9f",
+      "size": 1276
+    },
+    {
+      "path": "ax_award/html/design_export_7/uploads/META_SCHEMA.md",
+      "sha": "3d873914e694400f13c03ad06d9cea8db774dcff",
+      "size": 4547
+    },
+    {
+      "path": "ax_award/html/design_export_7/uploads/README-a3de3ae9.md",
+      "sha": "a0c8ae864c84e561f4f610f8076c547311a2d63a",
+      "size": 5478
+    },
+    {
+      "path": "ax_award/html/design_export_7/uploads/README.md",
+      "sha": "de59184490e3b0744b3b3c0b1c360e83758b3df3",
+      "size": 1126
+    },
+    {
+      "path": "ax_award/html/design_export_7/uploads/TROUBLESHOOTING.md",
+      "sha": "2f42fe126529b48833002cbbd59d33bc26f03102",
+      "size": 3927
+    },
+    {
+      "path": "ax_award/html/design_export_7/uploads/USAGE.md",
+      "sha": "3c66f06808d350a90379be4ea2b59f3a0265cd73",
+      "size": 3067
+    },
+    {
+      "path": "ax_award/html/design_export_7/uploads/bkm_field_predict.md",
+      "sha": "1bc5e88e0b9c2b3e8eb58e84953c583049301138",
+      "size": 4554
+    },
+    {
+      "path": "ax_award/html/design_export_7/uploads/cleanup_state_260726.md",
+      "sha": "a7ce2879c06677ec1c82b000220533d58bba0161",
+      "size": 8744
+    },
+    {
+      "path": "ax_award/html/design_export_7/uploads/problem_setting.md",
+      "sha": "436c4435bbfddcb5e5c24fe8c01ba676b1e7a9c5",
+      "size": 7684
+    },
+    {
+      "path": "ax_award/html/design_export_7/uploads/server_full_run_and_field_data.md",
+      "sha": "d5305162270e14d56d1b41630d247b93ef21aa7d",
+      "size": 8698
+    },
+    {
+      "path": "ax_award/html/design_export_7/uploads/summary.md",
+      "sha": "6a46f7980c2ea6587d1a35a22922ad8ddad27ab2",
+      "size": 36014
+    },
+    {
+      "path": "ax_award/html/design_export_7/uploads/two_stage_workflow.md",
+      "sha": "6a01275ae2ba46eb5d738d499c2f09cbe5c2d2b5",
+      "size": 13267
+    },
+    {
+      "path": "ax_award/html/design_export_7/uploads/자산조사_2026-08-08.md",
+      "sha": "15256ca0db0acfcd63f619f6d2f72f847102ca53",
+      "size": 14069
+    },
+    {
+      "path": "ax_award/measure_out.txt",
+      "sha": "c1b573282902d997a618b9d8fd1cdff5a053db2f",
+      "size": 638
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v1.docx",
+      "sha": "8fcb9e1925fdd977c1acd7e0ef34bf26f2234ae8",
+      "size": 45741
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v10.docx",
+      "sha": "b033d1fc7ecbdd9032f4eb6ec19480701ad35a5b",
+      "size": 47877
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v11.docx",
+      "sha": "5fa0d2070f64751abcd88ca75f0d1e28c7f37189",
+      "size": 47505
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v1121.docx",
+      "sha": "d87217e7cf580c54612f0d3b16e721aab72510c7",
+      "size": 846591
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v1122.docx",
+      "sha": "a35a29cb688625bf3446e97035a053d233913afd",
+      "size": 883108
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v12.docx",
+      "sha": "060cdde213094e6999d19131d4892ecf19d2e278",
+      "size": 47507
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v13.docx",
+      "sha": "128400ee7ad2cc58cbb17adbc71da126cf058119",
+      "size": 47435
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v14.docx",
+      "sha": "1f5b89d8847de09e889e4d5d6be2b99807072b83",
+      "size": 47421
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v15.docx",
+      "sha": "d57702a2e39cc09ff51e474e3a2d28040730ef4f",
+      "size": 47418
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v16.docx",
+      "sha": "1b7f1694389639088638c1c18b605a6874dc02db",
+      "size": 47412
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v17.docx",
+      "sha": "cc9de089b148fd01b9505c357ca6e6675bbfe4de",
+      "size": 47499
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v18.docx",
+      "sha": "c7ad247c39b8f891fd68a29ee94337779868b624",
+      "size": 47485
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v19.docx",
+      "sha": "55d25b199df209fb186efc9d00474754be967fb7",
+      "size": 47478
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v2.docx",
+      "sha": "938492523a0be9dca42eee964e9391420c1bc404",
+      "size": 45679
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v20.docx",
+      "sha": "fe21ff58b180bfff560c984a3af10a320994bfeb",
+      "size": 47481
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v21.docx",
+      "sha": "ab50eee4e7a3cc7c04a3bdcf02b2d87c9882c8ff",
+      "size": 47728
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v22.docx",
+      "sha": "bddbcdaed230bc814fc8cee27fa4279b7077310b",
+      "size": 47871
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v23.docx",
+      "sha": "f8b0044cbdf640ebc395faad158d46bf29beef19",
+      "size": 48265
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v24.docx",
+      "sha": "97ab9ba4c01a7a8024c78c6ef3d80c677e805892",
+      "size": 48265
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v25.docx",
+      "sha": "a034aaab3aaf39112cffe05d4d3341e7dc51f97e",
+      "size": 48305
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v26.docx",
+      "sha": "ce62e0f5125c3d4ee1396b433df3e07666d08584",
+      "size": 383585
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v27.docx",
+      "sha": "d1f9229c661c083d39670b508553e0c7a1f989c0",
+      "size": 435977
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v28.docx",
+      "sha": "264ec151e3d0f2d8a252ae40101a99a05341af41",
+      "size": 435954
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v29.docx",
+      "sha": "3c37edb61f466c4701f6322c53a2b1e2e84944ff",
+      "size": 426580
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v3.docx",
+      "sha": "8a8389121b0da68a8f8d62356b3a640614af9c4b",
+      "size": 45665
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v30.docx",
+      "sha": "4f64f3a1bbdd0d7b72c2ef380fe857b99e049184",
+      "size": 426513
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v31.docx",
+      "sha": "c6492fa7c65b26d3b84d10c2c664bf7de5c068e9",
+      "size": 426726
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v32.docx",
+      "sha": "b3dd5cf72ecc18226540033f94fbdb157641ba8e",
+      "size": 426744
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v33.docx",
+      "sha": "16461c33646f92dd8351c035623c8c46c664512b",
+      "size": 426696
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v34.docx",
+      "sha": "2a740767b1f417c1a1976dc80bc7ce02b6798b4c",
+      "size": 426613
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v35.docx",
+      "sha": "d72885ccfc51b4eae78d118a95f785f6b49201a9",
+      "size": 426625
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v36.docx",
+      "sha": "eb6e65930193445d114b4bd9629eca890f47e417",
+      "size": 426614
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v37.docx",
+      "sha": "201979c21e36cd1875c4ce2b89945a3b94eaf03b",
+      "size": 426586
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v38.docx",
+      "sha": "3b3b9a0649f94c7612aa03bfd572a902e265d6e4",
+      "size": 426586
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v39.docx",
+      "sha": "66bec343c5599dfa06782e6b4175560d8be4a59f",
+      "size": 426513
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v4.docx",
+      "sha": "e7a63010dbe6746e47f2a36a86216c2f9c351999",
+      "size": 48415
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v40.docx",
+      "sha": "5301f7ccde58e1e00b358aa440fa1b4e62fe6738",
+      "size": 426495
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v41.docx",
+      "sha": "e635a21f533d055772aba478d2547c24f7f8a6b5",
+      "size": 595928
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v42.docx",
+      "sha": "3d1e125af23b2665d39f89682f2c5c6e38535014",
+      "size": 598693
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v43.docx",
+      "sha": "16569f55034a23dabfbfb5e4028682f877e35828",
+      "size": 726681
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v44.docx",
+      "sha": "0da1a4a6dc57843727bbf1707e158ec56e1857ae",
+      "size": 758491
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v45.docx",
+      "sha": "f79934350573d54116887babf70b6cf13bced180",
+      "size": 1106039
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v46.docx",
+      "sha": "e9aebba435ff796c4a6a59d1081449d680fb4a30",
+      "size": 3954567
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v47.docx",
+      "sha": "acbceb0afa353dda5ef1a132f55b29cad64b5bb5",
+      "size": 4063405
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v48.docx",
+      "sha": "d200dc14c6987344f7d565f0212a56da69c5c6e9",
+      "size": 872356
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v49.docx",
+      "sha": "b9aa914ea6b380ea4310bdc72d2377a28216ae71",
+      "size": 872489
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v5.docx",
+      "sha": "33c1396bedca884590453996656401be785a3b75",
+      "size": 48440
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v50.docx",
+      "sha": "14a44ff129faed0de236d54710a3efa9a5becb22",
+      "size": 872728
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v51.docx",
+      "sha": "267e974515ae0d0d68da197284471143cf8d02f9",
+      "size": 913886
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v52.docx",
+      "sha": "66b343fa24933f4646a55382a43e2f791913b215",
+      "size": 920673
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v53.docx",
+      "sha": "70fef40eb7dd9c09ed8725ef54d4be8837e2f8c7",
+      "size": 691965
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v54.docx",
+      "sha": "3c5946335ea018c35320a3ea4b275e5e052a7278",
+      "size": 691994
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v55.docx",
+      "sha": "45528a31ee59cc967571b9e8d8b2ed5ae7d0a773",
+      "size": 691660
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v56.docx",
+      "sha": "852a3068a00fb2602f69aed273f86b7796507c2c",
+      "size": 427303
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v6.docx",
+      "sha": "3e52910834857771b9b467ef3aff5156792b4bb2",
+      "size": 48244
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v7.docx",
+      "sha": "c0a7bc8ad89046031509c24ce1d1c7177db47956",
+      "size": 48205
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v8.docx",
+      "sha": "f2903a2e633d513b4f88719b7e3a7a0ae0c7174d",
+      "size": 48097
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_Q-Agent_v9.docx",
+      "sha": "319c1e45cbaedfa3c1aec309974a3765d2385356",
+      "size": 49114
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_ref11_v3_editable_v1.docx",
+      "sha": "d87217e7cf580c54612f0d3b16e721aab72510c7",
+      "size": 846591
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_ref11_v3_editable_v2.docx",
+      "sha": "a35a29cb688625bf3446e97035a053d233913afd",
+      "size": 883108
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_ref11_v3_editable_v3.docx",
+      "sha": "d19c665d7e9e27ea8ac9516ffa512c7fc8e4b22e",
+      "size": 884652
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_ref11_v3_editable_v4.docx",
+      "sha": "56cd40a2b529ee923ccaa6dc81cc960b1f16ac2d",
+      "size": 814868
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_ref11_v3_editable_v6_codex.docx",
+      "sha": "4b1c04627885750dde7c973fc4a84b06caed1ec4",
+      "size": 818514
+    },
+    {
+      "path": "ax_award/out/AX_Award_지원서_ref11_v4_editable_v7_codex.docx",
+      "sha": "a51695223c58205f3d9902f86d3cf321415894cd",
+      "size": 818289
+    },
+    {
+      "path": "ax_award/out/render_ref11_content_only/site/_ds/qie-deck-design-system-3e89fc2b-617a-478e-8046-1d49f7f8e83c/readme.md",
+      "sha": "13b8082aa01115b2f843d570a7ef1323369689b9",
+      "size": 11267
+    },
+    {
+      "path": "docs/01_과제지원서_본문.docx",
+      "sha": "fab94ae0d3621554f656600bf7bd2c53b54eb07a",
+      "size": 27778
+    },
+    {
+      "path": "docs/01_과제지원서_본문.md",
+      "sha": "2d77c73d98a985c177053264faa3e02fb93deb69",
+      "size": 29678
+    },
+    {
+      "path": "docs/02_추진계획_2개년.md",
+      "sha": "5cc050e921f0293c12f38a73eba5775d31bfde1b",
+      "size": 14976
+    },
+    {
+      "path": "docs/02_추진일정_자원_예산.xlsx",
+      "sha": "e9e0593fcb7a3a418f067dffcbab7564684ee168",
+      "size": 33258
+    },
+    {
+      "path": "docs/03_과제_심사발표.pptx",
+      "sha": "49687228fcaa2bb020e3a01cb7c555055c98cb9b",
+      "size": 544803
+    },
+    {
+      "path": "docs/03_소요자원_예산_ROI.md",
+      "sha": "2567219b07d34502de82a76968861cebb61f577e",
+      "size": 11654
+    },
+    {
+      "path": "docs/04_과제_한장요약.html",
+      "sha": "7d2cf0bc4408a564ec590ea68cf45c38076d2feb",
+      "size": 18530
+    },
+    {
+      "path": "docs/04_과제_한장요약.md",
+      "sha": "27eafe05b5bf10a3009c905b95d1dafc4177967f",
+      "size": 10350
+    },
+    {
+      "path": "docs/05_심사예상질문_대응집.md",
+      "sha": "8c1955c6be5c5436b9058439b3f1080486afa992",
+      "size": 15263
+    },
+    {
+      "path": "docs/AI_Agent_Ablation_Study.pptx",
+      "sha": "1c2af2231509666dbfda4b5fa9347dbfa1fb0237",
+      "size": 637203
+    },
+    {
+      "path": "docs/GPU수요신청_최종본_H100_20장.xlsx",
+      "sha": "f61a65495a867235e615a7483aa748a6418b2cc7",
+      "size": 26416
+    },
+    {
+      "path": "docs/GPU신청_Application설명.md",
+      "sha": "27920012198be24807e7242923a0ed0b4f00881b",
+      "size": 6496
+    },
+    {
+      "path": "docs/GPU신청_DB산출근거.md",
+      "sha": "8d0d06bd18515c4b7bac86f882acc7a382442953",
+      "size": 2529
+    },
+    {
+      "path": "docs/GPU신청_VM수요.md",
+      "sha": "bc36a288948f866af30990e222917497bbddb08b",
+      "size": 6159
+    },
+    {
+      "path": "docs/GPU신청_아키텍처구성도.md",
+      "sha": "399b402641acb840b17f66628df15b14fb193060",
+      "size": 2579
+    },
+    {
+      "path": "docs/GPU신청_종합정리.html",
+      "sha": "69624c1cc04d0ebea6fee823224b8989677e258c",
+      "size": 83571
+    },
+    {
+      "path": "docs/GPU신청_종합정리.md",
+      "sha": "3a3920b1b4fda3e57daf8b76e388a90a24257447",
+      "size": 11020
+    },
+    {
+      "path": "docs/GPU신청_통합본_복원.md",
+      "sha": "1ffd79c82c28535d4ffc2594cdd625d2907c6499",
+      "size": 30219
+    },
+    {
+      "path": "docs/INFRA_발급정보.md",
+      "sha": "20c864fed31f8ea3a6be3bf9bdab04001a4f2b00",
+      "size": 7768
+    },
+    {
+      "path": "docs/README.md",
+      "sha": "300c2cf9b479a791c26c2943eb5b36c1a7bc31df",
+      "size": 4917
+    },
+    {
+      "path": "docs/arch.txt",
+      "sha": "55e3689c868b6fa0b03c6c6f38b15900ba4be1c3",
+      "size": 3157
+    },
+    {
+      "path": "docs/dbarch.txt",
+      "sha": "31c36114beda90061d1f53b3fd2692f8ca563339",
+      "size": 2569
+    },
+    {
+      "path": "docs/자산조사_2026-08-08.md",
+      "sha": "15256ca0db0acfcd63f619f6d2f72f847102ca53",
+      "size": 14069
+    },
+    {
+      "path": "docs/진행상황_2026-07-29.md",
+      "sha": "09106fd75c714ba8a074104e6cd8143d574cdefa",
+      "size": 6661
+    },
+    {
+      "path": "output/doc/AX_Award_지원서_편집가능_초안.docx",
+      "sha": "e7cba7cfb962edf2d898100720c0265799f41af2",
+      "size": 3313436
+    }
+  ]
+}

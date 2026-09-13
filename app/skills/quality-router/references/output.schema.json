@@ -1,0 +1,63 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "intents",
+    "filters",
+    "plan",
+    "needs_skills",
+    "clarification"
+  ],
+  "properties": {
+    "intents": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "search",
+          "statistics",
+          "lot_list",
+          "document",
+          "analysis",
+          "action"
+        ]
+      }
+    },
+    "filters": {
+      "type": "object"
+    },
+    "plan": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "tool",
+          "depends_on"
+        ],
+        "properties": {
+          "tool": {
+            "type": "string"
+          },
+          "depends_on": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "needs_skills": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "clarification": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

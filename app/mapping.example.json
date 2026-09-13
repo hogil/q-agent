@@ -1,0 +1,47 @@
+{
+  "mapping_version": "demo-0.4",
+  "dialect": "sqlite",
+  "entities": {
+    "incident": {
+      "table": "demo_incident",
+      "columns": {
+        "incident_id": "accident_pk",
+        "incident_number": "accident_no",
+        "title": "accident_title",
+        "city": "city_name",
+        "line": "line_name",
+        "expected_lot_count": "registered_lot_count"
+      }
+    },
+    "lot_list": {
+      "table": "demo_lot_list",
+      "columns": {
+        "incident_ref": "accident_ref",
+        "lot_id": "lot_no",
+        "product_code": "product_name",
+        "status": "lot_state"
+      }
+    }
+  },
+  "relationships": {
+    "incident_lots": {
+      "parent_entity": "incident",
+      "parent_key": "incident_id",
+      "child_entity": "lot_list",
+      "child_key": "incident_ref",
+      "meaning": "사고 내부 PK와 Lot 목록 외래키의 연결. 사고 표시번호와 다를 수 있음",
+      "grain": ["incident_id", "lot_id"],
+      "relation_scope": "등록된 영향 Lot",
+      "source_completeness": "declared_complete",
+      "duplicate_policy": "exact_rows_deduplicate_conflicts_error"
+    }
+  },
+  "limits": {"default_page_size": 3, "max_page_size": 100, "max_scope_incidents": 100},
+  "notes": [
+    "모든 물리 이름은 예시이며 사내 스키마에 맞게 교체한다.",
+    "lot_list는 논리 이름이다. 실제 테이블 또는 읽기 전용 View 이름은 entities.lot_list.table에 지정한다.",
+    "이 데모는 SQLite 전용이다. 사내 DB 엔진이 다르면 driver, placeholder, metadata inspection, pagination adapter를 구현한다.",
+    "source_completeness는 ETL/담당자 확인으로 선언한다. 결과가 반환됐다는 이유로 complete로 지정하지 않는다.",
+    "내부 PK 대신 사고번호로 연결하면 parent_key를 incident_number로 바꾼다. 두 열의 타입과 실제 값 관계를 먼저 검증한다."
+  ]
+}
