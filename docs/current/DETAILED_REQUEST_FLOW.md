@@ -4,7 +4,6 @@
 
 ## 1. 사용자 질문에서 최종 결과까지
 
-![Router, Judge, Answer의 세로 배치와 재조회 경로](../../design/diagrams/qagent-flow.png)
 
 | 위에서 아래 순서 | 처리 내용 |
 |---|---|
@@ -52,7 +51,7 @@ Router는 물리 SQL을 임의 생성하지 않고 논리 필터를 내보낸다
 | p기술팀 | 조직 개편과 도시별 의미 차이를 확인한 별칭만 사용. 불명확하면 후보 확인 |
 | 노광 | 공정 의미인지 부서 별칭인지 구분. 현재 합성 사전에서는 공정 EXPOSURE이며 PHOTO로 일괄 치환하지 않음 |
 
-사전은 `app/domain-data/aliases.example.json`을 운영 사내 사전으로 교체하는 구조다. 현재 승인 표시도 합성 예시이며 사내 승인 사실이 아니다. 오타 유사도는 후보 생성에 쓰고 모호한 조직명을 자동 확정하는 근거로 쓰지 않는다.
+사전은 사내 config의 dictionary_root와 terminology_file로 지정한다. 합성 사전은 제거했으며 검토된 사내 사전을 별도로 준비한다. 오타 유사도는 후보 생성에 쓰고 모호한 조직명을 자동 확정하는 근거로 쓰지 않는다.
 
 실제 DDL, 컬럼 설명, 권한 내 대표 행과 distinct 값, NULL 분포, 중복 키를 확인해 Schema Skill의 Catalog를 관리한다. distinct 값만으로 컬럼 의미나 허용 코드 전체를 확정하지 않는다. 코드값 의미와 유효기간은 업무 기준정보로 확인한다. Lot ID처럼 고유값이 많은 컬럼의 전체 값을 프롬프트에 넣지 않는다.
 
@@ -178,16 +177,16 @@ Answer는 Judge 판정과 검토된 근거를 받아 마지막에 답변을 작�
 
 | 구분 | 관리 내용 |
 |---|---|
-| 역할 Skill 3개 | quality-router, quality-judge, quality-answer |
-| 공유 Skill | core, terminology, 7개 테이블 Schema, Lot/Wafer 조회, statistics, document-evidence, actions |
-| 유지보수 Skill | quality-skill-maintenance. 온라인 질의의 자동 수정용으로 사용하지 않음 |
+| 역할 Skill 3개 | router, judge, answer |
+| 공유 Skill | core, terminology, 조회·통계·문서 규칙을 포함한 7개 테이블 Schema, actions |
+| 유지보수 Skill | skill-maintenance. 온라인 질의의 자동 수정용으로 사용하지 않음 |
 | 참조 파일 | 테이블/컬럼 설명 Catalog, 각 역할 JSON 출력 형식 |
 | 사전 | 실제 공식값, 별칭, 적용 도시/조직/유효기간과 검증 기록 |
 | 릴리스 | registry의 역할/topic 연결, 소스 해시 lock, 명시적 freeze 및 회귀 검증 |
 
-현재 총 19개 Skill이다. 모든 SKILL.md에는 실제 원본/대표 데이터, 출처, 기준시점, 변경 근거를 확인한 후 수정한다는 규칙이 들어 있다. 사내 원본에 접근하지 못하면 미확인 설계/합성 초안으로 관리한다. 운영 프롬프트를 바꿀 때 역할 Skill 또는 공유 Skill 중 원인이 있는 소스를 수정하고 평가 사례/출력 형식과 함께 버전 관리한다.
+현재 총 14개 Skill이다. 모든 SKILL.md에는 실제 원본/대표 데이터, 출처, 기준시점, 변경 근거를 확인한 후 수정한다는 규칙이 들어 있다. 사내 원본에 접근하지 못하면 미확인 설계/합성 초안으로 관리한다. 운영 프롬프트를 바꿀 때 역할 Skill 또는 공유 Skill 중 원인이 있는 소스를 수정하고 평가 사례/출력 형식과 함께 버전 관리한다.
 
-현재 config 키는 다음과 같다. 사내에서는 `config/default.toml`에 `site.local.toml` overlay를 적용한다. 상대경로는 기본 TOML 파일 기준이다.
+현재 config 키는 다음과 같다. 사내에서는 `config/config.yaml`에 `site.local.yaml` overlay를 적용한다. 상대경로는 기본 YAML 파일 기준이다.
 
 | 변경 대상 | config 위치 |
 |---|---|
@@ -207,30 +206,7 @@ Answer는 Judge 판정과 검토된 근거를 받아 마지막에 답변을 작�
 
 아직 config에 없는 사항은 사고문서 검색 API 계약, 실제 SQL 집계 정의, 그래프/이미지 유사도 서비스 계약, 요구사항별 근거 상태와 재조회 전체 시간 한도 등이다. 이 항목은 Adapter 계약이 정해진 뒤 config와 검증기를 함께 확장한다. 기존 예약 값 max_answer_revisions를 Answer-Judge 반복 횟수로 해석하지 않는다.
 
-## 8. 합성 사고로 따라가는 예시
-
-질문: '[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가 사고의 원인, 조치, Lot와 Wafer 목록을 보여줘.'
-
-다음 DB 수치는 `config/demo.wafer.toml`을 사용한 기존 합성 SQLite를 2026-09-13에 다시 조회한 결과다. Router/Judge/Answer 동작과 문서 RAG 검색은 아직 실행하지 않았으며 아래에서 설계 예시로 구분한다.
-
-| 단계 | 내용 | 확인 수준 |
-|---|---|---|
-| 사용자 | 원인/조치/Lot/Wafer 요구 | 시나리오 |
-| Router | 사고명 검색 후 목록/문서 근거 확보 계획 | 목표 동작 |
-| 사고 DB | SYN-2026-0001, 화성, 65L (ABCD), 후보 1건 | SQLite 실행 확인 |
-| Lot Tool | SYN-LOT-0001-001 ~ 004, 4개 Lot | 별도 테이블 조회 확인 |
-| Wafer Tool | Lot별 W01 ~ W20, 합계 80개. 페이지 크기 10, 총 8페이지 | 별도 테이블/전체 페이지 조회 확인 |
-| 사고문서 | 외곽 Focus 잔차 분석, 보정 조건 복원, 확인 Lot 검증을 담은 합성 문서가 저장돼 있음 | 파일 내용 확인. RAG 검색 실행은 미구현 |
-| Judge | 첫 페이지만 있으면 나머지 페이지 요청. 문서가 없으면 사고문서 근거 요청 | 목표 동작 |
-| Router 재호출 | 동일 사고 범위를 유지해 남은 페이지/필요 문서 조회 | 목표 동작 |
-| Judge 재검토 | 요청별 근거와 제한을 확인 | 목표 동작 |
-| Answer | 조회 목록, 근거 있는 분석/조치, 미확인 한계를 최종 정리 | 목표 동작 |
-
-이 합성 데이터는 조회 페이지가 모두 모여도 source_completeness=unknown이다. '현재 DB에서 조회된 4 Lot / 80 Wafer'라고 표시할 수 있지만 실제 사고 테이블 누락이 없거나 전사 영향 범위가 완전하다고 주장할 수 없다. 반복 조회만으로 source_completeness가 unknown에서 complete가 되지 않는다. 사용자가 데이터 누락 여부까지 요구하면 검증된 추가 자료가 없을 때 abstain으로 한계를 안내한다.
-
-별도 원본 fixture INC-001은 6 Lot / 120 Wafer 예시이고, 생성된 SYN-2026-0001은 overlay에 따라 4 Lot / 80 Wafer다. 서로 다른 합성 세트의 수치를 섞지 않는다. 상세 예시의 근거 파일은 `examples/generated/incident_lot_wafer.json`, `examples/generated/SYN-0001-incident.md`다.
-
-## 9. 구현 순서와 완료 기준
+## 8. 구현 순서와 완료 기준
 
 | 순서 | 작업 | 완료 기준 / 현재 상태 |
 |---|---|---|
@@ -246,9 +222,3 @@ Answer는 Judge 판정과 검토된 근거를 받아 마지막에 답변을 작�
 조치까지 확장할 때 조회 재시도를 변경 작업에 그대로 적용하지 않는다. 실행 대상/변경 내용/근거/승인을 연결하고 중복 실행 방지와 실행 결과 확인을 구현한다. Judge의 pass는 답변 근거 통과이며 생산계 변경 승인과 다르다. 실행 취소/복구는 해당 시스템이 지원하는 계약과 별도 승인 범위로 정의한다.
 
 Orchestrator 평가에는 최초 사고 DB 우회 차단, 동명 사고 선택, 전체 페이지 조회, 잘못된 범위의 근거 폐기, 세대 중복 집계, DB 0건/장애 구분, 문서 모순, 데이터 누락 여부 미확인, 호출 예산 소진, Judge 후 Answer 최종 호출을 포함한다. 이는 앞으로 연결할 운영 흐름의 완료 기준이며 현재 통합 시험 통과를 주장하지 않는다.
-
-## 2026-09-13 변형 입력 구현 추가
-
-[VARIANT_DATA_DEMO.md](VARIANT_DATA_DEMO.md)에 다중 컬럼 오타/동의어 정규화와 실제 SQLite 사고 → Lot → Wafer 실행을 추가했다. 128개 합성 사고, 변형 질문 234개 및 독립 동작 검증 21개다. 필드 라벨을 사용하는 한정 문법이며 실제 Router/Judge/Answer LLM 통합은 여전히 미구현이다. 위의 운영 통합 계획과 구분한다.
-
-역할 지시문과 계약의 최신 기준은 [SYSTEM_PROMPTS.md](SYSTEM_PROMPTS.md)다.

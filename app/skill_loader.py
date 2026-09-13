@@ -19,7 +19,7 @@ def release_files(root,settings=None):
   for f in sorted(paths[key].rglob('*'),key=lambda f:f.relative_to(paths[key]).as_posix()):
    if f.is_file():files[label+'/'+f.relative_to(paths[key]).as_posix()]=f
  files['skill_registry.json']=paths['registry_file']
- for name in ['incident_tools.py','incident_filters.py','terminology.py','variant_query_demo.py','prompt_contracts.py','plan_executor.py','skill_loader.py','config_loader.py','runtime_factory.py']:
+ for name in ['incident_tools.py','incident_filters.py','terminology.py','prompt_contracts.py','plan_executor.py','skill_loader.py','config_loader.py','runtime_factory.py','run_agent.py','agent.py','llm_client.py']:
   files[name]=root/name
  return files
 def freeze(root=P,settings=None):
@@ -27,6 +27,11 @@ def freeze(root=P,settings=None):
  paths=locations(root,settings)
  manifest={'release':json.loads(paths['registry_file'].read_text(encoding='utf-8'))['release'],'files':{name:digest(f) for name,f in release_files(root,settings).items()}}
  paths['skill_lock_file'].write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding='utf-8');return manifest
+
+def read_role_reference(role,filename,skills_root,registry_file):
+ registry=json.loads(Path(registry_file).read_text(encoding='utf-8'))
+ folder=registry['roles'][role]
+ return json.loads((Path(skills_root)/folder/'references'/filename).read_text(encoding='utf-8'))
 
 def compile_prompt(role,topics,root=P,settings=None):
  paths=locations(root,settings)
@@ -42,14 +47,28 @@ def compile_prompt(role,topics,root=P,settings=None):
  for topic in sorted(set(topics)):
   names.extend(reg['topics'][topic])
  names.append(reg['roles'][role]);names=list(dict.fromkeys(names))
- parts=[];loaded=[]
+ parts=[];loaded=[];entities=[]
  for name in names:
   folder=paths['skills_root']/name;files=[folder/'SKILL.md']+sorted((folder/'references').glob('*'))
   for f in files:
    label='skills/'+f.relative_to(paths['skills_root']).as_posix()
    content=f.read_text(encoding='utf-8')
-   if f.suffix=='.json':content=json.dumps(json.loads(content),ensure_ascii=False,separators=(',',':'))
+   if f.suffix=='.json':
+    document=json.loads(content)
+    if 'logical_entity' in document:
+     entity=document['logical_entity']
+     if settings and (entity not in settings.data['tables'] or set(document['columns'])!=set(settings.data['tables'][entity]['columns'])):
+      raise ValueError('SCHEMA_MAPPING_MISMATCH: '+entity)
+     entities.append(entity)
+    content=json.dumps(document,ensure_ascii=False,separators=(',',':'))
    parts.append('['+label+']\n'+content);loaded.append(label)
+ if settings and entities:
+  # Only schema context belongs in model input, never connection credentials or paths.
+  data=settings.data
+  context={'dialect':data['database']['dialect'],'schema':data['database']['schema'],
+           'tables':{entity:data['tables'][entity] for entity in sorted(set(entities))},
+           'relations':data['relations'],'arrays':data['arrays']}
+  parts.append('[runtime/schema-mapping]\nUse logical field names in Tool arguments. Empty physical column mappings are unavailable. Connection settings are managed by the Adapter.\n'+json.dumps(context,ensure_ascii=False,separators=(',',':')))
  prompt='\n\n'.join(parts)
  if len(prompt)>reg['max_prompt_characters']:raise ValueError(f'PROMPT_BUDGET_EXCEEDED: {role} {topics}: {len(prompt)} > {reg["max_prompt_characters"]}; choose narrower topics; do not silently truncate rules')
  return {'role':role,'release':lock['release'],'topics':sorted(set(topics)),'loaded_files':loaded,'prompt_sha256':hashlib.sha256(prompt.encode()).hexdigest(),'system_prompt':prompt,'model_profile':settings.model_profile(role) if settings else {'status':'RUNTIME_CONFIG_NOT_ATTACHED'},'config_hash':settings.config_hash if settings else None}

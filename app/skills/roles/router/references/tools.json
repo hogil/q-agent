@@ -1,0 +1,31 @@
+{
+  "find_incidents": {
+    "enabled": true, "stage": "incident", "search_modes": ["sql_exact", "sql_filter"],
+    "parameters": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "incident_number": {"type": "string"}, "title": {"type": "string"},
+        "city": {"type": "string"}, "line": {"type": "string"},
+        "title_match": {"type": "string", "enum": ["exact", "contains"]},
+        "filters": {"type": "object"}
+      }
+    }
+  },
+  "list_incident_lots": {
+    "enabled": true, "stage": "tools",
+    "parameters": {
+      "type": "object", "additionalProperties": false,
+      "properties": {"page_size": {"type": "integer", "minimum": 1}, "offset": {"type": "integer", "minimum": 0}}
+    }
+  },
+  "list_incident_wafers": {
+    "enabled": true, "stage": "tools",
+    "parameters": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "page_size": {"type": "integer", "minimum": 1}, "offset": {"type": "integer", "minimum": 0},
+        "lot_ids": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}

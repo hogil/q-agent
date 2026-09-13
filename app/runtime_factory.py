@@ -15,7 +15,7 @@ def open_incident_tools(settings):
         raise ConfigError('DATABASE_ADAPTER_NOT_IMPLEMENTED: configuration valid, production driver required')
     path = Path(data['database']['sqlite_file'])
     if not path.is_file():
-        raise ConfigError('DATABASE_FILE_MISSING: generate demo or configure an existing database')
+        raise ConfigError('DATABASE_FILE_MISSING: configure an existing database')
     connection = sqlite3.connect(path.as_uri() + '?mode=ro', uri=True,
                                  timeout=data['database']['connect_timeout_seconds'])
     try:

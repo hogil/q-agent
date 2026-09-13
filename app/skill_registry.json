@@ -1,56 +1,51 @@
 {
-  "release": "quality-demo-0.15",
+  "release": "quality-demo-0.22",
   "purpose": "on-prem application Skill sources; not personal ChatGPT skill installation",
   "base": [
-    "quality-core"
+    "core"
   ],
   "roles": {
-    "router": "quality-router",
-    "answer": "quality-answer",
-    "judge": "quality-judge"
+    "router": "roles/router",
+    "answer": "roles/answer",
+    "judge": "roles/judge"
   },
   "topics": {
     "terminology": [
-      "quality-terminology"
+      "rules/terminology"
     ],
     "schema": [
-      "quality-incident-schema"
+      "schema/incident-schema"
     ],
     "lots": [
-      "quality-incident-schema",
-      "quality-lot-schema",
-      "quality-lot-retrieval"
+      "schema/incident-schema",
+      "schema/lot-schema"
     ],
     "statistics": [
-      "quality-incident-schema",
-      "quality-statistics"
+      "schema/incident-schema"
     ],
     "documents": [
-      "quality-incident-document-schema",
-      "quality-document-chunk-schema",
-      "quality-document-evidence"
+      "schema/incident-document-schema",
+      "schema/document-chunk-schema"
     ],
     "actions": [
-      "quality-actions"
+      "rules/actions"
     ],
     "maintenance": [
-      "quality-skill-maintenance"
+      "rules/skill-maintenance"
     ],
     "images": [
-      "quality-image-metadata-schema"
+      "schema/image-metadata-schema"
     ],
     "trends": [
-      "quality-trend-metadata-schema"
+      "schema/trend-metadata-schema"
     ],
     "wafers": [
-      "quality-incident-schema",
-      "quality-lot-schema",
-      "quality-wafer-schema",
-      "quality-lot-retrieval",
-      "quality-wafer-retrieval"
+      "schema/incident-schema",
+      "schema/lot-schema",
+      "schema/wafer-schema"
     ],
     "incident_search": [
-      "quality-incident-search"
+      "schema/incident-schema"
     ]
   },
   "role_allowed_topics": {
@@ -90,12 +85,13 @@
       "incident_search"
     ]
   },
-  "max_prompt_characters": 24000,
+  "max_prompt_characters": 32000,
   "notes": [
     "temperature=0 reduces sampling variability but does not guarantee deterministic serving",
     "topic/reference loads are explicit; arbitrary filesystem paths are prohibited",
     "Maintenance is an offline development workflow, not an online user-triggered role",
-    "Model deployment and revision limits come from config/default.toml plus site overlay; compile_prompt without settings is source validation only.",
-    "v0.12 role output contracts require decision/stage/search_mode, Judge coverage/return_to and Answer status. 24000 character ceiling; actual model token budgeting remains a deployment check."
+    "Model deployment and revision limits come from config/config.yaml plus site overlay; compile_prompt without settings is source validation only.",
+    "Role output contracts require decision/stage/search_mode, Judge coverage/return_to and Answer status. 32000 character ceiling; actual model token budgeting remains a deployment check.",
+    "ReAct rules live in core/references/react.md; Router tool parameters live in its references/tools.json. All roles and schemas resolve through this registry."
   ]
 }

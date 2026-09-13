@@ -8,11 +8,12 @@ import json
 import os
 import re
 import tomllib
+import yaml
 from pathlib import Path, PureWindowsPath
 from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-DEFAULT_CONFIG = Path(__file__).resolve().parent.parent / 'config/default.toml'
+DEFAULT_CONFIG = Path(__file__).resolve().parent.parent / 'config/config.yaml'
 
 
 class ConfigError(ValueError):
@@ -21,7 +22,7 @@ class ConfigError(ValueError):
 
 PATH_KEYS = ('data_root output_root model_root image_root document_root trend_root cache_root '
              'log_root skills_root dictionary_root registry_file skill_lock_file '
-             'incident_fixture_file demo_manifest_file terminology_file variant_cases_file variant_report_file').split()
+             'terminology_file').split()
 TABLE_FIELDS = {
     'incident': ('incident_id incident_number title city line line_code line_alias department occurred_at '
                  'product_generations fab_out_failure_codes expected_lot_count affected_wafer_count '
@@ -43,7 +44,7 @@ SERVICE_SPEC = dict(enabled=bool, endpoint=str, api_key_env=str, timeout_seconds
 SPEC = {
     'config_version': int, 'environment': str,
     'paths': dict.fromkeys(PATH_KEYS, str),
-    'database': dict(dialect=str, schema=str, sqlite_file=str, dsn_env=str,
+    'database': dict(dialect=str, host=str, port=int, name=str, schema=str, sqlite_file=str, dsn_env=str,
                      connect_timeout_seconds=int, query_timeout_seconds=int, read_only=bool),
     'tables': {name: {'name': str, 'columns': dict.fromkeys(fields, str)}
                for name, fields in TABLE_FIELDS.items()},
@@ -62,8 +63,8 @@ SPEC = {
     'actions': dict(SERVICE_SPEC, require_approval=bool),
     'runtime': dict(timezone=str, default_page_size=int, max_page_size=int,
                     max_scope_incidents=int, scope_ttl_seconds=int, max_tool_calls=int,
-                    max_parallel_tools=int, max_retries=int, max_answer_revisions=int),
-    'demo': dict(incident_count=int, lots_per_incident=int, wafers_per_lot=int, trend_points=int, seed=int),
+                    max_parallel_tools=int, max_retries=int, max_answer_revisions=int,
+                    max_agent_steps=int, max_context_characters=int),
 }
 
 
@@ -95,13 +96,39 @@ def merge(base, override):
     return result
 
 
-def read_toml(path):
+class ConfigYamlLoader(yaml.SafeLoader):
+    pass
+
+
+def unique_yaml_mapping(loader, node):
+    loader.flatten_mapping(node)
+    result = {}
+    for key_node, value_node in node.value:
+        key = loader.construct_object(key_node)
+        if not isinstance(key, str) or key in result:
+            raise ConfigError('YAML mapping keys must be unique strings')
+        result[key] = loader.construct_object(value_node)
+    return result
+
+
+ConfigYamlLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, unique_yaml_mapping)
+
+
+def read_config(path):
     try:
         with path.open('rb') as stream:
-            return tomllib.load(stream)
-    except (OSError, tomllib.TOMLDecodeError) as exc:
-        # TOML parser errors can contain secret values. Do not echo their full message.
-        raise ConfigError(f'Cannot read TOML: {path.name} ({type(exc).__name__})') from None
+            if path.suffix.lower() == '.toml':
+                data = tomllib.load(stream)
+            elif path.suffix.lower() in ('.yaml', '.yml'):
+                data = yaml.load(stream, Loader=ConfigYamlLoader)
+            else:
+                raise ConfigError('Config file must use .yaml, .yml or legacy .toml')
+        if not isinstance(data, dict):
+            raise ConfigError('Config root must be a mapping')
+        return data
+    except (OSError, tomllib.TOMLDecodeError, yaml.YAMLError) as exc:
+        # Parser errors may contain credentials; report only the exception type.
+        raise ConfigError(f'Cannot read config: {path.name} ({type(exc).__name__})') from None
 
 
 def validate_values(data):
@@ -141,6 +168,11 @@ def validate_values(data):
     db = data['database']
     if db['dialect'] not in ('sqlite', 'postgresql', 'oracle', 'sqlserver'):
         raise ConfigError('database.dialect: unsupported configuration value')
+    if db['dialect'] == 'sqlite':
+        if db['host'] or db['port'] != 0 or db['name']:
+            raise ConfigError('SQLite uses sqlite_file; host/name must be empty and port must be 0')
+    elif not db['host'].strip() or not db['name'].strip() or not 1 <= db['port'] <= 65535:
+        raise ConfigError('Server database requires host, name and port in 1..65535')
     if db['schema'] and not re.fullmatch(r'[^\W\d]\w*', db['schema']):
         raise ConfigError('database.schema: invalid identifier')
     if not db['read_only']:
@@ -215,7 +247,7 @@ def validate_values(data):
     if data['actions']['require_approval'] is not True:
         raise ConfigError('actions.require_approval must remain true')
     rt = data['runtime']
-    for key in ('default_page_size', 'max_page_size', 'max_scope_incidents', 'max_tool_calls', 'max_parallel_tools'):
+    for key in ('default_page_size', 'max_page_size', 'max_scope_incidents', 'max_tool_calls', 'max_parallel_tools', 'max_agent_steps', 'max_context_characters'):
         if rt[key] < 1:
             raise ConfigError(f'runtime.{key}: positive value required')
     for key in ('max_retries', 'max_answer_revisions'):
@@ -227,9 +259,6 @@ def validate_values(data):
         ZoneInfo(rt['timezone'])
     except (ZoneInfoNotFoundError, ValueError):
         raise ConfigError('runtime.timezone: timezone unavailable; install system tzdata if needed') from None
-    demo = data['demo']
-    if not (1 <= demo['incident_count'] <= 1000 and 1 <= demo['lots_per_incident'] <= 100 and 1 <= demo['wafers_per_lot'] <= 100 and 12 <= demo['trend_points'] <= 10000):
-        raise ConfigError('demo: counts exceed supported fixture bounds')
 
 
 def resolve_paths(data, base_dir):
@@ -303,7 +332,7 @@ class Settings:
     def check_paths(self):
         """Read-only checks. No endpoint probes and no directory creation."""
         errors = []
-        for key in ('registry_file', 'skill_lock_file', 'incident_fixture_file'):
+        for key in ('registry_file', 'skill_lock_file'):
             if not Path(self.data['paths'][key]).is_file():
                 errors.append(f'paths.{key}: file missing')
         for key in ('skills_root', 'dictionary_root'):
@@ -325,10 +354,10 @@ class Settings:
 def load_config(config=None, overlay=None):
     base = Path(config or os.environ.get('QAGENT_CONFIG') or DEFAULT_CONFIG).expanduser().resolve()
     selected = overlay if overlay is not None else os.environ.get('QAGENT_OVERLAY')
-    data, sources = read_toml(base), [str(base)]
+    data, sources = read_config(base), [str(base)]
     if selected:
         site = Path(selected).expanduser().resolve()
-        data = merge(data, read_toml(site))
+        data = merge(data, read_config(site))
         sources.append(str(site))
     check_shape(data, SPEC)
     validate_values(data)
@@ -337,8 +366,8 @@ def load_config(config=None, overlay=None):
 
 
 def add_config_arguments(parser):
-    parser.add_argument('--config', help='Base TOML; defaults to QAGENT_CONFIG or bundled config/default.toml')
-    parser.add_argument('--overlay', help='Site TOML; defaults to QAGENT_OVERLAY; all paths are relative to BASE TOML')
+    parser.add_argument('--config', help='Base YAML; defaults to QAGENT_CONFIG or bundled config/config.yaml')
+    parser.add_argument('--overlay', help='Site YAML; defaults to QAGENT_OVERLAY; paths are relative to the base config. Legacy TOML is accepted.')
 
 
 if __name__ == '__main__':

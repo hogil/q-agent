@@ -4,8 +4,8 @@ The structural validator intentionally supports only the schema keywords used
 by this project's role schemas. Unknown validation keywords fail explicitly.
 Runtime context must be supplied by trusted application code, not question text.
 """
-import json
 from pathlib import Path
+from skill_loader import read_role_reference
 
 ROOT = Path(__file__).resolve().parent
 
@@ -31,7 +31,8 @@ def structure(value, schema, path='$'):
 
 def validate_output(role, output, context):
     if role not in ('router','judge','answer'):raise ValueError('UNKNOWN_ROLE')
-    schema=json.loads((ROOT/'skills'/f'quality-{role}'/'references/output.schema.json').read_text())
+    schema_root=Path(context.get('skills_root',ROOT/'skills'))
+    schema=read_role_reference(role,'output.schema.json',schema_root,context.get('registry_file',ROOT/'skill_registry.json'))
     structure(output,schema)
     if role=='router':
         decision=output['decision'];plan=output['plan']

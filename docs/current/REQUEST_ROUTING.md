@@ -37,7 +37,3 @@ Tool도 동일 단계로 등록돼야 한다. 사고 DB용 Tool의 단계를 모
 `app/plan_executor.py`는 전체 계획과 Adapter 존재를 확인한 뒤 호출한다.
 DB를 자체 생성/연결하지 않는다. 범위 판정, 인증, Adapter 등록, Adapter별
 인자/권한 검증은 호출 시스템의 책임이다. 완성된 LLM Orchestrator는 아니다.
-
-`python app/check_request_scope.py`의 8개 회귀에서 DB 연결 시 즉시 실패하게
-한 뒤 무조회 경로와 합성 문서 Adapter만 호출하는 경로를 실행한다.
-불필요한 사고 조회, 사건 요청의 우회, Tool 단계 위조도 거부하는지 확인한다.

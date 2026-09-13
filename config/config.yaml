@@ -1,0 +1,237 @@
+# Q-Agent 전체 실행 설정. 경로는 이 파일이 있는 폴더 기준입니다.
+# 사내 변경값은 site.local.yaml에 적고 --overlay로 적용합니다.
+# 컬럼 설명은 paths.skills_root 아래 테이블별 references에서 관리합니다.
+# 모델은 OpenAI 호환 API를 사용합니다. SQLite 외 DB Adapter는 아직 미구현입니다.
+config_version: 1
+environment: demo
+
+# 데이터, 결과, 모델, 이미지, 문서, 로그 및 Skill 파일 위치.
+paths:
+  data_root: ../var/data
+  output_root: ../var/output
+  model_root: ../var/models
+  image_root: ${paths.data_root}/images
+  document_root: ${paths.data_root}/documents
+  trend_root: ${paths.data_root}/trends
+  cache_root: ../var/cache
+  log_root: ../var/logs
+  skills_root: ../app/skills
+  dictionary_root: ../app/domain-data
+  registry_file: ../app/skill_registry.json
+  skill_lock_file: ../app/release.lock.json
+  terminology_file: ${paths.dictionary_root}/terminology.json
+
+# SQLite는 sqlite_file 사용. 서버 DB는 host/port/name 설정과 별도 Adapter가 필요합니다.
+database:
+  dialect: sqlite
+  host: ''
+  port: 0
+  name: ''
+  schema: ''
+  sqlite_file: ${paths.data_root}/quality_demo.sqlite
+  dsn_env: QAGENT_DB_DSN
+  connect_timeout_seconds: 10
+  query_timeout_seconds: 30
+  read_only: true
+
+# 논리 키는 유지하고 실제 테이블명/컬럼명만 변경합니다. 빈 매핑은 사용 불가입니다.
+tables:
+  incident:
+    name: demo_incident
+    columns:
+      incident_id: accident_pk
+      incident_number: accident_no
+      title: accident_title
+      city: city_name
+      line: line_name
+      line_code: line_code
+      line_alias: line_alias
+      department: department_code
+      occurred_at: occurred_at
+      product_generations: product_generations
+      fab_out_failure_codes: fab_out_failure_codes
+      expected_lot_count: registered_lot_count
+      affected_wafer_count: affected_wafer_count
+      incident_detail: incident_detail
+      analysis_detail: analysis_detail
+      confirmed_cause: confirmed_cause
+      containment: containment
+      corrective_action: corrective_action
+      verification: verification
+      prevention: prevention
+      remaining: remaining
+  lot_list:
+    name: demo_lot_list
+    columns:
+      incident_ref: accident_ref
+      lot_id: lot_no
+      product_code: product_name
+      status: lot_state
+  wafer_list:
+    name: demo_wafer_list
+    columns:
+      incident_ref: accident_ref
+      lot_id: lot_no
+      wafer_id: wafer_no
+      status: wafer_state
+  incident_document:
+    name: demo_incident_document
+    columns:
+      document_id: document_id
+      incident_ref: accident_ref
+      title: document_title
+      version: document_version
+      storage_ref: storage_ref
+      format: document_format
+      source: source_name
+  document_chunk:
+    name: demo_document_chunk
+    columns:
+      chunk_id: chunk_id
+      document_ref: document_ref
+      location: page_or_slide
+      content: chunk_text
+  image_metadata:
+    name: demo_image_metadata
+    columns:
+      image_id: image_id
+      incident_ref: accident_ref
+      lot_id: lot_no
+      wafer_id: wafer_no
+      stage: test_stage
+      storage_ref: storage_ref
+      coordinate_system: coordinate_system
+  trend_metadata:
+    name: demo_trend_metadata
+    columns:
+      trend_id: trend_id
+      incident_ref: accident_ref
+      metric: metric_name
+      unit: metric_unit
+      storage_ref: storage_ref
+      timezone: timezone
+
+# 테이블 간 연결과 데이터 범위. 완전성이 확인되지 않은 소스는 unknown을 유지합니다.
+relations:
+  incident_parent_key: incident_id
+  lot_incident_key: incident_ref
+  wafer_parent_key: incident_id
+  wafer_incident_key: incident_ref
+  wafer_lot_key: lot_id
+  wafer_scope: incident_affected
+  wafer_source_completeness: unknown
+  document_incident_key: incident_ref
+  image_incident_key: incident_ref
+  trend_incident_key: incident_ref
+  chunk_document_key: document_ref
+  source_completeness: unknown
+arrays:
+  product_generations: json_text
+  fab_out_failure_codes: json_text
+storage:
+  backend: local
+  endpoint: ''
+  bucket: ''
+  prefix: quality/
+  credential_env: QAGENT_STORAGE_CREDENTIAL
+  signed_url_ttl_seconds: 300
+
+# 모델 폴더/파일명과 API 모델명. enabled만 바꿔도 서버가 시작되는 것은 아닙니다.
+models:
+  text:
+    enabled: false
+    mode: api
+    base_url: http://127.0.0.1:8000/v1
+    api_key_env: QAGENT_LLM_API_KEY
+    served_model: SET_SERVED_MODEL_NAME
+    local_dir: ${paths.model_root}/text-model
+    checkpoint_file: ''
+    tokenizer_dir: ${paths.model_root}/text-model
+    timeout_seconds: 120
+  image:
+    enabled: false
+    mode: local
+    base_url: ''
+    api_key_env: QAGENT_IMAGE_API_KEY
+    served_model: ''
+    local_dir: ${paths.model_root}/image-model
+    checkpoint_file: failure_model.pt
+    tokenizer_dir: ''
+    timeout_seconds: 60
+  trend:
+    enabled: false
+    mode: local
+    base_url: ''
+    api_key_env: QAGENT_TREND_API_KEY
+    served_model: ''
+    local_dir: ${paths.model_root}/trend-model
+    checkpoint_file: trend_model.ckpt
+    tokenizer_dir: ''
+    timeout_seconds: 60
+
+# 각 역할이 사용할 모델과 생성 옵션.
+roles:
+  router:
+    model: text
+    temperature: 0.0
+    max_output_tokens: 1200
+  answer:
+    model: text
+    temperature: 0.0
+    max_output_tokens: 3000
+  judge:
+    model: text
+    temperature: 0.0
+    max_output_tokens: 1200
+retrieval:
+  internal_documents:
+    enabled: false
+    endpoint: ''
+    api_key_env: QAGENT_INTERNAL_RAG_KEY
+    index_name: SET_EXISTING_INDEX
+    existing_chunks: true
+    methods:
+    - bm25
+    - vector_similarity
+    fusion: source_managed
+    reranker: source_managed
+    top_k: 10
+    timeout_seconds: 30
+  engineer_notes:
+    enabled: false
+    endpoint: ''
+    api_key_env: QAGENT_ENGINEER_RAG_KEY
+    index_name: SET_EXISTING_INDEX
+    existing_chunks: true
+    methods:
+    - bm25
+    - vector_similarity
+    fusion: source_managed
+    reranker: source_managed
+    top_k: 10
+    timeout_seconds: 30
+enterprise:
+  enabled: false
+  endpoint: ''
+  api_key_env: QAGENT_ENTERPRISE_KEY
+  timeout_seconds: 30
+actions:
+  enabled: false
+  endpoint: ''
+  api_key_env: QAGENT_ACTION_KEY
+  timeout_seconds: 30
+  require_approval: true
+
+# 조회 제한과 ReAct 실행 한도. Tool은 순차 실행하며 max_parallel_tools는 현재 사용하지 않습니다.
+runtime:
+  timezone: Asia/Seoul
+  default_page_size: 20
+  max_page_size: 100
+  max_scope_incidents: 100
+  scope_ttl_seconds: 1800
+  max_tool_calls: 12
+  max_parallel_tools: 3
+  max_retries: 2
+  max_answer_revisions: 2
+  max_agent_steps: 24
+  max_context_characters: 120000

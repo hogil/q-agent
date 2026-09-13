@@ -47,25 +47,24 @@ contains 검색의 `%`와 `_`는 SQL 와일드카드가 아닌 실제 문자로 
 
 ## config 예시
 
-```toml
-[tables.lot_list]
-name = "INCIDENT_LOT_LIST"
-[tables.lot_list.columns]
-incident_ref = "INCIDENT_NAME"
-lot_id = "LOT_NO"
-
-[tables.wafer_list]
-name = "INCIDENT_WAFER_LIST"
-[tables.wafer_list.columns]
-incident_ref = "INCIDENT_NAME"
-lot_id = "LOT_NO"
-wafer_id = "WAFER_NO"
-status = "WAFER_STATUS"
-
-[relations]
-incident_parent_key = "title"
-wafer_parent_key = "title"
-wafer_scope = "incident_affected"
+```yaml
+tables:
+  lot_list:
+    name: INCIDENT_LOT_LIST
+    columns:
+      incident_ref: INCIDENT_NAME
+      lot_id: LOT_NO
+  wafer_list:
+    name: INCIDENT_WAFER_LIST
+    columns:
+      incident_ref: INCIDENT_NAME
+      lot_id: LOT_NO
+      wafer_id: WAFER_NO
+      status: WAFER_STATUS
+relations:
+  incident_parent_key: title
+  wafer_parent_key: title
+  wafer_scope: incident_affected
 ```
 
 Lot는 relations.incident_parent_key, Wafer는 relations.wafer_parent_key로 각각 사고 테이블의 연결 컬럼을 지정한다. Lot는 사고명, Wafer는 사고번호를 저장하는 서로 다른 구조도 지원한다.
@@ -76,18 +75,9 @@ Lot는 relations.incident_parent_key, Wafer는 relations.wafer_parent_key로 각
 
 특정 Lot만 요청하면 사고 테이블의 사고 전체 Wafer 수와 그 부분 목록을 비교하지 않는다. 연결 Wafer가 없는 Lot는 `lots_without_wafer_rows`에 표시한다. 등록 예상수와 다르면 0건이어도 PARTIAL/count_mismatch를 유지한다.
 
-## 재현
+## 실행 범위
 
-```bash
-python app/generate_dummy.py --overlay config/demo.wafer.toml
-python app/query_demo.py --overlay config/demo.wafer.toml --title "[합성 0001] 노광 조건 변경 이후 Wafer 외곽 Shot의 EDS Fail 증가" --include-wafers --all-pages
-python app/query_demo.py --overlay config/demo.wafer.toml --title "외곽" --title-match contains
-python app/query_demo.py --overlay config/demo.wafer.toml --title "외곽" --title-match contains --select-incident synthetic-pk-0001 --include-wafers --all-pages
-python app/check_wafers.py
-```
-
-100건 fixture는 사고-Lot 관계 400건, 사고-Lot-Wafer 관계 8,000건이다. 일부 Lot가 두 사고에 속하므로 고유 Lot 350개, 고유 Lot/Wafer 7,000개다. 대표 사고 한 건은 4 Lot와 80 Wafer를 반환한다. 실제 조회 샘플은 examples/generated/incident_lot_wafer.json이다.
-
-기존 0.6 fixture DB에는 wafer_list 테이블이 없으므로 새 demo.wafer.toml의 별도 경로로 생성한다. 기존 데이터나 GPU 자원 자료는 삭제하지 않는다. 실제 사내 DB Adapter, 권한 정책, 대량 export와 안정적인 운영 snapshot, 실 LLM 라우팅은 별도 통합 대상이다.
-
-상세 단계, Judge 복귀 조건, 통계/문서/목록 계약과 구현 순서는 [DETAILED_REQUEST_FLOW.md](DETAILED_REQUEST_FLOW.md)를 따른다. 사용자와 확인한 세로 배치를 유지하도록 주 흐름은 표로 표시한다.
+사고/Lot/Wafer 조회 구현은 app/incident_tools.py와 app/runtime_factory.py에 유지한다.
+app/query_demo.py는 별도로 준비한 SQLite를 조회하는 개발용 CLI다.
+더미 생성기, 데모 설정, 저장된 결과는 제거했다. 실제 사내 DB Adapter와 운영 인증,
+대량 export, snapshot, LLM 연결은 별도 통합 대상이다.

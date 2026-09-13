@@ -2,7 +2,7 @@
 
 ## 1. 논리 배치: 세 역할의 호출 위치
 
-이 그림은 목표 Orchestrator 동작이다. 현재 실행 코드는 설정 검증, Skill 조합, SQLite Tool/더미 검증까지이며 실제 LLM 호출과 아래 전체 루프는 아직 연결되지 않았다.
+현재 app/agent.py가 Router → SQLite Tool → Judge → Answer 순서와 Judge 재조회를 실행한다. app/llm_client.py가 역할별 모델 API를 호출한다. 사내 모델 품질·데이터·운영 인증과 미구현 Tool은 별도 통합 대상이다.
 
 | 위에서 아래 순서 | 처리 내용 |
 |---|---|
@@ -38,13 +38,13 @@ Answer 아래 상자는 최종 결과 표시다. 조회 성공 여부와 확정�
 
 재조회 요청은 맨 위 Router로 돌아간다. code가 현재 scope의 사용자/권한/만료와 오류 상태를 확인한 뒤 다음 단계를 결정한다. Judge 출력 자체가 직접 Tool을 호출하거나 gate를 해제하지 않는다. 반복 예산을 소진하면 확인된 결과와 미해결 항목을 표시하고 종료한다.
 
-LLM이 DB를 직접 실행하는 것이 아니다. Router가 구조화된 계획을 내고 코드가 허용 Tool, 필터, 우선 조회, 선택 scope를 확인한 뒤 Adapter를 실행한다. 코드 검사 실패를 Judge pass로 덮어쓸 수 없다. 재조회는 설정된 호출 예산 안에서만 진행하고 초과 시 미확인 상태를 표시하는 것이 목표다. 현재 `runtime`의 전체 Orchestrator 예산 집행은 미구현이다.
+LLM이 DB를 직접 실행하는 것이 아니다. Router가 submit_plan 함수 호출로 계획을 내고 코드가 허용 Tool, 필터, 우선 조회, 선택 scope를 확인한 뒤 Adapter를 실행한다. 코드 검사 실패를 Judge pass로 덮어쓸 수 없다. runtime의 Tool/LLM 호출 한도와 Judge 재조회 한도를 집행하며 초과 시 unavailable로 종료한다.
 
 | 역할 | 받는 입력 | 출력 | 연결 Skill |
 |---|---|---|---|
-| Router | 원문 질문, 현재 사고 범위, 이전 Tool 결과, 필요한 사전/Schema | 의도, 논리 필터, Tool 계획, 추가 확인 요청 | quality-router + core + 관련 Schema/조회 절차/용어 |
-| Judge | 원문 질문, Router 계획, 사고 범위, Tool 근거, 코드 검사 결과 | pass/revise/need_evidence/abstain와 근거 문제 항목 | quality-judge + core + 해당 검증 규칙 |
-| Answer | 원문 질문, 선택 사고, Judge 판정, 검토된 Tool 결과와 근거 ID | 주장과 근거가 연결된 최종 답변 | quality-answer + core + 관련 Schema/통계/문서 근거 |
+| Router | 원문 질문, 현재 사고 범위, 이전 Tool 결과, 필요한 사전/Schema | 의도, 논리 필터, Tool 계획, 추가 확인 요청 | router + core + 관련 Schema/조회 절차/용어 |
+| Judge | 원문 질문, Router 계획, 사고 범위, Tool 근거, 코드 검사 결과 | pass/revise/need_evidence/abstain와 근거 문제 항목 | judge + core + 해당 검증 규칙 |
+| Answer | 원문 질문, 선택 사고, Judge 판정, 검토된 Tool 결과와 근거 ID | 주장과 근거가 연결된 최종 답변 | answer + core + 관련 Schema/통계/문서 근거 |
 
 Judge는 Answer 호출 전에 실제 Tool 근거가 질문에 답하기에 충분한지 검토한다. Answer는 이 검토 뒤 최종 답변을 작성하는 마지막 LLM이다. 같은 모델의 자기 검토가 독립된 정답을 보장하지 않으므로 수량, ID, 관계, 페이지 완전성은 코드로 별도 확인한다. 역할 간 공유하는 것은 조사 상태/근거/Skill 소스이며 내부 추론 텍스트를 공유할 필요는 없다.
 
@@ -78,7 +78,7 @@ Judge는 Answer 호출 전에 실제 Tool 근거가 질문에 답하기에 충�
 
 ## 4. 모든 Skill의 실제 데이터 확인 규칙
 
-19개 SKILL.md 모두에 다음 규칙을 직접 명시했다.
+14개 SKILL.md 모두에 다음 규칙을 직접 명시했다.
 
 > 수정 전 관련 실제 원본과 대표 데이터를 확인하고 출처, 기준시점, 변경 근거를 기록한다. 실제 데이터에 접근할 수 없으면 미확인으로 표시하고 설계/더미 초안으로만 관리한다. 더미 검증을 실제 데이터 검증으로 주장하거나 확인 없이 컬럼 의미, 관계, 코드값을 확정하지 않는다. 이 규칙은 원본 데이터 수정이나 온라인 Skill 자기 수정 권한을 부여하지 않는다.
 

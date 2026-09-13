@@ -1,6 +1,6 @@
 # 반도체 품질 Agent — 현재 설계와 실행 계획
 
-이 문서는 목표 설계다. 구현된 부분은 사고/Lot 독립 데모, 배열 집계 데모, Skill 컴파일/검증, 화면 시안이다. 나머지는 아래 단계별 통과 조건을 만족한 뒤 운영 기능으로 표시한다. 기존 자원 계획은 원본 문서를 유지하며 여기서 GPU 수량이나 모델 사양을 새로 가정하지 않는다.
+이 문서는 목표 설계다. 구현된 부분은 사고/Lot/Wafer 조회 CLI, Skill 컴파일러, 출력 검사와 계획 실행기, 화면 시안이다. 나머지는 아래 단계별 통과 조건을 만족한 뒤 운영 기능으로 표시한다. 기존 자원 계획은 원본 문서를 유지하며 여기서 GPU 수량이나 모델 사양을 새로 가정하지 않는다.
 
 사고명 검색과 별도 Lot/Wafer 테이블의 최신 구현은 [INCIDENT_LOT_WAFER.md](INCIDENT_LOT_WAFER.md)를 참고한다.
 
@@ -88,7 +88,7 @@ Hybrid RAG 두 소스는 이미 chunking되어 있으므로 초기에는 ingest/
 - 기간: 발생일/등록일/종결일 중 어떤 기준인지 명시하고 사내 timezone과 반개구간 `[from,to)`를 사용한다. 0건과 조회 실패를 구분한다.
 - 결과에 단위, distinct 규칙, 기준시각, 필터, missing 수, 제한사항, drill-down scope를 반환한다. 표와 차트는 동일 결과를 사용한다.
 
-기존 컬럼이 PostgreSQL text[]인 경우 예시는 `:generation = ANY(product_generations)`와 `CROSS JOIN LATERAL unnest(product_generations)`이다. 실제 DB 종류/배열 타입/driver 바인딩 확인 후 구현한다. 문자열에 LIKE 검색하거나 쉼표로 나누는 방식으로 배열을 흉내 내지 않는다. 이 저장소의 array_demo는 SQLite JSON 배열로 의미를 검증하는 독립 예제다.
+기존 컬럼이 PostgreSQL text[]인 경우 예시는 `:generation = ANY(product_generations)`와 `CROSS JOIN LATERAL unnest(product_generations)`이다. 실제 DB 종류/배열 타입/driver 바인딩 확인 후 구현한다. 문자열에 LIKE 검색하거나 쉼표로 나누는 방식으로 배열을 흉내 내지 않는다. 현재 SQLite Adapter는 JSON 배열을 처리한다.
 
 ## 6. 구체적인 조사 예시
 
@@ -109,7 +109,7 @@ Hybrid RAG 두 소스는 이미 chunking되어 있으므로 초기에는 ingest/
 
 사고/통계/문서 탭, 사고 상세의 현상·분석·조치·검증, Lot 목록의 페이지·총건수·내보내기 범위, FAB/EDS 비교, 문서 페이지/슬라이드 근거를 제공한다. 조회중/부분결과/권한제한/미등록/실패를 다른 상태로 표시한다. 처리 흐름에는 “사고 DB 조회 완료, Lot 조회 6건” 같은 관측만 보여준다. 조치 UI는 대상·변경·근거·예상영향·승인/실행 상태를 구분한다.
 
-현재 design/workspace-preview.html은 정적 합성 데이터 기반 시안이다. API 연결, 접근성·반응형·브라우저 검증 및 운영 인증은 후속 구현 대상이다.
+정적 합성 데이터 기반 화면 목업은 제거했다. API 연결, 접근성·반응형·브라우저 검증 및 운영 인증은 후속 구현 대상이다.
 
 ## 8. 단계별 구현과 통과 조건
 

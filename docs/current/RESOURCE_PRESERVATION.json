@@ -1,7 +1,15 @@
 {
   "source_commit": "995aca61eaca5f62f0cf7684f84c77b9f31efb06",
   "backup_branch": "archive/pre-quality-rebuild-20260913",
-  "policy": "Preserve all original docs/ and Markdown/Office/text documents at original paths with identical Git blob hashes; original complete tree retained on backup branch.",
+  "policy": "Preserve original files with identical Git blob hashes except explicit user deletions recorded in user_deleted_roots. Original hashes below remain historical records; original complete tree is retained on backup branch.",
+  "user_deleted_roots": [
+    {
+      "path": "ax_award",
+      "date": "2026-09-14",
+      "reason": "User explicitly requested removal from the local and remote repository.",
+      "file_count": 132
+    }
+  ],
   "files": [
     {
       "path": "CLAUDE.md",

@@ -19,11 +19,12 @@ if __name__ == '__main__':
     parser.add_argument('--lot',action='append',help='Restrict wafer results to these Lots within selected incidents')
     parser.add_argument('--all-pages', action='store_true')
     args = parser.parse_args()
+    if all(value is None for value in (args.incident_number, args.title, args.city, args.line)):
+        parser.error('Specify --incident-number, --title, --city or --line')
     try:
         settings = load_config(args.config, args.overlay)
         with open_incident_tools(settings) as tool:
             number=args.incident_number
-            if all(v is None for v in (number,args.title,args.city,args.line)):number='SYN-2026-0001'
             found = tool.find_incidents('demo-user', incident_number=number,title=args.title,
                                        title_match=args.title_match,city=args.city,line=args.line)
             scope=found['scope_id']
