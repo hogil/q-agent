@@ -50,9 +50,9 @@ class RoleClient:
                 if len(calls) != 1 or calls[0].type != 'function' or calls[0].function.name != 'submit_plan':
                     raise LLMError('ROUTER_FUNCTION_CALL_REQUIRED')
                 value = json.loads(calls[0].function.arguments)
-                history.extend([messages[-1], {'role': 'assistant', 'content': message.content,
+                history.append({'role': 'assistant', 'content': message.content,
                     'tool_calls': [{'id': calls[0].id, 'type': 'function', 'function': {
-                        'name': 'submit_plan', 'arguments': calls[0].function.arguments}}]}])
+                        'name': 'submit_plan', 'arguments': calls[0].function.arguments}}]})
                 return value, calls[0].id
             return json.loads(message.content or ''), None
         except OpenAIError as exc:

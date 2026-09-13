@@ -7,7 +7,7 @@
 | 진입 | app/run_agent.py | 사내 config/Skill 검증, run 인자 확인 |
 | 시작 | app/agent.py | 질문, 호출자, 요청 범위, 예산과 근거 상태 생성 |
 | Router | app/skill_loader.py → app/llm_client.py | Router Skill 조립 후 설정된 모델 호출 |
-| 사고 DB | app/plan_executor.py → app/runtime_factory.py → app/incident_tools.py | 검증된 find_incidents 실행, 읽기 전용 연결과 scope 발급 |
+| 사고 DB | app/agent.py의 invoke → app/runtime_factory.py → app/incident_tools.py | 검증된 find_incidents 실행, 읽기 전용 연결과 scope 발급 |
 | 후속 Tool | 같은 실행기 → incident_tools.py | 같은 scope의 Lot, 이후 Wafer 조회 |
 | Judge | skill_loader.py → llm_client.py | 조회 근거의 ID와 요구사항을 검토 |
 | Answer | skill_loader.py → llm_client.py | Judge pass/abstain 후 최종 JSON 생성 |
@@ -38,6 +38,11 @@ Router의 native tool_call 이름은 `submit_plan`이다. 그 arguments에는 �
 위 번호는 실행 예시용 placeholder다. 실제 입력에서 얻은 번호를 사용한다.
 Tool 실행 결과는 원래 tool_call_id와 연결한 role=tool 메시지로 다음 Router 호출에 전달한다.
 한 단계에 한 Tool만 실행한다. 실제 SQL이나 actor/scope_id를 모델이 지정할 수 없다.
+
+Router history에는 이전 함수 호출과 결과만 보관한다. 전체 상태·근거 payload는 최신
+user 메시지로 한 번만 전달하며, 과거 payload를 매번 누적하지 않는다. 이전 Tool 결과가
+history에 남아 있어도 현재 evidence_ids와 유효 scope에 없는 근거는 재사용하지 않는다.
+컨텍스트 제한, Tool 인자·scope 검사와 호출 전 릴리스 해시 검사는 유지한다.
 
 ## 역할별 Skill 관리
 

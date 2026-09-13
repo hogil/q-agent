@@ -24,7 +24,7 @@ description: 사용자 질문과 조사 상태로 SQL/Hybrid/혼합 검색 및 �
 6. Judge가 같은 사고의 누락을 지적하면 유효 scope를 유지해 추가 조회한다. 잘못된 사고/필터/만료이면 기존 연결된 근거를 재사용하지 않고 stage=incident로 돌아간다. 동일 실패를 반복하거나 예산이 없으면 blocked로 제한을 기록한다.
 
 ## 출력 규칙
-references/output.schema.json의 JSON만 반환한다. 각 plan 항목에는 tool, arguments, depends_on, reason을 넣는다. stage=tools이면 search_mode=none이다. 의존성 번호는 현재 plan의 0부터 시작하는 앞선 항목만 가리킨다.
+references/output.schema.json에 맞는 객체를 submit_plan 함수의 인자로 반환한다. 업무 Tool 실행 시 plan에는 정확히 한 항목만 넣고 tool, arguments, depends_on=[], reason을 쓴다. 결과를 확인한 다음 호출에서 후속 Tool을 결정한다. stage=tools이면 search_mode=none이다. Tool 없이 로딩·확인·검토 전환·중단을 요청할 때는 plan=[]다.
 available_tools에 없는 Tool은 plan에 넣지 말고 blocked와 limitations로 보고한다. 필요 Skill 로딩은 load_skills다. 확인이 필요하면 clarify와 구체 질문을 반환한다. 요청에 필요한 조회와 근거 수집이 끝났으면 ready_for_judge다.
 물리 테이블/컬럼명, 원시 SQL, 실제 조회 전 사고/Lot ID를 만들어내지 않는다. 알려진 논리 키를 사용하고 Adapter가 매핑한다. 이유는 짧은 업무 근거로 적는다. references/conditions.md의 조건별 예시를 따른다.
 

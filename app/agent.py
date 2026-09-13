@@ -7,7 +7,6 @@ import sqlite3
 from config_loader import ConfigError
 from incident_tools import IncidentTools, ToolError
 from llm_client import LLMError, RoleClient
-from plan_executor import execute_plan
 from prompt_contracts import structure, validate_output
 from runtime_factory import open_incident_tools
 from skill_loader import compile_prompt, read_role_reference
@@ -124,7 +123,6 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                 event('tool_result', **item)
                 return item
 
-            adapters = {name: (lambda name: lambda **kwargs: invoke(name, **kwargs))(name) for name in catalog}
             while calls < limits['max_agent_steps']:
                 output, call_id = ask('router')
                 try:
@@ -133,25 +131,25 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                     if decision == 'execute':
                         if len(output['plan']) != 1:
                             raise ValueError('ONE_TOOL_PER_REACT_STEP_REQUIRED')
-                        # Check every step before the first side effect, including native signatures.
-                        for step in output['plan']:
-                            name, arguments = step['tool'], step['arguments']
-                            structure(arguments, catalog[name]['parameters'])
-                            if 'actor' in arguments or 'scope_id' in arguments:
-                                raise ValueError('CALLER_IDENTITY_ARGUMENT_FORBIDDEN')
-                            bound = {'actor': actor, **arguments}
-                            if name != 'find_incidents':
-                                bound['scope_id'] = state['scope_id']
-                            inspect.signature(getattr(IncidentTools, name)).bind(None, **bound)
-                            if name == 'find_incidents' and output['filters'] != arguments.get('filters', {}):
-                                raise ValueError('FILTER_PLAN_MISMATCH')
-                            needed = {'list_incident_lots': 'lots', 'list_incident_wafers': 'wafers'}.get(name)
-                            if needed:
-                                for role in ('router', 'judge', 'answer'):
-                                    compile_prompt(role, sorted(topics | {needed}), settings=settings)
-                                topics.add(needed)
-                        results = execute_plan(output, context(), adapters)
-                        observe(call_id, {'observations': results})
+                        # Validate the single action before opening the DB or invoking a Tool.
+                        step = output['plan'][0]
+                        name, arguments = step['tool'], step['arguments']
+                        structure(arguments, catalog[name]['parameters'])
+                        if 'actor' in arguments or 'scope_id' in arguments:
+                            raise ValueError('CALLER_IDENTITY_ARGUMENT_FORBIDDEN')
+                        bound = {'actor': actor, **arguments}
+                        if name != 'find_incidents':
+                            bound['scope_id'] = state['scope_id']
+                        inspect.signature(getattr(IncidentTools, name)).bind(None, **bound)
+                        if name == 'find_incidents' and output['filters'] != arguments.get('filters', {}):
+                            raise ValueError('FILTER_PLAN_MISMATCH')
+                        needed = {'list_incident_lots': 'lots', 'list_incident_wafers': 'wafers'}.get(name)
+                        if needed:
+                            for role in ('router', 'judge', 'answer'):
+                                compile_prompt(role, sorted(topics | {needed}), settings=settings)
+                            topics.add(needed)
+                        result = invoke(name, **arguments)
+                        observe(call_id, {'observations': [{'tool': name, 'result': result}]})
                         if state['incident_checked'] and not state['scope_valid']:
                             return finish('needs_selection', candidates=evidence[-1]['result']['data'])
                     elif decision == 'load_skills':

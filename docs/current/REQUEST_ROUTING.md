@@ -34,6 +34,6 @@ independent는 stage=independent, search_mode=none, filters={}를 요구한다.
 Tool도 동일 단계로 등록돼야 한다. 사고 DB용 Tool의 단계를 모델이 바꿔도
 검증기에서 거부한다. 사고 요청의 기존 scope/우선 조회 검사도 유지한다.
 
-`app/plan_executor.py`는 전체 계획과 Adapter 존재를 확인한 뒤 호출한다.
-DB를 자체 생성/연결하지 않는다. 범위 판정, 인증, Adapter 등록, Adapter별
-인자/권한 검증은 호출 시스템의 책임이다. 완성된 LLM Orchestrator는 아니다.
+`app/agent.py`는 단일 Tool 계획의 출력 계약, 등록 여부, 인자와 scope를 검사한 뒤
+읽기 전용 DB Tool을 호출한다. 중복 검사를 하던 별도 dispatcher는 제거했다.
+운영 사용자 인증과 사내 DB별 권한 연결은 여전히 배포 시스템의 책임이다.

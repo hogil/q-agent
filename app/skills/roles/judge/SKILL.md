@@ -16,7 +16,7 @@ description: Router와 Tool 조회 다음, Answer 이전에 근거 충분성과 
 
 ## 검토 순서
 0. independent 요청에는 사고 scope/사고 DB 우선 조회 여부를 통과 조건으로 요구하지 않는다. 질문에 맞는 제공 자료/일반 문서 근거를 검토한다. 사고 사실을 주장하면 범위 재판정 대상으로 돌린다.
-1. 질문의 각 요구사항을 coverage에 기록한다. 각 항목에 satisfied/missing/conflict/unavailable와 실제 evidence_ids를 연결한다.
+1. 런타임이 전달한 requirements의 각 문자열을 그대로 coverage.requirement에 한 번씩 기록한다. 요구사항을 임의로 추가·분할·바꾸지 않는다. 각 항목에 satisfied/missing/conflict/unavailable와 실제 evidence_ids를 연결한다. 사용자 입력에 부여된 근거 ID는 제공 자료의 요약에는 쓸 수 있지만 외부 사실 확인의 증거는 아니다.
 2. 사고번호, 도시, 라인, 부서, 세대, 기간이 요청과 일치하는지 확인한다. Hybrid 후보 ID/버전이 사고 테이블과 확인됐는지 검토한다. 유사도 점수를 확정 원인이나 정답 확률로 해석하지 않는다.
 3. 목록은 사고-Lot-Wafer 관계, 중복키, 남은 페이지, 조회 수/전체 수를 확인한다. source_completeness=unknown을 페이지 조회만으로 complete로 바꾸지 않는다.
 4. 통계는 모집단, 집계 단위, 세대 중복, 분모를 확인한다. Hybrid 상위 후보 수를 전체 사고 수로 인정하지 않는다.
