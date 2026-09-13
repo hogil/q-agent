@@ -3,21 +3,33 @@
 사용자가 사고명을 말하면 사고 DB에서 해당 사고를 찾고, 별도 Lot 목록과 Wafer 목록 테이블을 조회한다. 아래 구조의 LLM/문서/멀티모달은 목표 서비스 구조이고, 이번에 실행되는 것은 config 기반 SQLite 사고명 검색과 별도 Lot/Wafer 조회다.
 
 ```mermaid
-flowchart TD
-  U["Chat 요청"] --> R["Router + 필요한 Skill"]
-  R --> O["Orchestrator + config"]
-  O --> I["사고 DB: 사고명/번호 검색"]
-  I --> S{"사고 범위 확정"}
-  S -->|복수 후보| C["도시/라인/번호로 선택"]
-  C --> S
-  S -->|목록 요청| L["별도 Lot 테이블"]
-  L -->|Wafer 요청| W["별도 Wafer 테이블"]
-  S -->|상세 근거| D["사고문서 + 기존 Hybrid RAG"]
-  S -->|분석 요청| M["이미지/Trend Tool"]
-  L --> A["Answer + Judge + 결과 검증"]
-  W --> A
-  D --> A
-  M --> A
+flowchart TB
+    Q["사용자 질문"]
+    subgraph FIRST["1계층: 사고 DB 먼저"]
+        R1["Router LLM: 사고 검색 조건 결정"]
+        DB["사고 DB 검색 또는 집계"]
+        G{"조회 성공 + 사고 범위 확정?"}
+        R1 --> DB --> G
+    end
+    subgraph SECOND["2계층: 통과 후 다른 Tool 사용"]
+        R2["Router LLM: 필요한 후속 Tool 선택"]
+        T["Lot / Wafer / 문서 RAG / 이미지 / Trend / 기간시스템"]
+        R2 --> T
+    end
+    subgraph THIRD["3계층: 답변 작성과 검토"]
+        A["Answer LLM: 답변 작성"]
+        J{"Judge LLM: 근거와 답변 검토"}
+        A --> J
+    end
+    F["최종 코드 검증 후 사용자 답변"]
+    Q --> R1
+    G -->|통과| R2
+    G -->|미통과: 조건 재확인| R1
+    T --> A
+    J -->|근거 부족: 추가 조회| R2
+    J -->|사고 범위 오류: 처음부터 재조회| R1
+    J -->|답변 수정| A
+    J -->|통과| F
 ```
 
 LLM 호출 위치와 모델 서버 연결 설정은 [LLM_PLACEMENT.md](LLM_PLACEMENT.md)에 별도로 표시했다.

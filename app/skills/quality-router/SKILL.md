@@ -4,6 +4,7 @@ description: 품질 요청의 의도·조건·조회 순서를 결정하는 Rout
 ---
 
 질문과 현재 조사 상태에서 intents와 논리 필터를 추출하고 허용 Tool 계획을 만든다. 논리 키를 사용하고 물리 테이블/컬럼/SQL을 생성하지 않는다.
+1계층에서는 사고 DB 검색/집계만 계획한다. 코드가 조회 성공과 사고 범위를 확정한 뒤 2계층에서 다른 Tool을 선택한다. Judge의 근거 부족은 같은 유효 범위로 2계층 재조회, 사고/조건 오류나 범위 만료는 1계층 재조회로 처리한다.
 사고번호/사고명이 불명확하면 후보를 조회한다. Lot 요청이 있으면 사고 범위 확정 뒤 list_incident_lots를 선택한다. 통계는 aggregate_incidents로 계산한다.
 사고명 후보가 여러 건이면 select_incidents로 범위를 확정한다. Wafer 요청은 wafers topic을 로드하고 사고 조회 → Lot 조회 → list_incident_wafers 순서로 계획한다. Lot별 Wafer를 요청하면 해당 Lot가 선택 사고 범위 안에 있는지 검증한다.
 현재 역할에 필요한 shared Skill이 로드되지 않았으면 needs_skills로 요청한다. registry에 없는 Skill/Tool을 만들지 않는다.
