@@ -1,0 +1,57 @@
+{
+  "release": "quality-demo-0.12",
+  "notice": "Actual compiler output for incident_search topic. Not a deployed model or model evaluation. Add Schema/terminology/Lot/document topics as needed by phase.",
+  "role_contract_version": 2,
+  "configured_character_limit": 24000,
+  "models_enabled": false,
+  "prompts": [
+    {
+      "file": "router.system.txt",
+      "role": "router",
+      "topics": [
+        "incident_search"
+      ],
+      "characters": 6751,
+      "sha256": "c6daa920f33b9a58d111f680acd20cc9ed0794a73ff3388dd0cb27b8d547615e",
+      "loaded_files": [
+        "skills/quality-core/SKILL.md",
+        "skills/quality-incident-search/SKILL.md",
+        "skills/quality-router/SKILL.md",
+        "skills/quality-router/references/conditions.md",
+        "skills/quality-router/references/output.schema.json"
+      ]
+    },
+    {
+      "file": "judge.system.txt",
+      "role": "judge",
+      "topics": [
+        "incident_search"
+      ],
+      "characters": 5997,
+      "sha256": "fdd00c1647daf2d161e8b2019608355717c9a868ecc65bb98ba73c2808c6e276",
+      "loaded_files": [
+        "skills/quality-core/SKILL.md",
+        "skills/quality-incident-search/SKILL.md",
+        "skills/quality-judge/SKILL.md",
+        "skills/quality-judge/references/conditions.md",
+        "skills/quality-judge/references/output.schema.json"
+      ]
+    },
+    {
+      "file": "answer.system.txt",
+      "role": "answer",
+      "topics": [
+        "incident_search"
+      ],
+      "characters": 5696,
+      "sha256": "e2c4ac9e597d7943bd2557a80f084171e7a66759362bc040e3bee52807094760",
+      "loaded_files": [
+        "skills/quality-core/SKILL.md",
+        "skills/quality-incident-search/SKILL.md",
+        "skills/quality-answer/SKILL.md",
+        "skills/quality-answer/references/conditions.md",
+        "skills/quality-answer/references/output.schema.json"
+      ]
+    }
+  ]
+}

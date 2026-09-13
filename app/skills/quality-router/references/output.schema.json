@@ -6,7 +6,11 @@
     "filters",
     "plan",
     "needs_skills",
-    "clarification"
+    "clarification",
+    "decision",
+    "stage",
+    "search_mode",
+    "limitations"
   ],
   "properties": {
     "intents": {
@@ -33,7 +37,9 @@
         "type": "object",
         "required": [
           "tool",
-          "depends_on"
+          "arguments",
+          "depends_on",
+          "reason"
         ],
         "properties": {
           "tool": {
@@ -42,10 +48,18 @@
           "depends_on": {
             "type": "array",
             "items": {
-              "type": "integer"
+              "type": "integer",
+              "minimum": 0
             }
+          },
+          "arguments": {
+            "type": "object"
+          },
+          "reason": {
+            "type": "string"
           }
-        }
+        },
+        "additionalProperties": false
       }
     },
     "needs_skills": {
@@ -59,6 +73,40 @@
         "string",
         "null"
       ]
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "execute",
+        "clarify",
+        "blocked",
+        "load_skills",
+        "ready_for_judge"
+      ]
+    },
+    "stage": {
+      "type": "string",
+      "enum": [
+        "incident",
+        "tools"
+      ]
+    },
+    "search_mode": {
+      "type": "string",
+      "enum": [
+        "none",
+        "sql_exact",
+        "sql_filter",
+        "sql_aggregate",
+        "hybrid",
+        "mixed"
+      ]
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
   }
 }

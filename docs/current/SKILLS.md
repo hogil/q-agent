@@ -1,6 +1,6 @@
 # 전체 Skill 목록과 컬럼 설명 관리
 
-현재 18개 application Skill이 있다. 개인 ChatGPT에 설치하는 Skill이 아니며 `app/skill_registry.json`과 `app/skill_loader.py`가 필요한 소스를 조합한다. 아직 실제 LLM 호출 서비스가 통합된 것은 아니다.
+현재 19개 application Skill이 있다. 개인 ChatGPT에 설치하는 Skill이 아니며 `app/skill_registry.json`과 `app/skill_loader.py`가 필요한 소스를 조합한다. 아직 실제 LLM 호출 서비스가 통합된 것은 아니다.
 
 | 구분 | Skill | 책임 |
 |---|---|---|
@@ -8,6 +8,7 @@
 | 역할 | quality-router | 의도/조건/Tool 계획과 필요한 공유 Skill 선택 |
 | 역할 | quality-answer | Judge 검토 후 최종 답변과 주장-근거 연결 |
 | 역할 | quality-judge | 답변 전 조회 근거의 충분성, 범위, 누락 검토 |
+| 조회 절차 | quality-incident-search | SQL/Hybrid/혼합 선택, 후보 원장 확인, 통계 모집단 제한 |
 | 용어 | quality-terminology | 공식값/동의어/오타/조직 범위 해석 |
 | Schema | quality-incident-schema | 사고 원장 21개 논리 컬럼 |
 | Schema | quality-lot-schema | 사고-Lot 관계 4개 논리 컬럼 |
@@ -36,6 +37,7 @@ description(의미), type(논리 타입), nullable, null_meaning, unit, allowed_
 ## 공유와 로딩
 
 - 모든 역할: core + 자신의 role Skill.
+- 사고 검색: incident_search.
 - Lot 질문: incident-schema + lot-schema + lot-retrieval.
 - Wafer 질문: incident-schema + lot-schema + wafer-schema + lot-retrieval + wafer-retrieval.
 - 문서 질문: incident-document-schema + document-chunk-schema + document-evidence.
@@ -50,6 +52,8 @@ description(의미), type(논리 타입), nullable, null_meaning, unit, allowed_
 
 ## 모든 Skill의 변경 전 확인
 
-18개 SKILL.md에 실제 원본/대표 데이터, 출처, 기준시점, 변경 근거를 확인하는 규칙을 직접 명시했다. 실제 자료에 접근하지 못하면 미확인으로 표시하고 설계/더미 초안만 관리한다. 상세 확인 대상과 LLM별 배치는 [LLM_PLACEMENT.md](LLM_PLACEMENT.md)를 참고한다. 이 문구가 존재한다고 실제 데이터 확인이 수행됐다는 뜻은 아니다.
+19개 SKILL.md에 실제 원본/대표 데이터, 출처, 기준시점, 변경 근거를 확인하는 규칙을 직접 명시했다. 실제 자료에 접근하지 못하면 미확인으로 표시하고 설계/더미 초안만 관리한다. 상세 확인 대상과 LLM별 배치는 [LLM_PLACEMENT.md](LLM_PLACEMENT.md)를 참고한다. 이 문구가 존재한다고 실제 데이터 확인이 수행됐다는 뜻은 아니다.
 
 quality-demo-0.11에서 quality-terminology에 컬럼/값 별칭 구분, 미확인 필터 보존, 식별자 오보정 방지를 추가했다. 합성 사전 전체를 프롬프트에 넣지 않고 정규화 Tool에서 필요한 결과를 반환한다. 검증 범위는 [VARIANT_DATA_DEMO.md](VARIANT_DATA_DEMO.md)를 참고한다.
+
+quality-demo-0.12의 역할 본문, 조건별 예시와 출력 계약 v2는 [SYSTEM_PROMPTS.md](SYSTEM_PROMPTS.md)를 기준으로 한다.

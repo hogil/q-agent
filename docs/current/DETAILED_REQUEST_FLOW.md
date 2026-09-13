@@ -12,7 +12,7 @@
 | ↓ | |
 | **Router LLM** | 질문의 요구사항, 논리 검색 조건, 필요한 Tool과 Skill을 결정한다. |
 | ↓ | |
-| **1계층: 사고 DB 우선 조회** | 정형 사고 검색 또는 SQL 집계를 실행하고 사고 범위와 조회 상태를 기록한다. |
+| **1계층: 사고 DB 우선 조회** | 질문에 따라 SQL 검색/집계, 사고 텍스트 Hybrid 또는 혼합 검색을 선택하고 원장으로 사고 범위를 확인한다. Hybrid 및 운영 집계 Adapter는 연결 예정이다. |
 | ↓ | |
 | **2계층: 필요한 추가 Tool 조회** | Lot/Wafer, 사고문서, 사내문서, Eng’r Inform Note, 이미지, Trend, 기간시스템을 필요한 만큼 조회한다. |
 | ↓ | |
@@ -39,7 +39,7 @@
 | 다음 Tool | 미확보 근거를 채울 Tool과 조회 조건, 선행 Tool 의존성 |
 | 확인 질문 | 동명 사고 후보가 여럿이거나 부서/기간이 불명확할 때 필요한 정보 |
 
-현재 Router 출력 계약은 `intents`, `filters`, `plan`, `needs_skills`, `clarification`이다. 세부 요구사항별 충족 상태는 Orchestrator 상태 계약으로 추가 구현한다. 현재 JSON 계약에 없는 필드가 이미 구현됐다고 가정하지 않는다.
+현재 Router 출력 계약 v2는 `intents`, `filters`, `plan`, `needs_skills`, `clarification`, `decision`, `stage`, `search_mode`, `limitations`이다. 세부 요구사항별 충족 상태는 Orchestrator 상태 계약으로 추가 구현한다. 현재 JSON 계약에 없는 필드가 이미 구현됐다고 가정하지 않는다.
 
 Router는 물리 SQL을 임의 생성하지 않고 논리 필터를 내보낸다. Adapter가 config의 실제 테이블/컬럼/관계에 맞춰 파라미터 쿼리를 실행한다. Tool 허용 여부와 권한은 코드가 결정한다.
 
@@ -136,16 +136,19 @@ Judge 입력은 원문 질문, 요구사항 목록, Router 계획, 선택 사고
 | `revise` | **맨 위 동일 Router**로 사고/조건 수정 요청 | 잘못된 범위를 무효화하고 사고 DB부터 재확인 |
 | `abstain` | Answer가 확인된 사실과 미확인 항목만 최종 안내 | 확인 불가/권한 제한/예산 소진을 성공으로 바꾸지 않음 |
 
-현재 Judge 계약은 `verdict`, `issues`이며 각 issue에는 `evidence_ids`, `type`, `reason`이 있다. 다음 JSON은 손으로 작성한 계약 예시이며 실제 LLM 실행 결과가 아니다.
+현재 Judge 계약 v2는 `verdict`, `issues`, `return_to`, `coverage`이며 각 issue에는 `evidence_ids`, `type`, `reason`, `next_action`이 있다. 다음 JSON은 손으로 작성한 계약 예시이며 실제 LLM 실행 결과가 아니다.
 
 ```json
 {
   "verdict": "need_evidence",
+  "return_to": "router",
+  "coverage": [{"requirement": "전체 Wafer 목록", "status": "missing", "evidence_ids": ["wafer-page-1"]}],
   "issues": [
     {
       "evidence_ids": ["wafer-page-1"],
       "type": "missing_pages",
-      "reason": "질문은 Wafer 전체 목록을 요청했다. 첫 페이지 10개만 확보했고 next_offset=10이므로 나머지 페이지가 필요하다."
+      "reason": "질문은 Wafer 전체 목록을 요청했다. 첫 페이지 10개만 확보했고 next_offset=10이므로 나머지 페이지가 필요하다.",
+      "next_action": "유효 scope를 유지하고 next_offset=10부터 추가 조회한다."
     }
   ]
 }
@@ -167,7 +170,7 @@ Answer는 Judge 판정과 검토된 근거를 받아 마지막에 답변을 작�
 | 문서/이미지 | 페이지/슬라이드 출처, FAB/EDS 이미지와 메타데이터 |
 | 최종 조회 상태 | 선택 사고 범위, 기준시점, 조회 성공/부분/실패, 누락/제한 |
 
-현재 Answer JSON은 `answer`, `claims`, `limitations`이다. 표와 이미지를 포함하는 UI 데이터는 Tool payload에서 렌더링하는 별도 구현 계약으로 둔다. 최종 코드 검사는 JSON 형식/인용 ID/허용된 표 데이터를 확인한다. Answer 아래에 추가 Judge LLM을 배치하지 않는다. 최종 출력이 계약을 위반하면 코드가 전달을 막고 오류/확인 불가를 표시하는 정책을 구현한다.
+현재 Answer JSON v2는 `status`, `answer`, `claims`, `limitations`이다. 표와 이미지를 포함하는 UI 데이터는 Tool payload에서 렌더링하는 별도 구현 계약으로 둔다. 최종 코드 검사는 JSON 형식/인용 ID/허용된 표 데이터를 확인한다. Answer 아래에 추가 Judge LLM을 배치하지 않는다. 최종 출력이 계약을 위반하면 코드가 전달을 막고 오류/확인 불가를 표시하는 정책을 구현한다.
 
 화면은 위에서 아래로 질문, 조회 진행상태, 최종 답변, 사고 상세/목록/근거, 조회 상태 순서로 구성한다. 진행상태는 '사고 DB 조회 중 → 관련 자료 조회 중 → Judge 근거 검토 중 → 최종 답변 작성 중'을 표시한다. 재조회면 같은 흐름에서 '추가 근거 조회 중'으로 표시한다. 내부 장문 추론은 사용자 화면에 노출하지 않는다.
 
@@ -182,7 +185,7 @@ Answer는 Judge 판정과 검토된 근거를 받아 마지막에 답변을 작�
 | 사전 | 실제 공식값, 별칭, 적용 도시/조직/유효기간과 검증 기록 |
 | 릴리스 | registry의 역할/topic 연결, 소스 해시 lock, 명시적 freeze 및 회귀 검증 |
 
-현재 총 18개 Skill이다. 모든 SKILL.md에는 실제 원본/대표 데이터, 출처, 기준시점, 변경 근거를 확인한 후 수정한다는 규칙이 들어 있다. 사내 원본에 접근하지 못하면 미확인 설계/합성 초안으로 관리한다. 운영 프롬프트를 바꿀 때 역할 Skill 또는 공유 Skill 중 원인이 있는 소스를 수정하고 평가 사례/출력 계약과 함께 버전 관리한다.
+현재 총 19개 Skill이다. 모든 SKILL.md에는 실제 원본/대표 데이터, 출처, 기준시점, 변경 근거를 확인한 후 수정한다는 규칙이 들어 있다. 사내 원본에 접근하지 못하면 미확인 설계/합성 초안으로 관리한다. 운영 프롬프트를 바꿀 때 역할 Skill 또는 공유 Skill 중 원인이 있는 소스를 수정하고 평가 사례/출력 계약과 함께 버전 관리한다.
 
 현재 config 키는 다음과 같다. 사내에서는 `config/default.toml`에 `site.local.toml` overlay를 적용한다. 상대경로는 기본 TOML 파일 기준이다.
 
@@ -247,3 +250,5 @@ Orchestrator 평가에는 최초 사고 DB 우회 차단, 동명 사고 선택, 
 ## 2026-09-13 변형 입력 구현 추가
 
 [VARIANT_DATA_DEMO.md](VARIANT_DATA_DEMO.md)에 다중 컬럼 오타/동의어 정규화와 실제 SQLite 사고 → Lot → Wafer 실행을 추가했다. 128개 합성 사고, 변형 질문 234개 및 독립 동작 검증 21개다. 필드 라벨을 사용하는 한정 문법이며 실제 Router/Judge/Answer LLM 통합은 여전히 미구현이다. 위의 운영 통합 계획과 구분한다.
+
+역할 지시문과 계약의 최신 기준은 [SYSTEM_PROMPTS.md](SYSTEM_PROMPTS.md)다.

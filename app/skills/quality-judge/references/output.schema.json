@@ -3,7 +3,9 @@
   "additionalProperties": false,
   "required": [
     "verdict",
-    "issues"
+    "issues",
+    "return_to",
+    "coverage"
   ],
   "properties": {
     "verdict": {
@@ -22,7 +24,8 @@
         "required": [
           "evidence_ids",
           "type",
-          "reason"
+          "reason",
+          "next_action"
         ],
         "properties": {
           "type": {
@@ -36,9 +39,51 @@
             "items": {
               "type": "string"
             }
+          },
+          "next_action": {
+            "type": "string"
           }
         },
         "additionalProperties": false
+      }
+    },
+    "return_to": {
+      "type": "string",
+      "enum": [
+        "router",
+        "answer"
+      ]
+    },
+    "coverage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "requirement",
+          "status",
+          "evidence_ids"
+        ],
+        "properties": {
+          "requirement": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "satisfied",
+              "missing",
+              "conflict",
+              "unavailable"
+            ]
+          },
+          "evidence_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
       }
     }
   }

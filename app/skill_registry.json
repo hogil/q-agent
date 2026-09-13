@@ -1,5 +1,5 @@
 {
-  "release": "quality-demo-0.11",
+  "release": "quality-demo-0.12",
   "purpose": "on-prem application Skill sources; not personal ChatGPT skill installation",
   "base": [
     "quality-core"
@@ -48,6 +48,9 @@
       "quality-wafer-schema",
       "quality-lot-retrieval",
       "quality-wafer-retrieval"
+    ],
+    "incident_search": [
+      "quality-incident-search"
     ]
   },
   "role_allowed_topics": {
@@ -60,7 +63,8 @@
       "actions",
       "images",
       "trends",
-      "wafers"
+      "wafers",
+      "incident_search"
     ],
     "answer": [
       "terminology",
@@ -71,7 +75,8 @@
       "actions",
       "images",
       "trends",
-      "wafers"
+      "wafers",
+      "incident_search"
     ],
     "judge": [
       "schema",
@@ -81,14 +86,16 @@
       "actions",
       "images",
       "trends",
-      "wafers"
+      "wafers",
+      "incident_search"
     ]
   },
-  "max_prompt_characters": 18000,
+  "max_prompt_characters": 24000,
   "notes": [
     "temperature=0 reduces sampling variability but does not guarantee deterministic serving",
     "topic/reference loads are explicit; arbitrary filesystem paths are prohibited",
     "Maintenance is an offline development workflow, not an online user-triggered role",
-    "Model deployment and revision limits come from config/default.toml plus site overlay; compile_prompt without settings is source validation only."
+    "Model deployment and revision limits come from config/default.toml plus site overlay; compile_prompt without settings is source validation only.",
+    "v0.12 role output contracts require decision/stage/search_mode, Judge coverage/return_to and Answer status. 24000 character ceiling; actual model token budgeting remains a deployment check."
   ]
 }
