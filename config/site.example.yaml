@@ -1,5 +1,10 @@
 # config.yaml에 덮어쓸 설정입니다. 사내 비밀정보는 저장하지 않습니다.
 environment: onprem
+value_matching:
+  enabled: true
+  fields: [city, department, line, product_generations]
+  max_values_per_field: 500
+  max_candidates: 20
 paths:
   # Replace with reviewed site resources; the launcher never creates or freezes them.
   skills_root: /appdata/qagent/site-release/skills

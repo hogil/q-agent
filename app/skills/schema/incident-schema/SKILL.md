@@ -11,6 +11,8 @@ incident_id는 내부 고유키, incident_number는 표시번호다. 둘이 같�
 
 ## 사고 검색
 
+find_incidents의 fields에 필요한 논리 컬럼을 지정하면 기본 목록과 함께 해당 값을 받는다. 원인·조치 질문은 mapped_fields에서 사용 가능한 confirmed_cause, corrective_action, verification 등 필요한 항목만 요청한다. 필터나 검색 방식의 지원 범위를 확장하는 옵션은 아니다. 생략하면 기존 요약 목록만 반환하며 미매핑 필드는 임의 대체하지 않는다. 기록된 내용과 현재 검증된 원인은 구분한다.
+
 사고 테이블의 정형값과 자유서술 검색을 구분한다. 이 Skill은 Router의 선택, Judge의 근거 검토, Answer의 범위 표현에 공유한다.
 
 | 조건 | 검색 방식 | 처리 |

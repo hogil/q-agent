@@ -8,7 +8,7 @@
 | 역할 | router | 의도/조건/Tool 계획과 필요한 공유 Skill 선택 |
 | 역할 | answer | Judge 검토 후 최종 답변과 주장-근거 연결 |
 | 역할 | judge | 답변 전 조회 근거의 충분성, 범위, 누락 검토 |
-| 용어 | terminology | 공식값/동의어/오타/조직 범위 해석 |
+| 용어 | terminology | DB 값·컬럼 후보와 모호함 해석; 승인 사전/별칭 처리 지침은 별도 연결 대상 |
 | Schema | incident-schema | 사고 테이블 21개 논리 컬럼과 검색·통계 규칙 |
 | Schema | lot-schema | 사고-Lot 관계 4개 논리 컬럼과 Lot 조회 |
 | Schema | wafer-schema | 별도 Wafer 목록 4개 논리 컬럼과 Wafer 조회 |

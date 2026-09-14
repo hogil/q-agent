@@ -38,4 +38,5 @@ Python 3.11+에서 `python -m pip install -r requirements.txt`를 실행합니�
 기본 `check` 모드는 설정 확인만 합니다. Skill 수정 후에는 검토하고 명시적으로 freeze합니다.
 
 현재 연결된 Tool은 SQLite 사고·Lot·Wafer 조회입니다.
+도시·부서·세대 등의 값이 어느 컬럼에 속하는지 DB 값 후보 조회로 확인할 수 있습니다.
 실제 사내 모델·데이터 검증, 서버 DB·RAG·이미지·조치 Tool과 운영 인증은 아직 남아 있습니다.

@@ -59,11 +59,11 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
         nonlocal calls
         if calls >= limits['max_agent_steps']:
             raise LLMError('AGENT_STEP_LIMIT')
-        prompt = compile_prompt(role, sorted(topics), settings=settings)
+        prompt = compile_prompt(role, sorted(topics), settings=settings, shared_topics=True)
         payload = {'question': question, **state, 'evidence': evidence,
                    'evidence_ids': [item['id'] for item in evidence],
                    'available_tools': catalog, 'mapped_fields': context()['mapped_fields'],
-                   'loaded_topics': sorted(topics)}
+                   'loaded_topics': prompt['topics']}
         calls += 1
         event('llm_start', role=role, step=calls, release=prompt['release'],
               model=settings.model_profile(role)['deployment']['served_model'],
@@ -77,13 +77,15 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
         try:
             # Validate all roles before any external request or DB connection.
             for role in ('router', 'judge', 'answer'):
-                compile_prompt(role, sorted(topics), settings=settings)
+                compile_prompt(role, sorted(topics), settings=settings, shared_topics=True)
             client = RoleClient(settings)
             paths = settings.data['paths']
             catalog = read_role_reference('router', 'tools.json', paths['skills_root'], paths['registry_file']) if request_scope == 'incident' else {}
-            implemented = {'find_incidents', 'list_incident_lots', 'list_incident_wafers'}
+            implemented = {'match_incident_values', 'find_incidents', 'list_incident_lots', 'list_incident_wafers'}
             if set(catalog) - implemented:
                 raise ValueError('UNIMPLEMENTED_TOOL_IN_CATALOG')
+            if 'match_incident_values' in catalog and not settings.data['value_matching']['enabled']:
+                catalog['match_incident_values']['enabled'] = False
 
             def invoke(name, **arguments):
                 nonlocal db, next_evidence, lot_checked
@@ -91,14 +93,16 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                     raise ToolError('TOOL_BUDGET_EXCEEDED')
                 if any(key in arguments for key in ('actor', 'scope_id')):
                     raise ToolError('CALLER_IDENTITY_ARGUMENT_FORBIDDEN')
-                if name != 'find_incidents' and not state['scope_valid']:
+                if name not in ('find_incidents', 'match_incident_values') and not state['scope_valid']:
                     raise ToolError('INCIDENT_SCOPE_REQUIRED')
                 if name == 'list_incident_wafers' and not lot_checked:
                     raise ToolError('LOT_LOOKUP_REQUIRED')
                 state['budget_remaining'] -= 1
                 if db is None:
                     db = resources.enter_context(open_incident_tools(settings))
-                if name == 'find_incidents':
+                if name == 'match_incident_values':
+                    result = db.match_incident_values(actor, question)
+                elif name == 'find_incidents':
                     # A new search invalidates previous evidence, even if it fails.
                     state.update(scope_id=None, scope_valid=False, incident_checked=False)
                     evidence.clear()
@@ -119,7 +123,8 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                 next_evidence += 1
                 item = {'id': 'e' + str(next_evidence), 'source': name, 'arguments': arguments, 'result': result}
                 evidence.append(item)
-                state.update(code_gate='PASS', last_error=None)
+                if name != 'match_incident_values':
+                    state.update(code_gate='PASS', last_error=None)
                 event('tool_result', **item)
                 return item
 
@@ -127,6 +132,8 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                 output, call_id = ask('router')
                 try:
                     validate_output('router', output, context())
+                    if state['code_gate'] == 'PASS':
+                        state['last_error'] = None
                     decision = output['decision']
                     if decision == 'execute':
                         if len(output['plan']) != 1:
@@ -138,15 +145,17 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                         if 'actor' in arguments or 'scope_id' in arguments:
                             raise ValueError('CALLER_IDENTITY_ARGUMENT_FORBIDDEN')
                         bound = {'actor': actor, **arguments}
-                        if name != 'find_incidents':
+                        if name == 'match_incident_values':
+                            bound['question'] = question
+                        elif name != 'find_incidents':
                             bound['scope_id'] = state['scope_id']
                         inspect.signature(getattr(IncidentTools, name)).bind(None, **bound)
                         if name == 'find_incidents' and output['filters'] != arguments.get('filters', {}):
                             raise ValueError('FILTER_PLAN_MISMATCH')
-                        needed = {'list_incident_lots': 'lots', 'list_incident_wafers': 'wafers'}.get(name)
-                        if needed:
+                        needed = {'match_incident_values': 'terminology', 'list_incident_lots': 'lots', 'list_incident_wafers': 'wafers'}.get(name)
+                        if needed and needed not in topics:
                             for role in ('router', 'judge', 'answer'):
-                                compile_prompt(role, sorted(topics | {needed}), settings=settings)
+                                compile_prompt(role, sorted(topics | {needed}), settings=settings, shared_topics=True)
                             topics.add(needed)
                         result = invoke(name, **arguments)
                         observe(call_id, {'observations': [{'tool': name, 'result': result}]})
@@ -159,7 +168,7 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                         if request_scope == 'independent':
                             raise ValueError('INDEPENDENT_TOOL_TOPICS_NOT_SUPPORTED')
                         for role in ('router', 'judge', 'answer'):
-                            compile_prompt(role, sorted(topics | requested), settings=settings)
+                            compile_prompt(role, sorted(topics | requested), settings=settings, shared_topics=True)
                         topics |= requested
                         observe(call_id, {'loaded_topics': sorted(topics)})
                     elif decision in ('clarify', 'blocked'):
@@ -188,7 +197,10 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                 except (ValueError, TypeError, KeyError, ToolError, ConfigError, sqlite3.Error) as exc:
                     errors += 1
                     error = type(exc).__name__ if isinstance(exc, (sqlite3.Error, TypeError, KeyError)) else str(exc)
-                    state.update(last_error=error, code_gate='FAIL')
+                    state['last_error'] = error
+                    # Rejected output does not invalidate previously checked evidence.
+                    if isinstance(exc, (ToolError, ConfigError, sqlite3.Error)):
+                        state['code_gate'] = 'FAIL'
                     if isinstance(exc, ToolError) and 'SCOPE_EXPIRED' in error:
                         state.update(scope_id=None, scope_valid=False, incident_checked=False)
                         evidence.clear()

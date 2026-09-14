@@ -2,7 +2,8 @@
 Production ACL/connection/snapshot/LLM Tool 등록은 별도 구현 대상.
 """
 import re, secrets, sqlite3, time
-from incident_filters import fold, predicates
+from incident_filters import fold, predicates, SCALAR_FILTER_FIELDS, ARRAY_FILTER_FIELDS
+from terminology import match_values
 
 class ToolError(ValueError):
     pass
@@ -14,10 +15,11 @@ def ident(value):
     return '"'+value+'"'
 
 class IncidentTools:
-    def __init__(self, connection, mapping, scope_ttl_seconds=1800):
+    def __init__(self, connection, mapping, scope_ttl_seconds=1800, value_matching=None):
         self.db=connection;self.db.row_factory=sqlite3.Row;self.m=mapping;self.scopes={}
         self.db.create_function('qagent_fold', 1, fold, deterministic=True)
         self.scope_ttl_seconds=scope_ttl_seconds
+        self.value_matching=value_matching
         self.validate()
     def table(self,entity):return ident(self.m['entities'][entity]['table'])
     def col(self,entity,logical,alias):
@@ -59,7 +61,40 @@ class IncidentTools:
         if wr and wr['scope']=='incident_affected' and wr['parent_key']!=rel['parent_key']:
             key=self.col('incident',wr['parent_key'],'i')
             if self.db.execute(f'SELECT {key} FROM {self.table("incident")} i GROUP BY {key} HAVING COUNT(*)>1 OR {key} IS NULL LIMIT 1').fetchone():raise ToolError('NON_UNIQUE_WAFER_PARENT_KEY')
-    def find_incidents(self,actor,incident_number=None,city=None,title=None,line=None,title_match='exact',filters=None):
+    def match_incident_values(self,actor,question):
+        config=self.value_matching
+        if not config or not config['enabled']:raise ToolError('VALUE_MATCHING_DISABLED')
+        if not isinstance(question,str) or not question.strip() or len(question)>12000:raise ToolError('INVALID_QUESTION')
+        fields=config['fields'];limit=config['max_values_per_field']
+        if any(field not in SCALAR_FILTER_FIELDS | ARRAY_FILTER_FIELDS for field in fields):raise ToolError('UNSUPPORTED_VALUE_FIELD')
+        values_by_field={};coverage=[]
+        for field in fields:
+            if field not in self.m['entities']['incident']['columns']:
+                coverage.append({'field':field,'status':'unmapped'});continue
+            column=self.col('incident',field,'i');source=self.table('incident')+' i'
+            if field in ARRAY_FILTER_FIELDS:
+                invalid=self.db.execute('SELECT 1 FROM '+source+' WHERE '+column+' IS NOT NULL AND CASE WHEN json_valid('+column+') THEN json_type('+column+")!='array' ELSE 1 END LIMIT 1").fetchone()
+                if invalid:
+                    coverage.append({'field':field,'status':'invalid_array'});continue
+                source+=', json_each('+column+') v';value='v.value'
+                invalid=self.db.execute('SELECT 1 FROM '+source+" WHERE v.type!='text' LIMIT 1").fetchone()
+            else:
+                value=column
+                invalid=self.db.execute('SELECT 1 FROM '+source+' WHERE '+value+" IS NOT NULL AND typeof("+value+")!='text' LIMIT 1").fetchone()
+            if invalid:
+                coverage.append({'field':field,'status':'invalid_value_type'});continue
+            rows=self.db.execute('SELECT DISTINCT '+value+' AS value FROM '+source+' WHERE '+value+' IS NOT NULL AND trim('+value+")!='' LIMIT ?",(limit+1,)).fetchall()
+            if len(rows)>limit:
+                coverage.append({'field':field,'status':'distinct_limit_exceeded'});continue
+            values_by_field[field]=[row['value'] for row in rows]
+            coverage.append({'field':field,'status':'checked','distinct_values':len(rows)})
+        matched=match_values(question,values_by_field,config['max_candidates'])
+        return {'status':'PARTIAL' if matched['truncated'] or any(row['status']!='checked' for row in coverage) else 'OK',
+                **matched,'coverage':coverage,'mapping_version':self.m['mapping_version'],
+                'source_ref':{'logical_entity':'incident'},
+                'note':'Value mentions are candidates, not selected filters or incident evidence. Review negation, quotations and ambiguity before searching. No scope is issued.'}
+
+    def find_incidents(self,actor,incident_number=None,city=None,title=None,line=None,title_match='exact',filters=None,fields=None):
         if all(value is None for value in (incident_number,city,title,line,filters)):raise ToolError('FILTER_REQUIRED')
         if title_match not in ('exact','contains'):raise ToolError('INVALID_TITLE_MATCH')
         for value in (incident_number,city,title,line):
@@ -69,6 +104,10 @@ class IncidentTools:
         if 'occurred_at' in self.m['entities']['incident']['columns']:cols.append('occurred_at')
         for key in ('department','line_code','line_alias','product_generations','fab_out_failure_codes'):
             if key in self.m['entities']['incident']['columns']:cols.append(key)
+        if fields is not None:
+            if not isinstance(fields,list) or any(not isinstance(key,str) or key not in self.m['entities']['incident']['columns'] for key in fields):
+                raise ToolError('INVALID_OR_UNMAPPED_OUTPUT_FIELD')
+            cols=list(dict.fromkeys(cols+fields))
         sql='SELECT '+','.join(self.col('incident',k,'i')+' AS '+ident(k) for k in cols)
         sql+=' FROM '+self.table('incident')+' i WHERE 1=1';params=[]
         for name,value in [('incident_number',incident_number),('city',city),('line',line)]:

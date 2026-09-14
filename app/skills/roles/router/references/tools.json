@@ -1,4 +1,8 @@
 {
+  "match_incident_values": {
+    "enabled": true, "stage": "incident", "search_modes": ["sql_filter"],
+    "parameters": {"type": "object", "additionalProperties": false, "properties": {}}
+  },
   "find_incidents": {
     "enabled": true, "stage": "incident", "search_modes": ["sql_exact", "sql_filter"],
     "parameters": {
@@ -7,7 +11,8 @@
         "incident_number": {"type": "string"}, "title": {"type": "string"},
         "city": {"type": "string"}, "line": {"type": "string"},
         "title_match": {"type": "string", "enum": ["exact", "contains"]},
-        "filters": {"type": "object"}
+        "filters": {"type": "object"},
+        "fields": {"type": "array", "items": {"type": "string"}}
       }
     }
   },

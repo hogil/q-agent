@@ -33,7 +33,7 @@ def read_role_reference(role,filename,skills_root,registry_file):
  folder=registry['roles'][role]
  return json.loads((Path(skills_root)/folder/'references'/filename).read_text(encoding='utf-8'))
 
-def compile_prompt(role,topics,root=P,settings=None):
+def compile_prompt(role,topics,root=P,settings=None,shared_topics=False):
  paths=locations(root,settings)
  lock=json.loads(paths['skill_lock_file'].read_text(encoding='utf-8'));reg=json.loads(paths['registry_file'].read_text(encoding='utf-8'))
  files=release_files(root,settings)
@@ -42,6 +42,10 @@ def compile_prompt(role,topics,root=P,settings=None):
   if digest(files[name])!=expected:raise ValueError('RELEASE_CONTENT_CHANGED: '+name)
  if lock['release']!=reg['release']:raise ValueError('RELEASE_VERSION_MISMATCH')
  if role not in reg['roles']:raise ValueError('UNKNOWN_ROLE')
+ if shared_topics:
+  online=set().union(*(set(values) for values in reg['role_allowed_topics'].values()))
+  if any(topic not in reg['topics'] or topic not in online for topic in topics):raise ValueError('TOPIC_NOT_ALLOWED')
+  topics=[topic for topic in topics if topic in reg['role_allowed_topics'][role]]
  if any(topic not in reg['role_allowed_topics'][role] for topic in topics):raise ValueError('TOPIC_NOT_ALLOWED')
  names=reg['base'][:]
  for topic in sorted(set(topics)):

@@ -17,6 +17,8 @@ description: 사용자 질문과 조사 상태로 SQL/Hybrid/혼합 검색 및 �
 ## 결정 순서
 0. 런타임 request_scope=independent면 stage=independent, search_mode=none, filters={}다. 근거가 충분하면 plan=[]로 ready_for_judge, 부족하면 independent로 등록된 Tool만 계획한다. 사고번호나 사고 DB 조회를 억지로 요구하지 않는다. 사고 의존 요청으로 바뀌면 코드의 범위 재판정이 필요하다.
 1. 다음 1~6은 incident 요청에 적용한다. 사고 조회/통계/원인/조치/Lot/Wafer/이미지/Trend 요구를 intents로 분해한다. 도시, 라인, 부서, 세대, 기간을 filters에 보존한다. 미확인 조건을 삭제해 범위를 넓히지 않는다.
+   질문의 도시·부서·라인·세대 단어를 어느 컬럼의 값으로 조회할지 모르면, 등록·활성화된 match_incident_values를 stage=incident, search_mode=sql_filter, arguments={}로 먼저 호출한다. 질문은 코드가 전달한다. 이미 받은 후보를 반복 조회하지 않으며, 정확한 사고번호만으로 찾는 경우에는 생략할 수 있다.
+   반환된 candidates는 실제 DB 값에 맞춘 후보이지 확정 필터가 아니다. question의 포함/제외/비교/인용 문맥을 검토하고, 모호하면 컬럼을 임의 선택하지 말고 clarify한다. 현재 필터의 제외 연산은 지원하지 않으므로 "PHOTO 제외"를 department=PHOTO로 뒤집거나 조건을 버리지 않는다. 후보 조회 뒤 find_incidents로 실제 사고를 검색해야 하며, 후보만으로 ready_for_judge나 후속 Tool로 넘어가지 않는다.
 2. 사고번호 또는 정확 제목이면 sql_exact, 정형 조건/통계면 sql_filter 또는 sql_aggregate, 서술형만 있으면 hybrid, 서술형+정형 조건이면 mixed를 선택한다. 세부 기준은 incident-schema의 사고 검색 규칙을 따른다. 필요한 shared Skill이 없으면 load_skills로 요청한다.
 3. scope가 없거나 무효이면 stage=incident다. 현재 실행 계획에는 사고 DB 계층 Tool만 넣는다. Hybrid도 이 계층이며 후보 사고 테이블 확인이 완료돼야 통과한다.
 4. scope가 유효하면 stage=tools다. 요청과 근거 누락에 맞춰 필요한 Tool만 계획한다. Lot는 list_incident_lots, Wafer는 Lot 우선 조회 후 list_incident_wafers다. 사고 후보가 여러 개면 선택 의도가 명시됐는지 확인한다.

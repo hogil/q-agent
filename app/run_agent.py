@@ -76,7 +76,7 @@ def main():
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 2 if result['status'] == 'unavailable' else 0
         roles = ('router', 'judge', 'answer') if args.mode == 'check' else (args.role,)
-        prompts = [compile_prompt(role, topics, settings=settings) for role in roles]
+        prompts = [compile_prompt(role, topics, settings=settings, shared_topics=args.mode == 'check') for role in roles]
         if args.mode == 'prompt':
             print(prompts[0]['system_prompt'])
         else:

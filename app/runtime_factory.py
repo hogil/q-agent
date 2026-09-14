@@ -24,6 +24,10 @@ def open_incident_tools(settings):
         connection.set_progress_handler(lambda: int(time.monotonic() > deadline[0]), 1000)
 
         class ConfiguredIncidentTools(IncidentTools):
+            def match_incident_values(self, *args, **kwargs):
+                deadline[0] = time.monotonic() + data['database']['query_timeout_seconds']
+                return super().match_incident_values(*args, **kwargs)
+
             def find_incidents(self, *args, **kwargs):
                 deadline[0] = time.monotonic() + data['database']['query_timeout_seconds']
                 return super().find_incidents(*args, **kwargs)
@@ -37,6 +41,7 @@ def open_incident_tools(settings):
                 return super().list_incident_wafers(*args, **kwargs)
 
         yield ConfiguredIncidentTools(connection, settings.mapping(),
-                                      scope_ttl_seconds=data['runtime']['scope_ttl_seconds'])
+                                      scope_ttl_seconds=data['runtime']['scope_ttl_seconds'],
+                                      value_matching=data['value_matching'])
     finally:
         connection.close()

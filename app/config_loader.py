@@ -12,6 +12,7 @@ import yaml
 from pathlib import Path, PureWindowsPath
 from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from incident_filters import SCALAR_FILTER_FIELDS, ARRAY_FILTER_FIELDS
 
 DEFAULT_CONFIG = Path(__file__).resolve().parent.parent / 'config/config.yaml'
 
@@ -53,6 +54,7 @@ SPEC = {
                       source_completeness=str, wafer_parent_key=str, wafer_incident_key=str, wafer_lot_key=str,
                       wafer_scope=str, wafer_source_completeness=str),
     'arrays': dict(product_generations=str, fab_out_failure_codes=str),
+    'value_matching': dict(enabled=bool, fields=list, max_values_per_field=int, max_candidates=int),
     'storage': dict(backend=str, endpoint=str, bucket=str, prefix=str, credential_env=str,
                     signed_url_ttl_seconds=int),
     'models': {'*': MODEL_SPEC},
@@ -149,6 +151,15 @@ def validate_values(data):
                     raise ConfigError(f'{place}: control character forbidden')
                 visit(item, place)
     visit(data)
+    matching = data['value_matching']
+    fields = matching['fields']
+    if any(not isinstance(field, str) or field not in SCALAR_FILTER_FIELDS | ARRAY_FILTER_FIELDS for field in fields):
+        raise ConfigError('value_matching.fields: supported logical filter fields required')
+    if len(fields) != len(set(fields)) or (matching['enabled'] and not fields):
+        raise ConfigError('value_matching.fields: nonempty unique fields required when enabled')
+    for key in ('max_values_per_field', 'max_candidates'):
+        if not 1 <= matching[key] <= 10000:
+            raise ConfigError('value_matching.' + key + ': value in 1..10000 required')
     required_columns = {'incident': {'incident_id', 'incident_number', 'title', 'city', 'line'},
                         'lot_list': set(TABLE_FIELDS['lot_list']), 'wafer_list': {'lot_id','wafer_id','status'}}
     if data['relations']['wafer_scope'] == 'incident_affected':

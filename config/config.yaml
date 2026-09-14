@@ -222,6 +222,13 @@ actions:
   timeout_seconds: 30
   require_approval: true
 
+# 질문에 등장한 실제 DB 값으로 WHERE 컬럼 후보를 찾습니다. 전체 값 목록은 LLM에 보내지 않습니다.
+value_matching:
+  enabled: true
+  fields: [city, department, line, line_code, line_alias, product_generations, fab_out_failure_codes]
+  max_values_per_field: 500
+  max_candidates: 20
+
 # 조회 제한과 ReAct 실행 한도. Tool은 순차 실행하며 max_parallel_tools는 현재 사용하지 않습니다.
 runtime:
   timezone: Asia/Seoul

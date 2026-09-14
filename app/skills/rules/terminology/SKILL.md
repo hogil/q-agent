@@ -4,6 +4,14 @@ description: 반도체 품질 업무의 오타·동의어·조직 별칭을 공�
 ---
 
 NFKC, 대소문자, 공백 정규화 후 공식 코드/승인 별칭을 우선 조회한다. 퍼지·임베딩 검색은 후보 생성이다.
+
+## 현재 연결된 DB 값 후보 조회
+
+match_incident_values는 설정된 사고 컬럼의 unique value를 읽고 질문과 정규화된 정확 일치 후보만 반환한다. 배열은 원소별 값을 사용한다. candidates의 field/value는 WHERE에 사용할 논리 컬럼과 실제 DB 값 후보이며, mention은 정규화된 질문 표현이다. 모든 unique value를 프롬프트에 넣지 않는다. 별칭·오타 사전 조회가 연결됐다는 의미는 아니다.
+
+ambiguous=true이면 같은 표현에 여러 컬럼/값 후보가 있다. 문맥이나 명시적 확인 없이 하나를 고르지 않는다. 부정·제외·인용을 포함 조건으로 바꾸지 않는다. coverage의 unmapped, invalid_array, invalid_value_type, distinct_limit_exceeded 또는 truncated=true가 있으면 후보 없음이 DB 값 없음의 증거가 아니다. 이 조회는 사고 scope나 사고 검색 완료를 발급하지 않는다.
+
+기준: 2026-09-14 로컬 SQLite Adapter와 논리 필터 계약. 사내 DB 값·별칭은 접근하지 못했으며 합성 DB로만 실행을 확인한다.
 용어는 entity_type, 도시/라인/조직 범위, 유효기간, 승인상태와 함께 해석한다. 포토와 PHOTO는 승인 사전 기준으로 매핑한다. 노광 공정과 PHOTO 부서는 동일 개체가 아니다.
 전체 백과사전을 system prompt에 넣지 않는다. references/dictionary-contract.json의 규격으로 후보 몇 개와 근거만 Tool에서 반환한다. 대형 사전은 분야별 파일/DB 인덱스로 운영한다.
 모호한 별칭을 임의 확정하지 않는다. 원문과 후보/선택 근거를 기록한다. 신규 표현은 승인 대기 후보로 저장하며 즉시 정식 사전에 추가하지 않는다.

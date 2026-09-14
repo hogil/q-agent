@@ -7,11 +7,33 @@ import difflib
 import json
 import re
 import unicodedata
+from collections import Counter
 from datetime import date, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from incident_filters import fold
+
+
+def match_values(question, values_by_field, max_candidates):
+    """Return exact DB-value mentions, not automatically selected WHERE predicates."""
+    text = ' '.join(unicodedata.normalize('NFKC', question).casefold().split())
+    candidates = []
+    particles = '에서|으로|부터|까지|에는|에서는|와|과|의|은|는|이|가|을|를|에|로|도|만'
+    for field, values in values_by_field.items():
+        for value in values:
+            term = ' '.join(unicodedata.normalize('NFKC', value).casefold().split())
+            if not term:
+                continue
+            pattern = r'(?<![\w-])' + re.escape(term) + r'(?:(?![\w-])|(?=(?:' + particles + r')(?![\w-])))'
+            if re.search(pattern, text):
+                candidates.append({'field': field, 'value': value, 'mention': term,
+                                   'match': 'normalized_exact', 'ambiguous': False})
+    occurrences = Counter(item['mention'] for item in candidates)
+    for item in candidates:
+        item['ambiguous'] = occurrences[item['mention']] > 1
+    candidates.sort(key=lambda item: (-len(item['mention']), item['field'], item['value']))
+    return {'candidates': candidates[:max_candidates], 'truncated': len(candidates) > max_candidates}
 
 
 def load_dictionary(settings):

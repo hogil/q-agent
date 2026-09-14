@@ -15,6 +15,7 @@
 | 서버 DB 접속 | database.host / port / name | 서버 주소, 숫자 포트, DB 이름. SQLite는 빈 문자열/0/빈 문자열 |
 | 사고 테이블 | tables.incident.name | 오른쪽 물리 이름 변경 |
 | 사고 컬럼 | tables.incident.columns.<논리키> | 논리키는 유지하고 오른쪽 실제 컬럼명 변경 |
+| 값·컬럼 후보 조회 | value_matching | 활성화, 조회할 논리 컬럼, unique value 수와 반환 후보 수 제한 |
 | Lot/문서/chunk/이미지/Trend 테이블 | tables.<entity>.name / columns | 총 7개 논리 엔티티의 매핑 |
 | 사고-Lot 연결 | relations.incident_parent_key | 내부키 incident_id, 표시번호 incident_number, 고유성 검증된 title |
 | 제품세대 저장 타입 | arrays.product_generations | 기존 배열 유지. native_array/json_array/json_text 구분 |
@@ -30,6 +31,13 @@
 | Skill/사전 파일 위치 | paths.skills_root / dictionary_root / registry_file / skill_lock_file | 내용이 같으면 이동 후에도 동일 프롬프트 해시 |
 
 ## 2. 설정 적용 규칙
+
+value_matching.enabled는 match_incident_values 사용 여부다. fields에는 지원되는
+정형 필터 컬럼만 지정한다. 기본 max_values_per_field=500을 넘는 컬럼은 일부 값만
+선택하지 않고 distinct_limit_exceeded로 표시한다. max_candidates=20을 넘는 매칭은
+truncated로 표시한다. 두 제한은 1..10000이며 실제 SQL 실행은 DB timeout을 따른다.
+원본값 전체를 프롬프트나 파일로 저장하지 않는다. 후보에는 민감한 값이 포함될 수 있으므로
+사내에서는 허용된 DB/View와 컬럼만 설정해야 한다. 별도의 사용자별 ACL 구현은 아직 없다.
 
 서버 DB의 host/name은 필수이며 port는 1~65535다. 인증정보는 `database.dsn_env`가
 가리키는 환경변수로 관리한다. 서버 DB Adapter는 아직 없으므로 이 설정만으로 접속하지 않는다.

@@ -2,6 +2,9 @@
 import unicodedata
 from datetime import datetime
 
+SCALAR_FILTER_FIELDS = {'incident_number', 'city', 'line', 'line_code', 'line_alias', 'department'}
+ARRAY_FILTER_FIELDS = {'product_generations', 'fab_out_failure_codes'}
+
 
 def fold(value):
     return ''.join(unicodedata.normalize('NFKC', value or '').casefold().split())
@@ -11,8 +14,8 @@ def predicates(tool, filters):
     from incident_tools import ToolError
     if not isinstance(filters, dict) or not filters:
         raise ToolError('NONEMPTY_FILTER_OBJECT_REQUIRED')
-    scalar = {'incident_number', 'city', 'line', 'line_code', 'line_alias', 'department'}
-    arrays = {'product_generations', 'fab_out_failure_codes'}
+    scalar = SCALAR_FILTER_FIELDS
+    arrays = ARRAY_FILTER_FIELDS
     allowed = scalar | arrays | {'title_terms', 'occurred_at'}
     if set(filters) - allowed:
         raise ToolError('UNSUPPORTED_LOGICAL_FILTER')

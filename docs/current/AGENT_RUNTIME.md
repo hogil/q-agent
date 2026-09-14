@@ -7,7 +7,7 @@
 | 진입 | app/run_agent.py | 사내 config/Skill 검증, run 인자 확인 |
 | 시작 | app/agent.py | 질문, 호출자, 요청 범위, 예산과 근거 상태 생성 |
 | Router | app/skill_loader.py → app/llm_client.py | Router Skill 조립 후 설정된 모델 호출 |
-| 사고 DB | app/agent.py의 invoke → app/runtime_factory.py → app/incident_tools.py | 검증된 find_incidents 실행, 읽기 전용 연결과 scope 발급 |
+| 사고 DB | app/agent.py의 invoke → app/runtime_factory.py → app/incident_tools.py | 필요 시 값·컬럼 후보 조회 후 find_incidents 실행, 읽기 전용 연결과 scope 발급 |
 | 후속 Tool | 같은 실행기 → incident_tools.py | 같은 scope의 Lot, 이후 Wafer 조회 |
 | Judge | skill_loader.py → llm_client.py | 조회 근거의 ID와 요구사항을 검토 |
 | Answer | skill_loader.py → llm_client.py | Judge pass/abstain 후 최종 JSON 생성 |
@@ -39,6 +39,18 @@ Router의 native tool_call 이름은 `submit_plan`이다. 그 arguments에는 �
 Tool 실행 결과는 원래 tool_call_id와 연결한 role=tool 메시지로 다음 Router 호출에 전달한다.
 한 단계에 한 Tool만 실행한다. 실제 SQL이나 actor/scope_id를 모델이 지정할 수 없다.
 
+find_incidents는 fields에 지정한 매핑된 논리 컬럼을 기본 요약 목록에 추가할 수 있다.
+원인·조치 질문에만 필요한 상세 컬럼을 요청한다. 생략하면 기존 목록 크기를 유지하며,
+미매핑·잘못된 컬럼은 거부한다. 별도 RAG/Hybrid 검색 구현을 의미하지 않는다.
+
+match_incident_values는 arguments={}로 호출하며 원문 질문은 코드가 바인딩한다.
+설정한 사고 컬럼의 unique value에서 질문에 등장한 값만 candidates로 반환한다.
+배열은 원소별로 비교하고, 같은 표현이 여러 컬럼/값에 걸리면 ambiguous로 표시한다.
+후보 발견은 포함/제외/인용 문맥의 판단이나 사고 검색을 대신하지 않는다. 이 Tool은
+scope와 incident_checked를 발급하지 않으며, 실제 검색은 find_incidents로 수행한다.
+현재는 정확한 정규화 일치와 제한된 한국어 조사 처리를 지원한다. 사전 별칭·퍼지 검색·
+영속 값 인덱스는 연결하지 않았다. 후보 조회도 Tool 예산과 DB timeout을 사용한다.
+
 Router history에는 이전 함수 호출과 결과만 보관한다. 전체 상태·근거 payload는 최신
 user 메시지로 한 번만 전달하며, 과거 payload를 매번 누적하지 않는다. 이전 Tool 결과가
 history에 남아 있어도 현재 evidence_ids와 유효 scope에 없는 근거는 재사용하지 않는다.
@@ -47,10 +59,12 @@ history에 남아 있어도 현재 evidence_ids와 유효 scope에 없는 근거
 ## 역할별 Skill 관리
 
 - 각 API 호출 전에 공통 Skill + 선택 topic + 역할 Skill + config 매핑을 조립한다.
+- 실행 전체의 topic은 역할별 허용 목록으로 분리한다. loaded_topics는 해당 역할이 실제로 읽은 topic이다. 알 수 없는 topic과 온라인 비허용 topic은 거부한다.
 - 세 역할의 모델/temperature/출력 한도는 roles와 models 설정에서 읽는다.
 - output.schema.json과 tools.json도 같은 사내 skills_root에서 읽는다.
 - Skill·사전·실행 코드의 릴리스 해시를 확인하며 변경되면 중단한다.
 - Lot/Wafer 실행에 필요한 Schema topic을 추가 로딩한다. Router도 등록된 topic을 load_skills로 요청할 수 있다.
+- 새 topic은 세 역할에서 사전 검사하지만, 이미 로딩한 topic은 페이지마다 같은 사전 검사를 반복하지 않는다. 각 모델 호출 직전의 해시 검사는 유지한다.
 - 파일을 온라인으로 생성/수정/freeze하지 않는다. 사내 릴리스에는 신규 react.md와 tools.json 및 코드 해시를 반영해야 한다.
 - llm_start 이벤트에 실제 loaded_files와 prompt_sha256을 기록한다. 모델 키는 입력/이벤트에 넣지 않는다.
 
@@ -62,6 +76,8 @@ run 모드는 모든 역할에 enabled=true, mode=api, 실제 served_model과 ba
 
 runtime.max_tool_calls는 Tool 호출 한도, max_agent_steps는 전체 LLM 호출 한도다.
 max_retries는 API 전송 재시도 및 연속 실행/출력 오류의 재시도 한도다.
+출력 계약 오류는 기존 조회 근거를 무효화하지 않으므로 정상 출력으로 교정할 수 있다.
+실제 Tool 실패의 code_gate는 성공한 Tool 조회 전까지 FAIL로 유지한다.
 max_answer_revisions는 Judge가 Router로 돌려보내는 횟수 한도다.
 max_context_characters 초과 시 근거를 조용히 잘라내지 않고 중단한다. 문자 수는 token 수와 다르다.
 Tool 실행은 순차적이며 max_parallel_tools는 아직 사용하지 않는다.
@@ -73,7 +89,7 @@ Tool 실행은 순차적이며 max_parallel_tools는 아직 사용하지 않는�
 복수 사고는 사용자 선택을 요구하며 --select-incident로 지정한 ID만 현재 검색 범위에서 검증한다.
 오류·모호함·조회 한도 도달 시 unavailable/needs_selection/needs_clarification을 반환한다.
 
-실제 연결된 업무 Tool은 SQLite 사고 검색, Lot 조회, Wafer 조회 3개다. RAG/이미지/Trend/
+실제 연결된 Tool은 SQLite 값·컬럼 후보 조회, 사고 검색, Lot 조회, Wafer 조회 4개다. RAG/이미지/Trend/
 조치/서버 DB Adapter와 운영 ACL은 아직 없다. actor는 로컬 호출자 구분이며 인증이 아니다.
 배포 전에 사내 모델의 판단 품질, 실제 데이터/스키마, DB 권한과 전송 보안을 검증해야 한다.
 로컬 모의 HTTP 서버로 프로토콜 연결을 확인한 것은 실제 LLM 성능 검증이 아니다.

@@ -17,7 +17,7 @@ Router/Judge/Answer 모델 API를 호출한다. 실제 사내 모델·DB 검증�
 | 출력 검사 | app/prompt_contracts.py | Router/Judge/Answer JSON 형식, 단계, scope, 근거 ID 검사 |
 | Tool 실행 | app/agent.py의 invoke | 검사된 단일 Tool을 호출하고 scope·근거·예산 갱신 |
 | DB 연결 | app/runtime_factory.py | 설정된 SQLite에 읽기 전용 연결, timeout 적용, 연결 종료 |
-| 사고/Lot/Wafer Tool | app/incident_tools.py | 검색, 사고 선택, scope 발급, 관계/수량/페이지 조회 |
+| 사고/Lot/Wafer Tool | app/incident_tools.py | 값·컬럼 후보 조회, 검색, 사고 선택, scope 발급, 관계/수량/페이지 조회 |
 | 검색 조건 | app/incident_filters.py | 허용된 필터를 SQL 조건과 바인딩 값으로 변환 |
 | Judge | app/skills/roles/judge/SKILL.md | 근거 부족/충돌/범위 오류를 검토하는 시스템 지침 |
 | Answer | app/skills/roles/answer/SKILL.md | 검토한 근거로 최종 답변을 작성하는 시스템 지침 |
@@ -47,7 +47,8 @@ agent.py의 invoke → runtime_factory.py → incident_tools.py로 이어진다.
 
 app/query_demo.py는 기존 SQLite를 직접 조회하는 개발용 CLI다. runtime_factory와
 incident_tools를 호출하며 운영 인증이나 LLM을 거치지 않는다.
-app/terminology.py는 사내 사전을 사용하는 라벨 입력 정규화 코드다.
+app/terminology.py의 match_values는 DB 값과 질문 표현을 비교해 컬럼·값 후보를 만든다.
+기존 라벨 입력 사전 정규화 코드는 별도로 남아 있으며 Agent의 사전 조회로 연결되지는 않았다.
 합성 데이터 생성기와 합성 사전은 제거했다. 사내 사전은 별도로 준비한다.
 
 ## Tool 호출 연결
