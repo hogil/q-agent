@@ -60,6 +60,10 @@ Windows는 python을 PATH에서 찾는다. PowerShell 실행 정책은 사내 �
 stderr로 출력한다. 최종 JSON에는 답변, 근거, 실행 이벤트가 포함된다.
 복수 후보의 경우 needs_selection으로 종료하며 반환된 ID를 --select-incident로 명시해 다시 실행한다.
 독립적인 제공 자료 요약은 --request-scope independent로 실행하면 DB를 열지 않는다.
+기본 request-scope는 auto이며 Router가 먼저 업무 경로를 고른다. independent에서는
+활성화된 회의록 검색만 허용한다. `--as-of YYYY-MM-DD`는 회의록 버전의 이용 가능 시점 cutoff다.
+현재 DB를 과거 snapshot으로 바꾸지는 않는다. 회의록 HTTP 계약과 golden 검증은
+[현재 설계](PROJECT_DESIGN.md)를 따른다. 사내 meetings 연결은 overlay에 명시한다.
 actor는 로컬 호출자 구분이며 인증/ACL을 대신하지 않는다. 외부 웹에 직접 노출하지 않는다.
 
 site config 누락, environment 불일치, 명시적 설정 누락, Skill/사전 파일 누락,

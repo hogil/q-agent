@@ -23,7 +23,7 @@ class ConfigError(ValueError):
 
 PATH_KEYS = ('data_root output_root model_root image_root document_root trend_root cache_root '
              'log_root skills_root dictionary_root registry_file skill_lock_file '
-             'terminology_file').split()
+             'terminology_file golden_file').split()
 TABLE_FIELDS = {
     'incident': ('incident_id incident_number title city line line_code line_alias department occurred_at '
                  'product_generations fab_out_failure_codes expected_lot_count affected_wafer_count '
@@ -61,12 +61,14 @@ SPEC = {
     'roles': {role: dict(model=str, temperature=(int, float), max_output_tokens=int)
               for role in ('router', 'answer', 'judge')},
     'retrieval': {name: RAG_SPEC for name in ('internal_documents', 'engineer_notes')},
+    'meetings': dict(enabled=bool, backend=str, sqlite_file=str, table=str, fts_table=str,
+                     endpoint=str, api_key_env=str, top_k=int, max_top_k=int, timeout_seconds=int),
     'enterprise': SERVICE_SPEC,
     'actions': dict(SERVICE_SPEC, require_approval=bool),
     'runtime': dict(timezone=str, default_page_size=int, max_page_size=int,
                     max_scope_incidents=int, scope_ttl_seconds=int, max_tool_calls=int,
                     max_parallel_tools=int, max_retries=int, max_answer_revisions=int,
-                    max_agent_steps=int, max_context_characters=int),
+                    max_agent_steps=int, max_context_characters=int, prompt_examples=bool),
 }
 
 
@@ -229,6 +231,21 @@ def validate_values(data):
     url(data['storage']['endpoint'], 'storage.endpoint', data['storage']['backend'] == 'object')
     if data['storage']['backend'] == 'object' and not data['storage']['bucket']:
         raise ConfigError('storage.bucket: required')
+    meetings = data['meetings']
+    if meetings['backend'] not in ('sqlite', 'http'):
+        raise ConfigError('meetings.backend: sqlite/http required')
+    if not 1 <= meetings['top_k'] <= meetings['max_top_k'] <= 50:
+        raise ConfigError('meetings: 1 <= top_k <= max_top_k <= 50 required')
+    for key in ('table', 'fts_table'):
+        if not re.fullmatch(r'[^\W\d]\w*', meetings[key]):
+            raise ConfigError('meetings.' + key + ': simple SQL identifier required')
+    if meetings['table'].casefold() == meetings['fts_table'].casefold():
+        raise ConfigError('meetings: distinct table names required')
+    url(meetings['endpoint'], 'meetings.endpoint', meetings['enabled'] and meetings['backend'] == 'http')
+    if meetings['enabled'] and meetings['backend'] == 'http':
+        parsed = urlsplit(meetings['endpoint'])
+        if parsed.scheme != 'https' and parsed.hostname not in ('127.0.0.1', 'localhost', '::1'):
+            raise ConfigError('meetings.endpoint: HTTPS required outside loopback')
     for name, model in data['models'].items():
         if model['mode'] not in ('api', 'local'):
             raise ConfigError(f'models.{name}.mode: api/local required')
@@ -303,6 +320,7 @@ def resolve_paths(data, base_dir):
         path_value(key)
     data['paths'] = cache
     data['database']['sqlite_file'] = absolute(expand(data['database']['sqlite_file']), 'database.sqlite_file')
+    data['meetings']['sqlite_file'] = absolute(expand(data['meetings']['sqlite_file']), 'meetings.sqlite_file')
     for name, model in data['models'].items():
         for key in ('local_dir', 'tokenizer_dir'):
             if model[key]:

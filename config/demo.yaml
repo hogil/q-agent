@@ -1,0 +1,6 @@
+# Explicit synthetic workspace, separate from any old demo files.
+environment: demo
+paths:
+  data_root: ../var/data/meetings-demo
+meetings:
+  enabled: true

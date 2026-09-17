@@ -20,6 +20,15 @@ paths:
   trend_root: /storage/qagent/trends
   cache_root: /appdata/qagent/cache
   log_root: /appdata/qagent/logs
+  golden_file: /appdata/qagent/data/reviewed-golden.jsonl
+meetings:
+  enabled: false
+  backend: http
+  endpoint: https://rag.example.internal/meeting-search
+  api_key_env: QAGENT_MEETINGS_API_KEY
+  top_k: 8
+  max_top_k: 20
+  timeout_seconds: 15
 database:
   dialect: postgresql
   host: db.example.internal

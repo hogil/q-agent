@@ -20,6 +20,7 @@ paths:
   registry_file: ../app/skill_registry.json
   skill_lock_file: ../app/release.lock.json
   terminology_file: ${paths.dictionary_root}/terminology.json
+  golden_file: ${paths.data_root}/golden.jsonl
 
 # SQLite는 sqlite_file 사용. 서버 DB는 host/port/name 설정과 별도 Adapter가 필요합니다.
 database:
@@ -210,6 +211,18 @@ retrieval:
     reranker: source_managed
     top_k: 10
     timeout_seconds: 30
+# Meeting chunks remain managed by the source service; local FTS5 is a lexical demo.
+meetings:
+  enabled: false
+  backend: sqlite
+  sqlite_file: ${paths.data_root}/meetings.sqlite
+  table: meeting_chunks
+  fts_table: meeting_fts
+  endpoint: ''
+  api_key_env: QAGENT_MEETINGS_API_KEY
+  top_k: 8
+  max_top_k: 20
+  timeout_seconds: 15
 enterprise:
   enabled: false
   endpoint: ''
@@ -242,3 +255,4 @@ runtime:
   max_answer_revisions: 2
   max_agent_steps: 24
   max_context_characters: 120000
+  prompt_examples: false

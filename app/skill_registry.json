@@ -1,5 +1,5 @@
 {
-  "release": "quality-demo-0.26",
+  "release": "quality-demo-0.27",
   "purpose": "on-prem application Skill sources; not personal ChatGPT skill installation",
   "base": [
     "core"
@@ -25,6 +25,9 @@
     ],
     "documents": [
       "schema/incident-document-schema",
+      "schema/document-chunk-schema"
+    ],
+    "meetings": [
       "schema/document-chunk-schema"
     ],
     "actions": [
@@ -55,6 +58,7 @@
       "lots",
       "statistics",
       "documents",
+      "meetings",
       "actions",
       "images",
       "trends",
@@ -67,6 +71,7 @@
       "lots",
       "statistics",
       "documents",
+      "meetings",
       "actions",
       "images",
       "trends",
@@ -78,6 +83,7 @@
       "lots",
       "statistics",
       "documents",
+      "meetings",
       "actions",
       "images",
       "trends",

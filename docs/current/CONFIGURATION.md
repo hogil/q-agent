@@ -26,6 +26,9 @@
 | 모델 API | models.<name>.base_url / served_model | 접속 URL과 API 요청의 model 값 |
 | 역할별 모델 선택 | roles.router/answer/judge.model | models에 정의한 논리 모델 이름 참조 |
 | 기존 RAG 연결 | retrieval.internal_documents / engineer_notes | endpoint, index_name, 기존 검색 정책 |
+| 회의록 검색 | meetings | SQLite FTS5 또는 사내 Hybrid HTTP 계약. 활성화/파일/테이블/endpoint/top-k/timeout |
+| Golden 파일 | paths.golden_file | 명시적 prepare-demo가 생성하거나 전문가가 검토한 JSONL |
+| 추가 few-shot | runtime.prompt_examples | 기본 false. 역할별 examples.md 로딩 on/off 비교 |
 | Storage | storage | local/object 계약. object Adapter는 후속 구현 |
 | 기간시스템/조치 | enterprise / actions | 연결 계약만 정의, 현재 호출하지 않음 |
 | Skill/사전 파일 위치 | paths.skills_root / dictionary_root / registry_file / skill_lock_file | 내용이 같으면 이동 후에도 동일 프롬프트 해시 |
@@ -53,6 +56,12 @@ schema, dialect, 관계 및 배열 규칙을 넣는다. DB 이름, host, port, D
 4. **모든 내부 상대경로는 기본 YAML 파일이 있는 폴더 기준이다. overlay 파일의 폴더나 실행한 작업 폴더 기준이 아니다.** `--config`/`--overlay` 인자 자체의 상대경로는 명령 실행 위치 기준이다.
 5. `${paths.data_root}/images`처럼 paths 참조만 지원한다. 순환 참조나 없는 키는 오류다. 일반 문자열 환경변수 치환은 하지 않는다.
 6. 설정 로딩은 디렉터리 생성, DB 쓰기, 원격 접속을 하지 않는다. 값 검증과 `--check-paths` 검사는 별개다.
+
+`run_agent.py`는 위 환경변수 대신 `--site-config` 또는 `--demo`를 명시적으로 요구한다.
+demo는 config.yaml + demo.yaml을 읽고 선택적 `--demo-overlay`를 마지막으로 병합한다.
+이때도 모든 경로 참조는 resolve 이전에 병합한다. `--with-examples`/`--without-examples`는
+해당 실행의 prompt_examples만 덮어쓰며 원본 설정/Skill/lock을 수정하지 않는다.
+상세 검색 계약과 검증 순서는 [현재 설계](PROJECT_DESIGN.md)를 따른다.
 
 Linux 경로는 `/appdata/qagent/models`, Windows 경로는 YAML 문자열 `model_root: 'D:\models'` 또는 `model_root: D:/models`로 적는다. Windows 경로를 Linux에서 사용하면 오류로 처리한다. 네트워크 Storage URI는 local path에 넣지 않고 storage 설정을 사용한다.
 

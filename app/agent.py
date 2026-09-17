@@ -1,22 +1,28 @@
 """Bounded Router -> Tools -> Judge -> Answer loop, with read-only DB adapters."""
 from contextlib import ExitStack
+from datetime import date, datetime
 import inspect
 import json
 import sqlite3
+from zoneinfo import ZoneInfo
 
 from config_loader import ConfigError
 from incident_tools import IncidentTools, ToolError
 from llm_client import LLMError, RoleClient
+from meeting_tools import MeetingTools
 from prompt_contracts import structure, validate_output
 from runtime_factory import open_incident_tools
 from skill_loader import compile_prompt, read_role_reference
 
 
-def run(settings, question, actor, request_scope='incident', topics=None, selected=None, emit=None):
+def run(settings, question, actor, request_scope='incident', topics=None, selected=None, emit=None, as_of=None):
     if not isinstance(question, str) or not question.strip() or len(question) > 12000:
         raise ValueError('QUESTION_REQUIRED_OR_TOO_LONG')
-    if not actor or not actor.strip() or request_scope not in ('incident', 'independent'):
+    if not actor or not actor.strip() or request_scope not in ('auto', 'incident', 'independent'):
         raise ValueError('ACTOR_AND_VALID_REQUEST_SCOPE_REQUIRED')
+    as_of = as_of or datetime.now(ZoneInfo(settings.data['runtime']['timezone'])).date().isoformat()
+    if not isinstance(as_of, str) or date.fromisoformat(as_of).isoformat() != as_of:
+        raise ValueError('AS_OF_ISO_DATE_REQUIRED')
     topics = set(topics or []) if request_scope == 'incident' else set()
     if request_scope == 'incident':
         topics.add('incident_search')
@@ -25,7 +31,7 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
     state = {'scope_id': None, 'incident_checked': False, 'scope_valid': False,
              'budget_remaining': limits['max_tool_calls'], 'code_gate': 'PASS',
              'requirements': [question], 'request_scope': request_scope, 'judge': None,
-             'last_error': None}
+             'last_error': None, 'as_of': as_of}
     if request_scope == 'independent':
         evidence.append({'id': 'input-1', 'source': 'user_supplied_unverified', 'result': question})
     calls = 0
@@ -42,7 +48,7 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
 
     def finish(status, **values):
         return {'status': status, **values, 'scope_id': state['scope_id'],
-                'request_scope': request_scope, 'evidence': evidence, 'events': events,
+                'request_scope': request_scope, 'as_of': as_of, 'evidence': evidence, 'events': events,
                 'llm_calls': calls, 'tool_calls': limits['max_tool_calls'] - state['budget_remaining']}
 
     def context():
@@ -80,32 +86,50 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                 compile_prompt(role, sorted(topics), settings=settings, shared_topics=True)
             client = RoleClient(settings)
             paths = settings.data['paths']
-            catalog = read_role_reference('router', 'tools.json', paths['skills_root'], paths['registry_file']) if request_scope == 'incident' else {}
-            implemented = {'match_incident_values', 'find_incidents', 'list_incident_lots', 'list_incident_wafers'}
-            if set(catalog) - implemented:
+            all_tools = read_role_reference('router', 'tools.json', paths['skills_root'], paths['registry_file'])
+            implemented = {'match_incident_values', 'find_incidents', 'list_incident_lots', 'list_incident_wafers', 'search_meeting_minutes'}
+            if set(all_tools) - implemented:
                 raise ValueError('UNIMPLEMENTED_TOOL_IN_CATALOG')
-            if 'match_incident_values' in catalog and not settings.data['value_matching']['enabled']:
-                catalog['match_incident_values']['enabled'] = False
+
+            def available(scope):
+                if scope == 'auto':
+                    return {}
+                result = {name: dict(spec) for name, spec in all_tools.items()
+                          if scope == 'incident' or name == 'search_meeting_minutes'}
+                if 'match_incident_values' in result and not settings.data['value_matching']['enabled']:
+                    result['match_incident_values']['enabled'] = False
+                if 'search_meeting_minutes' in result:
+                    result['search_meeting_minutes']['enabled'] = bool(result['search_meeting_minutes']['enabled'] and settings.data['meetings']['enabled'])
+                    result['search_meeting_minutes']['stage'] = 'tools' if scope == 'incident' else 'independent'
+                return result
+
+            catalog = available(request_scope)
 
             def invoke(name, **arguments):
                 nonlocal db, next_evidence, lot_checked
                 if state['budget_remaining'] <= 0:
                     raise ToolError('TOOL_BUDGET_EXCEEDED')
-                if any(key in arguments for key in ('actor', 'scope_id')):
+                if any(key in arguments for key in ('actor', 'scope_id', 'incident_ids', 'as_of')):
                     raise ToolError('CALLER_IDENTITY_ARGUMENT_FORBIDDEN')
-                if name not in ('find_incidents', 'match_incident_values') and not state['scope_valid']:
+                if request_scope == 'auto' or name not in catalog or not catalog[name]['enabled']:
+                    raise ToolError('TOOL_UNAVAILABLE')
+                if request_scope == 'incident' and name not in ('find_incidents', 'match_incident_values') and not state['scope_valid']:
                     raise ToolError('INCIDENT_SCOPE_REQUIRED')
                 if name == 'list_incident_wafers' and not lot_checked:
                     raise ToolError('LOT_LOOKUP_REQUIRED')
                 state['budget_remaining'] -= 1
-                if db is None:
+                if name != 'search_meeting_minutes' and db is None:
                     db = resources.enter_context(open_incident_tools(settings))
-                if name == 'match_incident_values':
+                if name == 'search_meeting_minutes':
+                    ids = list(db._scope(actor, state['scope_id'])['ids']) if request_scope == 'incident' else None
+                    result = MeetingTools(settings).search(actor, incident_ids=ids, as_of=as_of, **arguments)
+                elif name == 'match_incident_values':
                     result = db.match_incident_values(actor, question)
                 elif name == 'find_incidents':
                     # A new search invalidates previous evidence, even if it fails.
                     state.update(scope_id=None, scope_valid=False, incident_checked=False)
                     evidence.clear()
+                    topics.discard('terminology')
                     lot_checked = False
                     result = db.find_incidents(actor, **arguments)
                     if len(result['data']) > 1 and not selected:
@@ -135,24 +159,35 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                     if state['code_gate'] == 'PASS':
                         state['last_error'] = None
                     decision = output['decision']
-                    if decision == 'execute':
+                    if decision == 'route':
+                        request_scope = output['stage']
+                        state['request_scope'] = request_scope
+                        catalog = available(request_scope)
+                        if request_scope == 'incident':
+                            topics.add('incident_search')
+                        else:
+                            evidence.append({'id': 'input-1', 'source': 'user_supplied_unverified', 'result': question})
+                        event('route_selected', request_scope=request_scope)
+                        observe(call_id, {'request_scope': request_scope})
+                    elif decision == 'execute':
                         if len(output['plan']) != 1:
                             raise ValueError('ONE_TOOL_PER_REACT_STEP_REQUIRED')
                         # Validate the single action before opening the DB or invoking a Tool.
                         step = output['plan'][0]
                         name, arguments = step['tool'], step['arguments']
                         structure(arguments, catalog[name]['parameters'])
-                        if 'actor' in arguments or 'scope_id' in arguments:
+                        if any(key in arguments for key in ('actor', 'scope_id', 'incident_ids', 'as_of')):
                             raise ValueError('CALLER_IDENTITY_ARGUMENT_FORBIDDEN')
                         bound = {'actor': actor, **arguments}
                         if name == 'match_incident_values':
                             bound['question'] = question
-                        elif name != 'find_incidents':
+                        elif name not in ('find_incidents', 'search_meeting_minutes'):
                             bound['scope_id'] = state['scope_id']
-                        inspect.signature(getattr(IncidentTools, name)).bind(None, **bound)
+                        method = MeetingTools.search if name == 'search_meeting_minutes' else getattr(IncidentTools, name)
+                        inspect.signature(method).bind(None, **bound)
                         if name == 'find_incidents' and output['filters'] != arguments.get('filters', {}):
                             raise ValueError('FILTER_PLAN_MISMATCH')
-                        needed = {'match_incident_values': 'terminology', 'list_incident_lots': 'lots', 'list_incident_wafers': 'wafers'}.get(name)
+                        needed = {'match_incident_values': 'terminology', 'list_incident_lots': 'lots', 'list_incident_wafers': 'wafers', 'search_meeting_minutes': 'meetings'}.get(name)
                         if needed and needed not in topics:
                             for role in ('router', 'judge', 'answer'):
                                 compile_prompt(role, sorted(topics | {needed}), settings=settings, shared_topics=True)
@@ -165,7 +200,7 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                         requested = set(output['needs_skills'])
                         if not requested - topics:
                             raise ValueError('SKILLS_ALREADY_LOADED')
-                        if request_scope == 'independent':
+                        if request_scope == 'independent' and requested - {'meetings'}:
                             raise ValueError('INDEPENDENT_TOOL_TOPICS_NOT_SUPPORTED')
                         for role in ('router', 'judge', 'answer'):
                             compile_prompt(role, sorted(topics | requested), settings=settings, shared_topics=True)

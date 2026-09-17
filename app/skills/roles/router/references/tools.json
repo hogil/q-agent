@@ -16,6 +16,16 @@
       }
     }
   },
+  "search_meeting_minutes": {
+    "enabled": true, "stage": "tools",
+    "parameters": {
+      "type": "object", "additionalProperties": false, "required": ["query"],
+      "properties": {
+        "query": {"type": "string"},
+        "top_k": {"type": "integer", "minimum": 1}
+      }
+    }
+  },
   "list_incident_lots": {
     "enabled": true, "stage": "tools",
     "parameters": {

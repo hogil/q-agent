@@ -37,10 +37,16 @@ def validate_output(role, output, context):
     if role=='router':
         decision=output['decision'];plan=output['plan']
         request_scope=context.get('request_scope','incident')
-        if request_scope not in ('incident','independent'):raise ValueError('INVALID_REQUEST_SCOPE')
+        if request_scope not in ('auto','incident','independent'):raise ValueError('INVALID_REQUEST_SCOPE')
+        if request_scope=='auto':
+            if decision not in ('route','clarify','blocked'):raise ValueError('ROUTE_REQUIRED_BEFORE_TOOLS')
+            if plan or output['filters'] or output['search_mode']!='none' or output['needs_skills']:raise ValueError('ROUTE_CANNOT_EXECUTE')
+            if output['stage'] not in ('incident','independent'):raise ValueError('INVALID_ROUTE')
+            if decision=='route' and output['clarification'] is not None:raise ValueError('UNRESOLVED_ROUTE')
+        elif decision=='route':raise ValueError('REQUEST_SCOPE_ALREADY_FIXED')
         if request_scope=='independent':
             if output['stage']!='independent' or output['filters'] or output['search_mode']!='none':raise ValueError('INDEPENDENT_REQUEST_CANNOT_QUERY_INCIDENTS')
-        elif output['stage']=='independent':raise ValueError('INCIDENT_REQUEST_CANNOT_SKIP_LOOKUP')
+        elif request_scope=='incident' and output['stage']=='independent':raise ValueError('INCIDENT_REQUEST_CANNOT_SKIP_LOOKUP')
         if decision!='execute' and plan:raise ValueError('NON_EXECUTE_HAS_PLAN')
         if decision=='execute':
             if not plan:raise ValueError('EXECUTE_REQUIRES_PLAN')
