@@ -182,6 +182,21 @@ class AgentContracts(unittest.TestCase):
         self.assertTrue(router_after_judge['scope_valid'])
         self.assertEqual(router_after_judge['judge']['verdict'], 'need_evidence')
 
+    def test_partial_query_match_reaches_judge_and_can_trigger_requery(self):
+        steps = [self.lookup(),
+                 ('router', plan(stage='tools', tool='search_meeting_minutes', arguments={'query': 'SYN absentword'})),
+                 ('router', plan('ready_for_judge', 'tools')),
+                 ('judge', lambda payload: judge(payload, 'need_evidence')),
+                 ('router', plan(stage='tools', tool='search_meeting_minutes', arguments={'query': '히터'})),
+                 *self.finish_steps()]
+        result, client = self.run_script(steps)
+        self.assertEqual(result['status'], 'answered', result)
+        first_review = next(payload for role, _, payload in client.calls if role == 'judge')
+        self.assertEqual(first_review['evidence'][-1]['result']['query_match']['strategy'], 'scoped_any_terms')
+        self.assertEqual(result['evidence'][-1]['result']['query_match']['strategy'], 'all_terms')
+        self.assertEqual(result['evidence'][-1]['result']['incident_ids'], ['synthetic-pk-2026-01'])
+        self.assertEqual(result['tool_calls'], 3)
+
     def test_selected_scope_never_admits_other_incident_minutes(self):
         step = ('router', plan(tool='find_incidents', arguments={'city': 'SYNTH-CITY'}, search_mode='sql_filter'))
         steps = [step, ('router', plan(stage='tools', tool='search_meeting_minutes', arguments={'query': 'SYN'})),

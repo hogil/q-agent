@@ -1,4 +1,5 @@
 """Repeatable contract tests for the offline golden evaluator."""
+import copy
 import json
 import sys
 import tempfile
@@ -51,6 +52,108 @@ class GoldenFixtureTests(unittest.TestCase):
         self.assertEqual(report["aggregate"]["failed"], 0)
         self.assertTrue(report["corpus_fingerprint"]["captured"])
         self.assertEqual(len(report["corpus_fingerprint"]["files"]), 2)
+
+    def test_query_source_changes_query_input_but_not_dataset(self):
+        with patch.object(golden, "compile_prompt", return_value=None):
+            annotated = golden.evaluate(self.settings, split="dev", mode="retrieval",
+                                        query_source="annotated")
+            question = golden.evaluate(self.settings, split="dev", mode="retrieval",
+                                       query_source="question")
+
+        self.assertEqual(annotated["query_source"], "annotated")
+        self.assertEqual(question["query_source"], "question")
+        self.assertEqual(annotated["dataset_sha256"], question["dataset_sha256"])
+        self.assertEqual(annotated["corpus_fingerprint"], question["corpus_fingerprint"])
+        self.assertEqual([case["id"] for case in annotated["cases"]],
+                         [case["id"] for case in question["cases"]])
+        records, _ = golden._load(self.settings.data["paths"]["golden_file"])
+        positive = next(record for record in records
+                        if record["split"] == "dev" and record["expected"]["required_chunk_ids"])
+        self.assertNotEqual(positive["question"], positive["retrieval"]["query"])
+
+    def test_live_question_query_source_is_rejected(self):
+        with patch.object(golden, "compile_prompt", return_value=None):
+            with self.assertRaisesRegex(ValueError, "retrieval only"):
+                golden.evaluate(self.settings, split="dev", mode="live", query_source="question")
+
+    def test_no_positive_cases_report_null_recall(self):
+        records, _ = golden._load(self.settings.data["paths"]["golden_file"])
+        no_positive = []
+        for record in records:
+            if record["split"] != "dev":
+                continue
+            value = copy.deepcopy(record)
+            value["expected"]["required_chunk_ids"] = []
+            no_positive.append(value)
+        golden_file = Path(self.temp.name) / "no-positive.jsonl"
+        golden_file.write_text("".join(json.dumps(record, ensure_ascii=False) + "\n"
+                                         for record in no_positive), encoding="utf-8")
+        overlay = Path(self.temp.name) / "no-positive.yaml"
+        overlay.write_text(
+            "environment: demo\npaths:\n  data_root: "
+            + self.temp.name.replace("\\", "/")
+            + "\n  golden_file: " + golden_file.as_posix()
+            + "\nmeetings:\n  enabled: true\n",
+            encoding="utf-8",
+        )
+        settings = load_config(DEFAULT_CONFIG, overlay)
+        with patch.object(golden, "compile_prompt", return_value=None):
+            report = golden.evaluate(settings, split="dev", mode="retrieval")
+        self.assertEqual(report["aggregate"]["positive_cases"], 0)
+        self.assertIsNone(report["aggregate"]["required_chunk_recall"])
+
+    def test_compare_detects_gain_and_regression_when_both_cases_fail(self):
+        with patch.object(golden, "compile_prompt", return_value=None):
+            baseline = golden.evaluate(self.settings, split="dev", mode="retrieval")
+        positive = next(case for case in baseline["cases"] if case["required_chunk_count"])
+        baseline["cases"] = [copy.deepcopy(positive)]
+        baseline["cases"][0].update(passed=False, failures=["REQUIRED_CHUNK_MISSING"],
+                                     required_chunk_hits=0, forbidden_chunk_hits=0)
+
+        gain = copy.deepcopy(baseline)
+        gain["cases"][0]["required_chunk_hits"] = 1
+        gain_result = golden.compare(baseline, gain)
+        self.assertEqual(gain_result["status"], "review_required")
+        self.assertEqual(gain_result["improved_cases"], [positive["id"]])
+        self.assertEqual(gain_result["regressed_cases"], [])
+
+        regression = copy.deepcopy(baseline)
+        regression["cases"][0]["forbidden_chunk_hits"] = 1
+        regression_result = golden.compare(baseline, regression)
+        self.assertEqual(regression_result["status"], "regression")
+        self.assertEqual(regression_result["improved_cases"], [])
+        self.assertEqual(regression_result["regressed_cases"], [positive["id"]])
+
+    def test_compare_rejects_report_identity_mismatches(self):
+        with patch.object(golden, "compile_prompt", return_value=None):
+            baseline = golden.evaluate(self.settings, split="dev", mode="retrieval")
+        mismatches = {
+            "corpus_fingerprint": {"captured": True, "files": {"database": "x", "meetings": "y"}},
+            "dataset_sha256": "different-dataset",
+            "config_hash": "different-config",
+            "query_source": "question",
+        }
+        for field, value in mismatches.items():
+            with self.subTest(field=field):
+                candidate = copy.deepcopy(baseline)
+                candidate[field] = value
+                with self.assertRaisesRegex(ValueError, "REPORTS_NOT_COMPARABLE:" + field):
+                    golden.compare(baseline, candidate)
+
+        candidate = copy.deepcopy(baseline)
+        candidate["cases"][0]["id"] = "different-case"
+        with self.assertRaisesRegex(ValueError, "REPORTS_NOT_COMPARABLE:case_ids"):
+            golden.compare(baseline, candidate)
+
+    def test_remote_sources_and_non_synthetic_reports_cannot_claim_corpus_identity(self):
+        self.settings.data["meetings"]["backend"] = "http"
+        self.assertFalse(golden._config_meta(self.settings)["corpus_fingerprint"]["captured"])
+        self.settings.data["meetings"]["backend"] = "sqlite"
+        with patch.object(golden, "compile_prompt", return_value=None):
+            report = golden.evaluate(self.settings, split="dev")
+        report["synthetic"] = False
+        with self.assertRaisesRegex(ValueError, "synthetic retrieval reports"):
+            golden.compare(report, report)
 
     def test_same_incident_cannot_use_multiple_groups(self):
         first = _case(request_scope="incident", group_id="g1", retrieval={"incident_number": "I-1", "query": "q"},
@@ -115,6 +218,21 @@ class GoldenFixtureTests(unittest.TestCase):
         with patch.dict(sys.modules, {"agent": module}), patch.object(golden, "compile_prompt", return_value=None):
             wrong_result = golden._live_case(self.settings, wrong)
         self.assertIn("ROUTE_MISMATCH", wrong_result["failures"])
+
+    def test_live_run_exception_is_reported_without_unbound_result_error(self):
+        module = types.ModuleType("agent")
+
+        def failing_run(*args, **kwargs):
+            raise RuntimeError("synthetic agent failure")
+
+        module.run = failing_run
+        with patch.dict(sys.modules, {"agent": module}):
+            result = golden._live_case(self.settings, _case())
+
+        self.assertFalse(result["passed"])
+        self.assertEqual(result["failures"], ["RuntimeError"])
+        self.assertEqual(result["llm_calls"], 0)
+        self.assertEqual(result["tool_calls"], 0)
 
     def test_proposal_is_dev_only_and_retrieval_never_targets_router(self):
         report = {"split": "dev", "mode": "retrieval", "dataset_sha256": "d", "config_hash": "c",

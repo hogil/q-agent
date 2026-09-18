@@ -76,6 +76,65 @@ class MeetingTests(unittest.TestCase):
             MeetingTools(_settings(path)).search("actor", "needle", as_of="2026-12-31")
             self.assertEqual(before, hashlib.sha256(path.read_bytes()).digest())
 
+    def test_scoped_fallback_preserves_filters_and_independent_precision(self):
+        rows = [VALID,
+                ("future", "m", "Needle", "2027-01-01", "v1", "approved", '["I1"]', "needle unknown", "ref://future"),
+                ("draft", "m", "Needle", "2026-01-01", "v1", "draft", '["I1"]', "needle unknown", "ref://draft"),
+                ("other", "m", "Needle", "2026-01-01", "v1", "approved", '["I2"]', "needle unknown", "ref://other")]
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / "meetings.sqlite"
+            _database(path, rows=rows)
+            tool = MeetingTools(_settings(path, top_k=1))
+            before = hashlib.sha256(path.read_bytes()).digest()
+            result = tool.search("actor", "needle absentword", incident_ids=["I1"], as_of="2026-12-31")
+            self.assertEqual([item["chunk_id"] for item in result["items"]], ["ok"])
+            self.assertEqual(result["query_match"], {"strategy": "scoped_any_terms", "term_count": 2})
+            self.assertEqual(before, hashlib.sha256(path.read_bytes()).digest())
+            for ids in (None, []):
+                self.assertEqual(tool.search("actor", "needle absentword", incident_ids=ids,
+                                             as_of="2026-12-31")["items"], [])
+            self.assertEqual(tool.search("actor", "entirely absentword", incident_ids=["I1"],
+                                         as_of="2026-12-31")["items"], [])
+
+    def test_exact_results_are_not_padded_with_partial_matches(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / "meetings.sqlite"
+            partial = ("partial", "m", "Needle", "2026-01-01", "v1", "approved", '["I1"]', "needle unrelated", "ref://partial")
+            _database(path, rows=[VALID, partial])
+            result = MeetingTools(_settings(path)).search("actor", "needle evidence", incident_ids=["I1"], as_of="2026-12-31")
+            self.assertEqual([item["chunk_id"] for item in result["items"]], ["ok"])
+            self.assertEqual(result["query_match"]["strategy"], "all_terms")
+
+    def test_query_terms_are_bounded_deduplicated_and_not_executed_as_fts_syntax(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / "meetings.sqlite"
+            _database(path, rows=[VALID])
+            tool = MeetingTools(_settings(path))
+            with self.assertRaisesRegex(ToolError, "MEETING_QUERY_TOO_MANY_TERMS"):
+                tool.search("actor", " ".join(f"word{i}" for i in range(65)), incident_ids=["I1"], as_of="2026-12-31")
+            result = tool.search("actor", "needle " * 80, as_of="2026-12-31")
+            self.assertEqual(result["query_match"], {"strategy": "all_terms", "term_count": 1})
+            self.assertEqual(result["status"], "OK")
+            result = tool.search("actor", 'needle OR "missing"*', as_of="2026-12-31")
+            self.assertEqual(result["items"], [])
+            result = tool.search("actor", "! *", as_of="2026-12-31")
+            self.assertEqual(result["query_match"]["strategy"], "no_terms")
+
+    def test_fts_owns_unicode_normalization(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / "meetings.sqlite"
+            row = ("unicode", "m", "Straße", "2026-01-01", "v1", "approved", '["I1"]', "Straße", "ref://unicode")
+            _database(path, rows=[row])
+            result = MeetingTools(_settings(path)).search("actor", "Straße", as_of="2026-12-31")
+            self.assertEqual([item["chunk_id"] for item in result["items"]], ["unicode"])
+
+    def test_tied_scores_have_stable_chunk_order(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / "meetings.sqlite"
+            _database(path, rows=[VALID, ("aaa", *VALID[1:])])
+            result = MeetingTools(_settings(path, top_k=1)).search("actor", "needle absentword", incident_ids=["I1"], as_of="2026-12-31")
+            self.assertEqual([item["chunk_id"] for item in result["items"]], ["aaa"])
+
     def test_disabled_and_invalid_inputs(self):
         with tempfile.TemporaryDirectory() as root:
             path = Path(root) / "meetings.sqlite"

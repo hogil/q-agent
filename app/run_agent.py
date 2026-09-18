@@ -65,7 +65,7 @@ def main():
     environment.add_argument('--site-config', help='Explicit site YAML; no default or environment fallback')
     environment.add_argument('--demo', action='store_true', help='Explicit synthetic environment; never a site fallback')
     parser.add_argument('--demo-overlay', help='Optional demo-only model/path overlay; relative paths use config/ as base')
-    parser.add_argument('--mode', choices=('check', 'prompt', 'run', 'prepare-demo', 'evaluate', 'propose'), default='check')
+    parser.add_argument('--mode', choices=('check', 'prompt', 'run', 'prepare-demo', 'evaluate', 'propose', 'compare'), default='check')
     parser.add_argument('--role', choices=('router', 'judge', 'answer'), default='router')
     parser.add_argument('--topics', default='incident_search', help='Comma-separated registered topics')
     parser.add_argument('--question', help='Question for --mode run')
@@ -74,8 +74,10 @@ def main():
     parser.add_argument('--as-of', help='Meeting availability cutoff YYYY-MM-DD; default is today in runtime.timezone')
     parser.add_argument('--split', choices=('train', 'dev', 'test'), default='dev')
     parser.add_argument('--evaluation-mode', choices=('retrieval', 'live'), default='retrieval')
+    parser.add_argument('--query-source', choices=('annotated', 'question'), default='annotated', help='Meeting retrieval input; question stress-tests full wording, not Router quality')
     parser.add_argument('--limit', type=int, help='Maximum golden cases, explicit positive bound')
-    parser.add_argument('--report', help='Existing dev report to read for --mode propose')
+    parser.add_argument('--report', help='Existing dev report for propose, or candidate report for compare')
+    parser.add_argument('--baseline', help='Baseline retrieval report for --mode compare')
     examples = parser.add_mutually_exclusive_group()
     examples.add_argument('--with-examples', dest='examples', action='store_true')
     examples.add_argument('--without-examples', dest='examples', action='store_false')
@@ -111,21 +113,28 @@ def main():
             from demo_data import generate
             print(json.dumps(generate(settings), ensure_ascii=False, indent=2))
             return 0
-        if args.mode in ('evaluate', 'propose'):
-            from golden import evaluate, propose
+        if args.mode in ('evaluate', 'propose', 'compare'):
+            from golden import compare, evaluate, propose
             if args.mode == 'evaluate':
-                result = evaluate(settings, split=args.split, mode=args.evaluation_mode, limit=args.limit)
+                result = evaluate(settings, split=args.split, mode=args.evaluation_mode, limit=args.limit, query_source=args.query_source)
             else:
                 if not args.report:
-                    parser.error('--mode propose requires --report')
-                result = propose(json.loads(Path(args.report).read_text(encoding='utf-8')))
+                    parser.error('--mode ' + args.mode + ' requires --report')
+                report = json.loads(Path(args.report).read_text(encoding='utf-8'))
+                if args.mode == 'compare':
+                    if not args.baseline:
+                        parser.error('--mode compare requires --baseline')
+                    result = compare(json.loads(Path(args.baseline).read_text(encoding='utf-8')), report)
+                else:
+                    result = propose(report)
             output = Path(settings.data['paths']['output_root'])
             output.mkdir(parents=True, exist_ok=True)
             path = output / (args.mode + '-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ') + '.json')
             with path.open('x', encoding='utf-8') as stream:
                 json.dump(result, stream, ensure_ascii=False, indent=2)
             print(json.dumps({'report_file': str(path), 'result': result}, ensure_ascii=False, indent=2))
-            return 2 if args.mode == 'evaluate' and result['aggregate']['failed'] else 0
+            return 2 if ((args.mode == 'evaluate' and result['aggregate']['failed'])
+                         or (args.mode == 'compare' and result['status'] == 'regression')) else 0
         if args.mode == 'run':
             if not args.question or not args.actor:
                 parser.error('--mode run requires --question and --actor')

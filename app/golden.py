@@ -146,8 +146,9 @@ def _config_meta(settings):
         except (AttributeError, KeyError, TypeError):
             roles[role] = None
     environment = data.get("environment")
-    corpus = {"captured": False, "reason": "non-synthetic corpus is not hashed"}
-    if environment in ("demo", "test"):
+    corpus = {"captured": False, "reason": "only local demo/test SQLite sources are fingerprinted"}
+    if (environment in ("demo", "test") and data.get("database", {}).get("dialect") == "sqlite"
+            and data.get("meetings", {}).get("backend") == "sqlite"):
         files = {}
         for key in ("database", "meetings"):
             value = data.get(key, {}).get("sqlite_file")
@@ -183,11 +184,17 @@ def _compare_retrieval(record, db_result, meeting_result, case):
         case["failures"].append("FORBIDDEN_CHUNK_PRESENT")
     case["retrieved_incident_ids"] = sorted(actual_incidents)
     case["retrieved_chunk_ids"] = sorted(chunks)
+    required = set(expected["required_chunk_ids"])
+    case["required_chunk_count"] = len(required)
+    case["required_chunk_hits"] = len(required.intersection(chunks))
+    case["forbidden_chunk_hits"] = len(chunks.intersection(expected["forbidden_chunk_ids"]))
     case["unmeasured"] = ["expected.status", "expected.answer_facts", "Router/Answer accuracy"]
 
 
-def _retrieval_case(settings, record):
+def _retrieval_case(settings, record, query_source="annotated"):
     case = _case_base(record)
+    case.update(required_chunk_count=len(set(record["expected"]["required_chunk_ids"])),
+                required_chunk_hits=0, forbidden_chunk_hits=0)
     started = time.monotonic()
     db_result = {"data": []}
     actual_ids = None
@@ -216,10 +223,12 @@ def _retrieval_case(settings, record):
                     actual_ids = [row.get("incident_id") for row in lookup.get("data", [])]
         meeting = MeetingTools(settings)
         trace.append("search_meeting_minutes")
-        meeting_result = meeting.search("golden", record["retrieval"]["query"],
+        query = record["question"] if query_source == "question" else record["retrieval"]["query"]
+        meeting_result = meeting.search("golden", query,
                                         incident_ids=actual_ids if record["request_scope"] == "incident" else None,
                                         as_of=record["as_of"])
         _compare_retrieval(record, db_result, meeting_result, case)
+        case["query_match"] = meeting_result.get("query_match")
         case["tool_trace"] = trace
         case["unmeasured"] = ["expected.status", "expected.required_tools",
                               "expected.forbidden_tools", "expected.answer_facts",
@@ -237,6 +246,7 @@ def _live_case(settings, record):
     case = _case_base(record)
     started = time.monotonic()
     events = []
+    result = None
     try:
         from agent import run
         result = run(settings, record["question"], "golden", request_scope="auto",
@@ -286,12 +296,14 @@ def _live_case(settings, record):
     return case
 
 
-def evaluate(settings, split="dev", mode="retrieval", limit=None):
+def evaluate(settings, split="dev", mode="retrieval", limit=None, query_source="annotated"):
     """Return a JSON-serializable report; this function never writes files."""
     if split not in _SPLITS:
         _fail("split must be train, dev, or test")
     if mode not in ("retrieval", "live"):
         _fail("mode must be retrieval or live")
+    if query_source not in ("annotated", "question") or (mode == "live" and query_source != "annotated"):
+        _fail("query_source is annotated/question for retrieval only; live always uses the question")
     if limit is not None and (type(limit) is not int or limit <= 0):
         _fail("limit must be a positive integer")
     records, dataset_hash = _load(settings.data["paths"]["golden_file"])
@@ -304,8 +316,10 @@ def evaluate(settings, split="dev", mode="retrieval", limit=None):
     if not selected:
         _fail("NO_CASES_SELECTED")
     meta = _config_meta(settings)
-    cases = [(_retrieval_case if mode == "retrieval" else _live_case)(settings, item) for item in selected]
-    return {"schema_version": 1, "split": split, "mode": mode,
+    cases = [(_retrieval_case(settings, item, query_source) if mode == "retrieval" else _live_case(settings, item))
+             for item in selected]
+    return {"schema_version": 2, "split": split, "mode": mode,
+            "query_source": query_source if mode == "retrieval" else "question",
             "synthetic": all(item["synthetic"] for item in selected),
             "dataset_sha256": dataset_hash, **meta,
             "cases": cases,
@@ -313,10 +327,67 @@ def evaluate(settings, split="dev", mode="retrieval", limit=None):
                            "failed": sum(not x["passed"] for x in cases),
                            "llm_calls": sum(x["llm_calls"] for x in cases),
                            "tool_calls": sum(x["tool_calls"] for x in cases),
-                           "seconds": round(sum(x["seconds"] for x in cases), 6)},
+                           "seconds": round(sum(x["seconds"] for x in cases), 6),
+                           **(_retrieval_metrics(cases) if mode == "retrieval" else {})},
             "limitations": ["Retrieval mode verifies fixture contracts, not LLM quality.",
+                            "Incident scope is supplied by annotations; question mode only stress-tests meeting retrieval.",
+                            "Required chunks are not exhaustive relevance labels; precision is not measured.",
                             "Literal answer-fact checks are diagnostics, not semantic correctness.",
                             "Synthetic records are preliminary and not expert-validated."]}
+
+
+def _retrieval_metrics(cases):
+    positives = [case for case in cases if case["required_chunk_count"]]
+    required = sum(case["required_chunk_count"] for case in cases)
+    hits = sum(case["required_chunk_hits"] for case in cases)
+    return {"positive_cases": len(positives),
+            "positive_cases_complete": sum(case["required_chunk_hits"] == case["required_chunk_count"] for case in positives),
+            "required_chunks": required, "required_chunk_hits": hits,
+            "required_chunk_recall": hits / required if required else None,
+            "forbidden_chunk_hits": sum(case["forbidden_chunk_hits"] for case in cases)}
+
+
+def compare(baseline, candidate):
+    """Pair identical retrieval cases; never approve a deployment from this score."""
+    keys = ("schema_version", "split", "mode", "query_source", "dataset_sha256", "config_hash",
+            "synthetic", "corpus_fingerprint")
+    if any(not isinstance(report, dict) or report.get("schema_version") != 2
+           or report.get("mode") != "retrieval" or report.get("synthetic") is not True
+           for report in (baseline, candidate)):
+        _fail("compare requires version-2 synthetic retrieval reports")
+    for key in keys:
+        if key not in baseline or baseline[key] != candidate.get(key):
+            _fail("REPORTS_NOT_COMPARABLE:" + key)
+    corpus = baseline["corpus_fingerprint"]
+    if not isinstance(corpus, dict) or not corpus.get("captured") or set(corpus.get("files", {})) != {"database", "meetings"}:
+        _fail("compare requires captured synthetic database and meeting fingerprints")
+    def indexed(report):
+        cases = report.get("cases", [])
+        if not cases or len({case["id"] for case in cases}) != len(cases):
+            _fail("compare requires nonempty unique cases")
+        return {case["id"]: case for case in cases}
+    before, after = indexed(baseline), indexed(candidate)
+    if before.keys() != after.keys():
+        _fail("REPORTS_NOT_COMPARABLE:case_ids")
+    improved, regressed = [], []
+    for key, old in before.items():
+        new = after[key]
+        if (old["group_id"], old["required_chunk_count"]) != (new["group_id"], new["required_chunk_count"]):
+            _fail("REPORTS_NOT_COMPARABLE:case_contract")
+        if ((old["passed"] and not new["passed"]) or new["required_chunk_hits"] < old["required_chunk_hits"]
+                or set(new["failures"]) - set(old["failures"]) or new["forbidden_chunk_hits"]):
+            regressed.append(key)
+        elif (new["passed"] and not old["passed"]) or new["required_chunk_hits"] > old["required_chunk_hits"]:
+            improved.append(key)
+    return {"schema_version": 1, "split": baseline["split"], "query_source": baseline["query_source"],
+            "dataset_sha256": baseline["dataset_sha256"],
+            "baseline_release": baseline.get("release"), "candidate_release": candidate.get("release"),
+            "status": "regression" if regressed else "review_required" if improved else "no_measured_gain",
+            "improved_cases": improved, "regressed_cases": regressed,
+            "baseline": _retrieval_metrics(list(before.values())),
+            "candidate": _retrieval_metrics(list(after.values())),
+            "limitations": ["Synthetic retrieval comparison only; no LLM quality or precision claim.",
+                            "Review remaining failures, safety tests and live answers before deployment."]}
 
 
 def propose(report):

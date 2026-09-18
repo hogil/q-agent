@@ -37,7 +37,8 @@
 - DB: SQL 매개변수 바인딩과 논리 컬럼 매핑. 질문 단어의 컬럼 후보는 제한된 DISTINCT 조회로 찾는다. 후보를 정답 필터로 자동 확정하지 않는다.
 - 사고-Lot-Wafer: 기존 관계 조회를 유지한다. Wafer는 Lot 확인 뒤 조회하며, 등록 목록의 완전성 unknown은 그대로 전달한다.
 - 회의록: 승인 상태, as_of, 사고 범위를 **top-k 전에** 적용한다. 빈 사고 집합을 전체 문서 검색으로 바꾸지 않는다.
-- 더미 검색: SQLite FTS5 BM25. 한국어 형태소 분석·벡터 검색은 아니다.
+- 더미 검색: SQLite FTS5 BM25. 전체 검색어 일치가 0건이고 사고 scope가 있을 때만 일부 검색어로 한 번 재검색한다. 같은 날짜·승인·사고 필터와 timeout을 유지한다. 독립 검색은 넓히지 않는다. 한국어 형태소 분석·벡터 검색은 아니다.
+- `query_match.strategy=scoped_any_terms`는 부분 검색어 일치다. Judge에 그대로 전달하며 질문의 모든 조건을 만족했다는 뜻은 아니다. 추가 LLM 호출 없이 최대 SQL 조회 한 번이 늘어난다. 기존 일치 결과가 있으면 부분 일치로 채우지 않는다.
 - 사내 검색: `meetings.backend=http`에서 기존 BM25+vector 서비스에 요청한다. 기존 chunk와 source_ref를 보존한다. API 계약은 아래와 같고 실제 서비스 연결은 별도 확인해야 한다.
 - 출처: chunk_id, meeting_id, meeting_date, version, incident_ids, source_ref, text. 승인 회의록의 가설도 가설이다. 검색 점수는 정답 확률이 아니다.
 - 시점: meeting_date는 해당 버전이 이용 가능해진 기준일로 공급해야 한다. 나중에 수정된 내용을 과거 날짜로 적재하면 안 된다. 현재 사고 DB는 이 cutoff로 과거 snapshot이 되지 않는다. 역사적 DB 질문에는 별도 snapshot/이력 테이블이 필요하다.
@@ -80,7 +81,9 @@ Router/Judge/Answer의 `references/examples.md`에 역할별 예시를 두고 `r
 7. 전문가가 사실 정확도·누락·출처 타당성을 확인한 변경만 별도 site release로 freeze한다. 문제 시 이전 config/Skill/lock 조합으로 돌아간다.
 
 `D:\project\q-agent\app\golden.py`는 검증/보고/개선 제안을 맡는다. 모델 가중치를 학습하거나 운영 Skill을 자동 고치지 않는다.
-retrieval 모드는 지정 검색어의 계약 검증일 뿐 Router·Judge·Answer의 판단 성능 평가가 아니다.
+retrieval의 `--query-source annotated`는 지정 검색어, `--query-source question`은 질문 원문으로 회의록을 검색한다. 두 모드 모두 사고번호·scope는 annotation을 사용하므로 Router·Judge·Answer 성능 평가가 아니다.
+필수 chunk가 있는 사례의 검색 성공과 chunk recall을 전체 계약 통과율과 별도로 표시한다. 필수 chunk 목록은 모든 관련 문서의 목록이 아니므로 precision은 측정하지 않는다.
+`--mode compare`는 같은 데이터·DB fingerprint·config·split·query source·case 집합의 version-2 합성 retrieval 보고서만 비교한다. 하나라도 다르면 중단하고, 개선/회귀/남은 실패를 구분한다. 배포를 자동 승인하지 않는다.
 live 모드는 실제 모델 경로를 실행하되, 문자열 일치는 보조 진단이고 전문가의 의미 검토를 대체하지 않는다.
 
 ## 합성 실행
@@ -93,6 +96,7 @@ live 모드는 실제 모델 경로를 실행하되, 문자열 일치는 보조 
 python D:\project\q-agent\app\run_agent.py --demo --mode prepare-demo
 python D:\project\q-agent\app\run_agent.py --demo --mode check
 python D:\project\q-agent\app\run_agent.py --demo --mode evaluate --evaluation-mode retrieval --split dev
+python D:\project\q-agent\app\run_agent.py --demo --mode evaluate --evaluation-mode retrieval --split dev --query-source question
 python D:\project\q-agent\app\run_agent.py --demo --mode propose --report D:\project\q-agent\var\output\evaluate-ACTUAL_TIMESTAMP.json
 ```
 
@@ -103,11 +107,35 @@ python D:\project\q-agent\app\run_agent.py --demo --mode propose --report D:\pro
 예: `--demo-overlay D:\project\q-agent\config\demo.local.yaml --evaluation-mode live --split dev --with-examples`.
 같은 설정에서 `--without-examples`도 실행해 비교한다. 사내 데이터는 승인 없이 외부 모델로 전송하지 않는다.
 
-## 남은 검증
+## 2026-09-18 개선 실험
 
-이번 로컬 확인: 회귀 테스트 30개, 역할/topic/추가 예시 조합 76개, 합성 검색 계약 17개(train 5/dev 7/test 5) 통과.
+기존 더미 DB와 golden 파일을 수정하지 않고 비교했다. 짧은 지정 검색어에서는 17/17이었지만 질문 원문으로는 필수 회의록이 있는 모든 사례에서 검색이 누락됐다. 질문별 정답이나 한국어 조사 제거 규칙을 추가하지 않고 사고 범위 내 lexical 재검색만 바꿨다.
+
+| 질문 원문의 필수 회의록 검색 | baseline | candidate |
+|---|---|---|
+| train | 0/3 | 2/3 |
+| dev | 0/3 | 2/3 |
+| test | 0/3 | 1/3 |
+
+이는 각 질문의 필수 chunk를 모두 찾은 건수다. train/dev에서 후보를 결정한 후 test를 확인했으며, 이번 test 결과로 추가 튜닝하지 않았다. 사례가 작고 같은 문서에 대한 질문도 있어 일반화 성능을 주장할 수 없다.
+기존 지정 검색어 계약은 17/17 유지, 확인된 회귀와 금지 chunk 반환은 0건이다. 독립 검색과 어휘가 겹치지 않는 질문은 여전히 실패한다. 재검색 결과가 질문에 적합한지와 실제 답변 품질은 별도 검증해야 한다.
+
+비교 보고서 폴더: `D:\project\q-agent\var\output\retrieval-improvement-20260918\`.
+예: `D:\project\q-agent\var\output\retrieval-improvement-20260918\comparison-verified-dev-question.json`.
+
+```powershell
+python D:\project\q-agent\app\run_agent.py --demo --mode compare --baseline D:\project\q-agent\var\output\retrieval-improvement-20260918\baseline-dev-question.json --report D:\project\q-agent\var\output\retrieval-improvement-20260918\verified-dev-question.json
+```
+
+이번 로컬 확인: 회귀 테스트 43개, 역할/topic/추가 예시 조합 76개, Skill 형식 검사 14개와 합성 검색 계약 17개(train 5/dev 7/test 5) 통과.
 합성 데이터는 사고 9건, Lot 22건, Wafer 57건, 회의록 chunk 11개다. 검색 계약 실행의 LLM 호출 수는 0이며 모델 답변 정확도 점수가 아니다.
 잘못된 검색어를 넣는 대조 테스트에서는 required chunk 누락이 검출되고 프롬프트 정답 암기가 아닌 검색/config 점검으로 제안되는지도 확인했다.
+
+## 다음 개선
+
+1. train/dev에 독립 문서의 표현 변형·동의어와 무관한 문서 반례를 추가하고, 기존 생성물은 보존한 채 새 data_root로 생성한다. scope·날짜·승인 제한은 고정한다.
+2. 승인된 실제 모델을 연결해 Router의 검색어 구성과 Judge 재조회 행동을 확인한다. shared meeting 지침이나 해당 역할의 필요한 조각만 수정하며 정답 문구를 넣지 않는다.
+3. 같은 모델·dev·예산에서 추가 few-shot on/off를 비교한다. 호출 수·실제 근거·답변 정확도를 함께 검토한다. 이번에 본 test 질문은 계속 튜닝에 쓰지 않고 새 holdout도 준비한다.
 
 사내 전문가 golden 확보, 한국어 Hybrid 검색 품질, 실제 모델 비교, 권한/ACL, 서버 DB Adapter, 버전별 DB snapshot이 남아 있다.
 이미지·Trend·조치 실행과 웹 원격 채팅도 이번 DB/회의록 구현 범위에는 없다.

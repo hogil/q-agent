@@ -19,6 +19,7 @@ _DATE = re.compile(r"\d{4}-\d{2}-\d{2}\Z")
 _TOKEN = re.compile(r"[\w]+", re.UNICODE)
 _MAX_RESPONSE = 1024 * 1024
 _MAX_METADATA = 2048
+_MAX_QUERY_TERMS = 64
 
 
 class _NoRedirect(HTTPRedirectHandler):
@@ -87,8 +88,9 @@ class MeetingTools:
         if type(limit) is not int or not 1 <= limit <= self.cfg["max_top_k"]:
             raise ToolError("INVALID_TOP_K")
         if self.cfg["backend"] == "sqlite":
-            items = self._sqlite(query, ids, as_of, limit)
-            return self._result("OK" if items else "NO_MATCH", items, as_of, ids, "sqlite_fts5_bm25")
+            items, match = self._sqlite(query, ids, as_of, limit)
+            return {**self._result("OK" if items else "NO_MATCH", items, as_of, ids, "sqlite_fts5_bm25"),
+                    "query_match": match}
         items = self._http(actor, query, ids, as_of, limit)
         return self._result("OK" if items else "NO_MATCH", items, as_of, ids, "remote_hybrid")
 
@@ -107,10 +109,13 @@ class MeetingTools:
                 "as_of": as_of, "incident_ids": ids}
 
     def _sqlite(self, query, ids, as_of, limit):
-        tokens = _TOKEN.findall(query)
+        tokens = list(dict.fromkeys(_TOKEN.findall(query)))
+        if len(tokens) > _MAX_QUERY_TERMS:
+            raise ToolError("MEETING_QUERY_TOO_MANY_TERMS")
         if not tokens:
-            return []
-        match = " AND ".join('"' + token.replace('"', '""') + '"' for token in tokens)
+            return [], {"strategy": "no_terms", "term_count": 0}
+        terms = ['"' + token.replace('"', '""') + '"' for token in tokens]
+        match = {"strategy": "all_terms", "term_count": len(terms)}
         deadline = time.monotonic() + self.cfg["timeout_seconds"]
         uri = Path(self.cfg["sqlite_file"]).as_uri() + "?mode=ro"
         db = None
@@ -122,13 +127,18 @@ class MeetingTools:
             sql = (f"SELECT {fields},bm25({self.fts_table}) AS score FROM {self.fts_table} f "
                    f"JOIN {self.table} c ON c.chunk_id=f.chunk_id WHERE {self.fts_table} MATCH ? "
                    "AND c.status='approved' AND c.meeting_date<=?")
-            params = [match, as_of]
+            params = [" AND ".join(terms), as_of]
             if ids is not None:
                 sql += " AND EXISTS (SELECT 1 FROM json_each(c.incident_ids) x WHERE x.value IN (" + ",".join("?" for _ in ids) + "))"
                 params.extend(ids)
-            sql += " ORDER BY score LIMIT ?"
+            sql += " ORDER BY score,c.chunk_id LIMIT ?"
             params.append(limit)
             rows = db.execute(sql, params).fetchall()
+            # Relax lexical recall only, never the validated incident boundary.
+            if not rows and ids and len(terms) > 1:
+                params[0] = " OR ".join(terms)
+                rows = db.execute(sql, params).fetchall()
+                match["strategy"] = "scoped_any_terms"
             items, seen = [], set()
             for row in rows:
                 try:
@@ -139,7 +149,7 @@ class MeetingTools:
                         "meeting_date": row["meeting_date"], "version": row["version"], "status": row["status"],
                         "incident_ids": parsed, "text": row["text"], "source_ref": row["source_ref"], "score": row["score"]}
                 items.append(self._validate_item(item, as_of, ids, seen))
-            return items
+            return items, match
         except sqlite3.Error as exc:
             raise ToolError("MEETING_SQLITE_QUERY_FAILED") from exc
         finally:

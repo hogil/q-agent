@@ -15,6 +15,8 @@ Skill 파일, 참조, Tool 인터페이스, mapping, 사전 버전, 모델/추�
 - 같은 사고의 반복 회의·질문은 한 group/split에 묶는다. 시간순 분리와 별도로 기준시점 이후 문서·수정본 유입을 막는다. 합성 초안은 전문가 검증 정답으로 표시하지 않는다.
 - train에서만 예시를 선택한다. dev는 실패 분석·후보 비교에 사용하고 test는 최종 확인용으로 보관한다. test 실패 문구를 예시에 복사하지 않는다.
 - 먼저 DB 매핑/검색 누락/시점/범위/판정/답변 중 실패 원인을 분류한다. 검색 누락을 정답 암기 프롬프트로 덮지 않는다. propose는 수정 제안일 뿐 Skill·lock을 변경하지 않는다.
+- retrieval의 annotated 검색어와 question 원문을 분리해 확인한다. 질문 원문 모드도 사고 scope는 정답 annotation을 사용하므로 Router 성능이 아니다. 필수 chunk가 있는 사례의 recall을 따로 보고, 정답이 비어 있는 사례의 통과로 검색 성능을 부풀리지 않는다.
+- baseline/candidate 비교는 같은 데이터·DB fingerprint·config·split·query source·case 집합으로 제한한다. compare는 gain과 회귀를 표시할 뿐 배포 승인이 아니다. 필수 chunk 목록은 전체 관련 문서 목록이 아니므로 precision은 별도 라벨로 검증한다.
 - 역할별 references/examples.md는 필요한 행동 예시만 소수 유지한다. "예시" 표시만으로 과적합이 방지되지는 않는다. ID·값·표현을 바꾼 사례와 유사하지만 다른 답이 필요한 반례도 검토한다.
 - runtime.prompt_examples=false/true를 동일 모델·데이터·예산·release에서 비교한다. 기존 conditions.md 규칙은 양쪽에 동일하게 유지하므로 이는 추가 few-shot의 효과 비교다. retrieval 모드 결과만으로 예시의 모델 성능 개선을 주장하지 않는다.
 - dev 개선과 회귀 부재를 전문가가 확인한 후보만 운영 반영한다. 모델 비용·호출 수·지연도 비교한다. 원본 Skill을 검토 후 수정하고 명시적으로 freeze한다. 이는 프롬프트 개선이며 가중치 fine-tuning이 아니다.

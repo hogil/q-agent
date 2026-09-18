@@ -1,5 +1,5 @@
 {
-  "release": "quality-demo-0.27",
+  "release": "quality-demo-0.28",
   "files": {
     "skills/core/SKILL.md": "6a259df0ada8f8a4e34f1bbdf89c522a4094c11f8a273a46109a0f7e25ca0feb",
     "skills/core/references/react.md": "8c0685a29e9ba9178623c9458a3f8e68e59840e25322cfe27137585c03e02242",
@@ -18,12 +18,12 @@
     "skills/roles/router/references/output.schema.json": "a37b40afe6991acfa2dfc8a1c440bfdd9c7a991137751f605a99680306cf76d9",
     "skills/roles/router/references/tools.json": "b912d32d25dc4d7c1da23456bc7061301442d146690fc311984cd015d27cd16c",
     "skills/rules/actions/SKILL.md": "39f260dfe545ea0f660bdd442a51cc90fe6e31292c8cee2e43b293d923d3f4a7",
-    "skills/rules/skill-maintenance/SKILL.md": "e62f5c411e954a8e0b24e125c9ba62e5ca2c8ba9adf92777720f98a94ae1ac93",
+    "skills/rules/skill-maintenance/SKILL.md": "53b8919bdfa8e03ccd944684ebd6573af7b10626fd904aa5597368ef1dca966d",
     "skills/rules/terminology/SKILL.md": "c881abb8f8b4d6c6422d4c4fea7ae5b09eb0f660acde9f9958a9c519359e7421",
     "skills/rules/terminology/references/dictionary-contract.json": "c7ed54a7ebd320e5fe13f86ccebe16d4959264ecbca212d564100149be46ef22",
     "skills/schema/document-chunk-schema/SKILL.md": "881647ca202780fbd31e5b1f4af06c65c3aa15fb186f1f96fb76c18041a8186e",
     "skills/schema/document-chunk-schema/references/columns.json": "ad814949956ad7f2387fbb301bd46318a035b2729d8223d0a6a8f88824923ac9",
-    "skills/schema/document-chunk-schema/references/meetings.md": "2f69fe75b29efd9000d5e417abeaa595fbc9d8e799e46800b2909a9b22a98653",
+    "skills/schema/document-chunk-schema/references/meetings.md": "7f60f5a9f69ee5bd42766d64b726037ca69dab33e7bcd227202b9ad006488fb9",
     "skills/schema/image-metadata-schema/SKILL.md": "d93a5097da7517b8f36d74b618ac16b94007d6c7096b3775fe71824b2dab0afe",
     "skills/schema/image-metadata-schema/references/columns.json": "bdb6fdd569d22ac0d71667ef26e276642d7ea89320eb04f61899fc8e2e33da47",
     "skills/schema/incident-document-schema/SKILL.md": "de95648f1ddeedc881f4555cfe8ede7aadd77bd60f9441b42f6ea2ccb1b0e327",
@@ -37,7 +37,7 @@
     "skills/schema/wafer-schema/SKILL.md": "e8a5f185d1a8d111c8f6490408c4a67038a44463ff69b38d4d4cecdf15fc4c0e",
     "skills/schema/wafer-schema/references/columns.json": "a53e3b4387abe203545aa56662be04e19765a54d4020c922724a8df6e3aa414c",
     "domain-data/README.md": "a71133988f6e5d858891d9a5beb9d7a317a1ac0b5cdb345cc36f70a1df024cc3",
-    "skill_registry.json": "3ffa2c44a56ea247e107ab5e8175a26983a7837593e6ca9188636050da6a3cfd",
+    "skill_registry.json": "2c77770b3786d518d6639aa5851a8ddd56b54b676e370d8b392ef5f1f81dfe92",
     "incident_tools.py": "789d523dbdcb9944332d5a550a1631115457c4dea6ad9ecf0e3b3585f18cb172",
     "incident_filters.py": "bc10eed273d0ca59487fb582d6ba85e51f32de433001c399ab8f65943508084e",
     "terminology.py": "33e7e35520653a3f0751d690855d70b2de99ba86b9351d1e1c48548ddff722b1",
@@ -45,11 +45,11 @@
     "skill_loader.py": "dc0c17dad25c1fc84ea2b95d3d920a9cb0ba1c4d69745002417d5ed99ed6d56b",
     "config_loader.py": "9313ea75182f267fb5a8969f45e78c9806fe14f7a94c6a7285869ac57b659f57",
     "runtime_factory.py": "c28e4edd991635e6b1b39c9f29f586cf6b0159b9957eae77e8e5b42d1655bc50",
-    "run_agent.py": "f0cbea10d68cfc5c0f609c91129fe096a53650ea596c3d0aa7ebd75759abb411",
+    "run_agent.py": "e2363056e928a573f1d62afe0fdb18e5250ef3e4c3cbb01ec1972d4f954b8b99",
     "agent.py": "350f84a3c798802c116a6e643346b5d58054a373d34fc4f6481ac520019dd975",
     "llm_client.py": "b22b6c47dc0a07117d9c0f186d29dcc767da3b2c3024006b02943421157b77ee",
-    "meeting_tools.py": "e08464591bb4fd81d167d7df1ecaa77cc8a8c6ad7c09a6edac5df62ddbbe4c8d",
+    "meeting_tools.py": "81f931f3f04f4c784bc94fbd5c45de3e207b14caa20545d0825029051a356b1a",
     "demo_data.py": "7c15e609a94b11a3abf0407156b83b5a52aaaedefa101fc9d851a824969d2db4",
-    "golden.py": "85cc2d645b647ef08220a733c0906d0c8b32a65a92e371b874502892aea3a771"
+    "golden.py": "eefecac9e65753f8e117e97b87f073af78e4a14487828df354963d4d58a36aa0"
   }
 }
