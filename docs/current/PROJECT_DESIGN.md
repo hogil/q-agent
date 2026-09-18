@@ -84,7 +84,24 @@ Router/Judge/Answer의 `references/examples.md`에 역할별 예시를 두고 `r
 retrieval의 `--query-source annotated`는 지정 검색어, `--query-source question`은 질문 원문으로 회의록을 검색한다. 두 모드 모두 사고번호·scope는 annotation을 사용하므로 Router·Judge·Answer 성능 평가가 아니다.
 필수 chunk가 있는 사례의 검색 성공과 chunk recall을 전체 계약 통과율과 별도로 표시한다. 필수 chunk 목록은 모든 관련 문서의 목록이 아니므로 precision은 측정하지 않는다.
 `--mode compare`는 같은 데이터·DB fingerprint·config·split·query source·case 집합의 version-2 합성 retrieval 보고서만 비교한다. 하나라도 다르면 중단하고, 개선/회귀/남은 실패를 구분한다. 배포를 자동 승인하지 않는다.
-live 모드는 실제 모델 경로를 실행하되, 문자열 일치는 보조 진단이고 전문가의 의미 검토를 대체하지 않는다.
+live 모드는 실제 모델 경로를 실행하고 아래 Token Recall을 주점수로 보고한다. 기존 answer_fact 문자열 포함 검사는 보조 진단으로 유지한다. 사실 정확도와 근거 적합성은 별도 검토한다.
+
+## 답변 평가 기준
+
+2026-09-18 사용자 결정에 따라 **Token Recall이 제1 기준**이다. 회의록의 질문별 reference_answer를 최소 포함 내용으로 사용하고, 근거를 갖춘 추가 설명은 감점하지 않는다.
+
+`Token Recall = sum(min(reference의 토큰별 횟수, answer의 토큰별 횟수)) / reference 전체 토큰 수`
+
+- 계산 위치: `D:\project\q-agent\app\golden.py`의 `token_recall`. 생성 답변만 채점하고 retrieved context나 출력 JSON 전체를 채점하지 않는다. 정답은 모델 입력에 전달하지 않는다.
+- 고정 토큰화 `unicode_word_v1`: Unicode NFC 정규화, casefold, 문자·숫자 연속 구간 분리. 한국어를 보존하며 공백·기호·underscore는 구분자다. 조사·동의어를 합치지 않고 LLM의 subword tokenizer를 사용하지 않는다.
+- 결과 범위는 0~1이며 1은 100% 포함이다. 정답을 모두 포함한 짧은 답변과 추가 설명이 있는 답변은 모두 1이다. 같은 단어를 반복해도 정답의 등장 횟수를 넘는 점수는 없다.
+- live 보고서의 `primary_metric.name=token_recall`, `aggregate.token_recall`이 질문별 점수의 macro 평균이다. 답변 길이·Precision·F1·비용을 이 점수에 혼합하지 않는다.
+- 답변 없음이나 빈 reference는 `null`과 사유를 표시한다. 선택한 모든 사례를 채점하지 못하면 주평균도 `null`이다. 일부 측정 평균 `scored_case_token_recall`과 측정/미측정 건수를 별도로 기록해 실패 사례가 빠진 평균을 전체 성능처럼 표시하지 않는다.
+- `passed/failed`는 실행·범위·근거 ID 등 기존 계약 검사다. Token Recall과 별도이며, 높은 Recall이 사실 정확성을 보장하지 않는다. 실제 사실 오류의 자동 의미 판정은 아직 없고 전문가 검토가 필요하다.
+- retrieval 모드는 답변을 생성하지 않으므로 Token Recall을 만들지 않는다. 기존 `compare`도 검색 비교 전용이다. live 후보는 동일 golden·tokenizer·모델·예산에서 주점수와 별도 오류를 대조한다.
+
+평가 정책의 Skill 원본은 `D:\project\q-agent\app\skills\rules\skill-maintenance\SKILL.md`다. 점수를 높이려고 dev/test 정답을 runtime Skill에 복사하지 않는다.
+Token Recall 추가 후 회귀 테스트 50개와 프롬프트 조합 76개를 확인했다. 합성 채점 예시는 `D:\project\q-agent\var\output\token-recall-contract-20260918.json`에 있다. 실제 모델은 미연결이라 모델 답변의 Recall은 미측정이다.
 
 ## 합성 실행
 
@@ -127,7 +144,7 @@ python D:\project\q-agent\app\run_agent.py --demo --mode propose --report D:\pro
 python D:\project\q-agent\app\run_agent.py --demo --mode compare --baseline D:\project\q-agent\var\output\retrieval-improvement-20260918\baseline-dev-question.json --report D:\project\q-agent\var\output\retrieval-improvement-20260918\verified-dev-question.json
 ```
 
-이번 로컬 확인: 회귀 테스트 43개, 역할/topic/추가 예시 조합 76개, Skill 형식 검사 14개와 합성 검색 계약 17개(train 5/dev 7/test 5) 통과.
+검색 개선 당시 로컬 확인: 회귀 테스트 43개, 역할/topic/추가 예시 조합 76개, Skill 형식 검사 14개와 합성 검색 계약 17개(train 5/dev 7/test 5) 통과.
 합성 데이터는 사고 9건, Lot 22건, Wafer 57건, 회의록 chunk 11개다. 검색 계약 실행의 LLM 호출 수는 0이며 모델 답변 정확도 점수가 아니다.
 잘못된 검색어를 넣는 대조 테스트에서는 required chunk 누락이 검출되고 프롬프트 정답 암기가 아닌 검색/config 점검으로 제안되는지도 확인했다.
 

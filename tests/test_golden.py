@@ -53,6 +53,123 @@ class GoldenFixtureTests(unittest.TestCase):
         self.assertTrue(report["corpus_fingerprint"]["captured"])
         self.assertEqual(len(report["corpus_fingerprint"]["files"]), 2)
 
+    def test_token_recall_uses_clipped_multiset_recall(self):
+        cases = [
+            ("alpha beta", "alpha beta", 1.0, 2),
+            ("alpha beta", "alpha beta extra", 1.0, 2),
+            ("alpha beta gamma", "alpha extra", 1 / 3, 1),
+            ("alpha alpha beta", "alpha alpha alpha", 2 / 3, 2),
+        ]
+        for reference, answer, value, matched in cases:
+            with self.subTest(reference=reference, answer=answer):
+                result = golden.token_recall(reference, answer)
+                self.assertEqual(result["value"], value)
+                self.assertEqual(result["matched_tokens"], matched)
+                self.assertEqual(result["reference_tokens"], len(reference.split()))
+                self.assertEqual(result["tokenizer"], "unicode_word_v1")
+                self.assertIsNone(result["unscored_reason"])
+
+    def test_token_recall_normalizes_unicode_and_preserves_korean(self):
+        result = golden.token_recall("Cafe\u0301 한국", "CAFÉ 한국 추가")
+        self.assertEqual(result["value"], 1.0)
+        self.assertEqual(result["matched_tokens"], 2)
+        self.assertEqual(result["reference_tokens"], 2)
+
+    def test_token_recall_marks_empty_reference_and_unavailable_answer(self):
+        empty_reference = golden.token_recall("!!!", "anything")
+        self.assertIsNone(empty_reference["value"])
+        self.assertIsNone(empty_reference["matched_tokens"])
+        self.assertEqual(empty_reference["reference_tokens"], 0)
+        self.assertEqual(empty_reference["unscored_reason"], "empty_reference")
+
+        empty_answer = golden.token_recall("alpha", "")
+        self.assertEqual(empty_answer["value"], 0.0)
+        self.assertEqual(empty_answer["matched_tokens"], 0)
+        self.assertIsNone(empty_answer["unscored_reason"])
+
+        unavailable = golden.token_recall("alpha", None)
+        self.assertIsNone(unavailable["value"])
+        self.assertIsNone(unavailable["matched_tokens"])
+        self.assertEqual(unavailable["unscored_reason"], "answer_unavailable")
+
+    def test_live_case_scores_actual_answer_without_gold_in_agent_kwargs(self):
+        module = types.ModuleType("agent")
+        captured = {}
+
+        def fake_run(*args, **kwargs):
+            captured["args"] = args
+            captured["kwargs"] = kwargs
+            return {"status": "answered", "request_scope": "independent", "answer": "답 추가",
+                    "evidence": [], "tool_calls": 0}
+
+        module.run = fake_run
+        record = _case(expected={"status": "answered", "incident_ids": [], "required_chunk_ids": [],
+                                "forbidden_chunk_ids": [], "required_tools": [], "forbidden_tools": [],
+                                "answer_facts": [], "reference_answer": "답"})
+        with patch.dict(sys.modules, {"agent": module}):
+            result = golden._live_case(self.settings, record)
+
+        self.assertEqual(result["token_recall"]["value"], 1.0)
+        self.assertEqual(result["token_recall"]["matched_tokens"], 1)
+        self.assertNotIn("expected", captured["kwargs"])
+        self.assertNotIn("reference_answer", captured["kwargs"])
+        self.assertNotIn("답", repr(captured["kwargs"]))
+
+    def test_live_evaluate_reports_complete_only_when_all_cases_are_scorable(self):
+        def scored_case(settings, record):
+            return {"id": record["id"], "group_id": record["group_id"], "passed": True,
+                    "failures": [], "llm_calls": 1, "tool_calls": 1, "seconds": 0.0,
+                    "token_recall": {"value": 0.5, "matched_tokens": 1, "reference_tokens": 2,
+                                     "tokenizer": "unicode_word_v1", "unscored_reason": None}}
+
+        with patch.object(golden, "compile_prompt", return_value=None), \
+                patch.object(golden, "_live_case", side_effect=scored_case):
+            report = golden.evaluate(self.settings, split="dev", mode="live", limit=2)
+
+        self.assertEqual(report["primary_metric"], {"name": "token_recall", "aggregation": "macro",
+                                                     "higher_is_better": True, "tokenizer": "unicode_word_v1"})
+        self.assertEqual(report["aggregate"]["token_recall"], 0.5)
+        self.assertEqual(report["aggregate"]["scored_case_token_recall"], 0.5)
+        self.assertEqual(report["aggregate"]["token_recall_scored_cases"], 2)
+        self.assertEqual(report["aggregate"]["token_recall_unscored_cases"], 0)
+
+        call_count = [0]
+
+        def partial_case(settings, record):
+            call_count[0] += 1
+            case = scored_case(settings, record)
+            if call_count[0] == 1:
+                return case
+            case["token_recall"] = {"value": None, "matched_tokens": None, "reference_tokens": 0,
+                                     "tokenizer": "unicode_word_v1", "unscored_reason": "empty_reference"}
+            return case
+
+        with patch.object(golden, "compile_prompt", return_value=None), \
+                patch.object(golden, "_live_case", side_effect=partial_case):
+            report = golden.evaluate(self.settings, split="dev", mode="live", limit=2)
+
+        self.assertIsNone(report["aggregate"]["token_recall"])
+        self.assertEqual(report["aggregate"]["scored_case_token_recall"], 0.5)
+        self.assertEqual(report["aggregate"]["token_recall_scored_cases"], 1)
+        self.assertEqual(report["aggregate"]["token_recall_unscored_cases"], 1)
+
+    def test_retrieval_report_has_no_answer_score_or_primary_metric(self):
+        with patch.object(golden, "compile_prompt", return_value=None):
+            report = golden.evaluate(self.settings, split="dev", mode="retrieval", limit=1)
+        self.assertNotIn("primary_metric", report)
+        self.assertNotIn("token_recall", report["aggregate"])
+        self.assertTrue(all("token_recall" not in case for case in report["cases"]))
+
+    def test_live_proposal_reviews_incomplete_recall_without_failing_contract(self):
+        case = {"id": "case-1", "passed": True, "failures": [],
+                "token_recall": {"value": 0.5, "matched_tokens": 1, "reference_tokens": 2,
+                                 "tokenizer": "unicode_word_v1", "unscored_reason": None}}
+        proposal = golden.propose({"split": "dev", "mode": "live", "cases": [case]})
+        self.assertTrue(case["passed"])
+        self.assertEqual(proposal["status"], "review_required")
+        self.assertEqual(proposal["proposals"][0]["failure_codes"], ["TOKEN_RECALL_INCOMPLETE"])
+        self.assertEqual(proposal["proposals"][0]["target"], "answer/retrieval")
+
     def test_query_source_changes_query_input_but_not_dataset(self):
         with patch.object(golden, "compile_prompt", return_value=None):
             annotated = golden.evaluate(self.settings, split="dev", mode="retrieval",
@@ -231,6 +348,7 @@ class GoldenFixtureTests(unittest.TestCase):
 
         self.assertFalse(result["passed"])
         self.assertEqual(result["failures"], ["RuntimeError"])
+        self.assertEqual(result["token_recall"]["unscored_reason"], "answer_unavailable")
         self.assertEqual(result["llm_calls"], 0)
         self.assertEqual(result["tool_calls"], 0)
 

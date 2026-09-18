@@ -9,6 +9,8 @@ import hashlib
 import json
 import re
 import time
+import unicodedata
+from collections import Counter
 from datetime import date
 from pathlib import Path
 
@@ -24,6 +26,8 @@ _REQUIRED_EXPECTED = {
     "required_tools", "forbidden_tools", "answer_facts", "reference_answer",
 }
 _ISO = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+_WORD = re.compile(r"[^\W_]+", re.UNICODE)
+_TOKENIZER = "unicode_word_v1"
 
 
 def _fail(message):
@@ -171,6 +175,34 @@ def _case_base(record):
             "failures": [], "llm_calls": 0, "tool_calls": 0, "seconds": 0.0}
 
 
+def token_recall(reference, answer):
+    """Clipped unigram recall; additional answer tokens never reduce the score."""
+    if not isinstance(reference, str) or (answer is not None and not isinstance(answer, str)):
+        _fail("token_recall requires a string reference and string/null answer")
+    def counts(text):
+        return Counter(_WORD.findall(unicodedata.normalize("NFC", text).casefold()))
+    expected = counts(reference)
+    total = sum(expected.values())
+    score = {"value": None, "matched_tokens": None, "reference_tokens": total,
+             "tokenizer": _TOKENIZER, "unscored_reason": None}
+    if not total:
+        score["unscored_reason"] = "empty_reference"
+    elif answer is None:
+        score["unscored_reason"] = "answer_unavailable"
+    else:
+        overlap = sum((expected & counts(answer)).values())
+        score.update(value=overlap / total, matched_tokens=overlap)
+    return score
+
+
+def _answer_metrics(cases):
+    values = [case["token_recall"]["value"] for case in cases if case["token_recall"]["value"] is not None]
+    mean = sum(values) / len(values) if values else None
+    return {"token_recall": mean if len(values) == len(cases) else None,
+            "scored_case_token_recall": mean, "token_recall_scored_cases": len(values),
+            "token_recall_unscored_cases": len(cases) - len(values)}
+
+
 def _compare_retrieval(record, db_result, meeting_result, case):
     expected = record["expected"]
     actual_incidents = {row.get("incident_id") for row in db_result.get("data", []) if isinstance(row, dict)}
@@ -244,6 +276,7 @@ def _retrieval_case(settings, record, query_source="annotated"):
 
 def _live_case(settings, record):
     case = _case_base(record)
+    case["token_recall"] = token_recall(record["expected"]["reference_answer"], None)
     started = time.monotonic()
     events = []
     result = None
@@ -251,6 +284,8 @@ def _live_case(settings, record):
         from agent import run
         result = run(settings, record["question"], "golden", request_scope="auto",
                      selected=record["selected_incident_ids"], as_of=record["as_of"], emit=events.append)
+        case["token_recall"] = token_recall(record["expected"]["reference_answer"], result.get("answer"))
+        case["answer"] = result.get("answer")
         evidence = result.get("evidence", [])
         chunk_ids = [item.get("chunk_id") for e in evidence
                      if isinstance(e.get("result"), dict)
@@ -322,16 +357,20 @@ def evaluate(settings, split="dev", mode="retrieval", limit=None, query_source="
             "query_source": query_source if mode == "retrieval" else "question",
             "synthetic": all(item["synthetic"] for item in selected),
             "dataset_sha256": dataset_hash, **meta,
+            **({"primary_metric": {"name": "token_recall", "aggregation": "macro",
+                                   "higher_is_better": True, "tokenizer": _TOKENIZER}} if mode == "live" else {}),
             "cases": cases,
             "aggregate": {"total": len(cases), "passed": sum(x["passed"] for x in cases),
                            "failed": sum(not x["passed"] for x in cases),
                            "llm_calls": sum(x["llm_calls"] for x in cases),
                            "tool_calls": sum(x["tool_calls"] for x in cases),
                            "seconds": round(sum(x["seconds"] for x in cases), 6),
-                           **(_retrieval_metrics(cases) if mode == "retrieval" else {})},
+                           **(_retrieval_metrics(cases) if mode == "retrieval" else _answer_metrics(cases))},
             "limitations": ["Retrieval mode verifies fixture contracts, not LLM quality.",
                             "Incident scope is supplied by annotations; question mode only stress-tests meeting retrieval.",
                             "Required chunks are not exhaustive relevance labels; precision is not measured.",
+                            "Token Recall is the primary answer score; extra tokens are not penalized. It is not factual accuracy.",
+                            "Tokenizer unicode_word_v1 preserves Korean but does not match morphology or synonyms.",
                             "Literal answer-fact checks are diagnostics, not semantic correctness.",
                             "Synthetic records are preliminary and not expert-validated."]}
 
@@ -407,9 +446,14 @@ def propose(report):
         "ANSWER_FACT_LITERAL_MISSING_DIAGNOSTIC": ("judge/answer", "Review claim grounding; literal matching is only a diagnostic."),
         "FORBIDDEN_TOOL_USED": (("retrieval/config", "Inspect the deterministic retrieval trace and configured tool contract.") if retrieval else ("router skill", "Inspect tool allowlists and request-scope routing.")),
         "ROUTE_MISMATCH": ("router skill", "Inspect Router scope classification and route contract."),
+        "TOKEN_RECALL_INCOMPLETE": ("answer/retrieval", "Inspect omitted reference tokens and evidence coverage; preserve useful additions and never copy dev/test answers into Skills."),
     }
     for case in report.get("cases", []):
-        for failure in case.get("failures", []):
+        failures = list(case.get("failures", []))
+        recall = case.get("token_recall", {}).get("value")
+        if not retrieval and type(recall) in (int, float) and 0 <= recall < 1:
+            failures.append("TOKEN_RECALL_INCOMPLETE")
+        for failure in failures:
             target, action = mapping.get(failure, ("code", "Inspect the reported runtime or validation failure."))
             item = groups.setdefault(target, {"target": target, "failure_codes": [], "cases": [], "actions": []})
             if failure not in item["failure_codes"]:

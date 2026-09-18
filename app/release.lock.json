@@ -1,5 +1,5 @@
 {
-  "release": "quality-demo-0.28",
+  "release": "quality-demo-0.29",
   "files": {
     "skills/core/SKILL.md": "6a259df0ada8f8a4e34f1bbdf89c522a4094c11f8a273a46109a0f7e25ca0feb",
     "skills/core/references/react.md": "8c0685a29e9ba9178623c9458a3f8e68e59840e25322cfe27137585c03e02242",
@@ -18,7 +18,7 @@
     "skills/roles/router/references/output.schema.json": "a37b40afe6991acfa2dfc8a1c440bfdd9c7a991137751f605a99680306cf76d9",
     "skills/roles/router/references/tools.json": "b912d32d25dc4d7c1da23456bc7061301442d146690fc311984cd015d27cd16c",
     "skills/rules/actions/SKILL.md": "39f260dfe545ea0f660bdd442a51cc90fe6e31292c8cee2e43b293d923d3f4a7",
-    "skills/rules/skill-maintenance/SKILL.md": "53b8919bdfa8e03ccd944684ebd6573af7b10626fd904aa5597368ef1dca966d",
+    "skills/rules/skill-maintenance/SKILL.md": "b8d1b740bc57fc0fbb8d44103dd37cbb8562c369590fcc0830f86e0cdf1ac302",
     "skills/rules/terminology/SKILL.md": "c881abb8f8b4d6c6422d4c4fea7ae5b09eb0f660acde9f9958a9c519359e7421",
     "skills/rules/terminology/references/dictionary-contract.json": "c7ed54a7ebd320e5fe13f86ccebe16d4959264ecbca212d564100149be46ef22",
     "skills/schema/document-chunk-schema/SKILL.md": "881647ca202780fbd31e5b1f4af06c65c3aa15fb186f1f96fb76c18041a8186e",
@@ -37,7 +37,7 @@
     "skills/schema/wafer-schema/SKILL.md": "e8a5f185d1a8d111c8f6490408c4a67038a44463ff69b38d4d4cecdf15fc4c0e",
     "skills/schema/wafer-schema/references/columns.json": "a53e3b4387abe203545aa56662be04e19765a54d4020c922724a8df6e3aa414c",
     "domain-data/README.md": "a71133988f6e5d858891d9a5beb9d7a317a1ac0b5cdb345cc36f70a1df024cc3",
-    "skill_registry.json": "2c77770b3786d518d6639aa5851a8ddd56b54b676e370d8b392ef5f1f81dfe92",
+    "skill_registry.json": "e4a033b194d24d7ad78d5acff36a3291a53ebe097f139006f6b2516aab9a2ab5",
     "incident_tools.py": "789d523dbdcb9944332d5a550a1631115457c4dea6ad9ecf0e3b3585f18cb172",
     "incident_filters.py": "bc10eed273d0ca59487fb582d6ba85e51f32de433001c399ab8f65943508084e",
     "terminology.py": "33e7e35520653a3f0751d690855d70b2de99ba86b9351d1e1c48548ddff722b1",
@@ -50,6 +50,6 @@
     "llm_client.py": "b22b6c47dc0a07117d9c0f186d29dcc767da3b2c3024006b02943421157b77ee",
     "meeting_tools.py": "81f931f3f04f4c784bc94fbd5c45de3e207b14caa20545d0825029051a356b1a",
     "demo_data.py": "7c15e609a94b11a3abf0407156b83b5a52aaaedefa101fc9d851a824969d2db4",
-    "golden.py": "eefecac9e65753f8e117e97b87f073af78e4a14487828df354963d4d58a36aa0"
+    "golden.py": "92842f5887f7a2ee95654539d53fdbac3669b46c2f73fc9835643575a96ced99"
   }
 }
