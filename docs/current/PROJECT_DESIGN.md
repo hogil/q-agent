@@ -32,6 +32,33 @@
 분류 결과는 업무 경로이지 보안 권한이 아니다. 독립 경로에서 사고 DB 호출은 코드가 차단한다.
 사고 경로는 유효한 scope 없이 후속 Tool을 부를 수 없다. 모델이 actor/scope/incident_ids/as_of를 Tool 인자로 덮어쓸 수 없다.
 
+## 로컬 분석 UI
+
+분석 작업실(`/`)과 독립 채팅(`/?view=chat`)은 같은 room ID와 선택 사고를 공유한다.
+작업실 오른쪽 분석 계획에서 기능을 선택하고 가운데에서 결과를 검토한다. 선택한 근거와 준비한 질문은 채팅으로 전달한다.
+모바일에서는 분석 계획을 본문 다음에 배치한다. 기능 선택 자체로 Agent 실행이나 Judge 통과를 표시하지 않는다.
+
+| 파일 | 역할 |
+|---|---|
+| `D:\project\q-agent\app\workbench.py` | loopback HTTP API, 합성 DB scope 조회, 별도 SQLite 대화 저장 |
+| `D:\project\q-agent\config\workbench.yaml` | demo 설정 경로, 대화 DB, 문서 기준일, 정적 파일 위치 |
+| `D:\project\q-agent\web\src\App.tsx` | 작업실/채팅 화면 분리, 방 선택, 질문·근거 전달 |
+| `D:\project\q-agent\web\src\modules.ts` | 기능 목록과 분석 계획의 공통 정의 |
+| `D:\project\q-agent\web\src\PlanPanel.tsx` | 방별 수동 검토 항목 선택 |
+| `D:\project\q-agent\web\src\Views.tsx` | 개요, Trend, Wafer, 회의록, Lot/Wafer 표 |
+| `D:\project\q-agent\web\src\Images.tsx` | SEM, Image Map, Overlay 보기 |
+| `D:\project\q-agent\web\src\Sources.tsx` | Eng’r Inform, 생산 시스템 연결 상태, 사고 비교 |
+| `D:\project\q-agent\web\src\charts.tsx` | ECharts Canvas와 결정적 합성 시각화 데이터 |
+
+- API는 사고 DB를 먼저 조회하고 scope를 만든 뒤 Lot/Wafer/승인 회의록을 조회한다. 실제 사내 DB에 연결되지 않는다.
+- 채팅 메시지는 방별로 저장하고 최신 페이지부터 읽는다. 이전 메시지 cursor는 같은 방에 속하는지 검증한다.
+- 첨부의 사고 번호를 보존한다. 다른 사고의 근거를 열 때 명시적으로 범위 전환을 확인한다.
+- 대화 저장과 LLM 문맥 관리는 다르다. 현재 웹 채팅은 `agent.py`/Router/Judge/Answer에 연결하지 않은 결정적 합성 조회 데모다.
+- Trend/Wafer/Overlay 데이터는 화면용 합성값이다. SEM 출처와 생성 기록은 `D:\project\q-agent\web\public\assets\provenance.json`에 있다. 물리적 배율·결함 판정 근거가 아니다.
+- Image Map의 Die와 SEM은 실제로 대응되지 않는다. Eng’r Inform과 MES/FDC/SPC/Recipe에는 실데이터 대신 미연결 상태와 필요한 원본 항목을 표시한다.
+- 다음 기능은 `modules.ts` 항목과 해당 보기로 추가한다. 범용 플러그인 엔진이나 새로운 Agent 계층은 두지 않는다.
+- 사내 배포에는 로그인/ACL, 인증된 사용자와 room 소유권, LLM 스트리밍·취소·승인, 기존 Hybrid RAG 연결과 운영 웹 서버가 필요하다. 현재 서버를 외부에 노출하지 않는다.
+
 ## 검색과 근거
 
 - DB: SQL 매개변수 바인딩과 논리 컬럼 매핑. 질문 단어의 컬럼 후보는 제한된 DISTINCT 조회로 찾는다. 후보를 정답 필터로 자동 확정하지 않는다.

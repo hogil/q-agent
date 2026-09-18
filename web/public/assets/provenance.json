@@ -1,0 +1,9 @@
+{
+  "synthetic-sem.png": {
+    "synthetic": true,
+    "generator": "built-in image_gen",
+    "date": "2026-09-18",
+    "prompt": "Synthetic SEM-style grayscale semiconductor line-space pattern with a small bridge and particles, top-down, inspectable texture, no text or scale bar. UI demonstration only; not microscopy evidence.",
+    "limitations": "No measured magnification, physical scale, real defect classification or incident relationship. Reused as an explicitly synthetic viewer fixture."
+  }
+}

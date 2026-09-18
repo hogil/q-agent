@@ -45,3 +45,30 @@ Python 3.11+에서 `python -m pip install -r requirements.txt`를 실행합니�
 회의록은 로컬 FTS5 데모와 사내 Hybrid RAG HTTP 연결을 구분합니다. 사내 서비스는 미검증입니다.
 golden 기반 검증과 개선 제안은 오프라인이며, 원본 Skill을 자동 수정하지 않습니다.
 실제 모델·데이터 검증, 서버 DB·이미지·조치 Tool과 운영 인증은 아직 남아 있습니다.
+
+## 분석 UI
+
+분석 작업실과 채팅은 별도 화면입니다. 작업실에서 기능을 열고 근거를 선택한 뒤 같은 대화방의 채팅으로 넘깁니다.
+
+- 작업실: Overview, Trend, Wafer/SEM/Image/Overlay Map, Inform, Production, History, Data.
+- 분석 계획: 기능별 체크, 화면 이동, 질문 준비. 선택은 실제 Agent 실행이나 검증 완료를 의미하지 않습니다.
+- 채팅: 방별 질문·답변 저장, 이름 변경·삭제, 이전 기록 조회, 근거의 사고 범위 확인.
+
+로컬 합성 데이터 데모 실행 (Python 3.11+, Node.js 22+):
+
+```powershell
+npm --prefix web ci
+npm --prefix web run build
+python app/workbench.py --port 8787
+```
+
+브라우저: `http://127.0.0.1:8787/`, 별도 채팅: `http://127.0.0.1:8787/?view=chat`.
+8787 포트가 사용 중이면 `--port 8788`처럼 다른 포트를 지정합니다.
+
+설정은 `D:\project\q-agent\config\workbench.yaml`입니다. 기본 DB 설정은 기존 `config.yaml` + `demo.yaml`을 사용합니다.
+첫 실행에서 합성 DB가 모두 없을 때만 생성하고, 일부만 있으면 덮어쓰지 않고 중단합니다.
+대화는 `D:\project\q-agent\var\data\workbench\conversations.sqlite`에 별도로 저장합니다.
+
+**연결 범위:** 사고·Lot·Wafer·회의록은 합성 DB를 실제 조회합니다. Trend/Map은 합성 데이터, SEM은 AI 생성 이미지입니다.
+Eng’r Inform·생산 시스템·LLM은 미연결입니다. 채팅은 결정적 DB 조회 데모이며, 대화 저장이 모델 메모리 연결을 뜻하지 않습니다.
+서버는 localhost 전용 단일 사용자 데모입니다. 사내 원격 서비스로 공개하지 마세요.

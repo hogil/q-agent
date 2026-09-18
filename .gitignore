@@ -10,3 +10,7 @@ config/*.local.toml
 config/*.local.yaml
 config/*.local.yml
 config/private/
+web/node_modules/
+web/dist/
+.playwright-cli/
+output/playwright/
