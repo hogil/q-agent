@@ -188,6 +188,51 @@ class GoldenFixtureTests(unittest.TestCase):
                         if record["split"] == "dev" and record["expected"]["required_chunk_ids"])
         self.assertNotEqual(positive["question"], positive["retrieval"]["query"])
 
+    def test_compound_lookup_uses_filters_without_annotated_incident_number(self):
+        record = copy.deepcopy(demo_data._goldens()[1])
+        record["selected_incident_ids"] = []
+        record["retrieval"] = {"incident_number": None, "query": "SYN", "lookup": {
+            "filters": {"incident_number": "SYN-2026-01", "city": "SYNTH-CITY",
+                        "product_generations": {"mode": "all", "values": ["SYN-GEN-A", "SYN-GEN-B"]}}}}
+        golden._validate([record])
+        result = golden._retrieval_case(self.settings, record)
+        self.assertTrue(result["passed"], result)
+        self.assertEqual(result["retrieved_incident_ids"], ["synthetic-pk-2026-01"])
+
+        record["retrieval"]["lookup"]["filters"]["department"] = "SYN-NONEXISTENT-DEPARTMENT"
+        record["retrieval"]["query"] = "교정"
+        record["expected"].update(incident_ids=[], required_chunk_ids=[])
+        result = golden._retrieval_case(self.settings, record)
+        self.assertTrue(result["passed"], result)
+        self.assertEqual(result["retrieved_chunk_ids"], [])
+
+    def test_expected_selection_compares_candidates_and_stops_before_meetings(self):
+        ids = [row["incident_id"] for row in demo_data._incident_rows()]
+        record = _case(request_scope="incident", retrieval={"lookup": {"city": "SYNTH-CITY"}, "query": "SYN"},
+                       expected={"status": "needs_selection", "incident_ids": ids, "required_chunk_ids": [],
+                                 "forbidden_chunk_ids": [], "required_tools": ["find_incidents"],
+                                 "forbidden_tools": ["search_meeting_minutes"], "answer_facts": [],
+                                 "reference_answer": "사고 선택 필요"})
+        golden._validate([record])
+        with patch.object(golden, "MeetingTools", side_effect=AssertionError("must not search")):
+            result = golden._retrieval_case(self.settings, record)
+        self.assertTrue(result["passed"], result)
+        self.assertEqual(result["status"], "needs_selection")
+        self.assertEqual(result["tool_trace"], ["find_incidents"])
+        record["expected"]["incident_ids"] = ids[:-1]
+        result = golden._retrieval_case(self.settings, record)
+        self.assertIn("INCIDENT_ID_MISMATCH", result["failures"])
+
+    def test_lookup_rejects_caller_overrides_and_ambiguous_sources(self):
+        for lookup in ({"actor": "other"}, {"scope_id": "other"}, {"unknown": "value"}, {}):
+            with self.subTest(lookup=lookup), self.assertRaises(ValueError):
+                golden._validate([_case(request_scope="incident", retrieval={"lookup": lookup, "query": "x"})])
+        with self.assertRaisesRegex(ValueError, "mutually exclusive"):
+            golden._validate([_case(request_scope="incident", retrieval={"lookup": {"city": "SYNTH-CITY"},
+                                                                         "incident_number": "SYN-1", "query": "x"})])
+        with self.assertRaisesRegex(ValueError, "independent scope"):
+            golden._validate([_case(retrieval={"lookup": {"city": "SYNTH-CITY"}, "query": "x"})])
+
     def test_live_question_query_source_is_rejected(self):
         with patch.object(golden, "compile_prompt", return_value=None):
             with self.assertRaisesRegex(ValueError, "retrieval only"):

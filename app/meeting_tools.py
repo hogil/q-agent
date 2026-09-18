@@ -131,14 +131,19 @@ class MeetingTools:
             if ids is not None:
                 sql += " AND EXISTS (SELECT 1 FROM json_each(c.incident_ids) x WHERE x.value IN (" + ",".join("?" for _ in ids) + "))"
                 params.extend(ids)
-            sql += " ORDER BY score,c.chunk_id LIMIT ?"
-            params.append(limit)
-            rows = db.execute(sql, params).fetchall()
-            # Relax lexical recall only, never the validated incident boundary.
-            if not rows and ids and len(terms) > 1:
-                params[0] = " OR ".join(terms)
-                rows = db.execute(sql, params).fetchall()
-                match["strategy"] = "scoped_any_terms"
+            order = " ORDER BY score,c.chunk_id LIMIT ?"
+            rows = db.execute(sql + order, [*params, limit]).fetchall()
+            # Preserve strict hits; complementary passages share the same scope and deadline.
+            if len(rows) < limit and ids and len(terms) > 1:
+                extra_sql = sql
+                extra_params = [" OR ".join(terms), *params[1:]]
+                if rows:
+                    extra_sql += " AND c.chunk_id NOT IN (" + ",".join("?" for _ in rows) + ")"
+                    extra_params.extend(row["chunk_id"] for row in rows)
+                extra = db.execute(extra_sql + order, [*extra_params, limit - len(rows)]).fetchall()
+                if extra or not rows:
+                    match["strategy"] = "scoped_mixed_terms" if rows else "scoped_any_terms"
+                rows.extend(extra)
             items, seen = [], set()
             for row in rows:
                 try:

@@ -96,13 +96,35 @@ class MeetingTests(unittest.TestCase):
             self.assertEqual(tool.search("actor", "entirely absentword", incident_ids=["I1"],
                                          as_of="2026-12-31")["items"], [])
 
-    def test_exact_results_are_not_padded_with_partial_matches(self):
+    def test_scoped_exact_results_are_first_and_partial_evidence_fills_remaining_slots(self):
         with tempfile.TemporaryDirectory() as root:
             path = Path(root) / "meetings.sqlite"
             partial = ("partial", "m", "Needle", "2026-01-01", "v1", "approved", '["I1"]', "needle unrelated", "ref://partial")
-            _database(path, rows=[VALID, partial])
-            result = MeetingTools(_settings(path)).search("actor", "needle evidence", incident_ids=["I1"], as_of="2026-12-31")
-            self.assertEqual([item["chunk_id"] for item in result["items"]], ["ok"])
+            other = ("other", "m", "Needle", "2026-01-01", "v1", "approved", '["I2"]', "needle", "ref://other")
+            draft = ("draft", "m", "Needle", "2026-01-01", "v1", "draft", '["I1"]', "needle", "ref://draft")
+            future = ("future", "m", "Needle", "2027-01-01", "v1", "approved", '["I1"]', "needle", "ref://future")
+            _database(path, rows=[VALID, partial, other, draft, future])
+            tool = MeetingTools(_settings(path))
+            before = hashlib.sha256(path.read_bytes()).digest()
+            result = tool.search("actor", "needle evidence", incident_ids=["I1"], as_of="2026-12-31")
+            self.assertEqual([item["chunk_id"] for item in result["items"]], ["ok", "partial"])
+            self.assertEqual(result["query_match"]["strategy"], "scoped_mixed_terms")
+            self.assertEqual(before, hashlib.sha256(path.read_bytes()).digest())
+            for ids, limit in ((["I1"], 1), (None, 5)):
+                result = tool.search("actor", "needle evidence", incident_ids=ids, as_of="2026-12-31", top_k=limit)
+                self.assertEqual([item["chunk_id"] for item in result["items"]], ["ok"])
+                self.assertEqual(result["query_match"]["strategy"], "all_terms")
+
+    def test_scoped_top_up_excludes_strict_hits_before_applying_limit(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / "meetings.sqlite"
+            rows = [VALID, ("second", *VALID[1:]),
+                    ("partial", "m", "Needle", "2026-01-01", "v1", "approved", '["I1"]', "needle", "ref://partial")]
+            _database(path, rows=rows)
+            tool = MeetingTools(_settings(path))
+            result = tool.search("actor", "needle evidence", incident_ids=["I1"], as_of="2026-12-31", top_k=3)
+            self.assertEqual([item["chunk_id"] for item in result["items"]], ["ok", "second", "partial"])
+            result = tool.search("actor", "needle", incident_ids=["I1"], as_of="2026-12-31", top_k=3)
             self.assertEqual(result["query_match"]["strategy"], "all_terms")
 
     def test_query_terms_are_bounded_deduplicated_and_not_executed_as_fts_syntax(self):

@@ -65,6 +65,7 @@ def main():
     environment.add_argument('--site-config', help='Explicit site YAML; no default or environment fallback')
     environment.add_argument('--demo', action='store_true', help='Explicit synthetic environment; never a site fallback')
     parser.add_argument('--demo-overlay', help='Optional demo-only model/path overlay; relative paths use config/ as base')
+    parser.add_argument('--demo-profile', choices=('basic', 'hard'), help='Synthetic data profile for --mode prepare-demo only')
     parser.add_argument('--mode', choices=('check', 'prompt', 'run', 'prepare-demo', 'evaluate', 'propose', 'compare'), default='check')
     parser.add_argument('--role', choices=('router', 'judge', 'answer'), default='router')
     parser.add_argument('--topics', default='incident_search', help='Comma-separated registered topics')
@@ -88,6 +89,8 @@ def main():
     try:
         if args.demo_overlay and not args.demo:
             parser.error('--demo-overlay requires --demo')
+        if args.demo_profile and (not args.demo or args.mode != 'prepare-demo'):
+            parser.error('--demo-profile requires --demo --mode prepare-demo')
         if args.demo:
             settings = load_config(DEFAULT_CONFIG, DEFAULT_CONFIG.parent / 'demo.yaml')
             if args.demo_overlay:
@@ -111,7 +114,7 @@ def main():
             if not args.demo:
                 parser.error('--mode prepare-demo requires --demo')
             from demo_data import generate
-            print(json.dumps(generate(settings), ensure_ascii=False, indent=2))
+            print(json.dumps(generate(settings, profile=args.demo_profile or 'basic'), ensure_ascii=False, indent=2))
             return 0
         if args.mode in ('evaluate', 'propose', 'compare'):
             from golden import compare, evaluate, propose

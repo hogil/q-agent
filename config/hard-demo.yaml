@@ -1,0 +1,6 @@
+# Hard synthetic corpus; never overwrite the basic demo.
+environment: demo
+paths:
+  data_root: ../var/data/meetings-hard-v1
+meetings:
+  enabled: true

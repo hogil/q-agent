@@ -7,6 +7,7 @@ import re
 import shutil
 import sqlite3
 import tempfile
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -210,6 +211,218 @@ def _goldens() -> list[dict[str, Any]]:
     ]
 
 
+def _hard_incident_rows() -> list[dict[str, Any]]:
+    """Build deterministic, family-shaped data for retrieval and join stress tests."""
+    themes = [
+        ("열처리 편차 조사", "thermal drift", "heater offset"),
+        ("광원 보정 조사", "illumination drift", "calibration table"),
+        ("세정 잔류 조사", "rinse residue", "flush timing"),
+        ("정렬 오차 조사", "alignment offset", "stage datum"),
+        ("레시피 배포 조사", "recipe mismatch", "baseline package"),
+        ("센서 채널 조사", "sensor dropout", "channel trim"),
+        ("샘플링 편차 조사", "sampling skew", "selection order"),
+        ("Edge 신호 조사", "edge signal", "probe contact"),
+    ]
+    cities = ["SYN-SEOUL", "SYN-HWASEONG", "SYN-PYEONGTAEK", "SYN-ICHEON", "SYN-CHEONGJU", "SYN-ASAN"]
+    lines = ["H-LINE-01", "H-LINE-02", "H-LINE-03", "H-LINE-04"]
+    departments = ["H-QA", "H-PE", "H-EQP", "H-PROCESS"]
+    offsets = ["+09:00", "+08:00", "+09:00", "+07:00"]
+    rows = []
+    for family in range(48):
+        theme, signal, mechanism = themes[family % len(themes)]
+        city = cities[family % len(cities)]
+        line = lines[family % len(lines)]
+        for variant in range(4):
+            number = family * 4 + variant + 1
+            incident_id = f"synthetic-hard-pk-2026-{number:03d}"
+            incident_number = f"H-2026-{number:03d}"
+            incident_date = date(2026, 1, 1) + timedelta(days=family * 7 + variant)
+            occurred = f"{incident_date.isoformat()}T{8 + variant:02d}:{10 + family % 5:02d}:00{offsets[variant]}"
+            generations = [["H-GEN-A", "H-GEN-B"], ["H-GEN-A"], ["H-GEN-B", "H-GEN-C"], ["H-GEN-A", "H-GEN-B", "H-GEN-C"]][variant]
+            codes = [["H_EDGE", "H_CONTACT"], ["H_EDGE"], ["H_RECIPE", "H_EDGE"], ["H_RECIPE"]][variant]
+            lots = 2 + (family + variant) % 3
+            wafers = lots * 3 + (variant % 2)
+            cause = f"{mechanism} quantity {2 + variant + family % 4}"
+            rows.append({
+                "incident_id": incident_id, "incident_number": incident_number, "title": theme,
+                "city": city, "line": line, "line_code": line.replace("-", ""), "line_alias": f"H{family % 4 + 1}",
+                "department": departments[(family + variant) % len(departments)], "occurred_at": occurred,
+                "product_generations": generations, "fab_out_failure_codes": codes,
+                "expected_lot_count": lots, "affected_wafer_count": wafers,
+                "incident_detail": f"Family {family:02d} variant {variant}: {signal} observed; quantity band {lots}/{wafers}.",
+                "analysis_detail": f"The record compares {signal} against the {mechanism} baseline; variant {variant} uses a different declared timezone.",
+                "confirmed_cause": cause,
+                "containment": "Synthetic hold and bounded review.",
+                "corrective_action": None if variant == 0 else f"Review {mechanism} package revision {variant}.",
+                "verification": None if variant in (0, 3) else f"Verification sample {variant + family % 3}.",
+                "prevention": "Synthetic fixture only; no production action executed.",
+                "remaining": "Historical evidence is incomplete." if variant == 0 else "Follow-up quantity reconciliation remains.",
+            })
+    return rows
+
+
+def _hard_lot_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    result = []
+    for index, row in enumerate(rows):
+        family = index // 4
+        variant = index % 4
+        count = row["expected_lot_count"]
+        if variant == 2 and count > 1:
+            count -= 1
+        for lot_index in range(count):
+            lot_number = (family % 6) + lot_index + 1
+            record = {"incident_ref": row["incident_id"], "lot_id": f"H-LOT-{family:02d}-{lot_number:02d}",
+                      "product_code": f"H-PRODUCT-{family % 9:02d}", "status": "REGISTERED" if variant != 3 else "PARTIAL_SOURCE"}
+            result.append(record)
+            if variant == 1 and lot_index == 0:
+                result.append(dict(record))
+    return result
+
+
+def _hard_wafer_rows(lots: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    result = []
+    unique_lots = list({(lot["incident_ref"], lot["lot_id"]): lot for lot in lots}.values())
+    for index, lot in enumerate(unique_lots):
+        if index % 17 == 0:
+            continue  # A genuine missing source row, independent of duplicated Lot input rows.
+        count = 2 + (index % 2)
+        for wafer_index in range(count):
+            record = {"incident_ref": lot["incident_ref"], "lot_id": lot["lot_id"],
+                      "wafer_id": f"HW{wafer_index + 1:02d}", "status": "REGISTERED" if index % 5 else "PARTIAL_SOURCE"}
+            result.append(record)
+            if index % 29 == 0 and wafer_index == 0:
+                result.append(dict(record))
+    return result
+
+
+def _hard_meeting_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    result = []
+    for family in range(48):
+        group = rows[family * 4:family * 4 + 4]
+        target, sibling = group[0], group[1]
+        prefix = f"hard-{family:02d}"
+        incident_date = date.fromisoformat(target["occurred_at"][:10])
+        dates = [incident_date.isoformat(), incident_date.isoformat(),
+                 (incident_date + timedelta(days=1)).isoformat(), (incident_date + timedelta(days=2)).isoformat(),
+                 (incident_date + timedelta(days=3)).isoformat(), (incident_date + timedelta(days=365)).isoformat(),
+                 (incident_date + timedelta(days=4)).isoformat(), (incident_date + timedelta(days=5)).isoformat()]
+        entries = [
+            ("history", "approved", dates[0], f"{target['title']} 관측", f"{target['incident_number']} 원인 확정 전 기록: {target['incident_detail']} 관측만으로 확정하지 않았다.", [target["incident_id"]]),
+            ("hypothesis", "approved", dates[1], f"{target['title']} 가설", f"{target['incident_number']} 원인 가설은 공정 조건 변화였으며 비교 검증 전 상태다.", [target["incident_id"]]),
+            ("confirmed", "approved", dates[2], f"{target['title']} 분석", f"{target['incident_number']} 확인 원인: {target['confirmed_cause']}. 비교 검증으로 가설과 구분했다.", [target["incident_id"]]),
+            ("action", "approved", dates[3], f"{target['title']} 후속", f"{target['incident_number']} 조치 계획: {target['line']}에서 {target['expected_lot_count']} Lots, {target['affected_wafer_count']} Wafers 등록 수량을 대조한다. 완료 여부는 미확인이다.", [target["incident_id"]]),
+            ("summary", "approved", dates[4], f"{target['title']} 요약", "원인 조치 요약: 구체적 분석 결과와 수량은 별도 항목을 참조한다.", [target["incident_id"]]),
+            ("future", "approved", dates[5], f"{target['title']} 재검증", f"{target['incident_number']} 원인 조치 변경: 후속 검증에서 최초 결론을 수정했다. 이 버전이 공개되기 전에는 이용할 수 없다.", [target["incident_id"]]),
+            ("draft", "draft", dates[6], f"{target['title']} 초안", f"{target['incident_number']} 원인 조치 미승인 초안: 다른 mechanism을 제안했다.", [target["incident_id"]]),
+            ("otherincident", "approved", dates[7], f"{target['title']} 비교", f"비교 대상 {sibling['incident_number']} 원인: {sibling['confirmed_cause']}. {target['incident_number']}의 결론으로 옮기지 않는다.", [target["incident_id"], sibling["incident_id"]]),
+        ]
+        for index, detail in enumerate(("전월 수량 24건은 이번 영향 수량이 아니다.",
+                                        "장비 점검 18건은 Wafer 수량과 단위가 다르다.",
+                                        "조치 제안은 추가 교육이며 승인된 실행 계획과 구분한다.",
+                                        "원인 후보 하나가 기각됐으며 새로운 확정 결론은 없다.")):
+            entries.append((f"context-{index}", "approved", dates[4], f"{target['title']} 참고 {index + 1}",
+                            f"{target['incident_number']} 검토 참고. {detail}", [target["incident_id"]]))
+        for suffix, status, meeting_date, title, text, incident_ids in entries:
+            result.append({"chunk_id": f"{prefix}-{suffix}", "meeting_id": f"{prefix}-meeting", "title": title,
+                           "meeting_date": meeting_date, "version": "draft-1" if status == "draft" else "v1",
+                           "status": status, "incident_ids": incident_ids, "text": text,
+                           "source_ref": f"synthetic://hard/{prefix}/{suffix}"})
+    independent_topics = [
+        ("교정 주기", "검교정 주기는 14일이며 승인된 설비 점검 범위에만 적용된다.", "calibration cadence"),
+        ("샘플 보관", "샘플 보관 기간은 21일이고 사고 DB에는 연결되지 않는다.", "sample retention"),
+        ("교대 인수", "교대 인수인계는 2회 확인으로 마감한다.", "shift handoff"),
+        ("검사 순서", "검사 순서는 precheck 뒤에 본 측정을 수행한다.", "inspection order"),
+        ("온도 기록", "독립 온도 기록은 시간당 한 번 수집한다.", "temperature logging"),
+        ("장비 점검", "장비 점검 창은 30분이며 사고 범위와 무관하다.", "equipment window"),
+        ("문서 보존", "문서 보존 기간은 90일이다.", "document retention"),
+        ("Lot 표기", "Lot 표기는 내부 추적용이며 영향 판정이 아니다.", "lot labeling"),
+        ("알람 검토", "알람 검토는 주간 단위로 승인된다.", "alarm review"),
+        ("교체 이력", "교체 이력은 부품 단위로 기록한다.", "replacement history"),
+        ("교육 기록", "교육 기록은 분기별로 갱신한다.", "training record"),
+        ("분석 보류", "분석 보류 상태는 근거 부재를 뜻하며 원인 확정이 아니다.", "analysis hold"),
+    ]
+    for index, (topic, text, query) in enumerate(independent_topics):
+        result.append({"chunk_id": f"hard-independent-{index:02d}", "meeting_id": f"hard-independent-meeting-{index:02d}",
+                       "title": f"Independent {topic} note", "meeting_date": "2026-03-01", "version": "v1", "status": "approved",
+                       "incident_ids": [], "text": f"Independent note: {text} Topic: {query}. This passage has no incident scope.",
+                       "source_ref": f"synthetic://hard/independent/{index:02d}"})
+    return result
+
+
+def _hard_goldens(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    cases = []
+    for family in range(30):
+        group = rows[family * 4:family * 4 + 4]
+        target = group[0]
+        category = ("ambiguous_candidates", "array_exact", "array_all", "array_any", "split_evidence",
+                    "asof_guard", "compound_filter", "no_match", "independent_paraphrase", "synonym_gap")[family % 10]
+        start = datetime.fromisoformat(target["occurred_at"])
+        window = {"gte": start.isoformat(), "lt": (start + timedelta(days=4)).isoformat()}
+        lookup = {"title": target["title"], "city": target["city"], "line": target["line"],
+                  "filters": {"occurred_at": window}}
+        criteria = f"{target['city']} {target['line']}, 제목 {target['title']}, {window['gte']} 이상 {window['lt']} 미만"
+        status, scope, as_of = "answered", "incident", "2026-12-31"
+        ids, chunks = [target["incident_id"]], [f"hard-{family:02d}-{part}" for part in ("hypothesis", "confirmed", "action")]
+        facts = ["공정 조건 변화", target["confirmed_cause"], f"{target['expected_lot_count']} Lots",
+                 f"{target['affected_wafer_count']} Wafers", "완료 여부는 미확인"]
+        answer = (f"초기 가설은 공정 조건 변화이며 확인 원인은 {target['confirmed_cause']}이다. "
+                  f"{target['line']}에서 {target['expected_lot_count']} Lots, {target['affected_wafer_count']} Wafers "
+                  "등록 수량을 대조하는 조치 계획이며 완료 여부는 미확인이다.")
+        query = "원인 조치"
+        forbidden = [f"hard-{family:02d}-{part}" for part in ("draft", "future")]
+        required_tools, forbidden_tools = ["find_incidents", "search_meeting_minutes"], []
+        if category.startswith("array_"):
+            mode = category.removeprefix("array_")
+            values = ["H-GEN-C"] if mode == "any" else ["H-GEN-A", "H-GEN-B"]
+            lookup["filters"]["product_generations"] = {"mode": mode, "values": values}
+            criteria += f", product_generations {mode} {values}"
+            ids = [group[index]["incident_id"] for index in {"exact": [0], "all": [0, 3], "any": [2, 3]}[mode]]
+        elif category == "ambiguous_candidates":
+            ids = [row["incident_id"] for row in group]
+        elif category == "no_match":
+            lookup["filters"]["department"] = "H-QA"
+            lookup["filters"]["product_generations"] = {"mode": "exact", "values": ["H-GEN-C"]}
+            criteria += ", 부서 H-QA, product_generations exact ['H-GEN-C']"
+            ids, chunks, status, facts = [], [], "unavailable", ["사고 없음"]
+            answer = "조건에 맞는 사고 없음. 사고 범위를 임의로 넓혀 회의록을 검색하지 않는다."
+            required_tools, forbidden_tools = ["find_incidents"], ["search_meeting_minutes"]
+        elif category != "independent_paraphrase":
+            lookup["filters"]["department"] = target["department"]
+            criteria += f", 부서 {target['department']}"
+            if category == "compound_filter":
+                del lookup["title"]
+                lookup["filters"]["title_terms"] = [target["title"].split()[0]]
+                criteria = criteria.replace("제목 " + target["title"], "제목에 " + target["title"].split()[0] + " 포함")
+            if category == "asof_guard":
+                as_of = (start.date() + timedelta(days=3)).isoformat()
+            if category == "synonym_gap":
+                query = "causal diagnosis remediation"
+        if len(ids) > 1:
+            chunks, status, facts = [], "needs_selection", [f"후보 {len(ids)}건", "선택 필요"]
+            answer = f"후보 {len(ids)}건이므로 선택 필요: " + ", ".join(ids) + ". 선택 전 후속 조회는 하지 않는다."
+            required_tools, forbidden_tools = ["find_incidents"], ["search_meeting_minutes"]
+        question = f"{criteria} 조건의 사고를 조회하고 {as_of}까지의 원인 가설, 확인 결과, 조치 수량과 완료 여부를 알려줘. 여러 후보면 먼저 선택을 요청해줘."
+        retrieval = {"incident_number": None, "query": query, "lookup": lookup}
+        if category == "independent_paraphrase":
+            index = family // 10
+            question, query, answer = [
+                ("독립 메모의 검교정 간격은 얼마나 되지?", "calibration cadence", "검교정 주기는 14일이며 승인된 설비 점검 범위에만 적용된다."),
+                ("독립 메모에서 샘플을 얼마나 오래 보관하라고 했어?", "sample retention", "샘플 보관 기간은 21일이고 사고 DB에는 연결되지 않는다."),
+                ("독립 메모의 교대 인수인계 마감 조건은?", "shift handoff", "교대 인수인계는 2회 확인으로 마감한다."),
+            ][index]
+            scope, as_of, ids = "independent", "2026-03-31", []
+            chunks, forbidden, facts = [f"hard-independent-{index:02d}"], [], [answer]
+            required_tools, forbidden_tools = ["search_meeting_minutes"], ["find_incidents", "list_incident_lots", "list_incident_wafers"]
+            retrieval = {"incident_number": None, "query": query}
+        cases.append({"id": f"hard-g-{family:03d}", "synthetic": True, "split": ("train", "dev", "test")[family // 10],
+                      "group_id": f"HF{family:02d}", "category": category, "question": question, "request_scope": scope,
+                      "as_of": as_of, "selected_incident_ids": [], "retrieval": retrieval,
+                      "expected": {"status": status, "incident_ids": ids, "required_chunk_ids": chunks,
+                                   "forbidden_chunk_ids": forbidden, "required_tools": required_tools,
+                                   "forbidden_tools": forbidden_tools, "answer_facts": facts, "reference_answer": answer}})
+    return cases
+
+
 def _publish(staged: Path, outputs: list[tuple[Path, str]]) -> None:
     for target, _ in outputs:
         if target.exists():
@@ -227,8 +440,10 @@ def _publish(staged: Path, outputs: list[tuple[Path, str]]) -> None:
         raise
 
 
-def generate(settings: Any) -> dict[str, Any]:
+def generate(settings: Any, profile: str = "basic") -> dict[str, Any]:
     """Create demo/test data and return absolute output paths and fixture counts."""
+    if profile not in ("basic", "hard"):
+        raise ValueError("unknown demo data profile: " + str(profile))
     environment = settings.data.get("environment")
     if environment not in _ENVIRONMENTS:
         raise ValueError("demo data generation is allowed only for environment demo or test")
@@ -254,11 +469,18 @@ def generate(settings: Any) -> dict[str, Any]:
     if any(path.exists() for path in outputs):
         raise FileExistsError("refusing to overwrite an existing demo-data output")
 
-    incident_rows = _incident_rows()
-    lot_rows = _lot_rows(incident_rows)
-    wafer_rows = _wafer_rows(lot_rows)
-    meeting_rows = _meeting_rows()
-    golden_rows = _goldens()
+    if profile == "hard":
+        incident_rows = _hard_incident_rows()
+        lot_rows = _hard_lot_rows(incident_rows)
+        wafer_rows = _hard_wafer_rows(lot_rows)
+        meeting_rows = _hard_meeting_rows(incident_rows)
+        golden_rows = _hard_goldens(incident_rows)
+    else:
+        incident_rows = _incident_rows()
+        lot_rows = _lot_rows(incident_rows)
+        wafer_rows = _wafer_rows(lot_rows)
+        meeting_rows = _meeting_rows()
+        golden_rows = _goldens()
     stage_parent = root if root.exists() else root.parent
     stage_parent.mkdir(parents=True, exist_ok=True)
     stage = Path(tempfile.mkdtemp(prefix=".demo-data-", dir=stage_parent))
@@ -272,4 +494,4 @@ def generate(settings: Any) -> dict[str, Any]:
         _publish(stage, output_targets)
     finally:
         shutil.rmtree(stage, ignore_errors=True)
-    return {"paths": {"database": str(incident_path), "meetings": str(meeting_path), "golden": str(golden_path)}, "counts": {"incidents": len(incident_rows), "lots": len(lot_rows), "wafers": len(wafer_rows), "meeting_chunks": len(meeting_rows), "golden_cases": len(golden_rows)}}
+    return {"profile": profile, "paths": {"database": str(incident_path), "meetings": str(meeting_path), "golden": str(golden_path)}, "counts": {"incidents": len(incident_rows), "lots": len(lot_rows), "wafers": len(wafer_rows), "meeting_chunks": len(meeting_rows), "golden_cases": len(golden_rows)}}

@@ -1,6 +1,6 @@
 """Runtime contracts with scripted model outputs and real synthetic databases."""
 import copy
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 import io
 import json
 from pathlib import Path
@@ -183,19 +183,21 @@ class AgentContracts(unittest.TestCase):
         self.assertEqual(router_after_judge['judge']['verdict'], 'need_evidence')
 
     def test_partial_query_match_reaches_judge_and_can_trigger_requery(self):
-        steps = [self.lookup(),
-                 ('router', plan(stage='tools', tool='search_meeting_minutes', arguments={'query': 'SYN absentword'})),
-                 ('router', plan('ready_for_judge', 'tools')),
-                 ('judge', lambda payload: judge(payload, 'need_evidence')),
-                 ('router', plan(stage='tools', tool='search_meeting_minutes', arguments={'query': '히터'})),
-                 *self.finish_steps()]
-        result, client = self.run_script(steps)
-        self.assertEqual(result['status'], 'answered', result)
-        first_review = next(payload for role, _, payload in client.calls if role == 'judge')
-        self.assertEqual(first_review['evidence'][-1]['result']['query_match']['strategy'], 'scoped_any_terms')
-        self.assertEqual(result['evidence'][-1]['result']['query_match']['strategy'], 'all_terms')
-        self.assertEqual(result['evidence'][-1]['result']['incident_ids'], ['synthetic-pk-2026-01'])
-        self.assertEqual(result['tool_calls'], 3)
+        for query, strategy in (('SYN absentword', 'scoped_any_terms'), ('SYN 히터', 'scoped_mixed_terms')):
+            with self.subTest(strategy=strategy):
+                steps = [self.lookup(),
+                         ('router', plan(stage='tools', tool='search_meeting_minutes', arguments={'query': query})),
+                         ('router', plan('ready_for_judge', 'tools')),
+                         ('judge', lambda payload: judge(payload, 'need_evidence')),
+                         ('router', plan(stage='tools', tool='search_meeting_minutes', arguments={'query': '히터'})),
+                         *self.finish_steps()]
+                result, client = self.run_script(steps)
+                self.assertEqual(result['status'], 'answered', result)
+                first_review = next(payload for role, _, payload in client.calls if role == 'judge')
+                self.assertEqual(first_review['evidence'][-1]['result']['query_match']['strategy'], strategy)
+                self.assertEqual(result['evidence'][-1]['result']['query_match']['strategy'], 'all_terms')
+                self.assertEqual(result['evidence'][-1]['result']['incident_ids'], ['synthetic-pk-2026-01'])
+                self.assertEqual(result['tool_calls'], 3)
 
     def test_selected_scope_never_admits_other_incident_minutes(self):
         step = ('router', plan(tool='find_incidents', arguments={'city': 'SYNTH-CITY'}, search_mode='sql_filter'))
@@ -257,6 +259,18 @@ class AgentContracts(unittest.TestCase):
             self.assertEqual(main(), 0)
         result = json.loads(output.getvalue())
         self.assertTrue(all(Path(path).parent == target for path in result['paths'].values()))
+
+    def test_hard_profile_is_explicit_and_only_used_for_generation(self):
+        from run_agent import main
+        output = io.StringIO()
+        with patch.object(sys, 'argv', ['run_agent.py', '--demo', '--mode', 'prepare-demo', '--demo-profile', 'hard']), \
+                patch('demo_data.generate', return_value={'synthetic': True}) as generate_mock, redirect_stdout(output):
+            self.assertEqual(main(), 0)
+        self.assertEqual(generate_mock.call_args.kwargs, {'profile': 'hard'})
+        with patch.object(sys, 'argv', ['run_agent.py', '--demo', '--mode', 'check', '--demo-profile', 'hard']), \
+                redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as error:
+            main()
+        self.assertEqual(error.exception.code, 2)
 
 
 if __name__ == '__main__':

@@ -6,6 +6,7 @@ It measures deterministic retrieval separately from live Router/Judge/Answer run
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
 import re
 import time
@@ -15,12 +16,13 @@ from datetime import date
 from pathlib import Path
 
 from meeting_tools import MeetingTools
+from incident_tools import IncidentTools
 from runtime_factory import open_incident_tools
 from skill_loader import compile_prompt
 
 
 _SPLITS = {"train", "dev", "test"}
-_STATUSES = {"answered", "partial", "unavailable", "needs_clarification"}
+_STATUSES = {"answered", "partial", "unavailable", "needs_clarification", "needs_selection"}
 _REQUIRED_EXPECTED = {
     "status", "incident_ids", "required_chunk_ids", "forbidden_chunk_ids",
     "required_tools", "forbidden_tools", "answer_facts", "reference_answer",
@@ -100,8 +102,20 @@ def _validate(records):
         number = retrieval.get("incident_number")
         if number is not None and (not isinstance(number, str) or not number.strip()):
             _fail(f"{label}.retrieval.incident_number: string or null required")
-        if record["request_scope"] == "incident" and not number:
-            _fail(f"{label}.retrieval.incident_number: required for incident scope")
+        lookup = retrieval.get("lookup")
+        if lookup is not None:
+            if not isinstance(lookup, dict) or not lookup or number is not None:
+                _fail(f"{label}.retrieval.lookup: nonempty object, mutually exclusive with incident_number")
+            try:
+                inspect.signature(IncidentTools.find_incidents).bind(None, "golden", **lookup)
+            except TypeError:
+                _fail(f"{label}.retrieval.lookup: unsupported Tool arguments")
+        if record["request_scope"] == "incident" and not number and lookup is None:
+            _fail(f"{label}.retrieval: incident_number or lookup required for incident scope")
+        if record["request_scope"] == "independent" and (number is not None or lookup is not None):
+            _fail(f"{label}.retrieval: independent scope cannot have an incident lookup")
+        if "category" in record and (not isinstance(record["category"], str) or not record["category"].strip()):
+            _fail(f"{label}.category: nonempty string required")
         selected = _strings(record.get("selected_incident_ids"), f"{label}.selected_incident_ids")
         expected = record.get("expected")
         if not isinstance(expected, dict) or not _REQUIRED_EXPECTED.issubset(expected):
@@ -120,6 +134,9 @@ def _validate(records):
             _fail(f"{label}.expected.reference_answer: string required")
         if record["request_scope"] == "independent" and (selected or expected["incident_ids"]):
             _fail(f"{label}: independent records cannot contain incident IDs")
+        if expected["status"] == "needs_selection" and (record["request_scope"] != "incident" or selected
+                or len(set(expected["incident_ids"])) < 2 or expected["required_chunk_ids"]):
+            _fail(f"{label}: needs_selection requires unselected incident candidates and no required chunks")
         for incident_id in set(selected) | set(expected["incident_ids"]):
             previous = incident_splits.setdefault(incident_id, record["split"])
             if previous != record["split"]:
@@ -172,6 +189,7 @@ def _config_meta(settings):
 
 def _case_base(record):
     return {"id": record["id"], "group_id": record["group_id"], "passed": False,
+            "category": record.get("category", "unspecified"),
             "failures": [], "llm_calls": 0, "tool_calls": 0, "seconds": 0.0}
 
 
@@ -235,15 +253,20 @@ def _retrieval_case(settings, record, query_source="annotated"):
         if record["request_scope"] == "incident":
             with open_incident_tools(settings) as db:
                 trace.append("find_incidents")
-                lookup = db.find_incidents("golden", incident_number=record["retrieval"].get("incident_number"))
-                if len(lookup.get("data", [])) > 1 and not record["selected_incident_ids"]:
-                    case["failures"].append("NEEDS_SELECTION")
+                arguments = record["retrieval"].get("lookup") or {"incident_number": record["retrieval"].get("incident_number")}
+                lookup = db.find_incidents("golden", **arguments)
+                needs_selection = len(lookup.get("data", [])) > 1 and not record["selected_incident_ids"]
+                if needs_selection or record["expected"]["status"] == "needs_selection":
+                    _compare_retrieval(record, lookup, {"items": []}, case)
+                    case["status"] = "needs_selection" if needs_selection else "selection_not_required"
+                    if not needs_selection or record["expected"]["status"] != "needs_selection":
+                        case["failures"].append("NEEDS_SELECTION" if needs_selection else "STATUS_MISMATCH")
                     case["tool_trace"] = trace
                     case["tool_calls"] = len(trace)
-                    case["unmeasured"] = ["expected.status", "expected.required_tools",
+                    case["unmeasured"] = ["expected.required_tools",
                                           "expected.forbidden_tools", "expected.answer_facts",
                                           "Router/Judge/Answer accuracy"]
-                    case["passed"] = False
+                    case["passed"] = not case["failures"]
                     case["seconds"] = round(time.monotonic() - started, 6)
                     return case
                 if record["selected_incident_ids"]:
