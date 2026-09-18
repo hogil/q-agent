@@ -1,8 +1,8 @@
 {
-  "release": "quality-demo-0.30",
+  "release": "quality-demo-0.31",
   "files": {
     "skills/core/SKILL.md": "6a259df0ada8f8a4e34f1bbdf89c522a4094c11f8a273a46109a0f7e25ca0feb",
-    "skills/core/references/react.md": "8c0685a29e9ba9178623c9458a3f8e68e59840e25322cfe27137585c03e02242",
+    "skills/core/references/react.md": "5208bb7e5d652853410ae938453d1e012ea77bc3c4217bbfa3a3dee794cd11fd",
     "skills/core/references/working-style.md": "e142a7f3d496dc7ab727dfa25dc6bbb10cc28b6d7a01db05553640abe1599391",
     "skills/roles/answer/SKILL.md": "008758922b4b16c242dddb4cdd3c29b14ad152d0a6ef561e9311358a832ff501",
     "skills/roles/answer/references/conditions.md": "2c5841cfa47bdb8feedb155e8a3c67c2833cc8cefdb7b6c4e5dba55a0fe623a3",
@@ -37,7 +37,7 @@
     "skills/schema/wafer-schema/SKILL.md": "e8a5f185d1a8d111c8f6490408c4a67038a44463ff69b38d4d4cecdf15fc4c0e",
     "skills/schema/wafer-schema/references/columns.json": "a53e3b4387abe203545aa56662be04e19765a54d4020c922724a8df6e3aa414c",
     "domain-data/README.md": "a71133988f6e5d858891d9a5beb9d7a317a1ac0b5cdb345cc36f70a1df024cc3",
-    "skill_registry.json": "5e37478fd517f940d05dc651c4bd96dbc659403a6c7096315d3c5b03ed4aa3c2",
+    "skill_registry.json": "02d51f5e23f49339ad205ff080d2b3f96129e26a1eeaa300b3f5fe9828de0091",
     "incident_tools.py": "789d523dbdcb9944332d5a550a1631115457c4dea6ad9ecf0e3b3585f18cb172",
     "incident_filters.py": "bc10eed273d0ca59487fb582d6ba85e51f32de433001c399ab8f65943508084e",
     "terminology.py": "33e7e35520653a3f0751d690855d70b2de99ba86b9351d1e1c48548ddff722b1",
@@ -46,8 +46,8 @@
     "config_loader.py": "9313ea75182f267fb5a8969f45e78c9806fe14f7a94c6a7285869ac57b659f57",
     "runtime_factory.py": "c28e4edd991635e6b1b39c9f29f586cf6b0159b9957eae77e8e5b42d1655bc50",
     "run_agent.py": "0cb45b19546aa84d419975bf56c29149c42bccaba5f233572482a376d7637ed8",
-    "agent.py": "350f84a3c798802c116a6e643346b5d58054a373d34fc4f6481ac520019dd975",
-    "llm_client.py": "b22b6c47dc0a07117d9c0f186d29dcc767da3b2c3024006b02943421157b77ee",
+    "agent.py": "b952f27001424f0f33eba041bc213d7a7f345bd0bed2f7cfb92d7e5c468e6879",
+    "llm_client.py": "a047f9ceb94fd44dc7dc325e47515c3b6bdbeab7b5556a76a49fcc134b40c251",
     "meeting_tools.py": "3189f1a106490236b1d28e89b9ffeec6d0a55c3223154a043e1c7b6e0262101a",
     "demo_data.py": "24388ba61024a9f5cc4c468de4083aaf390b12cc9106cdf58f0befba363d3e23",
     "golden.py": "dac13edce02bdfeaafcfb0ce831adfb93156778ead1bdffef42167567192c31d"

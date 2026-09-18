@@ -44,12 +44,14 @@ class ScriptedClient:
     def __init__(self, steps):
         self.steps = iter(steps)
         self.calls = []
+        self.histories = []
 
     def call(self, role, system_prompt, payload, history):
         expected_role, output = next(self.steps)
         if role != expected_role:
             raise AssertionError((role, expected_role))
         self.calls.append((role, system_prompt, copy.deepcopy(payload)))
+        self.histories.append(copy.deepcopy(history))
         output = output(payload) if callable(output) else output
         call_id = 'call-' + str(len(self.calls)) if role == 'router' else None
         if role == 'router':
@@ -181,6 +183,114 @@ class AgentContracts(unittest.TestCase):
         router_after_judge = client.calls[3][2]
         self.assertTrue(router_after_judge['scope_valid'])
         self.assertEqual(router_after_judge['judge']['verdict'], 'need_evidence')
+        self.assertEqual(router_after_judge['evidence'], client.calls[2][2]['evidence'])
+        self.assertEqual([item['role'] for item in client.histories[3]], ['assistant', 'tool', 'assistant', 'tool'])
+
+    def test_tool_history_contains_receipts_and_keeps_full_evidence_once(self):
+        steps = [self.lookup(),
+                 ('router', plan(stage='tools', tool='search_meeting_minutes', arguments={'query': 'SYN'})),
+                 *self.finish_steps()]
+        result, client = self.run_script(steps)
+        self.assertEqual(result['status'], 'answered', result)
+        receipts = [json.loads(item['content'])['observations'][0]
+                    for item in client.histories[2] if item['role'] == 'tool']
+        self.assertEqual(receipts, [
+            {'tool': 'find_incidents', 'evidence_id': 'e1', 'status': 'OK'},
+            {'tool': 'search_meeting_minutes', 'evidence_id': 'e2', 'status': 'OK'}])
+        for index in (2, 3, 4):
+            self.assertEqual(client.calls[index][2]['evidence'], result['evidence'])
+        self.assertEqual(client.histories[3:], [[], []])
+        history_text = json.dumps(client.histories[2], ensure_ascii=False)
+        for item in result['evidence'][-1]['result']['items']:
+            self.assertNotIn(item['text'], history_text)
+
+    def test_payload_keeps_tool_availability_but_not_duplicate_schemas(self):
+        self.settings.data['value_matching']['enabled'] = False
+        self.settings.data['meetings']['enabled'] = False
+        result, client = self.run_script([self.lookup(), *self.finish_steps()])
+        self.assertEqual(result['status'], 'answered', result)
+        catalog = agent.read_role_reference('router', 'tools.json',
+            self.settings.data['paths']['skills_root'], self.settings.data['paths']['registry_file'])
+        expected = {name: {key: value for key, value in spec.items() if key != 'parameters'}
+                    for name, spec in catalog.items()}
+        expected['match_incident_values']['enabled'] = False
+        expected['search_meeting_minutes']['enabled'] = False
+        for role, prompt, payload in client.calls:
+            self.assertEqual(payload['available_tools'], expected)
+            if role == 'router':
+                self.assertIn(json.dumps(catalog, ensure_ascii=False, separators=(',', ':')), prompt)
+
+    def test_independent_payload_preserves_runtime_stage(self):
+        step = ('router', {**plan('blocked', 'independent'), 'limitations': ['not available']})
+        self.settings.data['meetings']['enabled'] = False
+        _, client = self.run_script([step], request_scope='independent')
+        available = client.calls[0][2]['available_tools']
+        self.assertEqual(set(available), {'search_meeting_minutes'})
+        self.assertEqual(available['search_meeting_minutes']['stage'], 'independent')
+        self.assertFalse(available['search_meeting_minutes']['enabled'])
+        self.assertNotIn('parameters', available['search_meeting_minutes'])
+
+    def test_new_lookup_drops_previous_scope_from_model_history(self):
+        steps = [self.lookup(),
+                 ('router', plan(stage='tools', tool='search_meeting_minutes', arguments={'query': 'SYN'})),
+                 self.lookup('SYN-2026-06'), *self.finish_steps()]
+        result, client = self.run_script(steps)
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertEqual([item['role'] for item in client.histories[3]], ['assistant', 'tool'])
+        self.assertNotIn('SYN-2026-01', json.dumps(client.histories[3]))
+        self.assertEqual(client.calls[3][2]['evidence_ids'], ['e3'])
+        self.assertIsNone(client.calls[3][2]['judge'])
+
+    def test_judge_revise_clears_history_and_invalid_evidence_references(self):
+        steps = [self.lookup(), ('router', plan('ready_for_judge', 'tools')),
+                 ('judge', lambda payload: judge(payload, 'revise')),
+                 self.lookup('SYN-2026-06'), *self.finish_steps()]
+        result, client = self.run_script(steps)
+        self.assertEqual(result['status'], 'answered', result)
+        retry = client.calls[3][2]
+        self.assertFalse(retry['scope_valid'])
+        self.assertIsNone(retry['scope_id'])
+        self.assertEqual(retry['evidence'], [])
+        self.assertEqual(client.histories[3], [])
+        self.assertEqual(retry['judge']['verdict'], 'revise')
+        self.assertEqual(retry['judge']['coverage'], [])
+        self.assertEqual(retry['judge']['issues'][0]['evidence_ids'], [])
+        self.assertEqual(retry['judge']['issues'][0]['next_action'], 'retrieve another passage')
+        self.assertIsNone(client.calls[4][2]['judge'])
+        self.assertEqual(client.calls[4][2]['evidence_ids'], ['e2'])
+
+    def test_expired_scope_keeps_only_pending_call_and_error_receipt(self):
+        steps = [self.lookup(), ('router', plan(stage='tools', tool='list_incident_lots')),
+                 self.lookup('SYN-2026-06'), *self.finish_steps()]
+        with patch.object(agent.IncidentTools, 'list_incident_lots', side_effect=ToolError('SCOPE_EXPIRED')):
+            result, client = self.run_script(steps)
+        self.assertEqual(result['status'], 'answered', result)
+        retry = client.calls[2][2]
+        self.assertEqual(retry['evidence'], [])
+        self.assertEqual(retry['last_error'], 'SCOPE_EXPIRED')
+        self.assertEqual(retry['code_gate'], 'FAIL')
+        history = client.histories[2]
+        self.assertEqual([item['role'] for item in history], ['assistant', 'tool'])
+        self.assertEqual(history[0]['tool_calls'][0]['id'], history[1]['tool_call_id'])
+        self.assertEqual(json.loads(history[1]['content']), {'error': 'SCOPE_EXPIRED'})
+        self.assertNotIn('SYN-2026-01', json.dumps(history))
+        self.assertEqual(result['tool_calls'], 3)
+
+    def test_failed_new_lookup_cannot_restore_old_evidence(self):
+        original = agent.IncidentTools.find_incidents
+        def find(db, actor, **arguments):
+            if arguments.get('incident_number') == 'SYN-2026-06':
+                raise ToolError('SYNTHETIC_QUERY_FAILURE')
+            return original(db, actor, **arguments)
+        steps = [self.lookup(), self.lookup('SYN-2026-06'),
+                 ('router', {**plan('blocked'), 'limitations': ['query failed']})]
+        with patch.object(agent.IncidentTools, 'find_incidents', find):
+            result, client = self.run_script(steps)
+        self.assertEqual(result['status'], 'unavailable')
+        self.assertEqual(result['evidence'], [])
+        self.assertEqual(client.calls[2][2]['code_gate'], 'FAIL')
+        self.assertEqual(len(client.histories[2]), 2)
+        self.assertNotIn('SYN-2026-01', json.dumps(client.histories[2]))
 
     def test_partial_query_match_reaches_judge_and_can_trigger_requery(self):
         for query, strategy in (('SYN absentword', 'scoped_any_terms'), ('SYN 히터', 'scoped_mixed_terms')):

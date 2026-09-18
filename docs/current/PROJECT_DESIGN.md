@@ -55,6 +55,23 @@ Response: `{"retrieval_method":"remote_hybrid","items":[...]}`. 각 item은 위 
 원본 위치는 `D:\project\q-agent\app\skills\`, 조립기는 `D:\project\q-agent\app\skill_loader.py`다.
 Skill/코드 변경 시 해시가 달라져 실행이 중단된다. 검토 후 명시적으로 freeze해야 한다.
 
+### Router 메모리와 입력 구성
+
+`D:\project\q-agent\app\agent.py`의 `run()` 안에서 state, evidence, history를 관리한다. 별도 `run()` 호출에는 이어지지 않는다. 모델 서버에 대화가 저장된다고 가정하지 않는다.
+
+| 입력 | 현재 전달 방식 |
+|---|---|
+| 시스템 프롬프트 | 역할별로 조립해 요청마다 한 번 전달. 이전 시스템 메시지를 history에 누적하지 않음 |
+| 현재 payload | 질문·scope·예산·Judge 피드백과 전체 유효 evidence |
+| Router history | assistant의 submit_plan과 대응 Tool 응답. 성공 조회는 tool/evidence_id/status만 기록 |
+| Judge/Answer | 각각 자기 시스템 프롬프트와 현재 payload. Router history는 전달하지 않음 |
+| Tool 계약 | Router Skill의 tools.json에 인자 스키마. payload에는 실제 enabled/stage/search_modes만 전달 |
+
+코드의 Tool 인자 검증에는 전체 스키마를 계속 사용한다. 원문은 요약하거나 자르지 않고 evidence와 감사용 events에 보존한다. events는 모델 입력이 아니다.
+새 사고 조회·scope 만료·Judge revise는 기존 evidence/history를 무효화한다. 실행 중인 함수 호출은 대응하는 성공/오류 응답까지 남긴다. revise의 issues는 재조회 지침만 유지하고 이전 evidence ID와 coverage는 제거한다. need_evidence는 현재 scope와 근거를 유지한다.
+
+`D:\project\q-agent\app\llm_client.py`는 payload와 함수 인자 JSON의 불필요한 공백을 줄인다. max_context_characters 검사는 Tool 스키마를 포함한 전체 요청에 적용하고 초과 시 전송 전에 중단한다. 문자 수 검사는 모델별 토큰 한도를 보장하지 않으며, 프롬프트 캐시나 실제 비용 절감도 별도 측정해야 한다.
+
 **예시를 넣는 것은 허용한다.** 사고의 정답 암기보다 Tool 선택, 필터 보존, 근거 판정, 답변 표현을 보여준다.
 Router/Judge/Answer의 `references/examples.md`에 역할별 예시를 두고 `runtime.prompt_examples`로 추가 로딩을 비교한다.
 기존 `conditions.md`는 양쪽에 남으므로 "예시 전혀 없음" 비교가 아니라 "추가 few-shot 없음/있음" 비교다.
@@ -178,6 +195,26 @@ release `quality-demo-0.30`에서 요약 하나의 전체 검색어 일치가 �
 보고서: `D:\project\q-agent\var\output\hard-retrieval-20260918\comparison-dev-annotated.json`.
 전체 실험 폴더: `D:\project\q-agent\var\output\hard-retrieval-20260918\`.
 검증: 회귀 테스트 59개, 192개 사고의 Lot/Wafer 원본 행 대조, 프롬프트 조합 76개(최대 31,842자), Skill 형식 14개, 기존 기본 검색 계약 17/17.
+
+### Router 입력 최적화
+
+release `quality-demo-0.31`은 세 차례 수정·검증했다. 1차는 Tool 결과 이중 전달 제거, 2차는 scope 무효화 처리 통합과 오래된 history 제거, 3차는 Tool 인자 스키마 중복 제거·JSON 압축·전체 요청 길이 검사다. 공통 ReAct Skill도 함께 수정하고 명시적으로 freeze했다.
+
+실제 합성 SQLite Adapter와 RoleClient의 요청 구성을 실행하되 API 응답은 고정 mock으로 대체했다. 아래 값은 모든 역할 호출의 **요청 JSON 직렬화 문자 수 합계**이며 토큰·비용·지연 측정값이 아니다.
+
+| 시나리오 | 변경 전 | 1차 | 2차 | 3차 | 감소 |
+|---|---:|---:|---:|---:|---:|
+| 사고 → Lot → Wafer → 회의록 | 276,228 | 263,760 | 262,276 | 251,048 | 9.12% |
+| 회의록 반복 조회 | 504,344 | 461,965 | 458,421 | 437,168 | 13.32% |
+| 다른 사고로 재조회 | 235,300 | 227,787 | 223,679 | 213,591 | 9.23% |
+| Judge revise 후 재조회 | 300,281 | 291,168 | 282,849 | 269,978 | 10.09% |
+
+위 네 시나리오의 LLM/Tool 호출 수와 최종 근거 해시는 동일하다. 해시 비교에서는 실행마다 달라지는 scope_id와 임시 경로의 영향을 받는 mapping_version만 제외했다. 큰 회의록을 반복 조회하는 별도 사례는 변경 전 MODEL_CONTEXT_LIMIT으로 중단됐지만 변경 후 전체 흐름이 완료됐다. 완료 작업량이 달라 이 사례의 총량 감소율은 계산하지 않는다.
+
+최종 벤치마크 3회에서 수치·근거 해시가 일치했다. 테스트 78개, 프롬프트 조합 76개(최대 31,900자), Skill 형식 14개가 통과했다. 기본 검색 계약은 17/17, hard 검색은 각 split에서 지정 검색어 13/16·질문 원문 15/16의 필수 chunk recall을 유지했다. 기존 어휘 불일치 실패는 남아 있으며 실제 모델의 답변 Token Recall은 미측정이다. 원문 근거 보존이 모델 행동의 동일성을 보장하지는 않는다.
+
+보고서: `D:\project\q-agent\var\output\router-memory-20260918\summary.json`.
+실험 요청·로그: `D:\project\q-agent\var\output\router-memory-20260918\`. 합성 데이터 전용이며 Git에 올리지 않는다.
 
 ## 다음 개선
 

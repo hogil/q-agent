@@ -59,7 +59,16 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
 
     def observe(call_id, result):
         history.append({'role': 'tool', 'tool_call_id': call_id,
-                        'content': json.dumps(result, ensure_ascii=False)})
+                        'content': json.dumps(result, ensure_ascii=False, separators=(',', ':'))})
+
+    def invalidate_scope(keep_pending=False):
+        nonlocal lot_checked
+        state.update(scope_id=None, scope_valid=False, incident_checked=False, judge=None)
+        evidence.clear()
+        topics.discard('terminology')
+        lot_checked = False
+        # The pending call still needs its matching tool response, even after failure.
+        history[:] = history[-1:] if keep_pending and history and history[-1]['role'] == 'assistant' else []
 
     def ask(role):
         nonlocal calls
@@ -68,7 +77,9 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
         prompt = compile_prompt(role, sorted(topics), settings=settings, shared_topics=True)
         payload = {'question': question, **state, 'evidence': evidence,
                    'evidence_ids': [item['id'] for item in evidence],
-                   'available_tools': catalog, 'mapped_fields': context()['mapped_fields'],
+                   'available_tools': {name: {key: value for key, value in spec.items() if key != 'parameters'}
+                                       for name, spec in catalog.items()},
+                   'mapped_fields': context()['mapped_fields'],
                    'loaded_topics': prompt['topics']}
         calls += 1
         event('llm_start', role=role, step=calls, release=prompt['release'],
@@ -127,10 +138,7 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                     result = db.match_incident_values(actor, question)
                 elif name == 'find_incidents':
                     # A new search invalidates previous evidence, even if it fails.
-                    state.update(scope_id=None, scope_valid=False, incident_checked=False)
-                    evidence.clear()
-                    topics.discard('terminology')
-                    lot_checked = False
+                    invalidate_scope(keep_pending=True)
                     result = db.find_incidents(actor, **arguments)
                     if len(result['data']) > 1 and not selected:
                         result = {**result, 'requires_selection': True, 'status': 'NEEDS_SELECTION'}
@@ -193,7 +201,8 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                                 compile_prompt(role, sorted(topics | {needed}), settings=settings, shared_topics=True)
                             topics.add(needed)
                         result = invoke(name, **arguments)
-                        observe(call_id, {'observations': [{'tool': name, 'result': result}]})
+                        observe(call_id, {'observations': [{'tool': name, 'evidence_id': result['id'],
+                                                          'status': result['result'].get('status')}]})
                         if state['incident_checked'] and not state['scope_valid']:
                             return finish('needs_selection', candidates=evidence[-1]['result']['data'])
                     elif decision == 'load_skills':
@@ -220,9 +229,9 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                             if revisions > limits['max_answer_revisions']:
                                 return finish('unavailable', limitations=['JUDGE_REVISION_LIMIT'])
                             if judge['verdict'] == 'revise':
-                                state.update(scope_id=None, scope_valid=False, incident_checked=False)
-                                evidence.clear()
-                                lot_checked = False
+                                invalidate_scope()
+                                state['judge'] = {**judge, 'coverage': [],
+                                                  'issues': [{**issue, 'evidence_ids': []} for issue in judge['issues']]}
                             continue
                         answer, _ = ask('answer')
                         validate_output('answer', answer, {**context(), 'judge_verdict': judge['verdict']})
@@ -237,12 +246,10 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                     if isinstance(exc, (ToolError, ConfigError, sqlite3.Error)):
                         state['code_gate'] = 'FAIL'
                     if isinstance(exc, ToolError) and 'SCOPE_EXPIRED' in error:
-                        state.update(scope_id=None, scope_valid=False, incident_checked=False)
-                        evidence.clear()
-                        lot_checked = False
+                        invalidate_scope(keep_pending=True)
                     event('validation_or_tool_error', error=error)
                     # Only a pending Router function call needs a tool response.
-                    if history[-1]['role'] == 'assistant':
+                    if history and history[-1]['role'] == 'assistant':
                         observe(call_id, {'error': error})
                     if errors > limits['max_retries'] or state['judge'] is not None and state['judge']['return_to'] == 'answer':
                         return finish('unavailable', limitations=[error])
