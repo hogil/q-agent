@@ -215,6 +215,9 @@ class AgentContracts(unittest.TestCase):
                     for name, spec in catalog.items()}
         expected['match_incident_values']['enabled'] = False
         expected['search_meeting_minutes']['enabled'] = False
+        expected['list_comparison_assets']['enabled'] = False
+        expected['compare_sem_images']['enabled'] = False
+        expected['compare_overlay_maps']['enabled'] = False
         for role, prompt, payload in client.calls:
             self.assertEqual(payload['available_tools'], expected)
             if role == 'router':
@@ -381,6 +384,144 @@ class AgentContracts(unittest.TestCase):
                 redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as error:
             main()
         self.assertEqual(error.exception.code, 2)
+
+    def enable_image_tools(self, sem=True, overlay=True):
+        for name, enabled in (('sem', sem), ('overlay', overlay)):
+            config = self.settings.data['image_tools'][name]
+            config.update(enabled=enabled, endpoint=f'http://127.0.0.1:9100/{name}',
+                          served_model=f'test-{name}-model')
+
+    def test_image_comparison_runs_after_incident_and_lot_for_both_modalities(self):
+        for modality, compare_name in (('sem', 'compare_sem_images'),
+                                       ('overlay', 'compare_overlay_maps')):
+            with self.subTest(modality=modality):
+                self.enable_image_tools()
+                asset_ids = [f'{modality}-asset-1', f'{modality}-asset-2']
+                asset_version = f'{modality}-assets-v1'
+                compare_version = f'{modality}-compare-v1'
+
+                def list_assets(*args, **kwargs):
+                    return {
+                        'status': 'OK',
+                        'provenance': {'source': 'synthetic-image-adapter', 'version': asset_version},
+                        'assets': [{'asset_id': asset_id, 'modality': modality} for asset_id in asset_ids],
+                    }
+
+                def compare(*args, **kwargs):
+                    return {
+                        'request_id': f'{modality}-request-1',
+                        'model': f'test-{modality}-model',
+                        'model_version': compare_version,
+                        'item': 'SYNTH-ITEM',
+                        'modality': modality,
+                        'asset_ids': kwargs['asset_ids'],
+                        'asset_revisions': ['r1', 'r2'],
+                        'status': 'OK',
+                        'alignment_verified': True,
+                        'similarity': 0.98,
+                        'findings': ['synthetic comparison'],
+                        'limitations': [],
+                        'artifact_ids': ['artifact-1'],
+                        'provenance': {
+                            'status': 'OK',
+                            'score_type': 'model_similarity',
+                            'model_score': 0.98,
+                            'validated_asset_metadata': [],
+                        },
+                    }
+
+                def review(payload):
+                    comparison = payload['evidence'][-1]
+                    self.assertEqual(comparison['source'], compare_name)
+                    self.assertEqual(comparison['result']['model_version'], compare_version)
+                    self.assertEqual(comparison['result']['provenance']['model_score'], 0.98)
+                    return judge(payload)
+
+                steps = [
+                    self.lookup(),
+                    ('router', plan(stage='tools', tool='list_incident_lots')),
+                    ('router', plan(stage='tools', tool='list_comparison_assets',
+                                    arguments={'item': 'SYNTH-ITEM', 'modality': modality})),
+                    ('router', plan(stage='tools', tool=compare_name,
+                                    arguments={'item': 'SYNTH-ITEM', 'asset_ids': asset_ids})),
+                    ('router', plan('ready_for_judge', 'tools')),
+                    ('judge', review),
+                    ('answer', answer),
+                ]
+                with patch.object(agent.ImageTools, 'list_comparison_assets', autospec=True,
+                                  side_effect=list_assets) as list_mock, \
+                     patch.object(agent.ImageTools, compare_name, autospec=True,
+                                  side_effect=compare) as compare_mock:
+                    result, client = self.run_script(steps)
+
+                self.assertEqual(result['status'], 'answered', result)
+                self.assertEqual([role for role, _, _ in client.calls],
+                                 ['router', 'router', 'router', 'router', 'router', 'judge', 'answer'])
+                self.assertEqual([item['source'] for item in result['evidence']],
+                                 ['find_incidents', 'list_incident_lots', 'list_comparison_assets', compare_name])
+                self.assertTrue(all(client.calls[0][2]['available_tools'][name]['enabled']
+                                    for name in ('list_comparison_assets', 'compare_sem_images', 'compare_overlay_maps')))
+                self.assertTrue(any('images' in payload['loaded_topics']
+                                    for role, _, payload in client.calls if role == 'router'))
+                list_mock.assert_called_once()
+                compare_mock.assert_called_once()
+                self.assertEqual(list_mock.call_args.kwargs['as_of'], '2026-03-31')
+                self.assertEqual(compare_mock.call_args.kwargs['as_of'], '2026-03-31')
+                self.assertIn('tester', compare_mock.call_args.args)
+                self.assertIn(result['scope_id'], compare_mock.call_args.args)
+
+    def test_disabled_image_comparison_is_never_invoked(self):
+        self.enable_image_tools(sem=False, overlay=True)
+        asset_result = {'status': 'OK', 'provenance': {'version': 'overlay-assets-v1'}, 'assets': []}
+        steps = [
+            self.lookup(),
+            ('router', plan(stage='tools', tool='list_incident_lots')),
+            ('router', plan(stage='tools', tool='list_comparison_assets',
+                            arguments={'item': 'SYNTH-ITEM', 'modality': 'sem'})),
+            ('router', plan(stage='tools', tool='compare_sem_images',
+                            arguments={'item': 'SYNTH-ITEM',
+                                       'asset_ids': ['sem-asset-1', 'sem-asset-2']})),
+            ('router', {**plan('blocked', 'tools'), 'limitations': ['disabled image tool']}),
+        ]
+        with patch.object(agent.ImageTools, 'list_comparison_assets', autospec=True,
+                          return_value=asset_result) as list_mock, \
+             patch.object(agent.ImageTools, 'compare_sem_images', autospec=True) as compare_mock:
+            result, client = self.run_script(steps)
+
+        self.assertEqual(result['status'], 'unavailable', result)
+        self.assertFalse(client.calls[0][2]['available_tools']['compare_sem_images']['enabled'])
+        list_mock.assert_called_once()
+        compare_mock.assert_not_called()
+
+    def test_image_tools_are_blocked_without_incident_or_lot_scope(self):
+        self.enable_image_tools()
+        image_step = ('router', plan(stage='tools', tool='list_comparison_assets',
+                                     arguments={'item': 'SYNTH-ITEM', 'modality': 'sem'}))
+        blocked = ('router', {**plan('blocked', 'tools'), 'limitations': ['prerequisite required']})
+        for label, steps in (
+                ('no incident', [self.lookup('SYN-2026-99'), image_step, blocked]),
+                ('no lot', [self.lookup(), image_step, blocked])):
+            with self.subTest(scope=label), \
+                 patch.object(agent.ImageTools, 'list_comparison_assets', autospec=True) as list_mock:
+                result, _ = self.run_script(steps)
+            self.assertEqual(result['status'], 'unavailable', result)
+            self.assertEqual(result['tool_calls'], 1)
+            list_mock.assert_not_called()
+
+    def test_image_tool_cannot_override_actor_scope_or_as_of(self):
+        self.enable_image_tools()
+        for key, value in (('actor', 'attacker'), ('scope_id', 'forged-scope'), ('as_of', '2099-01-01')):
+            with self.subTest(argument=key), patch.object(agent.ImageTools, 'compare_sem_images', autospec=True) as compare_mock:
+                bad_step = ('router', plan(stage='tools', tool='compare_sem_images', arguments={
+                    'item': 'SYNTH-ITEM', 'asset_ids': ['sem-asset-1'], key: value}))
+                steps = [self.lookup(),
+                         ('router', plan(stage='tools', tool='list_incident_lots')),
+                         bad_step, bad_step, bad_step,
+                         ('router', {**plan('blocked', 'tools'), 'limitations': ['caller identity override']})]
+                result, _ = self.run_script(steps)
+            self.assertEqual(result['status'], 'unavailable', result)
+            self.assertEqual(result['tool_calls'], 2)
+            compare_mock.assert_not_called()
 
 
 if __name__ == '__main__':

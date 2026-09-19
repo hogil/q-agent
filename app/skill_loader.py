@@ -19,7 +19,7 @@ def release_files(root,settings=None):
   for f in sorted(paths[key].rglob('*'),key=lambda f:f.relative_to(paths[key]).as_posix()):
    if f.is_file():files[label+'/'+f.relative_to(paths[key]).as_posix()]=f
  files['skill_registry.json']=paths['registry_file']
- for name in ['incident_tools.py','incident_filters.py','terminology.py','prompt_contracts.py','skill_loader.py','config_loader.py','runtime_factory.py','run_agent.py','agent.py','llm_client.py','meeting_tools.py','demo_data.py','golden.py']:
+ for name in ['incident_tools.py','incident_filters.py','terminology.py','prompt_contracts.py','skill_loader.py','config_loader.py','runtime_factory.py','run_agent.py','agent.py','llm_client.py','meeting_tools.py','image_tools.py','demo_data.py','golden.py']:
   files[name]=root/name
  return files
 def freeze(root=P,settings=None):
@@ -32,6 +32,14 @@ def read_role_reference(role,filename,skills_root,registry_file):
  registry=json.loads(Path(registry_file).read_text(encoding='utf-8'))
  folder=registry['roles'][role]
  return json.loads((Path(skills_root)/folder/'references'/filename).read_text(encoding='utf-8'))
+
+def compact_schema(document):
+ columns=document['columns']
+ if not columns:return document
+ fields=list(next(iter(columns.values())))
+ if any(set(value)!=set(fields) for value in columns.values()):return document
+ return {**document,'column_fields':fields,
+         'columns':{name:[value[field] for field in fields] for name,value in columns.items()}}
 
 def compile_prompt(role,topics,root=P,settings=None,shared_topics=False):
  paths=locations(root,settings)
@@ -65,6 +73,7 @@ def compile_prompt(role,topics,root=P,settings=None,shared_topics=False):
      if settings and (entity not in settings.data['tables'] or set(document['columns'])!=set(settings.data['tables'][entity]['columns'])):
       raise ValueError('SCHEMA_MAPPING_MISMATCH: '+entity)
      entities.append(entity)
+     document=compact_schema(document)
     content=json.dumps(document,ensure_ascii=False,separators=(',',':'))
    parts.append('['+label+']\n'+content);loaded.append(label)
  if settings and entities:

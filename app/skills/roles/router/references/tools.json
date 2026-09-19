@@ -26,6 +26,27 @@
       }
     }
   },
+  "list_comparison_assets": {
+    "enabled": true, "stage": "tools",
+    "parameters": {
+      "type": "object", "additionalProperties": false, "required": ["item", "modality"],
+      "properties": {"item": {"type": "string"}, "modality": {"type": "string", "enum": ["sem", "overlay"]}}
+    }
+  },
+  "compare_sem_images": {
+    "enabled": true, "stage": "tools",
+    "parameters": {
+      "type": "object", "additionalProperties": false, "required": ["item", "asset_ids"],
+      "properties": {"item": {"type": "string"}, "asset_ids": {"type": "array", "items": {"type": "string"}}}
+    }
+  },
+  "compare_overlay_maps": {
+    "enabled": true, "stage": "tools",
+    "parameters": {
+      "type": "object", "additionalProperties": false, "required": ["item", "asset_ids"],
+      "properties": {"item": {"type": "string"}, "asset_ids": {"type": "array", "items": {"type": "string"}}}
+    }
+  },
   "list_incident_lots": {
     "enabled": true, "stage": "tools",
     "parameters": {

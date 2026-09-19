@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import mimetypes
 import re
@@ -25,6 +26,7 @@ from demo_data import generate  # noqa: E402
 from incident_tools import ToolError  # noqa: E402
 from meeting_tools import MeetingTools  # noqa: E402
 from runtime_factory import open_incident_tools  # noqa: E402
+from detection_workflow import DetectionWorkflow  # noqa: E402
 
 
 MAX_BODY = 64 * 1024
@@ -179,6 +181,7 @@ class Workbench:
         self.lock = threading.RLock()
         self.chat_db.parent.mkdir(parents=True, exist_ok=True)
         self._init_chat_db()
+        self.monitor = DetectionWorkflow(self.chat_db, self._analyze_detection)
         if not self._rooms():
             incidents = self._incidents()
             if incidents:
@@ -294,6 +297,53 @@ class Workbench:
         return {"synthetic": True, "mode": "demo", "llm_connected": False,
                 "incidents": self._incidents(), "rooms": [_summary(row) for row in self._rooms()],
                 "release": self.release}
+
+    def monitoring(self):
+        value = self.monitor.snapshot()
+        value["image_tools"] = {name: {"configured": cfg["enabled"], "model": cfg["served_model"],
+                                        "connection_verified": False}
+                                for name, cfg in self.settings.data["image_tools"].items()}
+        return value
+
+    def replay_detection(self, body):
+        if not isinstance(body, dict) or set(body) != {"context", "comparison"}:
+            raise WorkbenchError("context and comparison are required")
+        supplied = body["context"]
+        if not isinstance(supplied, dict):
+            raise WorkbenchError("invalid detection context")
+        context = self._validate_analysis_context(supplied, supplied.get("incident_number"))
+        context["wafers"].sort(key=lambda row: (row["lot_id"], row["wafer_id"]))
+        comparison = body["comparison"]
+        if not isinstance(comparison, dict) or set(comparison) != {"item", "a", "b"} or comparison["item"] != context["item"]:
+            raise WorkbenchError("comparison must use the selected item")
+        pair = [comparison["a"], comparison["b"]]
+        if any(not isinstance(row, dict) or set(row) != {"lot_id", "wafer_id"} for row in pair) or pair[0] == pair[1]:
+            raise WorkbenchError("two distinct registered comparison wafers required")
+        self._validate_analysis_context({**context, "wafers": pair}, context["incident_number"])
+        payload = {"source": "synthetic_replay", "model_id": "synthetic-event-fixture", "model_version": "1",
+                   "item": context["item"], "score": 0.96, "threshold": 0.9, "context": context, "comparison": comparison}
+        digest = hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+        try:
+            return self.monitor.submit({"event_id": "demo-" + digest, **payload})
+        except ValueError as exc:
+            raise WorkbenchError(str(exc)) from None
+
+    def _analyze_detection(self, event):
+        context = event["context"]
+        room_id = "detection-" + hashlib.sha256(event["event_id"].encode()).hexdigest()[:32]
+        with self.lock, self._db() as db:
+            db.execute("INSERT OR IGNORE INTO rooms VALUES (?,?,?,?)", (room_id,
+                       "합성 감지 · " + context["item"], context["incident_number"], _now()))
+        with self.lock:
+            scope = self._analysis_scope(room_id)
+            if self._room(room_id)["incident_number"] != context["incident_number"] or (scope is not None and scope["context"] != context):
+                raise WorkbenchError("detection analysis room scope changed")
+            if scope is None:
+                self.analysis(room_id, {"content": "합성 감지 이벤트 자동 조회. 실제 모델 판정이나 생산 조치가 아닙니다.",
+                                       "sources": ["incident", "meetings", "sem", "maps", "trend"], "context": context})
+        return {"room_id": room_id, "analysis_mode": "demo", "model_inference": False,
+                "comparison": event["comparison"], "comparison_status": "image_models_not_invoked",
+                "action": "엔지니어 검토 요청", "production_executed": False}
 
     def workspace(self, incident_number):
         return self._workspace(incident_number)
@@ -710,6 +760,17 @@ class Handler(BaseHTTPRequestHandler):
 
     def _api(self, method, parts):
         if parts == ["api", "bootstrap"] and method == "GET": return self.app.bootstrap()
+        if parts == ["api", "monitoring"] and method == "GET": return self.app.monitoring()
+        if parts == ["api", "monitoring", "replay"] and method == "POST": return self.app.replay_detection(self._read())
+        if len(parts) == 4 and parts[:2] == ["api", "monitoring"] and method == "POST":
+            body = self._read()
+            try:
+                if parts[3] == "retry" and body == {}: return self.app.monitor.retry(parts[2])
+                if parts[3] == "decision" and isinstance(body, dict) and set(body) == {"decision"}:
+                    return self.app.monitor.decide(parts[2], body["decision"])
+            except ValueError as exc:
+                raise WorkbenchError(str(exc)) from None
+            raise WorkbenchError("invalid monitoring action; production execution is unavailable")
         if parts == ["api", "workspace"] and method == "GET":
             values = parse_qs(urlsplit(self.path).query, keep_blank_values=True).get("incident", [])
             if len(values) != 1 or not values[0]: raise WorkbenchError("incident query is required")
@@ -766,12 +827,20 @@ class Handler(BaseHTTPRequestHandler):
     do_DELETE = _handle
 
 
+class WorkbenchServer(ThreadingHTTPServer):
+    def server_close(self):
+        if hasattr(self, "app"):
+            self.app.monitor.stop()
+        super().server_close()
+
+
 def create_server(config_path: str | Path = REPO_ROOT / "config/workbench.yaml", port: int = 8787):
     if type(port) is not int or not 0 <= port <= 65535:
         raise WorkbenchError("port must be between 0 and 65535")
     config = load_workbench(config_path)
-    server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    server = WorkbenchServer(("127.0.0.1", port), Handler)
     server.app = Workbench(config)
+    server.app.monitor.start()
     return server
 
 

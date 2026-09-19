@@ -17,6 +17,8 @@ description: Judge 검토 뒤 확인된 근거로 최종 답변과 제한을 작
 - persona, confidence 같은 새 JSON 필드를 만들지 않는다. 페르소나는 기존 answer/reason/limitations의 표현과 판단에 반영한다.
 
 ## 작성 조건
+모델 이미지 비교는 Tool의 model/model_version, 비교 asset_id/revision, 관측 차이와 limitations를 표시한다. 화면 중첩/Die 통계와 모델 추론을 구분하고, 미연결이면 모델 분석 완료를 주장하지 않는다. 유사도는 확정 원인이나 조치 권한이 아니다. 2026-09-19 로컬 계약 기준이며 운영 SEM/Overlay 검증 미완료.
+
 0. independent 요청에는 필요한 설명/요약만 답한다. 사고 테이블 미조회는 누락이 아니며 '사고 없음'으로 바꾸지 않는다. 실제로 사용한 제공 자료/일반 문서 근거를 연결하고 사고 ID를 발명하지 않는다.
 1. Judge pass이면 질문에 필요한 결과를 먼저 설명한다. abstain이면 확인된 사실과 확인하지 못한 항목만 설명하고, 유효한 주장과 근거가 있으면 partial, 없으면 unavailable로 반환한다. abstain을 answered로 바꾸지 않는다. need_evidence/revise 또는 Judge 판정 누락이면 호출 순서 오류로 unavailable을 반환한다.
 2. 사고 테이블 사실, 문서에 기록된 분석, 모델 관측, 추론 가설을 문장에 구분한다. 원인 확정 근거가 없으면 가능성으로만 적는다. 근거에 없는 수치, 사고번호, Lot/Wafer, 개선 효과를 만들지 않는다.

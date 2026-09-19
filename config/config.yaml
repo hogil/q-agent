@@ -170,6 +170,21 @@ models:
     tokenizer_dir: ''
     timeout_seconds: 60
 
+# Specialist image services resolve asset IDs; no image upload or local model launch.
+image_tools:
+  sem:
+    enabled: false
+    endpoint: ''
+    api_key_env: QAGENT_SEM_MODEL_KEY
+    served_model: ''
+    timeout_seconds: 60
+  overlay:
+    enabled: false
+    endpoint: ''
+    api_key_env: QAGENT_OVERLAY_MODEL_KEY
+    served_model: ''
+    timeout_seconds: 60
+
 # 각 역할이 사용할 모델과 생성 옵션.
 roles:
   router:

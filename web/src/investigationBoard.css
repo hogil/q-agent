@@ -1185,6 +1185,92 @@
 .board-view .topbar-actions {
   flex-shrink: 0;
 }
+.detection-flow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-shrink: 0;
+  padding: 2px 8px;
+  min-height: 29px;
+  border-top: 1px solid #e0e6e3;
+  font-size: 10px;
+  flex-wrap: wrap;
+  background: #f6f9f8;
+}
+.detection-flow strong {
+  font-size: 11px;
+  color: #375e53;
+}
+.detection-flow .unavailable {
+  color: #8b7147;
+}
+.detection-current {
+  margin-left: auto;
+  color: #4c7362;
+}
+.detection-flow .icon-button {
+  width: 23px;
+  height: 23px;
+}
+.detection-dialog {
+  width: min(960px, 94vw);
+  max-height: 85dvh;
+  padding: 16px;
+  border: 1px solid #ccd9d2;
+  border-radius: 6px;
+  color: #39564a;
+}
+.detection-dialog::backdrop {
+  background: #18282066;
+}
+.detection-dialog header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e0e6e3;
+}
+.detection-dialog h2 {
+  font-size: 15px;
+  margin: 0;
+}
+.detection-dialog header span {
+  font-size: 11px;
+  color: #947a47;
+  margin-left: auto;
+}
+.detection-events {
+  overflow: auto;
+  max-height: 60dvh;
+}
+.detection-events table {
+  width: 100%;
+  font-size: 12px;
+}
+.detection-events th,
+.detection-events td {
+  padding: 10px 7px;
+  text-align: left;
+  border-bottom: 1px solid #e2e8e5;
+}
+.detection-events small {
+  display: block;
+  color: #9c5147;
+}
+.detection-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.detection-actions a {
+  color: #337b62;
+}
+.detection-dialog footer {
+  padding-top: 12px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #8d7550;
+}
 @media (max-width: 600px) {
   .board-comparison-scope {
     gap: 5px;

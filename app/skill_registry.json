@@ -1,5 +1,5 @@
 {
-  "release": "quality-demo-0.31",
+  "release": "quality-demo-0.32",
   "purpose": "on-prem application Skill sources; not personal ChatGPT skill installation",
   "base": [
     "core"
@@ -91,13 +91,13 @@
       "incident_search"
     ]
   },
-  "max_prompt_characters": 32000,
+  "max_prompt_characters": 36000,
   "notes": [
     "temperature=0 reduces sampling variability but does not guarantee deterministic serving",
     "topic/reference loads are explicit; arbitrary filesystem paths are prohibited",
     "Maintenance is an offline development workflow, not an online user-triggered role",
     "Model deployment and revision limits come from config/config.yaml plus site overlay; compile_prompt without settings is source validation only.",
-    "Role output contracts require decision/stage/search_mode, Judge coverage/return_to and Answer status. 32000 character ceiling; actual model token budgeting remains a deployment check.",
+    "Role output contracts require decision/stage/search_mode, Judge coverage/return_to and Answer status. 36000 character ceiling supports combined image/wafer/meeting context after lossless column encoding; actual model token budgeting remains a deployment check.",
     "ReAct rules live in core/references/react.md; Router tool parameters live in its references/tools.json. All roles and schemas resolve through this registry."
   ]
 }

@@ -21,6 +21,7 @@ import BoardSem from './BoardSem';
 import BoardOverlay from './BoardOverlay';
 import { availableEquipment, compareEquipment } from './equipmentComparison';
 import BoardAnalysis from './BoardAnalysis';
+import DetectionFlow from './DetectionFlow';
 import {
   makeInformNotes,
   selectInformNotes,
@@ -267,6 +268,17 @@ export default function InvestigationBoard({
       ),
       'application/json',
     );
+  const analysisContext = {
+    incident_number: incident,
+    item: signal.item,
+    step: signal.step,
+    equipment: selection.equipment,
+    from,
+    to,
+    wafers: candidates
+      .filter((row) => checked.has(pairKey(row)))
+      .map((row) => ({ lot_id: row.lotId, wafer_id: row.waferId })),
+  };
   const expand = (
     label: string,
     tab: Parameters<ViewProps['navigate']>[0],
@@ -363,8 +375,17 @@ export default function InvestigationBoard({
             ))}
           </select>
         </label>
-        <span>B는 합성·분석 체크 대상과 별도</span>
+        <span>{signal.item} · 같은 Step / 구간 · 화면 비교</span>
       </div>
+      <DetectionFlow
+        context={analysisContext}
+        a={
+          focused
+            ? { lot_id: focused.lotId, wafer_id: focused.waferId }
+            : undefined
+        }
+        b={peer ? { lot_id: peer.lotId, wafer_id: peer.waferId } : undefined}
+      />
       <div className="board-grid">
         <section
           className="board-panel board-signals"
@@ -850,17 +871,7 @@ export default function InvestigationBoard({
           <BoardAnalysis
             roomId={roomId}
             onChange={onConversationChange}
-            context={{
-              incident_number: incident,
-              item: signal.item,
-              step: signal.step,
-              equipment: selection.equipment,
-              from,
-              to,
-              wafers: candidates
-                .filter((row) => checked.has(pairKey(row)))
-                .map((row) => ({ lot_id: row.lotId, wafer_id: row.waferId })),
-            }}
+            context={analysisContext}
           />
         </section>
       </div>

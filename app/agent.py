@@ -10,6 +10,7 @@ from config_loader import ConfigError
 from incident_tools import IncidentTools, ToolError
 from llm_client import LLMError, RoleClient
 from meeting_tools import MeetingTools
+from image_tools import ImageTools
 from prompt_contracts import structure, validate_output
 from runtime_factory import open_incident_tools
 from skill_loader import compile_prompt, read_role_reference
@@ -91,6 +92,7 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
 
     with ExitStack() as resources:
         db = None
+        images = None
         try:
             # Validate all roles before any external request or DB connection.
             for role in ('router', 'judge', 'answer'):
@@ -98,7 +100,8 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
             client = RoleClient(settings)
             paths = settings.data['paths']
             all_tools = read_role_reference('router', 'tools.json', paths['skills_root'], paths['registry_file'])
-            implemented = {'match_incident_values', 'find_incidents', 'list_incident_lots', 'list_incident_wafers', 'search_meeting_minutes'}
+            image_methods = {'list_comparison_assets', 'compare_sem_images', 'compare_overlay_maps'}
+            implemented = {'match_incident_values', 'find_incidents', 'list_incident_lots', 'list_incident_wafers', 'search_meeting_minutes'} | image_methods
             if set(all_tools) - implemented:
                 raise ValueError('UNIMPLEMENTED_TOOL_IN_CATALOG')
 
@@ -112,12 +115,17 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                 if 'search_meeting_minutes' in result:
                     result['search_meeting_minutes']['enabled'] = bool(result['search_meeting_minutes']['enabled'] and settings.data['meetings']['enabled'])
                     result['search_meeting_minutes']['stage'] = 'tools' if scope == 'incident' else 'independent'
+                for name in image_methods & result.keys():
+                    config = settings.data['image_tools']
+                    enabled = (any(item['enabled'] for item in config.values()) if name == 'list_comparison_assets'
+                               else config['sem' if name == 'compare_sem_images' else 'overlay']['enabled'])
+                    result[name]['enabled'] = bool(result[name]['enabled'] and enabled)
                 return result
 
             catalog = available(request_scope)
 
             def invoke(name, **arguments):
-                nonlocal db, next_evidence, lot_checked
+                nonlocal db, images, next_evidence, lot_checked
                 if state['budget_remaining'] <= 0:
                     raise ToolError('TOOL_BUDGET_EXCEEDED')
                 if any(key in arguments for key in ('actor', 'scope_id', 'incident_ids', 'as_of')):
@@ -126,7 +134,7 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                     raise ToolError('TOOL_UNAVAILABLE')
                 if request_scope == 'incident' and name not in ('find_incidents', 'match_incident_values') and not state['scope_valid']:
                     raise ToolError('INCIDENT_SCOPE_REQUIRED')
-                if name == 'list_incident_wafers' and not lot_checked:
+                if (name == 'list_incident_wafers' or name in image_methods) and not lot_checked:
                     raise ToolError('LOT_LOOKUP_REQUIRED')
                 state['budget_remaining'] -= 1
                 if name != 'search_meeting_minutes' and db is None:
@@ -134,6 +142,10 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                 if name == 'search_meeting_minutes':
                     ids = list(db._scope(actor, state['scope_id'])['ids']) if request_scope == 'incident' else None
                     result = MeetingTools(settings).search(actor, incident_ids=ids, as_of=as_of, **arguments)
+                elif name in image_methods:
+                    if images is None:
+                        images = ImageTools(settings, db)
+                    result = getattr(images, name)(actor, state['scope_id'], as_of=as_of, **arguments)
                 elif name == 'match_incident_values':
                     result = db.match_incident_values(actor, question)
                 elif name == 'find_incidents':
@@ -191,11 +203,14 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                             bound['question'] = question
                         elif name not in ('find_incidents', 'search_meeting_minutes'):
                             bound['scope_id'] = state['scope_id']
-                        method = MeetingTools.search if name == 'search_meeting_minutes' else getattr(IncidentTools, name)
+                        if name in image_methods:
+                            bound['as_of'] = as_of
+                        method = (MeetingTools.search if name == 'search_meeting_minutes'
+                                  else getattr(ImageTools if name in image_methods else IncidentTools, name))
                         inspect.signature(method).bind(None, **bound)
                         if name == 'find_incidents' and output['filters'] != arguments.get('filters', {}):
                             raise ValueError('FILTER_PLAN_MISMATCH')
-                        needed = {'match_incident_values': 'terminology', 'list_incident_lots': 'lots', 'list_incident_wafers': 'wafers', 'search_meeting_minutes': 'meetings'}.get(name)
+                        needed = 'images' if name in image_methods else {'match_incident_values': 'terminology', 'list_incident_lots': 'lots', 'list_incident_wafers': 'wafers', 'search_meeting_minutes': 'meetings'}.get(name)
                         if needed and needed not in topics:
                             for role in ('router', 'judge', 'answer'):
                                 compile_prompt(role, sorted(topics | {needed}), settings=settings, shared_topics=True)

@@ -79,3 +79,12 @@ models:
   trend:
     local_dir: ${paths.model_root}/YOUR_TREND_MODEL_DIRECTORY
     checkpoint_file: YOUR_TREND_CHECKPOINT.ckpt
+image_tools:
+  sem:
+    enabled: false
+    endpoint: https://sem.example.internal/v1
+    served_model: YOUR_SEM_COMPARISON_MODEL
+  overlay:
+    enabled: false
+    endpoint: https://overlay.example.internal/v1
+    served_model: YOUR_OVERLAY_COMPARISON_MODEL

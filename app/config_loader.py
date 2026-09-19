@@ -58,6 +58,7 @@ SPEC = {
     'storage': dict(backend=str, endpoint=str, bucket=str, prefix=str, credential_env=str,
                     signed_url_ttl_seconds=int),
     'models': {'*': MODEL_SPEC},
+    'image_tools': {name: dict(SERVICE_SPEC, served_model=str) for name in ('sem', 'overlay')},
     'roles': {role: dict(model=str, temperature=(int, float), max_output_tokens=int)
               for role in ('router', 'answer', 'judge')},
     'retrieval': {name: RAG_SPEC for name in ('internal_documents', 'engineer_notes')},
@@ -262,6 +263,14 @@ def validate_values(data):
             raise ConfigError(f'roles.{role}.model: unknown model reference')
         if not 0 <= profile['temperature'] <= 2:
             raise ConfigError(f'roles.{role}.temperature: out of range')
+    for name, service in data['image_tools'].items():
+        url(service['endpoint'], f'image_tools.{name}.endpoint', service['enabled'])
+        if service['enabled']:
+            parsed = urlsplit(service['endpoint'])
+            if parsed.scheme != 'https' and parsed.hostname not in ('127.0.0.1', 'localhost', '::1'):
+                raise ConfigError(f'image_tools.{name}.endpoint: HTTPS required outside loopback')
+            if not service['served_model'] or service['served_model'].startswith(('SET_', 'YOUR_')):
+                raise ConfigError(f'image_tools.{name}.served_model: actual model required')
     for name, source in data['retrieval'].items():
         url(source['endpoint'], f'retrieval.{name}.endpoint', source['enabled'])
         if source['existing_chunks'] is not True or source['methods'] != ['bm25', 'vector_similarity']:
