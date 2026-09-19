@@ -10,6 +10,17 @@ export type InvestigationSelection = {
   maxLagDays: number;
 };
 
+export function pairKey(row: { lotId: string; waferId: string }): string {
+  return JSON.stringify([row.lotId, row.waferId]);
+}
+
+export function parsePairKey(value: unknown, data: EngineeringData): string {
+  return typeof value === 'string' &&
+    data.fab.some((row) => pairKey(row) === value)
+    ? value
+    : '';
+}
+
 export function defaultSelection(
   data: EngineeringData,
 ): InvestigationSelection {

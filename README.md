@@ -52,6 +52,7 @@ golden 기반 검증과 개선 제안은 오프라인이며, 원본 Skill을 자
 
 - 작업실: Overview, Trend, Wafer/SEM/Image/Overlay Map, Inform, Production, History, Data, Review.
 - 엔지니어 조사: Signals에서 이상 항목 선택 → Trend 드래그/슬라이더 구간 지정 → Fab × EDS 상관분석 → 생산·설비·문서·이미지 → Assessment. 조사 조건은 방·사고별로 보관하며, 선택 근거를 다시 열면 저장 당시 조건을 복원합니다.
+- 조사 화면은 설비·Recipe 조건을 공유합니다. 상관분석의 Wafer 상세 패널에서 관측점을 순회하고 Map/SEM/Overlay로 이동합니다. 선택 Wafer는 방·사고별로 저장하며 현재 매칭 범위에 있을 때만 복원합니다. 모바일은 화면 선택 메뉴와 가로 스크롤 없는 감지 목록을 사용합니다.
 - Fab/EDS는 합성 측정값을 `Lot + Wafer`로 매칭하고 Recipe·설비·Fab 시각·EDS 시차를 적용합니다. 중복·누락·시차 제외를 별도 집계합니다. Pearson r은 [simple-statistics](https://simple-statistics.github.io/docs/#samplecorrelation)로 계산하며 3쌍 미만 또는 값의 변동이 없으면 N/A입니다. 인과관계나 독립 표본의 통계적 유의성을 판정하지 않습니다.
 - Production은 합성 재공 스냅샷(RUN/WAIT/HOLD, Queue, Recipe)과 다운코드를 제공합니다. 다운타임 KPI는 선택 구간과 겹치는 시간의 합계이며, 표의 Duration은 각 이벤트 전체 시간입니다. Assessment는 계산 결과·회의록·미연결 근거를 보여주는 로컬 요약으로, 실제 Judge/Answer 실행 결과가 아닙니다.
 - Overview는 사고 DB 기록과 최근 승인 회의록을 분리해 보여줍니다. Review에서 선택 근거의 원문·기준일·버전을 비교하고 사용자 메모와 출처를 JSON으로 내보냅니다. 이 검토는 Judge의 판정이 아닙니다.

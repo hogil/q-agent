@@ -91,11 +91,12 @@
 .operations-table th,
 .operations-table td {
   font-size: 12px;
-  padding: 11px 12px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--line, #dce4e5);
   text-align: left;
   white-space: nowrap;
   vertical-align: middle;
+  line-height: 1.4;
 }
 
 .operations-table th {
@@ -111,9 +112,30 @@
   border-bottom: 0;
 }
 
+.operations-table tbody tr {
+  transition: background-color 120ms ease;
+}
+
 .operations-table tbody tr:hover td,
 .operations-table .expanded-row td {
   background: #f8fbfb;
+}
+
+.operations-table tbody tr.reference-row td {
+  background: #eaf5f1;
+}
+.operations-table tbody tr.reference-row td:first-child {
+  box-shadow: inset 3px 0 0 var(--accent, #136f63);
+}
+
+.operations-table tbody tr.reference-row:hover td,
+.operations-table tbody tr.reference-row:focus-visible td {
+  background: #e1f0eb;
+}
+
+.operations-table tbody tr:focus-visible {
+  outline: 2px solid var(--accent, #136f63);
+  outline-offset: -2px;
 }
 
 .operations-table .icon-button {
@@ -131,6 +153,12 @@
   color: inherit;
   font: inherit;
   cursor: pointer;
+}
+
+.operations-expand:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid var(--accent, #136f63);
+  outline-offset: 3px;
 }
 
 .operations-expand:hover {
@@ -191,6 +219,10 @@
 
   .operations-search {
     max-width: none;
+  }
+
+  .operations-clear-filters {
+    align-self: flex-start;
   }
 
   .operations-tabs {

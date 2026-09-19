@@ -808,17 +808,14 @@ export default function App() {
           {!isChat && (
             <main className="analysis-panel">
               <header className="analysis-header">
-                <div className="analysis-kicker">
-                  <span className="eyebrow">INVESTIGATION</span>
-                  <span className="record-pill">
-                    {workspace?.incident.incident_number || 'NEW'}
-                  </span>
-                </div>
                 <div className="analysis-title-row">
                   <h1 tabIndex={-1}>
                     {room?.title ||
                       (loading ? '분석 불러오는 중' : '새로운 분석')}
                   </h1>
+                  <span className="record-pill">
+                    {workspace?.incident.incident_number || 'NEW'}
+                  </span>
                   <button
                     className="icon-button"
                     title="대화방 이름 변경"
@@ -877,6 +874,23 @@ export default function App() {
                 )}
               </header>
               <nav className="workspace-tabs" aria-label="분석 보기">
+                <label className="mobile-view-picker">
+                  <span>View</span>
+                  <select
+                    aria-label="분석 화면 선택"
+                    value={tab}
+                    onChange={(event) => navigate(event.target.value as Tab)}
+                  >
+                    {tabs.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.label}
+                        {item.id === 'review' && attachments.length
+                          ? ` (${attachments.length})`
+                          : ''}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 {tabs.map((item) => (
                   <button
                     key={item.id}

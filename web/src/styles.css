@@ -431,12 +431,6 @@ code {
 .analysis-header {
   padding: 26px 28px 21px;
 }
-.analysis-kicker {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  margin-bottom: 12px;
-}
 .eyebrow {
   color: #8a9890;
   font-size: 9px;
@@ -505,6 +499,9 @@ code {
   border-bottom: 1px solid var(--line);
   padding: 0 28px;
   overflow-x: auto;
+}
+.mobile-view-picker {
+  display: none;
 }
 .workspace-tabs > button {
   display: flex;
@@ -3377,6 +3374,20 @@ td,
 }
 
 /* Readable analysis surfaces and a scope-bound manual review workspace. */
+.workbench-view .analysis-header {
+  padding: 14px 24px 12px;
+}
+.workbench-view .analysis-title-row h1 {
+  font-size: 20px;
+  line-height: 1.5;
+}
+.analysis-title-row .record-pill {
+  flex-shrink: 0;
+}
+.workbench-view .scope-row,
+.workbench-view .scope-facts {
+  margin-top: 8px;
+}
 :root {
   --muted: #66747c;
   --line: #e1e6e8;
@@ -3437,13 +3448,15 @@ td,
   font-size: 13px;
 }
 .workspace-tabs {
-  height: 49px;
-  gap: 19px;
+  height: auto;
+  min-height: 42px;
+  gap: 0 16px;
+  flex-wrap: wrap;
   overflow-y: hidden;
   scrollbar-width: thin;
 }
 .workspace-tabs > button {
-  height: 45px;
+  height: 40px;
   min-width: max-content;
   font-size: 12px;
   color: #64767c;

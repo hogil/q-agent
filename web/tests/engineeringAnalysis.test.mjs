@@ -6,6 +6,8 @@ import {
   parseSelection,
   engineeringReference,
   parseEngineeringReference,
+  parsePairKey,
+  pairKey,
 } from '../src/engineeringAnalysis.ts';
 
 const data = {
@@ -34,6 +36,14 @@ test('Pearson reports positive and inverse associations, not a causal verdict', 
   );
   assert.equal('verdict' in correlationSummary([]), false);
 });
+
+test('restores only composite wafer selections registered in the current scope', () => {
+  const scoped = { fab: [{ lotId: 'LOT-A', waferId: 'W01' }] };
+  const selected = pairKey(scoped.fab[0]);
+  assert.equal(parsePairKey(selected, scoped), selected);
+  for (const value of ['LOT-B/W01', 'LOT-A/W02', null, {}, 3])
+    assert.equal(parsePairKey(value, scoped), '');
+});
 test('insufficient, invalid and constant inputs do not become misleading zero correlation', () => {
   for (const rows of [
     [],
@@ -49,6 +59,13 @@ test('insufficient, invalid and constant inputs do not become misleading zero co
   assert.equal(result.n, 0);
   assert.equal(result.invalid, 3);
   assert.equal(result.meanYield, null);
+});
+
+test('wafer selection keys distinguish IDs containing separators', () => {
+  const first = { lotId: 'LOT/A', waferId: 'W01' };
+  const second = { lotId: 'LOT', waferId: 'A/W01' };
+  assert.notEqual(pairKey(first), pairKey(second));
+  assert.equal(parsePairKey(pairKey(first), { fab: [second] }), '');
 });
 test('investigation selection validates scope IDs and ordered bounded windows', () => {
   const selection = defaultSelection(data);

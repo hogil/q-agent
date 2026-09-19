@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
-  Activity,
   AlertTriangle,
   ArrowDownToLine,
   ArrowRight,
   ArrowUpRight,
   Check,
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
   ClipboardCheck,
-  Factory,
   FileText,
   Focus,
   Link2,
@@ -15,6 +16,7 @@ import {
   Search,
   ScatterChart,
   ShieldAlert,
+  X,
 } from 'lucide-react';
 import { download, type Attachment } from './api';
 import { Chart } from './charts';
@@ -32,6 +34,8 @@ import {
   engineeringReference,
   parseEngineeringReference,
   parseSelection,
+  parsePairKey,
+  pairKey,
   type InvestigationSelection,
 } from './engineeringAnalysis';
 import './engineering.css';
@@ -42,13 +46,6 @@ const metrics = {
   queue: { name: 'Queue time', unit: 'h', limit: 6 },
   availability: { name: '설비 가동률', unit: '%', limit: 90 },
 };
-const stages: { tab: Tab; label: string; icon: typeof Activity }[] = [
-  { tab: 'signals', label: '감지 목록', icon: AlertTriangle },
-  { tab: 'trend', label: 'Trend', icon: Activity },
-  { tab: 'correlation', label: 'Fab × EDS', icon: ScatterChart },
-  { tab: 'production', label: '생산 · 설비', icon: Factory },
-  { tab: 'assessment', label: '설명 · 판정', icon: ClipboardCheck },
-];
 type SelectionChange = (patch: Partial<InvestigationSelection>) => void;
 type Pair = ReturnType<typeof matchFabYield>['pairs'][number];
 
@@ -114,7 +111,7 @@ function EngineeringTrend({
           markLine: {
             silent: true,
             symbol: 'none',
-            label: { formatter: '예시 기준' },
+            label: { formatter: '예시 기준', position: 'insideEndTop' },
             lineStyle: { color: '#c3874e', type: 'dashed' },
             data: [{ yAxis: metric.limit }],
           },
@@ -152,13 +149,19 @@ function SignalList({
 }) {
   const [search, setSearch] = useState('');
   const [severity, setSeverity] = useState('all');
-  const rows = data.signals.filter(
-    (s) =>
-      (severity === 'all' || s.severity === severity) &&
-      `${s.title} ${s.equipment} ${s.step}`
-        .toLowerCase()
-        .includes(search.toLowerCase()),
-  );
+  const rows = data.signals
+    .filter(
+      (s) =>
+        (severity === 'all' || s.severity === severity) &&
+        `${s.title} ${s.equipment} ${s.step} ${s.recipe}`
+          .toLowerCase()
+          .includes(search.toLowerCase()),
+    )
+    .sort(
+      (a, b) =>
+        Number(b.severity === 'high') - Number(a.severity === 'high') ||
+        b.detectedAt.localeCompare(a.detectedAt),
+    );
   return (
     <section className="detail-view signal-view">
       <div className="section-title">
@@ -285,24 +288,25 @@ function CorrelationView({
   match,
   selection,
   change,
-  data,
   selectedPair,
   setSelectedPair,
   attach,
+  pinned,
   navigate,
 }: {
   pairs: Pair[];
   match: ReturnType<typeof matchFabYield>;
   selection: InvestigationSelection;
   change: SelectionChange;
-  data: EngineeringData;
   selectedPair: Pair | null;
   setSelectedPair: (pair: Pair) => void;
   attach: ViewProps['attach'];
+  pinned: boolean;
   navigate: ViewProps['navigate'];
 }) {
   const summary = correlationSummary(pairs);
   const [fullYieldAxis, setFullYieldAxis] = useState(false);
+  const selectedIndex = pairs.findIndex((row) => row === selectedPair);
   const option = useMemo(
     () => ({
       animationDuration: 200,
@@ -374,28 +378,51 @@ function CorrelationView({
     ...correlationSummary(pairs.filter((p) => p.recipe === recipe)),
   }));
   return (
-    <section className="detail-view">
+    <section className="detail-view correlation-view">
       <div className="section-title">
         <div>
           <h2>Fab × EDS Yield</h2>
           <span>Lot + Wafer 결합 · Fab 측정시각 기준 · 합성 데이터</span>
         </div>
-        <button
-          className="icon-button"
-          title="Fab EDS 매칭 결과 JSON 다운로드"
-          onClick={() =>
-            download(
-              'synthetic-fab-eds.json',
-              JSON.stringify(
-                { synthetic: true, selection, match, summary },
-                null,
-                2,
-              ),
-            )
-          }
-        >
-          <ArrowDownToLine size={17} />
-        </button>
+        <div className="eng-inline-actions">
+          <button
+            className="outline-button"
+            disabled={pinned}
+            onClick={() =>
+              attach({
+                kind: 'trend',
+                id: engineeringReference('corr', selection),
+                label: `합성 Fab × EDS · n=${summary.n} · r=${summary.r?.toFixed(3) ?? 'N/A'}`,
+              })
+            }
+          >
+            {pinned ? <Check size={15} /> : <Link2 size={15} />}
+            {pinned ? '근거 선택됨' : '근거 선택'}
+          </button>
+          <button
+            className="outline-button"
+            onClick={() => navigate('assessment')}
+          >
+            <ClipboardCheck size={15} />
+            설명 · 판정
+          </button>
+          <button
+            className="icon-button"
+            title="Fab EDS 매칭 결과 JSON 다운로드"
+            onClick={() =>
+              download(
+                'synthetic-fab-eds.json',
+                JSON.stringify(
+                  { synthetic: true, selection, match, summary },
+                  null,
+                  2,
+                ),
+              )
+            }
+          >
+            <ArrowDownToLine size={17} />
+          </button>
+        </div>
       </div>
       <div className="eng-summary-band">
         <div>
@@ -427,19 +454,6 @@ function CorrelationView({
           Yield 축 0–100%
         </label>
         <label className="select-field">
-          Recipe
-          <select
-            aria-label="상관분석 Recipe"
-            value={selection.recipe}
-            onChange={(e) => change({ recipe: e.target.value })}
-          >
-            <option value="">전체 Recipe</option>
-            {[...new Set(data.fab.map((r) => r.recipe))].map((r) => (
-              <option key={r}>{r}</option>
-            ))}
-          </select>
-        </label>
-        <label className="select-field">
           최대 EDS 시차
           <select
             aria-label="EDS 최대 시차"
@@ -460,32 +474,144 @@ function CorrelationView({
         <span>시차 제외 {match.outsideLag}</span>
         <span>상관관계 ≠ 인과관계</span>
       </div>
-      {pairs.length ? (
-        <Chart
-          option={option}
-          label="합성 Fab 공정 온도와 EDS Yield 산점도"
-          className="eng-correlation-chart"
-          onSelect={(p) =>
-            pairs[p.dataIndex] && setSelectedPair(pairs[p.dataIndex])
-          }
-        />
-      ) : (
-        <Empty
-          title="매칭된 Fab / EDS 쌍 없음"
-          detail="현재 구간·설비·Recipe·측정 시차 조건 결과 0건"
-        />
-      )}
-      <div className="eng-strata">
-        {groups.map((g) => (
-          <span key={g.recipe}>
-            <i
-              style={{
-                background: g.recipe.endsWith('A') ? '#3b8697' : '#c77a63',
-              }}
+      <div className="eng-correlation-layout">
+        <div className="eng-plot-region">
+          {pairs.length ? (
+            <Chart
+              option={option}
+              label="합성 Fab 공정 온도와 EDS Yield 산점도"
+              className="eng-correlation-chart"
+              onSelect={(p) =>
+                pairs[p.dataIndex] && setSelectedPair(pairs[p.dataIndex])
+              }
             />
-            {g.recipe} · n={g.n} · r={g.r?.toFixed(3) ?? 'N/A'}
-          </span>
-        ))}
+          ) : (
+            <Empty
+              title="매칭된 Fab / EDS 쌍 없음"
+              detail="현재 구간·설비·Recipe·측정 시차 조건 결과 0건"
+            />
+          )}
+          <div className="eng-strata">
+            {groups.map((g) => (
+              <span key={g.recipe}>
+                <i
+                  style={{
+                    background: g.recipe.endsWith('A') ? '#3b8697' : '#c77a63',
+                  }}
+                />
+                {g.recipe} · n={g.n} · r={g.r?.toFixed(3) ?? 'N/A'}
+              </span>
+            ))}
+          </div>
+        </div>
+        <aside className="eng-pair-inspector" aria-label="선택 Wafer 상세">
+          <div className="eng-inspector-heading">
+            <h3>Wafer detail</h3>
+            <span>
+              {selectedIndex < 0 ? '0' : selectedIndex + 1} / {pairs.length}
+            </span>
+            <button
+              className="icon-button"
+              title="이전 Wafer"
+              disabled={selectedIndex <= 0}
+              onClick={() => setSelectedPair(pairs[selectedIndex - 1])}
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              className="icon-button"
+              title="다음 Wafer"
+              disabled={!pairs.length || selectedIndex >= pairs.length - 1}
+              onClick={() => setSelectedPair(pairs[selectedIndex + 1])}
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+          <select
+            aria-label="상관분석 Wafer 선택"
+            value={selectedIndex < 0 ? '' : selectedIndex}
+            disabled={!pairs.length}
+            onChange={(e) => {
+              if (e.target.value !== '' && pairs[Number(e.target.value)])
+                setSelectedPair(pairs[Number(e.target.value)]);
+            }}
+          >
+            <option value="" disabled>
+              선택 Wafer 없음
+            </option>
+            {pairs.map((row, index) => (
+              <option key={pairKey(row)} value={index}>
+                {row.lotId} / {row.waferId}
+              </option>
+            ))}
+          </select>
+          {selectedPair ? (
+            <>
+              <dl className="eng-pair-facts" aria-live="polite">
+                <div>
+                  <dt>Fab 온도</dt>
+                  <dd>
+                    {selectedPair.value.toFixed(2)} <small>°C</small>
+                  </dd>
+                </div>
+                <div>
+                  <dt>EDS Yield</dt>
+                  <dd>
+                    {selectedPair.yieldPct.toFixed(2)} <small>%</small>
+                  </dd>
+                </div>
+                <div>
+                  <dt>설비</dt>
+                  <dd>{selectedPair.equipment}</dd>
+                </div>
+                <div>
+                  <dt>Recipe</dt>
+                  <dd>{selectedPair.recipe}</dd>
+                </div>
+                <div>
+                  <dt>Fab · UTC</dt>
+                  <dd>{time(selectedPair.timestamp)}</dd>
+                </div>
+                <div>
+                  <dt>EDS · UTC</dt>
+                  <dd>{time(selectedPair.measuredAt)}</dd>
+                </div>
+              </dl>
+              <div className="eng-wafer-actions">
+                <button
+                  className="outline-button"
+                  onClick={() => navigate('map', undefined, 'wafer')}
+                >
+                  <Focus size={14} />
+                  Wafer map
+                </button>
+                <button
+                  className="outline-button"
+                  onClick={() => navigate('map', undefined, 'sem')}
+                >
+                  SEM
+                  <ArrowUpRight size={14} />
+                </button>
+                <button
+                  className="outline-button"
+                  onClick={() => navigate('map', undefined, 'overlay')}
+                >
+                  Overlay
+                  <ArrowUpRight size={14} />
+                </button>
+              </div>
+              <small className="eng-inspector-source">
+                합성 측정 · 실측 이미지 미연결
+              </small>
+            </>
+          ) : (
+            <div className="eng-pair-empty">
+              <Focus size={26} />
+              <span>선택된 관측점 없음</span>
+              <small>Lot / Wafer · Fab / EDS</small>
+            </div>
+          )}
+        </aside>
       </div>
       <div className="data-notice">
         <AlertTriangle size={15} />
@@ -508,7 +634,8 @@ function CorrelationView({
           <tbody>
             {pairs.map((row) => (
               <tr
-                key={`${row.lotId}/${row.waferId}`}
+                key={pairKey(row)}
+                onClick={() => setSelectedPair(row)}
                 className={
                   selectedPair?.lotId === row.lotId &&
                   selectedPair.waferId === row.waferId
@@ -519,7 +646,22 @@ function CorrelationView({
                 <td>
                   <button
                     className="eng-record-button"
-                    onClick={() => setSelectedPair(row)}
+                    aria-pressed={selectedPair === row}
+                    onKeyDown={(event) => {
+                      if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
+                      event.preventDefault();
+                      const index =
+                        pairs.indexOf(row) +
+                        (event.key === 'ArrowDown' ? 1 : -1);
+                      if (!pairs[index]) return;
+                      setSelectedPair(pairs[index]);
+                      event.currentTarget
+                        .closest('tbody')
+                        ?.querySelectorAll<HTMLButtonElement>(
+                          '.eng-record-button',
+                        )
+                        [index]?.focus();
+                    }}
                   >
                     <strong>{row.lotId}</strong>
                     <small>
@@ -539,66 +681,6 @@ function CorrelationView({
           </tbody>
         </table>
       </div>
-      <div className="eng-action-row">
-        <button
-          className="outline-button"
-          onClick={() =>
-            attach({
-              kind: 'trend',
-              id: engineeringReference('corr', selection),
-              label: `합성 Fab × EDS · n=${summary.n} · r=${summary.r?.toFixed(3) ?? 'N/A'}`,
-            })
-          }
-        >
-          <Link2 size={15} />
-          상관분석 근거 선택
-        </button>
-        <button
-          className="primary-button"
-          onClick={() => navigate('assessment')}
-        >
-          <ClipboardCheck size={15} />
-          설명 · 판정
-          <ArrowRight size={14} />
-        </button>
-      </div>
-      {selectedPair && (
-        <div className="eng-wafer-detail">
-          <div>
-            <span className="eyebrow">SELECTED WAFER</span>
-            <strong>
-              {selectedPair.lotId} / {selectedPair.waferId}
-            </strong>
-            <small>
-              Fab {time(selectedPair.timestamp)} → EDS{' '}
-              {time(selectedPair.measuredAt)} UTC
-            </small>
-          </div>
-          <div className="eng-inline-actions">
-            <button
-              className="outline-button"
-              onClick={() => navigate('map', undefined, 'wafer')}
-            >
-              <Focus size={14} />
-              Wafer map
-            </button>
-            <button
-              className="outline-button"
-              onClick={() => navigate('map', undefined, 'sem')}
-            >
-              SEM
-              <ArrowUpRight size={14} />
-            </button>
-            <button
-              className="outline-button"
-              onClick={() => navigate('map', undefined, 'overlay')}
-            >
-              Overlay
-              <ArrowUpRight size={14} />
-            </button>
-          </div>
-        </div>
-      )}
     </section>
   );
 }
@@ -636,16 +718,28 @@ export default function EngineeringWorkspace({
       return defaultSelection(data);
     }
   });
-  const [selectedPairKey, setSelectedPairKey] = useState('');
+  const [selectedPairKey, setSelectedPairKey] = useState(() => {
+    try {
+      return parsePairKey(
+        JSON.parse(localStorage.getItem(key) || 'null')?.selectedPairKey,
+        data,
+      );
+    } catch {
+      return '';
+    }
+  });
   const [saved, setSaved] = useState(true);
   useEffect(() => {
     try {
-      localStorage.setItem(key, JSON.stringify(selection));
+      localStorage.setItem(
+        key,
+        JSON.stringify({ ...selection, selectedPairKey }),
+      );
       setSaved(true);
     } catch {
       setSaved(false);
     }
-  }, [key, selection]);
+  }, [key, selection, selectedPairKey]);
   useEffect(() => {
     const restored = parseEngineeringReference(reference, data);
     if (restored) {
@@ -701,9 +795,11 @@ export default function EngineeringWorkspace({
     [data, selection],
   );
   const selectedPair =
-    match.pairs.find((p) => `${p.lotId}/${p.waferId}` === selectedPairKey) ||
-    null;
+    match.pairs.find((p) => pairKey(p) === selectedPairKey) || null;
   const summary = correlationSummary(match.pairs);
+  const trendPinned = attachments.some(
+    (item) => item.id === engineeringReference('trend', selection),
+  );
   const choose = (s: Signal) => {
     setSelection({
       ...defaultSelection(data),
@@ -730,40 +826,94 @@ export default function EngineeringWorkspace({
   if (!signal) return children({});
   return (
     <div className="engineering-workspace">
-      <nav className="eng-flow" aria-label="엔지니어 조사 흐름">
-        {stages.map((stage, i) => (
-          <button
-            key={stage.tab}
-            aria-current={tab === stage.tab ? 'step' : undefined}
-            className={tab === stage.tab ? 'active' : ''}
-            onClick={() => props.navigate(stage.tab)}
-          >
-            <span>{i + 1}</span>
-            <stage.icon size={14} />
-            {stage.label}
-          </button>
-        ))}
-      </nav>
       {tab !== 'signals' && (
         <div className="eng-context">
-          <div>
-            <Activity size={15} />
-            <strong>{signal.title}</strong>
-            <span>{windowLabel}</span>
-          </div>
-          <label className="select-field">
-            후속 조회 설비
-            <select
-              aria-label="조사 설비"
-              value={selection.equipment}
-              onChange={(e) => change({ equipment: e.target.value })}
+          <div className="eng-context-heading">
+            <button
+              className="eng-back"
+              title="감지 목록으로 돌아가기"
+              onClick={() => props.navigate('signals')}
             >
-              <option value="">전체 설비</option>
-              {[...new Set(data.signals.map((s) => s.equipment))].map((id) => (
-                <option key={id}>{id}</option>
-              ))}
-            </select>
-          </label>
+              <ArrowLeft size={15} />
+              <strong>{signal.title}</strong>
+            </button>
+            <button
+              className="eng-window-link"
+              title="Trend 구간 변경"
+              onClick={() => props.navigate('trend')}
+            >
+              {windowLabel}
+            </button>
+          </div>
+          <div className="eng-context-filters">
+            <label className="select-field">
+              후속 조회 설비
+              <select
+                aria-label="조사 설비"
+                value={selection.equipment}
+                onChange={(e) => change({ equipment: e.target.value })}
+              >
+                <option value="">전체 설비</option>
+                {[...new Set(data.signals.map((s) => s.equipment))].map(
+                  (id) => (
+                    <option key={id}>{id}</option>
+                  ),
+                )}
+              </select>
+            </label>
+            <label className="select-field">
+              Recipe
+              <select
+                aria-label="조사 Recipe"
+                value={selection.recipe}
+                onChange={(e) => change({ recipe: e.target.value })}
+              >
+                <option value="">전체 Recipe</option>
+                {[...new Set(data.fab.map((row) => row.recipe))].map(
+                  (recipe) => (
+                    <option key={recipe}>{recipe}</option>
+                  ),
+                )}
+              </select>
+            </label>
+            <button
+              className="icon-button"
+              title="감지 조건으로 초기화"
+              onClick={() =>
+                change({
+                  ...defaultSelection(data),
+                  signalId: signal.id,
+                  start: signal.startIndex,
+                  end: signal.endIndex,
+                  equipment: signal.equipment,
+                })
+              }
+            >
+              <RotateCcw size={15} />
+            </button>
+          </div>
+          {selectedPair && tab === 'map' && (
+            <div className="eng-selected-context">
+              <Focus size={14} />
+              <strong>
+                {selectedPair.lotId} / {selectedPair.waferId}
+              </strong>
+              <button
+                className="text-button"
+                onClick={() => props.navigate('correlation')}
+              >
+                상관분석으로
+                <ArrowUpRight size={13} />
+              </button>
+              <button
+                className="icon-button"
+                title="Wafer 선택 해제"
+                onClick={() => setSelectedPairKey('')}
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )}
         </div>
       )}
       {!saved && (
@@ -774,13 +924,36 @@ export default function EngineeringWorkspace({
       {tab === 'signals' ? (
         <SignalList data={data} selection={selection} choose={choose} />
       ) : tab === 'trend' ? (
-        <section className="detail-view">
+        <section className="detail-view trend-view">
           <div className="section-title">
             <div>
               <h2>{metrics[signal.metric].name} Trend</h2>
               <span>{signal.description}</span>
             </div>
-            <span className="synthetic-label">합성 · UTC</span>
+            <div className="eng-inline-actions">
+              <button
+                className="outline-button"
+                disabled={trendPinned}
+                onClick={() =>
+                  props.attach({
+                    kind: 'trend',
+                    id: engineeringReference('trend', selection),
+                    label: `합성 ${metrics[signal.metric].name} · ${windowLabel}`,
+                  })
+                }
+              >
+                {trendPinned ? <Check size={15} /> : <Link2 size={15} />}
+                {trendPinned ? '근거 선택됨' : '근거 선택'}
+              </button>
+              <button
+                className="primary-button"
+                onClick={() => props.navigate('correlation')}
+              >
+                <ScatterChart size={15} />
+                Fab × EDS
+                <ArrowRight size={14} />
+              </button>
+            </div>
           </div>
           <EngineeringTrend data={data} selection={selection} change={change} />
           <div className="eng-range">
@@ -846,29 +1019,6 @@ export default function EngineeringWorkspace({
               </strong>
             </div>
           </div>
-          <div className="eng-action-row">
-            <button
-              className="outline-button"
-              onClick={() =>
-                props.attach({
-                  kind: 'trend',
-                  id: engineeringReference('trend', selection),
-                  label: `합성 ${metrics[signal.metric].name} · ${windowLabel}`,
-                })
-              }
-            >
-              <Link2 size={15} />
-              Trend 근거 선택
-            </button>
-            <button
-              className="primary-button"
-              onClick={() => props.navigate('correlation')}
-            >
-              <ScatterChart size={16} />
-              Fab × EDS Yield
-              <ArrowRight size={15} />
-            </button>
-          </div>
           <div className="eng-event-list">
             <h3>선택 구간의 설비 이벤트</h3>
             {scopedDown.map((event) => (
@@ -900,12 +1050,12 @@ export default function EngineeringWorkspace({
           match={match}
           selection={selection}
           change={change}
-          data={data}
           selectedPair={selectedPair}
-          setSelectedPair={(pair) =>
-            setSelectedPairKey(`${pair.lotId}/${pair.waferId}`)
-          }
+          setSelectedPair={(pair) => setSelectedPairKey(pairKey(pair))}
           attach={props.attach}
+          pinned={attachments.some(
+            (item) => item.id === engineeringReference('corr', selection),
+          )}
           navigate={props.navigate}
         />
       ) : tab === 'production' ? (

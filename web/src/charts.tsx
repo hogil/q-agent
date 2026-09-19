@@ -38,6 +38,7 @@ export function Chart({
   className = '',
 }: ChartProps) {
   const element = useRef<HTMLDivElement>(null);
+  const instance = useRef<echarts.EChartsType | null>(null);
   const handler = useRef(onSelect);
   handler.current = onSelect;
   const rangeHandler = useRef(onRange);
@@ -47,7 +48,7 @@ export function Chart({
     const chart = echarts.init(element.current, undefined, {
       renderer: 'canvas',
     });
-    chart.setOption(option);
+    instance.current = chart;
     chart.on('click', (params) => handler.current?.(params));
     chart.on('brushEnd', (params: any) => {
       const range = params.areas?.[0]?.coordRange;
@@ -59,18 +60,32 @@ export function Chart({
         rangeHandler.current?.([Math.round(range[0]), Math.round(range[1])]);
       }
     });
+    const observer = new ResizeObserver(() => chart.resize());
+    observer.observe(element.current);
+    return () => {
+      observer.disconnect();
+      chart.dispose();
+      instance.current = null;
+    };
+  }, []);
+  useEffect(() => {
+    const chart = instance.current;
+    if (!chart) return;
+    chart.setOption(
+      {
+        ...option,
+        ...(matchMedia('(prefers-reduced-motion: reduce)').matches
+          ? { animation: false }
+          : {}),
+      },
+      { notMerge: true },
+    );
     if (rangeHandler.current)
       chart.dispatchAction({
         type: 'takeGlobalCursor',
         key: 'brush',
         brushOption: { brushType: 'lineX', brushMode: 'single' },
       });
-    const observer = new ResizeObserver(() => chart.resize());
-    observer.observe(element.current);
-    return () => {
-      observer.disconnect();
-      chart.dispose();
-    };
   }, [option]);
   return (
     <div

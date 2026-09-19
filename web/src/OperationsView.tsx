@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
   ChevronDown,
@@ -7,6 +7,7 @@ import {
   Factory,
   FilePlus2,
   Link2,
+  RotateCcw,
   Search,
   Server,
 } from 'lucide-react';
@@ -72,6 +73,14 @@ export function OperationsView({
       : null,
   );
   const query = search.trim().toLowerCase();
+  const selectedWipLot = reference.startsWith('engineering:wip:')
+    ? reference.slice('engineering:wip:'.length)
+    : null;
+  const selectedDowntimeId = reference.startsWith('engineering:down:')
+    ? reference.slice('engineering:down:'.length)
+    : null;
+  const focusedRowRef = useRef<HTMLTableRowElement | null>(null);
+  const focusedReference = useRef('');
 
   const equipmentOptions = useMemo(
     () =>
@@ -120,6 +129,14 @@ export function OperationsView({
     [data.downtime, equipment, query, window?.from, window?.to],
   );
 
+  useEffect(() => {
+    if (!focusedRowRef.current || focusedReference.current === reference)
+      return;
+    focusedRowRef.current?.focus({ preventScroll: true });
+    focusedRowRef.current?.scrollIntoView({ block: 'nearest' });
+    focusedReference.current = reference;
+  }, [reference, subview, wipRows, downtimeRows]);
+
   const wipLotCount = new Set(wipRows.map((row) => row.lotId)).size;
   const waferCount = wipRows.reduce((sum, row) => sum + row.wafers, 0);
   const holdCount = wipRows.filter((row) => row.status === 'HOLD').length;
@@ -132,6 +149,7 @@ export function OperationsView({
       ) || 0),
     0,
   );
+  const hasLocalFilters = Boolean(query) || wipStatus !== 'ALL';
 
   function exportRows() {
     if (subview === 'wip') {
@@ -245,6 +263,19 @@ export function OperationsView({
             onChange={(event) => setSearch(event.target.value)}
           />
         </label>
+        {hasLocalFilters && (
+          <button
+            className="icon-button operations-clear-filters"
+            title="검색 및 재공 상태 필터 초기화"
+            aria-label="검색 및 재공 상태 필터 초기화"
+            onClick={() => {
+              setSearch('');
+              setWipStatus('ALL');
+            }}
+          >
+            <RotateCcw size={16} />
+          </button>
+        )}
       </div>
 
       <div
@@ -311,6 +342,7 @@ export function OperationsView({
                 </div>
                 <div
                   className="segmented compact-segmented"
+                  role="group"
                   aria-label="재공 상태"
                 >
                   {(['ALL', 'RUN', 'WAIT', 'HOLD'] as WipStatus[]).map(
@@ -318,6 +350,7 @@ export function OperationsView({
                       <button
                         key={status}
                         className={wipStatus === status ? 'selected' : ''}
+                        aria-pressed={wipStatus === status}
                         onClick={() => setWipStatus(status)}
                       >
                         {status}
@@ -349,39 +382,48 @@ export function OperationsView({
                         </td>
                       </tr>
                     )}
-                    {wipRows.map((row) => (
-                      <tr key={`${row.lotId}-${row.step}-${row.equipment}`}>
-                        <td className="mono">{row.lotId}</td>
-                        <td>{row.step}</td>
-                        <td className="mono">{row.equipment}</td>
-                        <td className="mono">{row.recipe}</td>
-                        <td>
-                          <span
-                            className={`status-tag ${row.status === 'HOLD' ? 'amber' : row.status === 'RUN' ? 'green' : ''}`}
-                          >
-                            {row.status}
-                          </span>
-                        </td>
-                        <td>{row.wafers}</td>
-                        <td>{row.queueHours.toFixed(1)} h</td>
-                        <td className="mono">{row.holdCode || '—'}</td>
-                        <td>
-                          <button
-                            className="icon-button"
-                            title="재공 행을 검토 대상에 추가"
-                            onClick={() =>
-                              attach({
-                                kind: 'request',
-                                id: `engineering:wip:${row.lotId}`,
-                                label: `합성 재공 ${row.lotId}`,
-                              })
-                            }
-                          >
-                            <FilePlus2 size={15} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {wipRows.map((row) => {
+                      const selected = row.lotId === selectedWipLot;
+                      return (
+                        <tr
+                          key={`${row.lotId}-${row.step}-${row.equipment}`}
+                          ref={selected ? focusedRowRef : undefined}
+                          className={selected ? 'reference-row' : ''}
+                          aria-current={selected ? 'true' : undefined}
+                          tabIndex={selected ? -1 : undefined}
+                        >
+                          <td className="mono">{row.lotId}</td>
+                          <td>{row.step}</td>
+                          <td className="mono">{row.equipment}</td>
+                          <td className="mono">{row.recipe}</td>
+                          <td>
+                            <span
+                              className={`status-tag ${row.status === 'HOLD' ? 'amber' : row.status === 'RUN' ? 'green' : ''}`}
+                            >
+                              {row.status}
+                            </span>
+                          </td>
+                          <td>{row.wafers}</td>
+                          <td>{row.queueHours.toFixed(1)} h</td>
+                          <td className="mono">{row.holdCode || '—'}</td>
+                          <td>
+                            <button
+                              className="icon-button"
+                              title="재공 행을 검토 대상에 추가"
+                              onClick={() =>
+                                attach({
+                                  kind: 'request',
+                                  id: `engineering:wip:${row.lotId}`,
+                                  label: `합성 재공 ${row.lotId}`,
+                                })
+                              }
+                            >
+                              <FilePlus2 size={15} />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -421,16 +463,25 @@ export function OperationsView({
                     )}
                     {downtimeRows.map((row) => {
                       const expanded = expandedDowntime === row.id;
+                      const selected = row.id === selectedDowntimeId;
+                      const detailId = `downtime-detail-${row.id}`;
                       const duration = minutesBetween(row.start, row.end);
                       return (
                         <Fragment key={row.id}>
                           <tr
                             key={row.id}
-                            className={expanded ? 'expanded-row' : ''}
+                            ref={selected ? focusedRowRef : undefined}
+                            className={`${expanded ? 'expanded-row ' : ''}${selected ? 'reference-row' : ''}`}
+                            aria-current={selected ? 'true' : undefined}
+                            tabIndex={selected ? -1 : undefined}
                           >
                             <td>
                               <button
                                 className="operations-expand"
+                                aria-expanded={expanded}
+                                aria-controls={expanded ? detailId : undefined}
+                                aria-label={`${row.id} ${row.code} 다운코드 상세 ${expanded ? '접기' : '펼치기'}`}
+                                title={`${row.id} ${row.code} 다운코드 상세 ${expanded ? '접기' : '펼치기'}`}
                                 onClick={() =>
                                   setExpandedDowntime(expanded ? null : row.id)
                                 }
@@ -467,6 +518,7 @@ export function OperationsView({
                           {expanded && (
                             <tr
                               key={`${row.id}-detail`}
+                              id={detailId}
                               className="operations-detail-row"
                             >
                               <td
