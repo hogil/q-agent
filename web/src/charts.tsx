@@ -7,6 +7,7 @@ import {
   MarkLineComponent,
   MarkAreaComponent,
   DataZoomComponent,
+  BrushComponent,
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 
@@ -18,19 +19,29 @@ echarts.use([
   MarkLineComponent,
   MarkAreaComponent,
   DataZoomComponent,
+  BrushComponent,
   CanvasRenderer,
 ]);
 
 type ChartProps = {
   option: echarts.EChartsCoreOption;
   onSelect?: (value: any) => void;
+  onRange?: (range: [number, number]) => void;
   label: string;
   className?: string;
 };
-function Chart({ option, onSelect, label, className = '' }: ChartProps) {
+export function Chart({
+  option,
+  onSelect,
+  onRange,
+  label,
+  className = '',
+}: ChartProps) {
   const element = useRef<HTMLDivElement>(null);
   const handler = useRef(onSelect);
   handler.current = onSelect;
+  const rangeHandler = useRef(onRange);
+  rangeHandler.current = onRange;
   useEffect(() => {
     if (!element.current) return;
     const chart = echarts.init(element.current, undefined, {
@@ -38,6 +49,22 @@ function Chart({ option, onSelect, label, className = '' }: ChartProps) {
     });
     chart.setOption(option);
     chart.on('click', (params) => handler.current?.(params));
+    chart.on('brushEnd', (params: any) => {
+      const range = params.areas?.[0]?.coordRange;
+      if (
+        Array.isArray(range) &&
+        range.length === 2 &&
+        range.every(Number.isFinite)
+      ) {
+        rangeHandler.current?.([Math.round(range[0]), Math.round(range[1])]);
+      }
+    });
+    if (rangeHandler.current)
+      chart.dispatchAction({
+        type: 'takeGlobalCursor',
+        key: 'brush',
+        brushOption: { brushType: 'lineX', brushMode: 'single' },
+      });
     const observer = new ResizeObserver(() => chart.resize());
     observer.observe(element.current);
     return () => {

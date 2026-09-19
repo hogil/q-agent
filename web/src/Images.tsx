@@ -13,7 +13,7 @@ import { MapView, incidentSeed } from './Views';
 import type { ViewProps } from './Views';
 
 export default function Images(props: ViewProps & { initialMode?: string }) {
-  const [mode, setMode] = useState(
+  const [mode] = useState(
     ['wafer', 'sem', 'image-map', 'overlay'].includes(props.initialMode || '')
       ? props.initialMode!
       : 'wafer',
@@ -37,7 +37,7 @@ export default function Images(props: ViewProps & { initialMode?: string }) {
           <button
             className={mode === id ? 'active' : ''}
             key={id}
-            onClick={() => setMode(id)}
+            onClick={() => props.navigate('map', undefined, id)}
           >
             <Icon size={14} />
             {name}
@@ -59,6 +59,8 @@ export default function Images(props: ViewProps & { initialMode?: string }) {
               </h2>
               <span>
                 {props.workspace.incident.incident_number} · 합성 뷰어
+                {props.initialWafer &&
+                  ` · 선택 ${props.initialWafer.lotId} / ${props.initialWafer.waferId} · 실측 연결 미검증`}
               </span>
             </div>
             <span className="status-tag amber">실측 이미지 미연결</span>

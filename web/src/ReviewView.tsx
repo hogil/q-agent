@@ -10,6 +10,11 @@ import {
 } from 'lucide-react';
 import { download, type Attachment, type Workspace } from './api';
 import { Empty } from './Views';
+import { makeEngineeringData, matchFabYield } from './engineeringData';
+import {
+  correlationSummary,
+  parseEngineeringReference,
+} from './engineeringAnalysis';
 
 const kinds: Record<string, string> = {
   inform: '회의록',
@@ -23,6 +28,50 @@ const kinds: Record<string, string> = {
 
 function resolveSource(item: Attachment, workspace: Workspace) {
   const sameScope = item.incident_number === workspace.incident.incident_number;
+  if (sameScope && item.id.startsWith('engineering:')) {
+    const data = makeEngineeringData(workspace);
+    const selection = parseEngineeringReference(item.id, data);
+    const down = data.downtime.find(
+      (row) => item.id === `engineering:down:${row.id}`,
+    );
+    const wip = data.wip.find(
+      (row) => item.id === `engineering:wip:${row.lotId}`,
+    );
+    const matched = selection
+      ? matchFabYield(data.fab, data.yields, {
+          from: data.trend[selection.start].timestamp,
+          to: data.trend[selection.end].timestamp,
+          equipment: selection.equipment || undefined,
+          recipe: selection.recipe || undefined,
+          maxLagDays: selection.maxLagDays,
+        })
+      : null;
+    const payload =
+      matched && selection
+        ? {
+            synthetic: true,
+            selection,
+            from: data.trend[selection.start].timestamp,
+            to: data.trend[selection.end].timestamp,
+            ...(item.id.startsWith('engineering:corr:')
+              ? {
+                  matching: matched,
+                  summary: correlationSummary(matched.pairs),
+                }
+              : {
+                  trace: data.trend.slice(selection.start, selection.end + 1),
+                }),
+          }
+        : down || wip;
+    if (payload)
+      return {
+        reference: item,
+        source: 'synthetic://engineering/v1',
+        date: workspace.incident.occurred_at,
+        version: 'fixture-v1',
+        text: JSON.stringify(payload, null, 2),
+      };
+  }
   const meeting =
     sameScope && item.kind === 'inform'
       ? workspace.meetings.find((m) => m.chunk_id === item.id)
@@ -74,7 +123,11 @@ function SourcePreview({
   return (
     <article className="evidence-preview">
       <div className="evidence-preview-heading">
-        <span className="status-tag">{kinds[item.kind] || '참조'}</span>
+        <span className="status-tag">
+          {item.id.startsWith('engineering:')
+            ? '합성 분석 근거'
+            : kinds[item.kind] || '참조'}
+        </span>
         <button
           className="icon-button"
           title={`${item.label} 원본 화면 열기`}

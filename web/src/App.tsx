@@ -46,12 +46,13 @@ import {
   type RoomSummary,
   type Workspace,
 } from './api';
-import { DataView, Empty, Overview, TrendView, type Tab } from './Views';
+import { DataView, Empty, Overview, type Tab } from './Views';
 import PlanPanel from './PlanPanel';
 import Images from './Images';
-import { HistoryView, InformWorkspace, ProductionView } from './Sources';
+import { HistoryView, InformWorkspace } from './Sources';
 import { modules } from './modules';
 import ReviewView from './ReviewView';
+import EngineeringWorkspace from './EngineeringWorkspace';
 import {
   clearReviewDraft,
   loadReviewDraft,
@@ -112,7 +113,7 @@ export default function App() {
     () =>
       modules.find(
         (m) => m.id === new URLSearchParams(location.search).get('tab'),
-      )?.id || 'overview',
+      )?.id || 'signals',
   );
   const [documentId, setDocumentId] = useState<string | null>(null);
   const [detailMode, setDetailMode] = useState(
@@ -345,7 +346,7 @@ export default function App() {
       });
       await refreshRooms();
       setRoomId(value.id);
-      setTab('overview');
+      if (!isChat) navigate('signals');
       setSidebarOpen(false);
     } catch (e) {
       reportError(e);
@@ -364,7 +365,7 @@ export default function App() {
       setReload((r) => r + 1);
       setModal(null);
       setSearch('');
-      setTab('overview');
+      if (!isChat) navigate('signals');
     } catch (e) {
       reportError(e);
     } finally {
@@ -546,8 +547,9 @@ export default function App() {
       );
       return;
     }
-    const target: Tab =
-      item.kind === 'inform'
+    const target: Tab = item.id.startsWith('engineering:corr:')
+      ? 'correlation'
+      : item.kind === 'inform'
         ? 'inform'
         : ['map', 'image'].includes(item.kind)
           ? 'map'
@@ -556,17 +558,18 @@ export default function App() {
             : item.kind === 'history'
               ? 'history'
               : item.kind === 'request'
-                ? item.id.startsWith('engineer')
+                ? item.id.startsWith('engineer-inform-')
                   ? 'inform'
                   : 'production'
                 : 'data';
     if (item.kind === 'inform') setDocumentId(item.id);
-    const mode =
-      item.kind === 'image'
+    const mode = item.id.startsWith('engineering:')
+      ? item.id
+      : item.kind === 'image'
         ? 'sem'
         : item.id.startsWith('overlay-')
           ? 'overlay'
-          : item.id.startsWith('engineer')
+          : item.id.startsWith('engineer-inform-')
             ? 'engineer'
             : '';
     setDetailMode(mode);
@@ -656,7 +659,14 @@ export default function App() {
         </button>
         <div className="sidebar-section-label">WORKSPACE</div>
         <button
-          className={`nav-item ${!isChat ? 'active' : ''}`}
+          className={`nav-item ${!isChat && tab === 'signals' ? 'active' : ''}`}
+          onClick={() => navigate('signals')}
+        >
+          <Activity size={17} />
+          이상 감지
+        </button>
+        <button
+          className={`nav-item ${!isChat && tab !== 'signals' ? 'active' : ''}`}
           onClick={() => navigate('overview')}
         >
           <LayoutDashboard size={17} />
@@ -935,50 +945,62 @@ export default function App() {
                     </button>
                   </div>
                 ) : (
-                  <div key={workspace!.incident.incident_number}>
-                    {tab === 'overview' && <Overview {...activeProps} />}
-                    {tab === 'trend' && <TrendView {...activeProps} />}
-                    {tab === 'map' && (
-                      <Images
-                        key={detailMode}
-                        {...activeProps}
-                        initialMode={detailMode}
-                      />
+                  <EngineeringWorkspace
+                    key={`${roomId}:${workspace!.incident.incident_number}`}
+                    {...activeProps}
+                    roomId={roomId}
+                    tab={tab}
+                    reference={detailMode}
+                    attachments={attachments}
+                    prepare={(question) => {
+                      setDraft(question);
+                      setNotice('현재 조사 조건으로 채팅 질문을 준비했습니다.');
+                    }}
+                  >
+                    {(context) => (
+                      <>
+                        {tab === 'overview' && <Overview {...activeProps} />}
+                        {tab === 'map' && (
+                          <Images
+                            key={detailMode}
+                            {...activeProps}
+                            initialWafer={context.initialWafer}
+                            initialMode={detailMode}
+                          />
+                        )}
+                        {tab === 'inform' && (
+                          <InformWorkspace
+                            key={detailMode}
+                            {...activeProps}
+                            initialMode={detailMode}
+                          />
+                        )}
+                        {tab === 'history' && (
+                          <HistoryView
+                            {...activeProps}
+                            incidents={bootstrap?.incidents || []}
+                          />
+                        )}
+                        {tab === 'data' && <DataView {...activeProps} />}
+                        {tab === 'review' && (
+                          <ReviewView
+                            workspace={workspace!}
+                            attachments={attachments}
+                            question={draft}
+                            notes={notes}
+                            setNotes={setNotes}
+                            open={openAttachment}
+                            remove={(index) =>
+                              setAttachments((items) =>
+                                items.filter((_, i) => i !== index),
+                              )
+                            }
+                            storageError={storageError}
+                          />
+                        )}
+                      </>
                     )}
-                    {tab === 'inform' && (
-                      <InformWorkspace
-                        key={detailMode}
-                        {...activeProps}
-                        initialMode={detailMode}
-                      />
-                    )}
-                    {tab === 'production' && (
-                      <ProductionView {...activeProps} />
-                    )}
-                    {tab === 'history' && (
-                      <HistoryView
-                        {...activeProps}
-                        incidents={bootstrap?.incidents || []}
-                      />
-                    )}
-                    {tab === 'data' && <DataView {...activeProps} />}
-                    {tab === 'review' && (
-                      <ReviewView
-                        workspace={workspace!}
-                        attachments={attachments}
-                        question={draft}
-                        notes={notes}
-                        setNotes={setNotes}
-                        open={openAttachment}
-                        remove={(index) =>
-                          setAttachments((items) =>
-                            items.filter((_, i) => i !== index),
-                          )
-                        }
-                        storageError={storageError}
-                      />
-                    )}
-                  </div>
+                  </EngineeringWorkspace>
                 )}
                 <footer className="analysis-footer">
                   <ShieldCheck size={13} />

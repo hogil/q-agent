@@ -7,6 +7,9 @@ import {
   History,
   LayoutDashboard,
   NotebookPen,
+  AlertTriangle,
+  ScatterChart,
+  ClipboardCheck,
 } from 'lucide-react';
 import type { Tab } from './Views';
 
@@ -18,6 +21,14 @@ export const modules: {
   icon: typeof Activity;
   plan: boolean;
 }[] = [
+  {
+    id: 'signals',
+    label: 'Signals',
+    name: '이상 감지 목록',
+    status: '합성',
+    icon: AlertTriangle,
+    plan: false,
+  },
   {
     id: 'overview',
     label: 'Overview',
@@ -32,6 +43,14 @@ export const modules: {
     name: 'Trend 구간 확인',
     status: '합성',
     icon: Activity,
+    plan: true,
+  },
+  {
+    id: 'correlation',
+    label: 'Fab × EDS',
+    name: 'Fab · EDS Yield 상관분석',
+    status: '합성 계산',
+    icon: ScatterChart,
     plan: true,
   },
   {
@@ -54,7 +73,7 @@ export const modules: {
     id: 'production',
     label: 'Production',
     name: '생산 시스템 기록',
-    status: '미연결',
+    status: '합성 / 미연결',
     icon: Factory,
     plan: true,
   },
@@ -81,5 +100,13 @@ export const modules: {
     status: '수동 검토',
     icon: NotebookPen,
     plan: false,
+  },
+  {
+    id: 'assessment',
+    label: 'Assessment',
+    name: '설명 · 판정',
+    status: 'LLM 미연결',
+    icon: ClipboardCheck,
+    plan: true,
   },
 ];

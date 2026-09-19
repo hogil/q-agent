@@ -51,6 +51,9 @@ golden 기반 검증과 개선 제안은 오프라인이며, 원본 Skill을 자
 분석 작업실과 채팅은 별도 화면입니다. 작업실에서 기능을 열고 근거를 선택한 뒤 같은 대화방의 채팅으로 넘깁니다.
 
 - 작업실: Overview, Trend, Wafer/SEM/Image/Overlay Map, Inform, Production, History, Data, Review.
+- 엔지니어 조사: Signals에서 이상 항목 선택 → Trend 드래그/슬라이더 구간 지정 → Fab × EDS 상관분석 → 생산·설비·문서·이미지 → Assessment. 조사 조건은 방·사고별로 보관하며, 선택 근거를 다시 열면 저장 당시 조건을 복원합니다.
+- Fab/EDS는 합성 측정값을 `Lot + Wafer`로 매칭하고 Recipe·설비·Fab 시각·EDS 시차를 적용합니다. 중복·누락·시차 제외를 별도 집계합니다. Pearson r은 [simple-statistics](https://simple-statistics.github.io/docs/#samplecorrelation)로 계산하며 3쌍 미만 또는 값의 변동이 없으면 N/A입니다. 인과관계나 독립 표본의 통계적 유의성을 판정하지 않습니다.
+- Production은 합성 재공 스냅샷(RUN/WAIT/HOLD, Queue, Recipe)과 다운코드를 제공합니다. 다운타임 KPI는 선택 구간과 겹치는 시간의 합계이며, 표의 Duration은 각 이벤트 전체 시간입니다. Assessment는 계산 결과·회의록·미연결 근거를 보여주는 로컬 요약으로, 실제 Judge/Answer 실행 결과가 아닙니다.
 - Overview는 사고 DB 기록과 최근 승인 회의록을 분리해 보여줍니다. Review에서 선택 근거의 원문·기준일·버전을 비교하고 사용자 메모와 출처를 JSON으로 내보냅니다. 이 검토는 Judge의 판정이 아닙니다.
 - 분석 계획: 기능별 체크, 화면 이동, 질문 준비. 선택은 실제 Agent 실행이나 검증 완료를 의미하지 않습니다.
 - 채팅: 방별 질문·답변 저장, 이름 변경·삭제, 이전 기록 조회, 근거의 사고 범위 확인.
@@ -74,4 +77,5 @@ python app/workbench.py --port 8787
 
 **연결 범위:** 사고·Lot·Wafer·회의록은 합성 DB를 실제 조회합니다. Trend/Map은 합성 데이터, SEM은 AI 생성 이미지입니다.
 Eng’r Inform·생산 시스템·LLM은 미연결입니다. 채팅은 결정적 DB 조회 데모이며, 대화 저장이 모델 메모리 연결을 뜻하지 않습니다.
+감지 이벤트·Fab/EDS 값·재공 상태·다운코드는 `D:\project\q-agent\web\src\engineeringData.ts`의 결정적 합성 데이터입니다. 등록 Lot/Wafer ID를 재사용해도 실제 생산 상태나 영향 범위가 검증된 것은 아닙니다. 실제 시스템에 적용하려면 서버 측 권한 검증, 원본 Adapter, 단위·시간대·재작업 이력 매칭, Agent Tool 계약이 추가로 필요합니다.
 서버는 localhost 전용 단일 사용자 데모입니다. 사내 원격 서비스로 공개하지 마세요.

@@ -12,15 +12,12 @@ import {
   X,
 } from 'lucide-react';
 import { download, type Attachment, type Meeting, type Workspace } from './api';
-import {
-  TrendChart,
-  WaferChart,
-  trendData,
-  waferData,
-  type Die,
-} from './charts';
+import { TrendChart, WaferChart, waferData, type Die } from './charts';
 
 export type Tab =
+  | 'signals'
+  | 'correlation'
+  | 'assessment'
   | 'overview'
   | 'trend'
   | 'map'
@@ -32,7 +29,8 @@ export type Tab =
 export type ViewProps = {
   workspace: Workspace;
   attach: (item: Attachment) => void;
-  navigate: (tab: Tab, document?: string) => void;
+  navigate: (tab: Tab, document?: string, mode?: string) => void;
+  initialWafer?: { lotId: string; waferId: string };
   selectedDocument: string | null;
   selectDocument: (id: string | null) => void;
 };
@@ -307,116 +305,17 @@ export function Overview(props: Props) {
   );
 }
 
-export function TrendView({ workspace: w, attach }: Props) {
-  const [days, setDays] = useState(30);
-  const [metric, setMetric] = useState('temperature');
-  const [point, setPoint] = useState<string | null>(null);
-  const seed = incidentSeed(w);
-  const rows = trendData(seed, days, metric);
-  return (
-    <section className="detail-view">
-      <SectionTitle
-        title="Process trend"
-        note="시계열 분석"
-        action={
-          <button
-            className="icon-button"
-            title="합성 Trend CSV 다운로드"
-            onClick={() =>
-              download(
-                'synthetic-trend.csv',
-                '\uFEFFdate,value,baseline\n' +
-                  rows
-                    .map((row) => `${row.date},${row.value},${row.baseline}`)
-                    .join('\n'),
-                'text/csv;charset=utf-8',
-              )
-            }
-          >
-            <ArrowDownToLine size={17} />
-          </button>
-        }
-      />
-      <div className="view-toolbar">
-        <label className="select-field">
-          측정 항목{' '}
-          <select
-            value={metric}
-            onChange={(e) => {
-              setMetric(e.target.value);
-              setPoint(null);
-            }}
-          >
-            <option value="temperature">공정 온도 · °C</option>
-            <option value="defect">불량률 · %</option>
-          </select>
-        </label>
-        <div className="segmented" aria-label="Trend 기간">
-          {[14, 30, 60].map((day) => (
-            <button
-              className={days === day ? 'selected' : ''}
-              key={day}
-              onClick={() => {
-                setDays(day);
-                setPoint(null);
-              }}
-            >
-              {day}일
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="data-notice">
-        <span className="synthetic-label">합성 시각화</span>
-        <span>실제 Trend 파일·분석 모델 미연결</span>
-      </div>
-      <TrendChart seed={seed} days={days} metric={metric} onSelect={setPoint} />
-      <Legend />
-      <div className="selection-bar">
-        <div>
-          <span className="eyebrow">SELECTED POINT</span>
-          <strong>{point || '선택된 측정점 없음'}</strong>
-        </div>
-        <button
-          className="outline-button"
-          disabled={!point}
-          onClick={() =>
-            point &&
-            attach({
-              kind: 'trend',
-              id: `trend-${seed}-${metric}-${point}`,
-              label: `합성 ${metric === 'temperature' ? '온도' : '불량률'} ${point}`,
-            })
-          }
-        >
-          <Link2 size={15} />
-          검토 대상에 추가
-        </button>
-      </div>
-      <div className="metric-strip">
-        <div>
-          <span>관측점</span>
-          <strong>{rows.length}</strong>
-        </div>
-        <div>
-          <span>최소</span>
-          <strong>{Math.min(...rows.map((r) => r.value)).toFixed(2)}</strong>
-        </div>
-        <div>
-          <span>최대</span>
-          <strong>{Math.max(...rows.map((r) => r.value)).toFixed(2)}</strong>
-        </div>
-        <div>
-          <span>데이터 출처</span>
-          <strong className="text-value">Synthetic fixture</strong>
-        </div>
-      </div>
-    </section>
+export function MapView({ workspace: w, attach, initialWafer }: Props) {
+  const [index, setIndex] = useState(() =>
+    Math.max(
+      0,
+      w.wafers.findIndex(
+        (row) =>
+          row.lot_id === initialWafer?.lotId &&
+          row.wafer_id === initialWafer?.waferId,
+      ),
+    ),
   );
-}
-
-export function MapView({ workspace: w, attach }: Props) {
-  const [index, setIndex] = useState(0);
   const [filter, setFilter] = useState('all');
   const [die, setDie] = useState<Die | null>(null);
   const wafer = w.wafers[index];
