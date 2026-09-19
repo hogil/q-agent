@@ -1,6 +1,7 @@
 import { median } from 'simple-statistics';
 import type { EngineeringData, Signal } from './engineeringData';
 import type { InvestigationSelection } from './engineeringAnalysis';
+import { makeEquipmentTrace } from './equipmentComparison.ts';
 
 const HOUR = 3600000;
 const fleetColors = ['#7EB8DA', '#A8D8A8', '#D4A8D4', '#F0C987'];
@@ -59,6 +60,7 @@ export function anomalyTrendOption(
   data: EngineeringData,
   selection: InvestigationSelection,
   compact = false,
+  comparisonEquipment = '',
 ) {
   const signal = data.signals.find((row) => row.id === selection.signalId);
   if (!signal || !data.trend.length) {
@@ -69,11 +71,18 @@ export function anomalyTrendOption(
   const onset = Date.parse(data.trend[onsetIndex].timestamp);
   const references = fleet.filter((row) => !row.highlighted);
   const target = fleet.find((row) => row.highlighted);
+  const peer =
+    comparisonEquipment !== signal.equipment
+      ? makeEquipmentTrace(data, signal, comparisonEquipment)
+      : [];
   if (!target || !references.length) return { animation: false, series: [] };
   const baseline = median(
     references.flatMap((row) => row.points.map((point) => point[1])),
   );
-  const values = fleet.flatMap((row) => row.points.map((point) => point[1]));
+  const values = [
+    ...fleet.flatMap((row) => row.points.map((point) => point[1])),
+    ...peer.map((row) => row.value),
+  ];
   const low = Math.min(...values),
     high = Math.max(...values);
   const margin = Math.max((high - low) * 0.15, 0.05);
@@ -95,7 +104,12 @@ export function anomalyTrendOption(
       itemGap: 7,
       selectedMode: false,
       textStyle: { fontSize: 9, color: '#65706b' },
-      data: [...references.map((row) => row.member), normal, abnormal],
+      data: [
+        ...references.map((row) => row.member),
+        normal,
+        abnormal,
+        ...(peer.length ? [`${comparisonEquipment} · B`] : []),
+      ],
     },
     tooltip: {
       renderMode: 'richText',
@@ -143,6 +157,22 @@ export function anomalyTrendOption(
       splitLine: { lineStyle: { color: '#edf0f0' } },
     },
     series: [
+      ...(peer.length
+        ? [
+            {
+              name: `${comparisonEquipment} · B`,
+              type: 'scatter',
+              symbolSize: 6,
+              data: peer.map((row) => [Date.parse(row.timestamp), row.value]),
+              itemStyle: {
+                color: '#148574',
+                borderColor: '#fff',
+                borderWidth: 0.5,
+              },
+              z: 4,
+            },
+          ]
+        : []),
       ...references.map((row, index) => ({
         name: row.member,
         type: 'scatter',

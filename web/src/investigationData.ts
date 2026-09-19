@@ -64,18 +64,26 @@ export function semRecord(
   lotId: string,
   waferId: string,
 ) {
-  const owner = [...workspace.wafers].sort(
+  const owners = [...workspace.wafers].sort(
     (a, b) =>
       a.lot_id.localeCompare(b.lot_id) || a.wafer_id.localeCompare(b.wafer_id),
-  )[0];
-  // The single supplied synthetic asset has one explicit fixture owner.
-  return owner?.lot_id === lotId && owner.wafer_id === waferId
+  );
+  const index = owners.findIndex(
+    (row) => row.lot_id === lotId && row.wafer_id === waferId,
+  );
+  // Explicit fixture owners; no measured SEM or pixel alignment is implied.
+  return index >= 0 && index < 2
     ? {
-        id: 'SYN-SEM-01',
+        id: `SYN-SEM-0${index + 1}`,
         lotId,
         waferId,
-        src: '/assets/synthetic-sem.png',
+        src:
+          index === 0
+            ? '/assets/synthetic-sem.png'
+            : '/assets/synthetic-sem-reference.png',
         provenance: 'AI 생성 합성 예시',
+        description:
+          index === 0 ? 'Bridge / Particle 예시' : '분리된 Line 예시',
       }
     : null;
 }

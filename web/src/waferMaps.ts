@@ -53,6 +53,153 @@ export type WaferMap = {
   dies: Die[];
 };
 
+export type WaferComparisonCategory =
+  | 'bothFlag'
+  | 'aOnly'
+  | 'bOnly'
+  | 'neither'
+  | 'missingA'
+  | 'missingB';
+
+export type WaferComparisonDie = {
+  x: number;
+  y: number;
+  binA: number | null;
+  binB: number | null;
+  category: WaferComparisonCategory;
+};
+
+export type WaferComparisonCounts = Record<WaferComparisonCategory, number>;
+
+export type WaferComparison = {
+  gridId: string;
+  dies: WaferComparisonDie[];
+  counts: WaferComparisonCounts;
+  observedA: number;
+  observedB: number;
+  observedCommon: number;
+  validCompared: number;
+  flagsA: number;
+  flagsB: number;
+  jaccard: number | null;
+  failRateA: number | null;
+  failRateB: number | null;
+  commonFailRateA: number | null;
+  commonFailRateB: number | null;
+  delta: number | null;
+};
+
+function validatedDieMap(map: WaferMap): Map<string, Die> {
+  const dies = new Map<string, Die>();
+  for (const die of map.dies) {
+    if (
+      !Number.isFinite(die.x) ||
+      !Number.isFinite(die.y) ||
+      !Number.isFinite(die.bin) ||
+      !Number.isInteger(die.x) ||
+      !Number.isInteger(die.y) ||
+      !Number.isInteger(die.bin) ||
+      die.bin < 0
+    ) {
+      throw new Error(
+        'Die coordinates must be finite integers and bin must be a nonnegative integer',
+      );
+    }
+    const coordinate = JSON.stringify([die.x, die.y]);
+    if (dies.has(coordinate))
+      throw new Error('Duplicate die coordinate within wafer map');
+    dies.set(coordinate, die);
+  }
+  return dies;
+}
+
+export function compareWaferMaps(a: WaferMap, b: WaferMap): WaferComparison {
+  if (a.gridId.trim().length === 0 || b.gridId.trim().length === 0)
+    throw new Error('Wafer gridId must not be blank');
+  if (a.gridId !== b.gridId) throw new Error('Mixed wafer gridId values');
+  if (
+    JSON.stringify([a.lotId, a.waferId]) ===
+    JSON.stringify([b.lotId, b.waferId])
+  )
+    throw new Error('Cannot compare the same lot/wafer tuple');
+
+  const diesA = validatedDieMap(a);
+  const diesB = validatedDieMap(b);
+  const counts: WaferComparisonCounts = {
+    bothFlag: 0,
+    aOnly: 0,
+    bOnly: 0,
+    neither: 0,
+    missingA: 0,
+    missingB: 0,
+  };
+  const dies: WaferComparisonDie[] = [];
+  let flagsA = 0;
+  let flagsB = 0;
+
+  for (const die of diesA.values()) if (die.bin >= 3) flagsA++;
+  for (const die of diesB.values()) if (die.bin >= 3) flagsB++;
+
+  const coordinates = new Set([...diesA.keys(), ...diesB.keys()]);
+  for (const coordinate of coordinates) {
+    const dieA = diesA.get(coordinate);
+    const dieB = diesB.get(coordinate);
+    const flagA = dieA !== undefined && dieA.bin >= 3;
+    const flagB = dieB !== undefined && dieB.bin >= 3;
+    let category: WaferComparisonCategory;
+
+    if (dieA === undefined) category = 'missingA';
+    else if (dieB === undefined) category = 'missingB';
+    else if (flagA && flagB) category = 'bothFlag';
+    else if (flagA) category = 'aOnly';
+    else if (flagB) category = 'bOnly';
+    else category = 'neither';
+
+    counts[category]++;
+    dies.push({
+      x: (dieA ?? dieB)!.x,
+      y: (dieA ?? dieB)!.y,
+      binA: dieA?.bin ?? null,
+      binB: dieB?.bin ?? null,
+      category,
+    });
+  }
+
+  dies.sort((left, right) => left.y - right.y || left.x - right.x);
+  const observedA = diesA.size;
+  const observedB = diesB.size;
+  const observedCommon =
+    counts.bothFlag + counts.aOnly + counts.bOnly + counts.neither;
+  const union = counts.bothFlag + counts.aOnly + counts.bOnly;
+  const commonFlagsA = counts.bothFlag + counts.aOnly;
+  const commonFlagsB = counts.bothFlag + counts.bOnly;
+  const commonFailRateA =
+    observedCommon === 0 ? null : commonFlagsA / observedCommon;
+  const commonFailRateB =
+    observedCommon === 0 ? null : commonFlagsB / observedCommon;
+
+  return {
+    gridId: a.gridId,
+    dies,
+    counts,
+    observedA,
+    observedB,
+    observedCommon,
+    validCompared: observedCommon,
+    flagsA,
+    flagsB,
+    jaccard: union === 0 ? null : counts.bothFlag / union,
+    failRateA: observedA === 0 ? null : flagsA / observedA,
+    failRateB: observedB === 0 ? null : flagsB / observedB,
+    commonFailRateA,
+    commonFailRateB,
+    delta:
+      commonFailRateA === null || commonFailRateB === null
+        ? null
+        : commonFailRateA - commonFailRateB,
+  };
+}
+
 export type CompositeDie = {
   x: number;
   y: number;

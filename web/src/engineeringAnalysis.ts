@@ -18,11 +18,13 @@ export function selectFabRows(
   data: EngineeringData,
   selection: InvestigationSelection,
 ) {
+  const signal = data.signals.find((row) => row.id === selection.signalId);
   const from = data.trend[selection.start]?.timestamp;
   const to = data.trend[selection.end]?.timestamp;
-  if (!from || !to) return [];
+  if (!signal || !from || !to) return [];
   const rows = data.fab.filter(
     (row) =>
+      row.step === signal.step &&
       row.timestamp >= from &&
       row.timestamp <= to &&
       (!selection.equipment || row.equipment === selection.equipment) &&

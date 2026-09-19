@@ -5,5 +5,13 @@
     "date": "2026-09-18",
     "prompt": "Synthetic SEM-style grayscale semiconductor line-space pattern with a small bridge and particles, top-down, inspectable texture, no text or scale bar. UI demonstration only; not microscopy evidence.",
     "limitations": "No measured magnification, physical scale, real defect classification or incident relationship. Reused as an explicitly synthetic viewer fixture."
+  },
+  "synthetic-sem-reference.png": {
+    "synthetic": true,
+    "generator": "built-in image_gen",
+    "date": "2026-09-19",
+    "reference": "synthetic-sem.png",
+    "prompt": "Create a synthetic comparison reference SEM-style bitmap from the AI-generated illustration. Preserve square canvas, top-down orientation, approximately the same line-space pitch and grayscale microtexture. Remove the bridge between lines and loose bright particles. No captions or scale bar. Educational UI fixture, not measured microscopy.",
+    "limitations": "No physical scale, validated registration, measurement or real process/incident relationship. Visual comparison only."
   }
 }

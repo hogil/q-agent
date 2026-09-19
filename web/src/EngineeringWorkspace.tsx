@@ -43,16 +43,18 @@ function EngineeringTrend({
   selection,
   change,
   compact = false,
+  comparisonEquipment = '',
 }: {
   data: EngineeringData;
   selection: InvestigationSelection;
   change: SelectionChange;
   compact?: boolean;
+  comparisonEquipment?: string;
 }) {
   const signal = data.signals.find((s) => s.id === selection.signalId)!;
   const option = useMemo(
-    () => anomalyTrendOption(data, selection, compact),
-    [data, selection, compact],
+    () => anomalyTrendOption(data, selection, compact, comparisonEquipment),
+    [data, selection, compact, comparisonEquipment],
   );
   return (
     <Chart
@@ -476,13 +478,14 @@ export default function EngineeringWorkspace({
           choose={choose}
           focusedKey={selectedPairKey}
           onFocus={(row) => setSelectedPairKey(pairKey(row))}
-          trend={
+          trend={(comparisonEquipment) => (
             <EngineeringTrend
               data={data}
               selection={selection}
               change={change}
+              comparisonEquipment={comparisonEquipment}
             />
-          }
+          )}
         />
       ) : tab === 'correlation' ? (
         <HistoricalCorrelation

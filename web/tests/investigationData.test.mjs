@@ -49,7 +49,11 @@ test('Inform list is strictly filtered by step and equipment', () => {
 
 test('SEM fixture lookup uses full Lot/Wafer identity and never borrows a different image', () => {
   assert.equal(semRecord(workspace, 'L1', 'W01').id, 'SYN-SEM-01');
-  assert.equal(semRecord(workspace, 'L2', 'W01'), null);
+  assert.equal(semRecord(workspace, 'L2', 'W01').id, 'SYN-SEM-02');
+  assert.notEqual(
+    semRecord(workspace, 'L1', 'W01').src,
+    semRecord(workspace, 'L2', 'W01').src,
+  );
   assert.equal(semRecord(workspace, 'L1', 'unknown'), null);
   assert.equal(semRecord({ ...workspace, wafers: [] }, 'L1', 'W01'), null);
 });

@@ -125,6 +125,7 @@ export default function App() {
   const [reviewContext, setReviewContext] = useState('');
   const [storageError, setStorageError] = useState(false);
   const [planCollapsed, setPlanCollapsed] = useState(true);
+  const [boardToolsOpen, setBoardToolsOpen] = useState(false);
   const [storage] = useState(() => {
     try {
       return window.localStorage;
@@ -622,7 +623,7 @@ export default function App() {
 
   return (
     <div
-      className={`app-shell ${isChat ? 'chat-view' : 'workbench-view'} ${!isChat && tab === 'trend' ? 'board-view' : ''} ${planCollapsed ? 'plan-collapsed' : ''}`}
+      className={`app-shell ${isChat ? 'chat-view' : 'workbench-view'} ${!isChat && tab === 'trend' ? 'board-view' : ''} ${planCollapsed ? 'plan-collapsed' : ''} ${boardToolsOpen ? 'board-tools-open' : ''}`}
     >
       {sidebarOpen && (
         <button
@@ -752,11 +753,31 @@ export default function App() {
             >
               <Menu size={19} />
             </button>
-            <span>Workspace</span>
+            <span>
+              {!isChat && tab === 'trend'
+                ? workspace?.incident.incident_number
+                : 'Workspace'}
+            </span>
             <ChevronRight size={13} />
-            <strong>{isChat ? 'Analysis chat' : 'Quality analysis'}</strong>
+            <strong>
+              {isChat
+                ? 'Analysis chat'
+                : tab === 'trend'
+                  ? room?.title
+                  : 'Quality analysis'}
+            </strong>
           </div>
           <div className="topbar-actions">
+            {!isChat && tab === 'trend' && (
+              <button
+                className="icon-button"
+                title="사고·화면 선택"
+                aria-expanded={boardToolsOpen}
+                onClick={() => setBoardToolsOpen((value) => !value)}
+              >
+                <LayoutDashboard size={18} />
+              </button>
+            )}
             {!isChat && (
               <button
                 className="icon-button plan-toggle"

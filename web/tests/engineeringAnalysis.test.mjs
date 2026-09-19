@@ -13,7 +13,13 @@ import {
 
 const data = {
   signals: [
-    { id: 'signal-1', equipment: 'SYN-EQP-01', startIndex: 2, endIndex: 8 },
+    {
+      id: 'signal-1',
+      step: 'ETCH',
+      equipment: 'SYN-EQP-01',
+      startIndex: 2,
+      endIndex: 8,
+    },
   ],
   trend: Array.from({ length: 24 }, () => ({})),
   fab: [{ recipe: 'SYN-RCP-A' }],
@@ -26,6 +32,7 @@ test('map cohort uses inclusive Fab scope without depending on EDS presence or l
       waferId: 'W1',
       timestamp: '2026-01-01T02:00:00Z',
       equipment: 'E1',
+      step: 'ETCH',
       recipe: 'R1',
     },
     {
@@ -33,6 +40,7 @@ test('map cohort uses inclusive Fab scope without depending on EDS presence or l
       waferId: 'W2',
       timestamp: '2026-01-01T04:00:00Z',
       equipment: 'E1',
+      step: 'ETCH',
       recipe: 'R1',
     },
     {
@@ -40,6 +48,7 @@ test('map cohort uses inclusive Fab scope without depending on EDS presence or l
       waferId: 'W1',
       timestamp: '2026-01-01T03:00:00Z',
       equipment: 'E2',
+      step: 'ETCH',
       recipe: 'R2',
     },
     {
@@ -47,10 +56,12 @@ test('map cohort uses inclusive Fab scope without depending on EDS presence or l
       waferId: 'W3',
       timestamp: '2026-01-01T05:00:00Z',
       equipment: 'E1',
+      step: 'ETCH',
       recipe: 'R1',
     },
   ];
   const scoped = {
+    signals: [{ id: 'signal-1', step: 'ETCH' }],
     fab: [...fab, fab[0]],
     yields: [],
     trend: [
@@ -59,6 +70,7 @@ test('map cohort uses inclusive Fab scope without depending on EDS presence or l
     ],
   };
   const selection = {
+    signalId: 'signal-1',
     start: 0,
     end: 1,
     equipment: '',
@@ -77,6 +89,90 @@ test('map cohort uses inclusive Fab scope without depending on EDS presence or l
   assert.deepEqual(selectFabRows(scoped, { ...selection, start: 1 }), [fab[1]]);
   assert.deepEqual(selectFabRows(scoped, { ...selection, end: 9 }), []);
 });
+
+test('filters the selected Step before dedup so a later other-Step record cannot shadow it', () => {
+  const eligible = {
+    lotId: 'L1',
+    waferId: 'W1',
+    timestamp: '2026-01-01T02:00:00Z',
+    equipment: 'E2',
+    step: 'ETCH',
+    recipe: 'R1',
+    value: 10,
+  };
+  const laterSameStep = {
+    ...eligible,
+    timestamp: '2026-01-01T03:00:00Z',
+    value: 11,
+  };
+  const otherLot = { ...eligible, lotId: 'L2' };
+  const otherStep = {
+    ...eligible,
+    timestamp: '2026-01-01T04:00:00Z',
+    step: 'CLEAN',
+    value: 99,
+  };
+  const scoped = {
+    signals: [
+      { id: 'signal-etch', step: 'ETCH', equipment: 'E1' },
+      { id: 'signal-clean', step: 'CLEAN', equipment: 'E1' },
+    ],
+    fab: [eligible, laterSameStep, otherLot, otherStep],
+    trend: [
+      { timestamp: '2026-01-01T02:00:00Z' },
+      { timestamp: '2026-01-01T04:00:00Z' },
+    ],
+  };
+  const selection = {
+    signalId: 'signal-etch',
+    start: 0,
+    end: 1,
+    equipment: 'E2',
+    recipe: 'R1',
+    maxLagDays: 0,
+  };
+  assert.deepEqual(selectFabRows(scoped, selection), [laterSameStep, otherLot]);
+  assert.deepEqual(
+    selectFabRows(scoped, { ...selection, signalId: 'signal-clean' }),
+    [otherStep],
+  );
+  assert.deepEqual(selectFabRows(scoped, { ...selection, equipment: '' }), [
+    laterSameStep,
+    otherLot,
+  ]);
+});
+
+test('returns an empty cohort when the selected signal is missing or unknown', () => {
+  const row = {
+    lotId: 'L1',
+    waferId: 'W1',
+    timestamp: '2026-01-01T02:00:00Z',
+    equipment: 'E1',
+    step: 'ETCH',
+    recipe: 'R1',
+  };
+  const scoped = {
+    signals: [{ id: 'signal-1', step: 'ETCH' }],
+    fab: [row],
+    trend: [{ timestamp: row.timestamp }],
+  };
+  const selection = {
+    signalId: 'signal-1',
+    start: 0,
+    end: 0,
+    equipment: '',
+    recipe: '',
+    maxLagDays: 0,
+  };
+  assert.deepEqual(selectFabRows(scoped, selection), [row]);
+  for (const signalId of ['', 'unknown-signal', undefined, null]) {
+    assert.deepEqual(selectFabRows(scoped, { ...selection, signalId }), []);
+  }
+  const { signalId, ...missingSignal } = selection;
+  assert.deepEqual(selectFabRows(scoped, missingSignal), []);
+  assert.deepEqual(selectFabRows({ ...scoped, signals: [] }, selection), []);
+});
+
 test('Pearson reports positive and inverse associations, not a causal verdict', () => {
   assert.equal(
     correlationSummary([

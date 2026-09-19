@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { download, type Incident } from './api';
 import { Chart } from './charts';
+import { metricUnits } from './anomalyTrend';
 import type { ViewProps } from './Views';
 import {
   pairKey,
@@ -17,6 +18,8 @@ import type { EngineeringData, FabRow, Signal } from './engineeringData';
 import { compositeWaferMaps, waferData, waferSeed } from './waferMaps';
 import HistoricalCorrelation from './HistoricalCorrelation';
 import BoardSem from './BoardSem';
+import BoardOverlay from './BoardOverlay';
+import { availableEquipment, compareEquipment } from './equipmentComparison';
 import BoardAnalysis from './BoardAnalysis';
 import {
   makeInformNotes,
@@ -57,7 +60,7 @@ export default function InvestigationBoard({
   selection: InvestigationSelection;
   change: (patch: Partial<InvestigationSelection>) => void;
   choose: (signal: Signal) => void;
-  trend: ReactNode;
+  trend: (equipment: string) => ReactNode;
   focusedKey: string;
   onFocus: (row: FabRow) => void;
   incidents: Incident[];
@@ -127,6 +130,45 @@ export default function InvestigationBoard({
   useEffect(() => setDie(null), [scope]);
   const focused =
     candidates.find((row) => pairKey(row) === focusedKey) || candidates[0];
+  const equipmentOptions = availableEquipment(data, signal);
+  const [peerState, setPeerState] = useState({
+    scope: '',
+    equipment: '',
+    key: '',
+  });
+  const peerEquipment =
+    peerState.scope === scope
+      ? peerState.equipment
+      : equipmentOptions.find((value) => value !== signal.equipment) ||
+        signal.equipment;
+  const peerCandidates = selectFabRows(data, {
+    ...selection,
+    equipment: peerEquipment,
+  }).filter((row) => !focused || pairKey(row) !== pairKey(focused));
+  const peer =
+    peerCandidates.find(
+      (row) => peerState.scope === scope && pairKey(row) === peerState.key,
+    ) || peerCandidates[0];
+  const equipmentComparison = compareEquipment(
+    data,
+    signal,
+    signal.equipment,
+    peerEquipment,
+    selection.start,
+    selection.end,
+  );
+  const peerMap = useMemo(
+    () =>
+      peer
+        ? {
+            lotId: peer.lotId,
+            waferId: peer.waferId,
+            gridId,
+            dies: waferData(waferSeed(incident, peer.lotId, peer.waferId)),
+          }
+        : undefined,
+    [incident, peer],
+  );
   const maps = useMemo(
     () =>
       candidates.map((row) => ({
@@ -144,9 +186,6 @@ export default function InvestigationBoard({
   );
   const current = maps.find(
     (row) => focused && pairKey(row) === pairKey(focused),
-  );
-  const overlayB = selectedMaps.find(
-    (row) => current && pairKey(row) !== pairKey(current),
   );
   const selectedDie =
     die && composite.dies.find((row) => row.x === die[0] && row.y === die[1]);
@@ -166,7 +205,21 @@ export default function InvestigationBoard({
       {
         type: 'scatter',
         symbol: 'rect',
-        symbolSize: 3.3,
+        symbolSize: 5,
+        markPoint: die
+          ? {
+              silent: true,
+              symbol: 'rect',
+              symbolSize: 11,
+              label: { show: false },
+              itemStyle: {
+                color: 'transparent',
+                borderColor: '#233a32',
+                borderWidth: 1.5,
+              },
+              data: [{ coord: die }],
+            }
+          : undefined,
         data: combined
           ? composite.dies.map((row) => ({
               value: [row.x, row.y, row.flags, row.observed, row.percent],
@@ -263,6 +316,55 @@ export default function InvestigationBoard({
         </span>
         <span className="board-demo">SYNTHETIC · 실측 / LLM 미연결</span>
       </div>
+      <div className="board-comparison-scope">
+        <strong>
+          A{' '}
+          {focused
+            ? `${focused.lotId} / ${focused.waferId} · ${focused.equipment}`
+            : 'Wafer 없음'}
+        </strong>
+        <label>
+          설비 B
+          <select
+            aria-label="비교 설비 B"
+            value={peerEquipment}
+            onChange={(event) =>
+              setPeerState({ scope, equipment: event.target.value, key: '' })
+            }
+          >
+            {equipmentOptions.map((value) => (
+              <option key={value}>{value}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Wafer B
+          <select
+            aria-label="비교 Wafer B"
+            value={peer ? pairKey(peer) : ''}
+            disabled={!peerCandidates.length}
+            onChange={(event) =>
+              setPeerState({
+                scope,
+                equipment: peerEquipment,
+                key: event.target.value,
+              })
+            }
+          >
+            {!peerCandidates.length && (
+              <option value="">
+                해당 Step · 구간 · Recipe에 비교 Wafer 없음
+              </option>
+            )}
+            {peerCandidates.map((row) => (
+              <option value={pairKey(row)} key={pairKey(row)}>
+                {row.lotId} / {row.waferId} · {row.timestamp.slice(11, 16)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <span>B는 합성·분석 체크 대상과 별도</span>
+      </div>
       <div className="board-grid">
         <section
           className="board-panel board-signals"
@@ -341,7 +443,31 @@ export default function InvestigationBoard({
               <RotateCcw size={14} />
             </button>
           </header>
-          <div className="board-trend-body">{trend}</div>
+          <div className="board-equipment-stats" aria-live="polite">
+            <span>
+              Signal A {signal.equipment} · B {peerEquipment} 합성 기준선
+            </span>
+            {equipmentComparison.valid ? (
+              <>
+                <b>
+                  중앙값 {equipmentComparison.medianA?.toFixed(2)} /{' '}
+                  {equipmentComparison.medianB?.toFixed(2)}{' '}
+                  {metricUnits[signal.metric]}
+                </b>
+                <span>
+                  Δ A−B {equipmentComparison.deltaMedian?.toFixed(2)} ·{' '}
+                  {equipmentComparison.count} 시간쌍
+                </span>
+              </>
+            ) : (
+              <span>
+                {equipmentComparison.reason === 'same-equipment'
+                  ? '동일 설비 · Wafer 비교'
+                  : '설비 비교 데이터 없음'}
+              </span>
+            )}
+          </div>
+          <div className="board-trend-body">{trend(peerEquipment)}</div>
           <div className="board-range">
             <label>
               시작
@@ -375,6 +501,40 @@ export default function InvestigationBoard({
               />
               <output>{time(to)}</output>
             </label>
+          </div>
+          <div
+            className="board-change-strip"
+            aria-label="Recipe와 전산 변경 이력"
+          >
+            {events.map((event) => (
+              <button
+                key={event.id}
+                title={`${event.sourceRef} · ${event.before} → ${event.after} · 원인 미확정`}
+                onClick={() => {
+                  const index = data.trend.reduce(
+                    (best, row, i) =>
+                      Math.abs(
+                        Date.parse(row.timestamp) - Date.parse(event.timestamp),
+                      ) <
+                      Math.abs(
+                        Date.parse(data.trend[best].timestamp) -
+                          Date.parse(event.timestamp),
+                      )
+                        ? i
+                        : best,
+                    0,
+                  );
+                  change({
+                    start: Math.max(0, index - 2),
+                    end: Math.min(data.trend.length - 1, index + 2),
+                  });
+                }}
+              >
+                <time>{time(event.timestamp)}</time>{' '}
+                {event.kind === 'recipe' ? 'Recipe' : 'MES Rule'} ·{' '}
+                {event.before} → {event.after}
+              </button>
+            ))}
           </div>
         </section>
         <section
@@ -445,7 +605,9 @@ export default function InvestigationBoard({
                   <span>
                     {row.lotId} <strong>{row.waferId}</strong>
                   </span>
-                  <small>{row.timestamp.slice(11, 16)} · Fab</small>
+                  <small>
+                    {row.equipment} · {row.timestamp.slice(11, 16)}
+                  </small>
                 </button>
               </div>
             ))}
@@ -479,6 +641,7 @@ export default function InvestigationBoard({
                 option={mapOption(false)}
                 className="board-map-canvas"
                 label="선택 Wafer 개별 Map"
+                onSelect={(p) => setDie([p.value[0], p.value[1]])}
               />
             ) : (
               <p className="board-empty">Map 없음</p>
@@ -544,95 +707,26 @@ export default function InvestigationBoard({
           </footer>
         </section>
         <section
-          className="board-panel board-changes"
-          aria-label="Recipe와 전산 변경 이력"
+          className="board-panel board-overlay"
+          aria-label="Wafer A B Overlay 비교"
         >
-          <header>
-            <h2>변경 이력</h2>
-            <span>합성</span>
-          </header>
-          <div className="board-change-onset">
-            <strong>{time(data.trend[signal.onsetIndex].timestamp)}</strong>
-            <span>변동 시작 · 합성 기준</span>
-          </div>
-          <div className="board-records">
-            {events.map((event) => (
-              <div key={event.id} title={event.sourceRef}>
-                <time>{time(event.timestamp)}</time>
-                <b>
-                  {event.kind === 'recipe' ? 'Recipe 변경' : '전산 Rule 변경'}
-                </b>
-                <span>
-                  {event.before} → {event.after}
-                </span>
-                <small>
-                  {event.equipment}
-                  {event.timestamp < from
-                    ? ' · 선택 이전'
-                    : event.timestamp > to
-                      ? ' · 선택 이후'
-                      : ' · 구간 내'}
-                </small>
-              </div>
-            ))}
-          </div>
-          <footer>선후 관계만 표시 · 원인 미확정</footer>
+          <BoardOverlay
+            a={current}
+            b={peerMap}
+            coordinate={die}
+            selectDie={setDie}
+          />
         </section>
         <section
           className="board-panel board-images"
-          aria-label="SEM과 Overlay"
+          aria-label="SEM 이미지 비교"
         >
           <BoardSem
             workspace={workspace}
             focused={focused}
+            compare={peer}
             selected={candidates.filter((row) => checked.has(pairKey(row)))}
             onFocus={onFocus}
-            overlay={
-              <figure className="sem-overlay">
-                <Chart
-                  option={{
-                    ...mapOption(true),
-                    series: [
-                      {
-                        type: 'scatter',
-                        symbol: 'rect',
-                        symbolSize: 2.5,
-                        data: (current?.dies || []).map((row) => [
-                          row.x,
-                          row.y,
-                        ]),
-                        itemStyle: { color: '#dfe6e4' },
-                      },
-                      {
-                        type: 'scatter',
-                        symbol: 'rect',
-                        symbolSize: 2.7,
-                        data: (current?.dies || [])
-                          .filter((row) => row.bin >= 3)
-                          .map((row) => [row.x, row.y]),
-                        itemStyle: { color: '#548db2' },
-                      },
-                      {
-                        type: 'scatter',
-                        symbol: 'circle',
-                        symbolSize: 2,
-                        data: (overlayB?.dies || [])
-                          .filter((row) => row.bin >= 3)
-                          .map((row) => [row.x, row.y]),
-                        itemStyle: { color: '#ce7886', opacity: 0.65 },
-                      },
-                    ],
-                    tooltip: { show: false },
-                  }}
-                  className="board-overlay-canvas"
-                  label="합성 두 Wafer Overlay 예시"
-                />
-                <figcaption>
-                  {current?.waferId || '선택 없음'} /{' '}
-                  {overlayB?.waferId || '비교 없음'} · 합성
-                </figcaption>
-              </figure>
-            }
           />
         </section>
         <section
