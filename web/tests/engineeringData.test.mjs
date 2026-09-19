@@ -42,11 +42,13 @@ test('creates deterministic, incident-scoped synthetic engineering data', () => 
     metric: 'temperature',
     equipment: 'SYN-EQP-01',
     step: 'SYN-ETCH-10',
+    item: 'SYN-TEMP',
     recipe: 'SYN-RCP-A',
     detectedAt: '2026-01-15T12:00:00.000Z',
     startIndex: 5,
     endIndex: 21,
     description: 'SYN-EQP-01 · SYN-ETCH-10 · 합성 온도 Trace',
+    onsetIndex: 5,
   });
   assert.equal(first.fab.length, 2);
   for (const row of first.fab) {
@@ -64,8 +66,11 @@ test('creates deterministic, incident-scoped synthetic engineering data', () => 
     first.fab.every((row) => row.value >= 65 && row.value <= 69),
     true,
   );
-  assert.equal(first.yields.length, first.fab.length);
-  assert.equal(first.yields.at(-1)?.yieldPct, null);
+  assert.deepEqual(
+    first.yields,
+    [],
+    'current Fab wafers do not have fabricated future EDS outcomes',
+  );
   assert.equal(first.wip.length, 2);
   assert.deepEqual(
     first.wip.map((row) => [row.lotId, row.wafers]),
@@ -75,6 +80,13 @@ test('creates deterministic, incident-scoped synthetic engineering data', () => 
     ],
   );
   assert.equal(first.downtime.length, 4);
+  assert.equal(first.changes.length, 4);
+  for (const event of first.changes) {
+    assert.ok(first.trend.some((point) => point.timestamp === event.timestamp));
+    assert.ok(event.sourceRef.startsWith('synthetic://'));
+    assert.ok(['recipe', 'system'].includes(event.kind));
+    assert.notEqual(event.before, event.after);
+  }
   assert.equal(
     first.downtime.every(
       (event) =>

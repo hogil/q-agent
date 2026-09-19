@@ -8,6 +8,7 @@ import {
   parseEngineeringReference,
   parsePairKey,
   pairKey,
+  selectFabRows,
 } from '../src/engineeringAnalysis.ts';
 
 const data = {
@@ -17,6 +18,65 @@ const data = {
   trend: Array.from({ length: 24 }, () => ({})),
   fab: [{ recipe: 'SYN-RCP-A' }],
 };
+
+test('map cohort uses inclusive Fab scope without depending on EDS presence or lag', () => {
+  const fab = [
+    {
+      lotId: 'L1',
+      waferId: 'W1',
+      timestamp: '2026-01-01T02:00:00Z',
+      equipment: 'E1',
+      recipe: 'R1',
+    },
+    {
+      lotId: 'L1',
+      waferId: 'W2',
+      timestamp: '2026-01-01T04:00:00Z',
+      equipment: 'E1',
+      recipe: 'R1',
+    },
+    {
+      lotId: 'L2',
+      waferId: 'W1',
+      timestamp: '2026-01-01T03:00:00Z',
+      equipment: 'E2',
+      recipe: 'R2',
+    },
+    {
+      lotId: 'L1',
+      waferId: 'W3',
+      timestamp: '2026-01-01T05:00:00Z',
+      equipment: 'E1',
+      recipe: 'R1',
+    },
+  ];
+  const scoped = {
+    fab: [...fab, fab[0]],
+    yields: [],
+    trend: [
+      { timestamp: '2026-01-01T02:00:00Z' },
+      { timestamp: '2026-01-01T04:00:00Z' },
+    ],
+  };
+  const selection = {
+    start: 0,
+    end: 1,
+    equipment: '',
+    recipe: '',
+    maxLagDays: 0,
+  };
+  assert.deepEqual(selectFabRows(scoped, selection), fab.slice(0, 3));
+  assert.deepEqual(
+    selectFabRows(scoped, { ...selection, equipment: 'E1' }),
+    fab.slice(0, 2),
+  );
+  assert.deepEqual(
+    selectFabRows(scoped, { ...selection, recipe: 'R2', maxLagDays: 30 }),
+    [fab[2]],
+  );
+  assert.deepEqual(selectFabRows(scoped, { ...selection, start: 1 }), [fab[1]]);
+  assert.deepEqual(selectFabRows(scoped, { ...selection, end: 9 }), []);
+});
 test('Pearson reports positive and inverse associations, not a causal verdict', () => {
   assert.equal(
     correlationSummary([

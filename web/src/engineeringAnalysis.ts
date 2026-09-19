@@ -14,6 +14,23 @@ export function pairKey(row: { lotId: string; waferId: string }): string {
   return JSON.stringify([row.lotId, row.waferId]);
 }
 
+export function selectFabRows(
+  data: EngineeringData,
+  selection: InvestigationSelection,
+) {
+  const from = data.trend[selection.start]?.timestamp;
+  const to = data.trend[selection.end]?.timestamp;
+  if (!from || !to) return [];
+  const rows = data.fab.filter(
+    (row) =>
+      row.timestamp >= from &&
+      row.timestamp <= to &&
+      (!selection.equipment || row.equipment === selection.equipment) &&
+      (!selection.recipe || row.recipe === selection.recipe),
+  );
+  return [...new Map(rows.map((row) => [pairKey(row), row])).values()];
+}
+
 export function parsePairKey(value: unknown, data: EngineeringData): string {
   return typeof value === 'string' &&
     data.fab.some((row) => pairKey(row) === value)

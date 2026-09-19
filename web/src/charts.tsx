@@ -10,6 +10,8 @@ import {
   BrushComponent,
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
+import { waferData, type Die } from './waferMaps';
+export { waferData, type Die } from './waferMaps';
 
 echarts.use([
   LineChart,
@@ -230,36 +232,7 @@ export function TrendChart({
   );
 }
 
-export type Die = { x: number; y: number; bin: number };
 const binColors = ['#e5e9e8', '#87b7aa', '#397f72', '#e4b46b', '#c47669'];
-export function waferData(seed: number): Die[] {
-  const dice: Die[] = [];
-  for (let y = -16; y <= 16; y++)
-    for (let x = -16; x <= 16; x++) {
-      const radius = Math.hypot(x, y);
-      if (radius > 16 || (y < -14 && Math.abs(x) < 1)) continue;
-      const random =
-        (Math.sin(x * 12.98 + y * 78.23 + seed * 9.12) * 43758.55) % 1;
-      const v = Math.abs(random);
-      dice.push({
-        x,
-        y,
-        bin:
-          radius > 12.2 && x > -8
-            ? v > 0.6
-              ? 4
-              : v > 0.18
-                ? 3
-                : 2
-            : v > 0.965
-              ? 2
-              : v > 0.85
-                ? 1
-                : 0,
-      });
-    }
-  return dice;
-}
 
 export function WaferChart({
   seed,

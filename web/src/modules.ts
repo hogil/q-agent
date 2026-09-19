@@ -39,8 +39,8 @@ export const modules: {
   },
   {
     id: 'trend',
-    label: 'Trend',
-    name: 'Trend 구간 확인',
+    label: '통합 분석',
+    name: 'Trend · Map 통합 분석',
     status: '합성',
     icon: Activity,
     plan: true,

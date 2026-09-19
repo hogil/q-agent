@@ -1,37 +1,31 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
-  AlertTriangle,
-  ArrowDownToLine,
-  ArrowRight,
   ArrowUpRight,
   Check,
   ArrowLeft,
-  ChevronLeft,
-  ChevronRight,
-  ClipboardCheck,
   FileText,
   Focus,
-  Link2,
   RotateCcw,
   Search,
-  ScatterChart,
   ShieldAlert,
   X,
 } from 'lucide-react';
-import { download, type Attachment } from './api';
+import { type Attachment, type Incident } from './api';
 import { Chart } from './charts';
 import { Empty, type Tab, type ViewProps } from './Views';
 import { OperationsView } from './OperationsView';
+import InvestigationBoard from './InvestigationBoard';
+import HistoricalCorrelation from './HistoricalCorrelation';
+import { historicalData, selectHistoricalData } from './historicalData';
 import {
   makeEngineeringData,
-  matchFabYield,
   type EngineeringData,
   type Signal,
 } from './engineeringData';
 import {
   correlationSummary,
   defaultSelection,
-  engineeringReference,
+  selectFabRows,
   parseEngineeringReference,
   parseSelection,
   parsePairKey,
@@ -47,7 +41,6 @@ const metrics = {
   availability: { name: '설비 가동률', unit: '%', limit: 90 },
 };
 type SelectionChange = (patch: Partial<InvestigationSelection>) => void;
-type Pair = ReturnType<typeof matchFabYield>['pairs'][number];
 
 function EngineeringTrend({
   data,
@@ -62,6 +55,9 @@ function EngineeringTrend({
 }) {
   const signal = data.signals.find((s) => s.id === selection.signalId)!;
   const metric = metrics[signal.metric];
+  const changes = data.changes.filter(
+    (event) => event.equipment === signal.equipment,
+  );
   const option = useMemo(
     () => ({
       animationDuration: 180,
@@ -69,7 +65,7 @@ function EngineeringTrend({
         fontFamily: 'Segoe UI, Malgun Gothic, sans-serif',
         fontSize: 11,
       },
-      grid: { left: 55, right: 24, top: 35, bottom: 42 },
+      grid: { left: 40, right: 15, top: 22, bottom: 28 },
       tooltip: { trigger: 'axis', renderMode: 'richText' },
       brush: compact
         ? undefined
@@ -113,8 +109,44 @@ function EngineeringTrend({
             symbol: 'none',
             label: { formatter: '예시 기준', position: 'insideEndTop' },
             lineStyle: { color: '#c3874e', type: 'dashed' },
-            data: [{ yAxis: metric.limit }],
+            data: [
+              { yAxis: metric.limit },
+              {
+                xAxis: signal.onsetIndex,
+                lineStyle: { color: '#bf5563' },
+                label: {
+                  formatter: '변동 시작',
+                  position: 'insideEndTop',
+                  color: '#a34350',
+                },
+              },
+              ...changes.map((event) => ({
+                xAxis: data.trend.findIndex(
+                  (point) => point.timestamp === event.timestamp,
+                ),
+                lineStyle: {
+                  color: event.kind === 'recipe' ? '#82749c' : '#6e818b',
+                  type: 'dotted',
+                },
+                label: {
+                  formatter: event.kind === 'recipe' ? 'Recipe' : '전산 변경',
+                  position: 'insideStartTop',
+                  color: '#5c6871',
+                },
+              })),
+            ],
           },
+        },
+        {
+          type: 'line',
+          name: '변동 구간 · 합성 기준',
+          symbol: 'none',
+          lineStyle: { width: 2.5, color: '#c85d66' },
+          data: data.trend.map((point, index) =>
+            index >= signal.onsetIndex && index <= signal.endIndex
+              ? point[signal.metric]
+              : null,
+          ),
         },
       ],
     }),
@@ -283,408 +315,6 @@ function SignalList({
   );
 }
 
-function CorrelationView({
-  pairs,
-  match,
-  selection,
-  change,
-  selectedPair,
-  setSelectedPair,
-  attach,
-  pinned,
-  navigate,
-}: {
-  pairs: Pair[];
-  match: ReturnType<typeof matchFabYield>;
-  selection: InvestigationSelection;
-  change: SelectionChange;
-  selectedPair: Pair | null;
-  setSelectedPair: (pair: Pair) => void;
-  attach: ViewProps['attach'];
-  pinned: boolean;
-  navigate: ViewProps['navigate'];
-}) {
-  const summary = correlationSummary(pairs);
-  const [fullYieldAxis, setFullYieldAxis] = useState(false);
-  const selectedIndex = pairs.findIndex((row) => row === selectedPair);
-  const option = useMemo(
-    () => ({
-      animationDuration: 200,
-      textStyle: {
-        fontFamily: 'Segoe UI, Malgun Gothic, sans-serif',
-        fontSize: 11,
-      },
-      grid: { left: 63, right: 25, top: 28, bottom: 53 },
-      tooltip: {
-        trigger: 'item',
-        renderMode: 'richText',
-        formatter: (p: any) => {
-          const row = pairs[p.dataIndex];
-          return row
-            ? `${row.lotId} / ${row.waferId}\nFab ${row.value.toFixed(2)} °C\nEDS ${row.yieldPct.toFixed(2)}%\n${row.equipment} · ${row.recipe}`
-            : '';
-        },
-      },
-      xAxis: {
-        type: 'value',
-        scale: true,
-        min: ({ min }: { min: number }) => Math.floor((min - 0.1) * 10) / 10,
-        max: ({ max }: { max: number }) => Math.ceil((max + 0.1) * 10) / 10,
-        name: 'Fab 공정 온도 (°C)',
-        nameLocation: 'middle',
-        nameGap: 32,
-        splitLine: { lineStyle: { color: '#edf0f2' } },
-      },
-      yAxis: {
-        type: 'value',
-        min: fullYieldAxis
-          ? 0
-          : Math.max(
-              0,
-              Math.floor(Math.min(...pairs.map((row) => row.yieldPct)) - 2),
-            ),
-        max: fullYieldAxis
-          ? 100
-          : Math.min(
-              100,
-              Math.ceil(Math.max(...pairs.map((row) => row.yieldPct)) + 2),
-            ),
-        name: 'EDS Yield (%)',
-        splitLine: { lineStyle: { color: '#edf0f2' } },
-      },
-      series: [
-        {
-          type: 'scatter',
-          symbolSize: 14,
-          data: pairs.map((row) => ({
-            value: [row.value, row.yieldPct],
-            itemStyle: {
-              color: row.recipe.endsWith('A') ? '#3b8697' : '#c77a63',
-              borderColor:
-                selectedPair?.lotId === row.lotId &&
-                selectedPair.waferId === row.waferId
-                  ? '#244e44'
-                  : '#fff',
-              borderWidth: 2,
-            },
-          })),
-        },
-      ],
-    }),
-    [pairs, selectedPair, fullYieldAxis],
-  );
-  const groups = [...new Set(pairs.map((p) => p.recipe))].map((recipe) => ({
-    recipe,
-    ...correlationSummary(pairs.filter((p) => p.recipe === recipe)),
-  }));
-  return (
-    <section className="detail-view correlation-view">
-      <div className="section-title">
-        <div>
-          <h2>Fab × EDS Yield</h2>
-          <span>Lot + Wafer 결합 · Fab 측정시각 기준 · 합성 데이터</span>
-        </div>
-        <div className="eng-inline-actions">
-          <button
-            className="outline-button"
-            disabled={pinned}
-            onClick={() =>
-              attach({
-                kind: 'trend',
-                id: engineeringReference('corr', selection),
-                label: `합성 Fab × EDS · n=${summary.n} · r=${summary.r?.toFixed(3) ?? 'N/A'}`,
-              })
-            }
-          >
-            {pinned ? <Check size={15} /> : <Link2 size={15} />}
-            {pinned ? '근거 선택됨' : '근거 선택'}
-          </button>
-          <button
-            className="outline-button"
-            onClick={() => navigate('assessment')}
-          >
-            <ClipboardCheck size={15} />
-            설명 · 판정
-          </button>
-          <button
-            className="icon-button"
-            title="Fab EDS 매칭 결과 JSON 다운로드"
-            onClick={() =>
-              download(
-                'synthetic-fab-eds.json',
-                JSON.stringify(
-                  { synthetic: true, selection, match, summary },
-                  null,
-                  2,
-                ),
-              )
-            }
-          >
-            <ArrowDownToLine size={17} />
-          </button>
-        </div>
-      </div>
-      <div className="eng-summary-band">
-        <div>
-          <span>매칭 완료</span>
-          <strong>
-            {pairs.length}
-            <small> / {match.eligible}</small>
-          </strong>
-        </div>
-        <div>
-          <span>Pearson r</span>
-          <strong>{summary.r?.toFixed(3) ?? 'N/A'}</strong>
-        </div>
-        <div>
-          <span>평균 EDS Yield</span>
-          <strong>
-            {summary.meanYield?.toFixed(1) ?? 'N/A'}
-            <small>{summary.meanYield === null ? '' : ' %'}</small>
-          </strong>
-        </div>
-      </div>
-      <div className="view-toolbar">
-        <label className="eng-axis-toggle">
-          <input
-            type="checkbox"
-            checked={fullYieldAxis}
-            onChange={(e) => setFullYieldAxis(e.target.checked)}
-          />
-          Yield 축 0–100%
-        </label>
-        <label className="select-field">
-          최대 EDS 시차
-          <select
-            aria-label="EDS 최대 시차"
-            value={selection.maxLagDays}
-            onChange={(e) => change({ maxLagDays: Number(e.target.value) })}
-          >
-            {[0, 3, 7, 14, 30].map((d) => (
-              <option key={d} value={d}>
-                {d}일
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <div className="eng-quality-strip">
-        <span>누락 {match.missing}</span>
-        <span>중복·모호 {match.ambiguous}</span>
-        <span>시차 제외 {match.outsideLag}</span>
-        <span>상관관계 ≠ 인과관계</span>
-      </div>
-      <div className="eng-correlation-layout">
-        <div className="eng-plot-region">
-          {pairs.length ? (
-            <Chart
-              option={option}
-              label="합성 Fab 공정 온도와 EDS Yield 산점도"
-              className="eng-correlation-chart"
-              onSelect={(p) =>
-                pairs[p.dataIndex] && setSelectedPair(pairs[p.dataIndex])
-              }
-            />
-          ) : (
-            <Empty
-              title="매칭된 Fab / EDS 쌍 없음"
-              detail="현재 구간·설비·Recipe·측정 시차 조건 결과 0건"
-            />
-          )}
-          <div className="eng-strata">
-            {groups.map((g) => (
-              <span key={g.recipe}>
-                <i
-                  style={{
-                    background: g.recipe.endsWith('A') ? '#3b8697' : '#c77a63',
-                  }}
-                />
-                {g.recipe} · n={g.n} · r={g.r?.toFixed(3) ?? 'N/A'}
-              </span>
-            ))}
-          </div>
-        </div>
-        <aside className="eng-pair-inspector" aria-label="선택 Wafer 상세">
-          <div className="eng-inspector-heading">
-            <h3>Wafer detail</h3>
-            <span>
-              {selectedIndex < 0 ? '0' : selectedIndex + 1} / {pairs.length}
-            </span>
-            <button
-              className="icon-button"
-              title="이전 Wafer"
-              disabled={selectedIndex <= 0}
-              onClick={() => setSelectedPair(pairs[selectedIndex - 1])}
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <button
-              className="icon-button"
-              title="다음 Wafer"
-              disabled={!pairs.length || selectedIndex >= pairs.length - 1}
-              onClick={() => setSelectedPair(pairs[selectedIndex + 1])}
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-          <select
-            aria-label="상관분석 Wafer 선택"
-            value={selectedIndex < 0 ? '' : selectedIndex}
-            disabled={!pairs.length}
-            onChange={(e) => {
-              if (e.target.value !== '' && pairs[Number(e.target.value)])
-                setSelectedPair(pairs[Number(e.target.value)]);
-            }}
-          >
-            <option value="" disabled>
-              선택 Wafer 없음
-            </option>
-            {pairs.map((row, index) => (
-              <option key={pairKey(row)} value={index}>
-                {row.lotId} / {row.waferId}
-              </option>
-            ))}
-          </select>
-          {selectedPair ? (
-            <>
-              <dl className="eng-pair-facts" aria-live="polite">
-                <div>
-                  <dt>Fab 온도</dt>
-                  <dd>
-                    {selectedPair.value.toFixed(2)} <small>°C</small>
-                  </dd>
-                </div>
-                <div>
-                  <dt>EDS Yield</dt>
-                  <dd>
-                    {selectedPair.yieldPct.toFixed(2)} <small>%</small>
-                  </dd>
-                </div>
-                <div>
-                  <dt>설비</dt>
-                  <dd>{selectedPair.equipment}</dd>
-                </div>
-                <div>
-                  <dt>Recipe</dt>
-                  <dd>{selectedPair.recipe}</dd>
-                </div>
-                <div>
-                  <dt>Fab · UTC</dt>
-                  <dd>{time(selectedPair.timestamp)}</dd>
-                </div>
-                <div>
-                  <dt>EDS · UTC</dt>
-                  <dd>{time(selectedPair.measuredAt)}</dd>
-                </div>
-              </dl>
-              <div className="eng-wafer-actions">
-                <button
-                  className="outline-button"
-                  onClick={() => navigate('map', undefined, 'wafer')}
-                >
-                  <Focus size={14} />
-                  Wafer map
-                </button>
-                <button
-                  className="outline-button"
-                  onClick={() => navigate('map', undefined, 'sem')}
-                >
-                  SEM
-                  <ArrowUpRight size={14} />
-                </button>
-                <button
-                  className="outline-button"
-                  onClick={() => navigate('map', undefined, 'overlay')}
-                >
-                  Overlay
-                  <ArrowUpRight size={14} />
-                </button>
-              </div>
-              <small className="eng-inspector-source">
-                합성 측정 · 실측 이미지 미연결
-              </small>
-            </>
-          ) : (
-            <div className="eng-pair-empty">
-              <Focus size={26} />
-              <span>선택된 관측점 없음</span>
-              <small>Lot / Wafer · Fab / EDS</small>
-            </div>
-          )}
-        </aside>
-      </div>
-      <div className="data-notice">
-        <AlertTriangle size={15} />
-        <span>
-          {summary.reason ||
-            '관측점은 Wafer 단위입니다. 같은 Lot의 상관과 Recipe·설비 차이를 통제한 인과 추정은 아닙니다.'}
-        </span>
-      </div>
-      <div className="eng-table-wrap">
-        <table className="eng-table">
-          <thead>
-            <tr>
-              <th>Lot / Wafer</th>
-              <th>Fab °C</th>
-              <th>EDS %</th>
-              <th>시차</th>
-              <th>설비 / Recipe</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pairs.map((row) => (
-              <tr
-                key={pairKey(row)}
-                onClick={() => setSelectedPair(row)}
-                className={
-                  selectedPair?.lotId === row.lotId &&
-                  selectedPair.waferId === row.waferId
-                    ? 'selected'
-                    : ''
-                }
-              >
-                <td>
-                  <button
-                    className="eng-record-button"
-                    aria-pressed={selectedPair === row}
-                    onKeyDown={(event) => {
-                      if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
-                      event.preventDefault();
-                      const index =
-                        pairs.indexOf(row) +
-                        (event.key === 'ArrowDown' ? 1 : -1);
-                      if (!pairs[index]) return;
-                      setSelectedPair(pairs[index]);
-                      event.currentTarget
-                        .closest('tbody')
-                        ?.querySelectorAll<HTMLButtonElement>(
-                          '.eng-record-button',
-                        )
-                        [index]?.focus();
-                    }}
-                  >
-                    <strong>{row.lotId}</strong>
-                    <small>
-                      {row.waferId} · {time(row.timestamp)} UTC
-                    </small>
-                  </button>
-                </td>
-                <td>{row.value.toFixed(2)}</td>
-                <td>{row.yieldPct.toFixed(2)}</td>
-                <td>{row.lagDays.toFixed(1)} d</td>
-                <td>
-                  {row.equipment}
-                  <small className="eng-cell-meta">{row.recipe}</small>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
 export default function EngineeringWorkspace({
   roomId,
   tab,
@@ -692,6 +322,7 @@ export default function EngineeringWorkspace({
   children,
   prepare,
   attachments,
+  incidents,
   ...props
 }: ViewProps & {
   roomId: string;
@@ -699,6 +330,7 @@ export default function EngineeringWorkspace({
   reference: string;
   prepare: (question: string) => void;
   attachments: Attachment[];
+  incidents: Incident[];
   children: (context: {
     initialWafer?: { lotId: string; waferId: string };
   }) => ReactNode;
@@ -783,22 +415,21 @@ export default function EngineeringWorkspace({
     );
     setSelectedPairKey('');
   };
-  const match = useMemo(
+  const history = useMemo(
     () =>
-      matchFabYield(data.fab, data.yields, {
-        from: data.trend[selection.start]?.timestamp || '',
-        to: data.trend[selection.end]?.timestamp || '',
-        equipment: selection.equipment || undefined,
-        recipe: selection.recipe || undefined,
-        maxLagDays: selection.maxLagDays,
-      }),
-    [data, selection],
+      selectHistoricalData(
+        historicalData(props.workspace, data),
+        data,
+        selection,
+      ),
+    [props.workspace, data, selection],
   );
   const selectedPair =
-    match.pairs.find((p) => pairKey(p) === selectedPairKey) || null;
-  const summary = correlationSummary(match.pairs);
-  const trendPinned = attachments.some(
-    (item) => item.id === engineeringReference('trend', selection),
+    selectFabRows(data, selection).find(
+      (row) => pairKey(row) === selectedPairKey,
+    ) || null;
+  const summary = correlationSummary(
+    history.map((row) => ({ value: row.temperature, yieldPct: row.yieldPct })),
   );
   const choose = (s: Signal) => {
     setSelection({
@@ -825,8 +456,10 @@ export default function EngineeringWorkspace({
   );
   if (!signal) return children({});
   return (
-    <div className="engineering-workspace">
-      {tab !== 'signals' && (
+    <div
+      className={`engineering-workspace ${tab === 'trend' ? 'board-workspace' : ''}`}
+    >
+      {tab !== 'signals' && tab !== 'trend' && (
         <div className="eng-context">
           <div className="eng-context-heading">
             <button
@@ -921,142 +554,38 @@ export default function EngineeringWorkspace({
           조사 조건 저장 실패 · 브라우저 저장소 확인 필요
         </p>
       )}
+      {tab === 'correlation' && reference.startsWith('engineering:corr:') && (
+        <p className="data-notice">
+          이전 합성 비교의 선택 조건입니다. 현재 화면은 같은 Item의 과거 완료
+          이력 기준이며, 이전 계산 결과를 재현한 것이 아닙니다.
+        </p>
+      )}
       {tab === 'signals' ? (
         <SignalList data={data} selection={selection} choose={choose} />
       ) : tab === 'trend' ? (
-        <section className="detail-view trend-view">
-          <div className="section-title">
-            <div>
-              <h2>{metrics[signal.metric].name} Trend</h2>
-              <span>{signal.description}</span>
-            </div>
-            <div className="eng-inline-actions">
-              <button
-                className="outline-button"
-                disabled={trendPinned}
-                onClick={() =>
-                  props.attach({
-                    kind: 'trend',
-                    id: engineeringReference('trend', selection),
-                    label: `합성 ${metrics[signal.metric].name} · ${windowLabel}`,
-                  })
-                }
-              >
-                {trendPinned ? <Check size={15} /> : <Link2 size={15} />}
-                {trendPinned ? '근거 선택됨' : '근거 선택'}
-              </button>
-              <button
-                className="primary-button"
-                onClick={() => props.navigate('correlation')}
-              >
-                <ScatterChart size={15} />
-                Fab × EDS
-                <ArrowRight size={14} />
-              </button>
-            </div>
-          </div>
-          <EngineeringTrend data={data} selection={selection} change={change} />
-          <div className="eng-range">
-            <label>
-              구간 시작{' '}
-              <output>{time(data.trend[selection.start].timestamp)}</output>
-              <input
-                aria-label="Trend 구간 시작"
-                type="range"
-                min={0}
-                max={data.trend.length - 1}
-                value={selection.start}
-                onChange={(e) =>
-                  change({
-                    start: Math.min(Number(e.target.value), selection.end),
-                  })
-                }
-              />
-            </label>
-            <label>
-              구간 끝{' '}
-              <output>{time(data.trend[selection.end].timestamp)}</output>
-              <input
-                aria-label="Trend 구간 끝"
-                type="range"
-                min={0}
-                max={data.trend.length - 1}
-                value={selection.end}
-                onChange={(e) =>
-                  change({
-                    end: Math.max(Number(e.target.value), selection.start),
-                  })
-                }
-              />
-            </label>
-            <button
-              className="icon-button"
-              title="감지 구간 복원"
-              onClick={() =>
-                change({ start: signal.startIndex, end: signal.endIndex })
-              }
-            >
-              <RotateCcw size={17} />
-            </button>
-          </div>
-          <div className="eng-summary-band">
-            <div>
-              <span>선택 관측점</span>
-              <strong>{selection.end - selection.start + 1}</strong>
-            </div>
-            <div>
-              <span>Fab 매칭 후보</span>
-              <strong>
-                {match.eligible}
-                <small> wafers</small>
-              </strong>
-            </div>
-            <div>
-              <span>겹치는 설비 이벤트</span>
-              <strong>
-                {scopedDown.length}
-                <small> events</small>
-              </strong>
-            </div>
-          </div>
-          <div className="eng-event-list">
-            <h3>선택 구간의 설비 이벤트</h3>
-            {scopedDown.map((event) => (
-              <button
-                key={event.id}
-                onClick={() =>
-                  props.navigate(
-                    'production',
-                    undefined,
-                    `engineering:down:${event.id}`,
-                  )
-                }
-              >
-                <span className="eng-event-marker" />
-                <time>{time(event.start)} UTC</time>
-                <strong>{event.code}</strong>
-                <span>{event.description}</span>
-                <ArrowUpRight size={14} />
-              </button>
-            ))}
-            {!scopedDown.length && (
-              <p className="muted">선택 구간에 겹치는 합성 이벤트 없음</p>
-            )}
-          </div>
-        </section>
-      ) : tab === 'correlation' ? (
-        <CorrelationView
-          pairs={match.pairs}
-          match={match}
+        <InvestigationBoard
+          {...props}
+          incidents={incidents}
+          data={data}
           selection={selection}
           change={change}
-          selectedPair={selectedPair}
-          setSelectedPair={(pair) => setSelectedPairKey(pairKey(pair))}
-          attach={props.attach}
-          pinned={attachments.some(
-            (item) => item.id === engineeringReference('corr', selection),
-          )}
-          navigate={props.navigate}
+          choose={choose}
+          focusedKey={selectedPairKey}
+          onFocus={(row) => setSelectedPairKey(pairKey(row))}
+          prepare={prepare}
+          trend={
+            <EngineeringTrend
+              data={data}
+              selection={selection}
+              change={change}
+            />
+          }
+        />
+      ) : tab === 'correlation' ? (
+        <HistoricalCorrelation
+          workspace={props.workspace}
+          data={data}
+          selection={selection}
         />
       ) : tab === 'production' ? (
         <OperationsView
@@ -1095,8 +624,8 @@ export default function EngineeringWorkspace({
           <section className="eng-finding">
             <h3>관측과 해석</h3>
             <p>
-              <strong>{signal.title}</strong>의 선택 구간에서 Fab·EDS{' '}
-              {summary.n}쌍이 매칭됐습니다.{' '}
+              <strong>{signal.title}</strong>의 같은 Item 과거 완료 이력에서
+              Fab·EDS {summary.n}쌍이 매칭됐습니다.{' '}
               {summary.r === null
                 ? `${summary.reason || '유효한 상관계수 없음'}으로 상관계수를 보고하지 않습니다.`
                 : summary.r === 0
@@ -1123,7 +652,7 @@ export default function EngineeringWorkspace({
               },
               {
                 name: 'Fab / EDS',
-                detail: `매칭 ${summary.n}/${match.eligible} · 누락 ${match.missing} · 중복 ${match.ambiguous} · 시차 제외 ${match.outsideLag}`,
+                detail: `과거 완료 ${summary.n}쌍 · 현재 Fab Wafer는 EDS 대기`,
                 status: '로컬 계산',
                 target: 'correlation',
               },
@@ -1238,7 +767,7 @@ export default function EngineeringWorkspace({
               className="primary-button"
               onClick={() =>
                 prepare(
-                  `${props.workspace.incident.incident_number}의 ${signal.title} 항목을 분석해줘. 구간 ${windowLabel}, 설비 ${selection.equipment || '전체'}, Recipe ${selection.recipe || '전체'}, EDS 시차 최대 ${selection.maxLagDays}일. 합성 Fab·EDS 매칭 n=${summary.n}, r=${summary.r?.toFixed(3) ?? 'N/A'}. 회의록, 생산 재공, 설비 다운코드, SEM·Overlay 원본을 확인하고 사실·가설·판정 보류 사유를 구분해줘. 현재 UI의 계산값은 합성 예시이며 실제 원인 근거가 아니다.`,
+                  `${props.workspace.incident.incident_number}의 ${signal.title} 항목을 분석해줘. 구간 ${windowLabel}, 설비 ${selection.equipment || '전체'}, Recipe ${selection.recipe || '전체'}, EDS 시차 최대 ${selection.maxLagDays}일. 합성 과거 Fab·EDS 매칭 n=${summary.n}, r=${summary.r?.toFixed(3) ?? 'N/A'}. 회의록, 생산 재공, 설비 다운코드, SEM·Overlay 원본을 확인하고 사실·가설·판정 보류 사유를 구분해줘. 현재 UI의 계산값은 합성 예시이며 실제 원인 근거가 아니다.`,
                 )
               }
             >

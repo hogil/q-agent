@@ -7,11 +7,13 @@ export type Signal = {
   metric: 'temperature' | 'queue' | 'availability';
   equipment: string;
   step: string;
+  item: string;
   recipe: string;
   detectedAt: string;
   startIndex: number;
   endIndex: number;
   description: string;
+  onsetIndex: number;
 };
 
 export type TrendPoint = {
@@ -66,6 +68,18 @@ export type EngineeringData = {
   yields: YieldRow[];
   wip: WipRow[];
   downtime: DownEvent[];
+  changes: ChangeEvent[];
+};
+
+export type ChangeEvent = {
+  id: string;
+  equipment: string;
+  recipe: string;
+  kind: 'recipe' | 'system';
+  timestamp: string;
+  before: string;
+  after: string;
+  sourceRef: string;
 };
 
 export type FabYieldMatchOptions = {
@@ -220,11 +234,13 @@ export function makeEngineeringData(workspace: Workspace): EngineeringData {
       metric: 'temperature',
       equipment: 'SYN-EQP-01',
       step: STEP,
+      item: 'SYN-TEMP',
       recipe: 'SYN-RCP-A',
       detectedAt: incidentAt,
       startIndex: 5,
       endIndex: 21,
       description: 'SYN-EQP-01 · SYN-ETCH-10 · 합성 온도 Trace',
+      onsetIndex: 5,
     },
     {
       id: 'synthetic-signal-queue-rise',
@@ -233,11 +249,13 @@ export function makeEngineeringData(workspace: Workspace): EngineeringData {
       metric: 'queue',
       equipment: 'SYN-EQP-02',
       step: STEP,
+      item: 'SYN-QUEUE',
       recipe: 'SYN-RCP-B',
       detectedAt: incidentAt,
       startIndex: 8,
       endIndex: 19,
       description: 'SYN-EQP-02 · SYN-ETCH-10 · 합성 대기시간',
+      onsetIndex: 6,
     },
     {
       id: 'synthetic-signal-equipment-down',
@@ -246,11 +264,13 @@ export function makeEngineeringData(workspace: Workspace): EngineeringData {
       metric: 'availability',
       equipment: 'SYN-EQP-02',
       step: STEP,
+      item: 'SYN-AVAIL',
       recipe: 'SYN-RCP-B',
       detectedAt: incidentAt,
       startIndex: 14,
       endIndex: 17,
       description: 'SYN-EQP-02 · 합성 설비 가동률',
+      onsetIndex: 14,
     },
   ];
 
@@ -272,26 +292,7 @@ export function makeEngineeringData(workspace: Workspace): EngineeringData {
     };
   });
 
-  const yields = fab.map((row, index) => {
-    const seed = `${source}:${row.lotId}:${row.waferId}`;
-    const lagDays = 4 + (hash(`${seed}:lag`) % 5);
-    const missing = index === fab.length - 1;
-    const yieldPct = missing
-      ? null
-      : Number(
-          clamp(
-            98 - (row.value - 65) * 3 + (unit(`${seed}:yield-noise`) - 0.5) * 3,
-            85,
-            98,
-          ).toFixed(2),
-        );
-    return {
-      lotId: row.lotId,
-      waferId: row.waferId,
-      measuredAt: iso((parseTime(row.timestamp) ?? anchor) + lagDays * DAY),
-      yieldPct,
-    };
-  });
+  const yields: YieldRow[] = [];
 
   const waferCounts = new Map<string, number>();
   for (const wafer of wafers) {
@@ -341,7 +342,31 @@ export function makeEngineeringData(workspace: Workspace): EngineeringData {
     };
   });
 
-  return { signals, trend, fab, yields, wip, downtime };
+  const changes: ChangeEvent[] = ['SYN-EQP-01', 'SYN-EQP-02'].flatMap(
+    (equipment, index) => [
+      {
+        id: `SYN-CHANGE-R${index}`,
+        equipment,
+        recipe: index ? 'SYN-RCP-B' : 'SYN-RCP-A',
+        kind: 'recipe' as const,
+        timestamp: trend[4 + index * 3].timestamp,
+        before: 'v1.6',
+        after: 'v1.7',
+        sourceRef: `synthetic://recipe/version-${index}`,
+      },
+      {
+        id: `SYN-CHANGE-S${index}`,
+        equipment,
+        recipe: '',
+        kind: 'system' as const,
+        timestamp: trend[9 + index * 3].timestamp,
+        before: 'Rule 2',
+        after: 'Rule 3',
+        sourceRef: `synthetic://mes/rule-${index}`,
+      },
+    ],
+  );
+  return { signals, trend, fab, yields, wip, downtime, changes };
 }
 
 export function matchFabYield(

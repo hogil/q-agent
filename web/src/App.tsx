@@ -113,7 +113,7 @@ export default function App() {
     () =>
       modules.find(
         (m) => m.id === new URLSearchParams(location.search).get('tab'),
-      )?.id || 'signals',
+      )?.id || 'trend',
   );
   const [documentId, setDocumentId] = useState<string | null>(null);
   const [detailMode, setDetailMode] = useState(
@@ -124,7 +124,7 @@ export default function App() {
   const [notes, setNotes] = useState('');
   const [reviewContext, setReviewContext] = useState('');
   const [storageError, setStorageError] = useState(false);
-  const [planCollapsed, setPlanCollapsed] = useState(false);
+  const [planCollapsed, setPlanCollapsed] = useState(true);
   const [storage] = useState(() => {
     try {
       return window.localStorage;
@@ -346,7 +346,7 @@ export default function App() {
       });
       await refreshRooms();
       setRoomId(value.id);
-      if (!isChat) navigate('signals');
+      if (!isChat) navigate('trend');
       setSidebarOpen(false);
     } catch (e) {
       reportError(e);
@@ -365,7 +365,7 @@ export default function App() {
       setReload((r) => r + 1);
       setModal(null);
       setSearch('');
-      if (!isChat) navigate('signals');
+      if (!isChat) navigate('trend');
     } catch (e) {
       reportError(e);
     } finally {
@@ -622,7 +622,7 @@ export default function App() {
 
   return (
     <div
-      className={`app-shell ${isChat ? 'chat-view' : 'workbench-view'} ${planCollapsed ? 'plan-collapsed' : ''}`}
+      className={`app-shell ${isChat ? 'chat-view' : 'workbench-view'} ${!isChat && tab === 'trend' ? 'board-view' : ''} ${planCollapsed ? 'plan-collapsed' : ''}`}
     >
       {sidebarOpen && (
         <button
@@ -667,7 +667,7 @@ export default function App() {
         </button>
         <button
           className={`nav-item ${!isChat && tab !== 'signals' ? 'active' : ''}`}
-          onClick={() => navigate('overview')}
+          onClick={() => navigate('trend')}
         >
           <LayoutDashboard size={17} />
           분석 작업실{!isChat && <span className="nav-active-dot" />}
@@ -792,7 +792,7 @@ export default function App() {
             <button
               className="outline-button screen-switch"
               disabled={!room}
-              onClick={() => (isChat ? navigate('overview') : launchChat())}
+              onClick={() => (isChat ? navigate('trend') : launchChat())}
             >
               {isChat ? (
                 <LayoutDashboard size={15} />
@@ -875,7 +875,7 @@ export default function App() {
               </header>
               <nav className="workspace-tabs" aria-label="분석 보기">
                 <label className="mobile-view-picker">
-                  <span>View</span>
+                  <span>개별 보기</span>
                   <select
                     aria-label="분석 화면 선택"
                     value={tab}
@@ -891,23 +891,27 @@ export default function App() {
                     ))}
                   </select>
                 </label>
-                {tabs.map((item) => (
-                  <button
-                    key={item.id}
-                    className={tab === item.id ? 'active' : ''}
-                    aria-current={tab === item.id ? 'page' : undefined}
-                    onClick={() => navigate(item.id)}
-                  >
-                    <item.icon size={16} />
-                    <span>{item.label}</span>
-                    {item.id === 'inform' && workspace && (
-                      <small>{workspace.meetings.length}</small>
-                    )}
-                    {item.id === 'review' && attachments.length > 0 && (
-                      <small>{attachments.length}</small>
-                    )}
-                  </button>
-                ))}
+                {tabs
+                  .filter((item) =>
+                    ['trend', 'signals', 'review'].includes(item.id),
+                  )
+                  .map((item) => (
+                    <button
+                      key={item.id}
+                      className={tab === item.id ? 'active' : ''}
+                      aria-current={tab === item.id ? 'page' : undefined}
+                      onClick={() => navigate(item.id)}
+                    >
+                      <item.icon size={16} />
+                      <span>{item.label}</span>
+                      {item.id === 'inform' && workspace && (
+                        <small>{workspace.meetings.length}</small>
+                      )}
+                      {item.id === 'review' && attachments.length > 0 && (
+                        <small>{attachments.length}</small>
+                      )}
+                    </button>
+                  ))}
               </nav>
               {error && (
                 <div className="error-banner" role="alert">
@@ -966,6 +970,7 @@ export default function App() {
                     tab={tab}
                     reference={detailMode}
                     attachments={attachments}
+                    incidents={bootstrap?.incidents || []}
                     prepare={(question) => {
                       setDraft(question);
                       setNotice('현재 조사 조건으로 채팅 질문을 준비했습니다.');

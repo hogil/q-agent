@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { download, type Attachment, type Meeting, type Workspace } from './api';
 import { TrendChart, WaferChart, waferData, type Die } from './charts';
+import { waferSeed } from './waferMaps';
 
 export type Tab =
   | 'signals'
@@ -319,7 +320,11 @@ export function MapView({ workspace: w, attach, initialWafer }: Props) {
   const [filter, setFilter] = useState('all');
   const [die, setDie] = useState<Die | null>(null);
   const wafer = w.wafers[index];
-  const seed = incidentSeed(w) + index;
+  const seed = waferSeed(
+    w.incident.incident_number,
+    wafer?.lot_id || '',
+    wafer?.wafer_id || '',
+  );
   const dice = useMemo(() => waferData(seed), [seed]);
   if (!wafer)
     return (
