@@ -3,9 +3,7 @@ import {
   AlertTriangle,
   ArrowDownToLine,
   ArrowUpRight,
-  Check,
   RotateCcw,
-  ShieldAlert,
 } from 'lucide-react';
 import { download, type Incident } from './api';
 import { Chart } from './charts';
@@ -18,7 +16,14 @@ import {
 import type { EngineeringData, FabRow, Signal } from './engineeringData';
 import { compositeWaferMaps, waferData, waferSeed } from './waferMaps';
 import HistoricalCorrelation from './HistoricalCorrelation';
-import './investigationBoard.css';
+import BoardSem from './BoardSem';
+import BoardAnalysis from './BoardAnalysis';
+import {
+  makeInformNotes,
+  selectInformNotes,
+  documentUrl,
+  wipLayerOption,
+} from './investigationData';
 
 const gridId = 'synthetic-grid-v1';
 const bins = ['#e3e8e7', '#8cbcaf', '#3c8978', '#e7af55', '#c55961'];
@@ -44,8 +49,9 @@ export default function InvestigationBoard({
   focusedKey,
   onFocus,
   navigate,
-  prepare,
   incidents,
+  roomId,
+  onConversationChange,
 }: ViewProps & {
   data: EngineeringData;
   selection: InvestigationSelection;
@@ -54,8 +60,9 @@ export default function InvestigationBoard({
   trend: ReactNode;
   focusedKey: string;
   onFocus: (row: FabRow) => void;
-  prepare: (question: string) => void;
   incidents: Incident[];
+  roomId: string;
+  onConversationChange: () => void;
 }) {
   const incident = workspace.incident.incident_number;
   const signal = data.signals.find((row) => row.id === selection.signalId)!;
@@ -82,6 +89,11 @@ export default function InvestigationBoard({
       row.end >= from,
   );
   const related = incidents.filter((row) => row.incident_number !== incident);
+  const informNotes = selectInformNotes(
+    makeInformNotes(data),
+    signal.step,
+    selection.equipment,
+  );
   const scope = JSON.stringify([
     selection.signalId,
     selection.start,
@@ -133,7 +145,7 @@ export default function InvestigationBoard({
   const current = maps.find(
     (row) => focused && pairKey(row) === pairKey(focused),
   );
-  const overlayB = maps.find(
+  const overlayB = selectedMaps.find(
     (row) => current && pairKey(row) !== pairKey(current),
   );
   const selectedDie =
@@ -261,22 +273,53 @@ export default function InvestigationBoard({
             <span>{data.signals.length} items</span>
             {expand('이상감지 상세', 'signals')}
           </header>
-          <div className="board-signal-list">
-            {data.signals.map((row) => (
-              <button
-                key={row.id}
-                className={row.id === signal.id ? 'selected' : ''}
-                aria-pressed={row.id === signal.id}
-                onClick={() => choose(row)}
-              >
-                <AlertTriangle size={13} className={row.severity} />
-                <strong>{row.title}</strong>
-                <small>
-                  {row.equipment} · {row.recipe}
-                </small>
-              </button>
-            ))}
+          <div className="board-signal-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>설비</th>
+                  <th>상태</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.signals.map((row) => (
+                  <tr
+                    key={row.id}
+                    className={row.id === signal.id ? 'selected' : ''}
+                    onClick={() => choose(row)}
+                  >
+                    <td>
+                      <button
+                        aria-pressed={row.id === signal.id}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          choose(row);
+                        }}
+                        title={`${row.title} · ${row.step} · ${row.recipe}`}
+                      >
+                        {row.item}
+                        <small>{row.step}</small>
+                      </button>
+                    </td>
+                    <td>{row.equipment}</td>
+                    <td>
+                      <AlertTriangle
+                        size={12}
+                        className={row.severity}
+                        aria-label={row.severity}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
+          <footer>
+            {signal.title}
+            <br />
+            {signal.recipe}
+          </footer>
         </section>
         <section
           className="board-panel board-trend"
@@ -539,66 +582,58 @@ export default function InvestigationBoard({
           className="board-panel board-images"
           aria-label="SEM과 Overlay"
         >
-          <header>
-            <h2>SEM · Overlay</h2>
-            <span>합성</span>
-            {expand('SEM Overlay 상세', 'map', 'sem')}
-          </header>
-          <div className="board-image-pair">
-            <figure>
-              <img
-                src="/assets/synthetic-sem.png"
-                alt="AI 생성 합성 SEM 예시, 실제 선택 Wafer 이미지 아님"
-              />
-              <figcaption>SEM · AI 생성 예시</figcaption>
-            </figure>
-            <figure>
-              <Chart
-                option={{
-                  ...mapOption(true),
-                  series: [
-                    {
-                      type: 'scatter',
-                      symbol: 'rect',
-                      symbolSize: 2.5,
-                      data: (current?.dies || []).map((row) => [row.x, row.y]),
-                      itemStyle: { color: '#dfe6e4' },
-                    },
-                    {
-                      type: 'scatter',
-                      symbol: 'rect',
-                      symbolSize: 2.7,
-                      data: (current?.dies || [])
-                        .filter((row) => row.bin >= 3)
-                        .map((row) => [row.x, row.y]),
-                      itemStyle: { color: '#548db2' },
-                    },
-                    {
-                      type: 'scatter',
-                      symbol: 'circle',
-                      symbolSize: 2,
-                      data: (overlayB?.dies || [])
-                        .filter((row) => row.bin >= 3)
-                        .map((row) => [row.x, row.y]),
-                      itemStyle: { color: '#ce7886', opacity: 0.65 },
-                    },
-                  ],
-                  tooltip: { show: false },
-                }}
-                className="board-overlay-canvas"
-                label="합성 두 Wafer Overlay 예시"
-              />
-              <figcaption>
-                Overlay · {maps.length > 1 ? '2' : maps.length} Maps
-              </figcaption>
-            </figure>
-          </div>
-          <div className="board-image-source">
-            {focused
-              ? `선택 ${focused.waferId} · 실측 연결 없음`
-              : '선택 Wafer 없음'}
-          </div>
-          <footer>물리 좌표 · 배율 · 정렬 미검증</footer>
+          <BoardSem
+            workspace={workspace}
+            focused={focused}
+            selected={candidates.filter((row) => checked.has(pairKey(row)))}
+            onFocus={onFocus}
+            overlay={
+              <figure className="sem-overlay">
+                <Chart
+                  option={{
+                    ...mapOption(true),
+                    series: [
+                      {
+                        type: 'scatter',
+                        symbol: 'rect',
+                        symbolSize: 2.5,
+                        data: (current?.dies || []).map((row) => [
+                          row.x,
+                          row.y,
+                        ]),
+                        itemStyle: { color: '#dfe6e4' },
+                      },
+                      {
+                        type: 'scatter',
+                        symbol: 'rect',
+                        symbolSize: 2.7,
+                        data: (current?.dies || [])
+                          .filter((row) => row.bin >= 3)
+                          .map((row) => [row.x, row.y]),
+                        itemStyle: { color: '#548db2' },
+                      },
+                      {
+                        type: 'scatter',
+                        symbol: 'circle',
+                        symbolSize: 2,
+                        data: (overlayB?.dies || [])
+                          .filter((row) => row.bin >= 3)
+                          .map((row) => [row.x, row.y]),
+                        itemStyle: { color: '#ce7886', opacity: 0.65 },
+                      },
+                    ],
+                    tooltip: { show: false },
+                  }}
+                  className="board-overlay-canvas"
+                  label="합성 두 Wafer Overlay 예시"
+                />
+                <figcaption>
+                  {current?.waferId || '선택 없음'} /{' '}
+                  {overlayB?.waferId || '비교 없음'} · 합성
+                </figcaption>
+              </figure>
+            }
+          />
         </section>
         <section
           className="board-panel board-production"
@@ -610,34 +645,17 @@ export default function InvestigationBoard({
             {expand('생산 상세', 'production')}
           </header>
           <div className="board-production-columns">
-            <div>
+            <div className="board-wip">
               <h3>
                 WIP <span>{wip.length} Lots · 스냅샷</span>
               </h3>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Lot</th>
-                    <th>Status</th>
-                    <th>Queue</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {wip.map((row) => (
-                    <tr key={row.lotId}>
-                      <td>{row.lotId}</td>
-                      <td>
-                        <span
-                          className={`board-status ${row.status.toLowerCase()}`}
-                        >
-                          {row.status}
-                        </span>
-                      </td>
-                      <td>{row.queueHours.toFixed(1)}h</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              {!!wip.length && (
+                <Chart
+                  className="board-wip-chart"
+                  option={wipLayerOption(wip)}
+                  label="제품별 재공 Layer · X Layer Y 제품"
+                />
+              )}
               {!wip.length && <p className="board-empty">일치 재공 없음</p>}
             </div>
             <div>
@@ -659,7 +677,10 @@ export default function InvestigationBoard({
             </div>
           </div>
           <footer>
-            합성 운전 기록 · 현재 공정 상태 및 Hold/Release 조치 미실행
+            <span className="wip-legend run">RUN</span> ·{' '}
+            <span className="wip-legend wait">WAIT</span> ·{' '}
+            <span className="wip-legend hold">HOLD</span> · Fab 0.0 → End · 재공
+            구간 확대 · 합성
           </footer>
         </section>
         <section
@@ -667,24 +688,54 @@ export default function InvestigationBoard({
           aria-label="Inform Note 회의록과 이전 이력"
         >
           <header>
-            <h2>Inform Note · 회의록</h2>
-            <span>{workspace.meetings.length} chunks</span>
-            {expand('문서 원문 상세', 'inform')}
+            <h2>Eng’r Inform · 회의록</h2>
+            <span>합성</span>
           </header>
           <div className="board-inform-state">
-            <span>Eng’r Inform</span>
-            <strong>원본 미연결</strong>
-            <span>승인 · 변경 근거 확인 대기</span>
+            {signal.step} / {selection.equipment || '전체 설비'}
           </div>
           <div className="board-doc-list">
+            <table>
+              <thead>
+                <tr>
+                  <th>문서</th>
+                  <th>날짜</th>
+                </tr>
+              </thead>
+              <tbody>
+                {informNotes.map((note) => (
+                  <tr key={note.id}>
+                    <td>
+                      <a
+                        href={documentUrl(incident, 'inform', note.id)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={`${note.title} · ${note.equipment} · 새 창`}
+                      >
+                        {note.title}
+                        <ArrowUpRight size={11} />
+                      </a>
+                    </td>
+                    <td>{note.date.slice(5, 10)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!informNotes.length && (
+              <p className="board-empty">해당 Step / 설비 Inform 없음</p>
+            )}
             {workspace.meetings.map((meeting) => (
-              <article key={meeting.chunk_id} title={meeting.text}>
-                <strong>{meeting.title}</strong>
-                <span>
-                  {meeting.meeting_date} · {meeting.version} · 합성 DB
-                </span>
-                <p>{meeting.text}</p>
-              </article>
+              <a
+                className="board-meeting-link"
+                key={meeting.chunk_id}
+                href={documentUrl(incident, 'meeting', meeting.chunk_id)}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={meeting.title}
+              >
+                회의록 · {meeting.title}
+                <ArrowUpRight size={11} />
+              </a>
             ))}
           </div>
           {!workspace.meetings.length && (
@@ -702,37 +753,21 @@ export default function InvestigationBoard({
           className="board-panel board-assessment"
           aria-label="설명과 판정"
         >
-          <header>
-            <h2>설명 · 판정</h2>
-            <span>LLM 미연결</span>
-          </header>
-          <div className="board-verdict">
-            <ShieldAlert size={17} />
-            <strong>원인 판정 보류</strong>
-          </div>
-          <p>
-            현재 Fab <b>{candidates.length} Wafers</b> · EDS 대기
-            <br />
-            Yield 비교: 같은 Item의 과거 완료 이력
-          </p>
-          <p>
-            변경 {events.length}건 · 다운코드 {downtime.length}건<br />
-            시간상 연관 · 원인 근거 미확인
-          </p>
-          <div className="board-agent-state">
-            <strong>로컬 요약 · 실제 LLM 판정 없음</strong>
-          </div>
-          <button
-            className="board-prepare"
-            onClick={() =>
-              prepare(
-                `${incident} / ${signal.title}: ${time(from)}~${time(to)} UTC, ${selection.equipment || '전체 설비'}, ${selection.recipe || '전체 Recipe'}. 현재 Wafer는 Fab 상태라 EDS 결과 없음. 같은 Item의 과거 완료 이력으로 Fab-Yield 상관관계를 비교하고 Recipe/전산 변경, Inform Note, 회의록, 생산 기록을 수집해 사실과 가설을 구분해줘. 현재 화면은 합성 데이터이며 원인 근거가 아니다.`,
-              )
-            }
-          >
-            <Check size={13} />
-            채팅 질문 준비
-          </button>
+          <BoardAnalysis
+            roomId={roomId}
+            onChange={onConversationChange}
+            context={{
+              incident_number: incident,
+              item: signal.item,
+              step: signal.step,
+              equipment: selection.equipment,
+              from,
+              to,
+              wafers: candidates
+                .filter((row) => checked.has(pairKey(row)))
+                .map((row) => ({ lot_id: row.lotId, wafer_id: row.waferId })),
+            }}
+          />
         </section>
       </div>
     </div>

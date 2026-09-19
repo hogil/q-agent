@@ -35,6 +35,15 @@ INCIDENT_FIELDS = [
     "corrective_action", "verification", "prevention", "remaining",
     "department", "product_generations", "fab_out_failure_codes",
 ]
+ANALYSIS_SOURCES = (
+    "incident", "trend", "correlation", "maps", "sem", "production",
+    "inform", "meetings", "changes",
+)
+ANALYSIS_CONTEXT_FIELDS = {"incident_number", "item", "step", "equipment", "from", "to", "wafers"}
+ANALYSIS_TEXT_FIELDS = ("item", "step", "equipment")
+ANALYSIS_TEXT_LIMIT = 256
+ANALYSIS_TIME_LIMIT = 64
+ANALYSIS_MAX_WAFERS = 100
 
 
 class WorkbenchError(ValueError):
@@ -43,6 +52,26 @@ class WorkbenchError(ValueError):
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="microseconds")
+
+
+def _analysis_time(value, field):
+    if not isinstance(value, str) or not value.strip() or len(value) > ANALYSIS_TIME_LIMIT:
+        raise WorkbenchError(f"context {field} must be an ISO date or timezone-aware datetime")
+    if len(value) == 10:
+        try:
+            parsed_date = date.fromisoformat(value)
+        except ValueError:
+            parsed_date = None
+        if parsed_date is not None:
+            return datetime.combine(parsed_date, datetime.min.time(), tzinfo=timezone.utc)
+    candidate = value[:-1] + "+00:00" if value.endswith(("Z", "z")) else value
+    try:
+        parsed = datetime.fromisoformat(candidate)
+    except ValueError:
+        raise WorkbenchError(f"context {field} must be an ISO date or timezone-aware datetime") from None
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise WorkbenchError(f"context {field} datetime must include a timezone")
+    return parsed.astimezone(timezone.utc)
 
 
 def _json(value) -> bytes:
@@ -185,13 +214,25 @@ class Workbench:
                     id TEXT PRIMARY KEY, title TEXT NOT NULL, incident_number TEXT,
                     updated_at TEXT NOT NULL
                 );
-                CREATE TABLE IF NOT EXISTS messages (
+            CREATE TABLE IF NOT EXISTS messages (
                     id TEXT PRIMARY KEY, room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
                     role TEXT NOT NULL CHECK(role IN ('user','assistant')), content TEXT NOT NULL,
                     created_at TEXT NOT NULL, attachments TEXT NOT NULL
                 );
                 CREATE INDEX IF NOT EXISTS messages_room_created ON messages(room_id, created_at, id);
+            CREATE TABLE IF NOT EXISTS analysis_scopes (
+                    room_id TEXT PRIMARY KEY REFERENCES rooms(id) ON DELETE CASCADE,
+                    incident_number TEXT NOT NULL,
+                    sources TEXT NOT NULL,
+                    context TEXT NOT NULL,
+                    steps TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
             """)
+            columns = {row["name"] for row in db.execute("PRAGMA table_info(analysis_scopes)")}
+            if "steps" not in columns:
+                db.execute("ALTER TABLE analysis_scopes ADD COLUMN steps TEXT NOT NULL DEFAULT '[]'")
 
     def _rooms(self):
         with self.lock, self._db() as db:
@@ -228,7 +269,7 @@ class Workbench:
             items.extend(result.get("items", []))
         return items
 
-    def _workspace(self, incident_number):
+    def _workspace(self, incident_number, include_meetings=True):
         incident = self._incident_map().get(incident_number)
         if incident is None:
             raise WorkbenchError("incident not found")
@@ -238,9 +279,12 @@ class Workbench:
                 scope = found["scope_id"]
                 lots = self._pages(tool.list_incident_lots, self.actor, scope)
                 wafers = self._pages(tool.list_incident_wafers, self.actor, scope)
-            meetings = MeetingTools(self.settings).search(
-                self.actor, incident_number, [incident["incident_id"]], self.cutoff, top_k=self.settings.data["meetings"]["max_top_k"]
-            )["items"]
+            meetings = []
+            if include_meetings:
+                meetings = MeetingTools(self.settings).search(
+                    self.actor, incident_number, [incident["incident_id"]], self.cutoff,
+                    top_k=self.settings.data["meetings"]["max_top_k"]
+                )["items"]
         except (ToolError, KeyError, OSError) as exc:
             raise WorkbenchError(str(exc)) from None
         return {"incident": incident, "lots": lots, "wafers": wafers, "meetings": meetings,
@@ -354,6 +398,188 @@ class Workbench:
             answer = "LLM이 연결되지 않은 로컬 demo입니다. 사고 번호나 조회 대상을 포함한 질문을 입력해 주세요. (출처: demo)"
             answer_attachments = []
         return self._append_messages(room_id, content, attachments, answer, answer_attachments, room=room)
+
+    def analysis(self, room_id, body):
+        with self.lock:
+            room = self._room(room_id)
+            scope = self._analysis_scope(room_id)
+            content, sources, context = self._analysis_request(room, scope, body)
+            data = self._workspace(room["incident_number"], include_meetings="meetings" in sources)
+            answer, answer_attachments, steps = self._analysis_answer(data, sources, context)
+            analysis = {"mode": "demo", "llm_connected": False, "sources": sources,
+                        "context": context, "steps": steps}
+            return self._append_analysis(room_id, content, sources, context, answer,
+                                         answer_attachments, analysis)
+
+    def analysis_metadata(self, room_id):
+        with self.lock:
+            room = self._room(room_id)
+            scope = self._analysis_scope(room_id)
+            if scope is None or scope["incident_number"] != room["incident_number"]:
+                return {"analysis": None}
+            return {"analysis": {"mode": "demo", "llm_connected": False,
+                                  "sources": scope["sources"], "context": scope["context"],
+                                  "steps": scope["steps"]}}
+
+    def _analysis_scope(self, room_id):
+        with self.lock, self._db() as db:
+            row = db.execute("SELECT * FROM analysis_scopes WHERE room_id=?", (room_id,)).fetchone()
+            if not row:
+                return None
+            return {"room_id": row["room_id"], "incident_number": row["incident_number"],
+                    "sources": json.loads(row["sources"]), "context": json.loads(row["context"]),
+                    "steps": json.loads(row["steps"]),
+                    "created_at": row["created_at"], "updated_at": row["updated_at"]}
+
+    def _analysis_request(self, room, scope, body):
+        if not isinstance(body, dict) or set(body) - {"content", "sources", "context"}:
+            raise WorkbenchError("invalid analysis fields")
+        content = body.get("content")
+        if not isinstance(content, str) or not content.strip() or len(content) > 12000:
+            raise WorkbenchError("content must be a nonempty string up to 12000 characters")
+        mentioned_incidents = INCIDENT_RE.findall(content)
+        if mentioned_incidents and (set(mentioned_incidents) != {room["incident_number"]}):
+            raise WorkbenchError("analysis content incident must match the room scope")
+        has_sources = "sources" in body
+        has_context = "context" in body
+        if not has_sources and not has_context:
+            if scope is None:
+                raise WorkbenchError("sources and context are required for the first analysis")
+            if scope["incident_number"] != room["incident_number"]:
+                raise WorkbenchError("stored analysis scope is stale; select a new scope")
+            return content, scope["sources"], scope["context"]
+        if scope is not None and not has_sources and scope["incident_number"] != room["incident_number"]:
+            raise WorkbenchError("stored analysis scope is stale; select a new scope")
+        raw_sources = body.get("sources", scope["sources"] if scope is not None else None)
+        raw_context = body.get("context", scope["context"] if scope is not None else None)
+        sources = self._validate_analysis_sources(raw_sources)
+        context = self._validate_analysis_context(raw_context, room["incident_number"])
+        return content, sources, context
+
+    def _validate_analysis_sources(self, value):
+        if not isinstance(value, list) or not value or len(value) > len(ANALYSIS_SOURCES):
+            raise WorkbenchError("sources must be a nonempty array")
+        if any(type(item) is not str or not item.strip() for item in value):
+            raise WorkbenchError("sources must contain nonempty strings")
+        if len(set(value)) != len(value) or any(item not in ANALYSIS_SOURCES for item in value):
+            raise WorkbenchError("sources contains an unknown or duplicate source")
+        return ["incident", *[item for item in value if item != "incident"]]
+
+    def _validate_analysis_context(self, value, incident_number):
+        if not isinstance(value, dict) or set(value) != ANALYSIS_CONTEXT_FIELDS:
+            raise WorkbenchError("analysis context requires incident_number, item, step, equipment, from, to, and wafers")
+        normalized = {}
+        supplied_incident = value["incident_number"]
+        if (not isinstance(supplied_incident, str) or not supplied_incident.strip()
+                or len(supplied_incident) > 64 or supplied_incident != incident_number):
+            raise WorkbenchError("context incident_number must match the room incident")
+        normalized["incident_number"] = incident_number
+        for field in ANALYSIS_TEXT_FIELDS:
+            item = value[field]
+            empty_allowed = field == "equipment"
+            if (not isinstance(item, str) or (not empty_allowed and not item.strip())
+                    or len(item) > ANALYSIS_TEXT_LIMIT):
+                raise WorkbenchError(f"context {field} must be a string up to {ANALYSIS_TEXT_LIMIT} characters")
+            normalized[field] = item
+        from_time = _analysis_time(value["from"], "from")
+        to_time = _analysis_time(value["to"], "to")
+        normalized["from"] = value["from"]
+        normalized["to"] = value["to"]
+        if from_time > to_time:
+            raise WorkbenchError("context from must be on or before context to")
+        wafers = value["wafers"]
+        if not isinstance(wafers, list) or len(wafers) > ANALYSIS_MAX_WAFERS:
+            raise WorkbenchError(f"context wafers must be an array of at most {ANALYSIS_MAX_WAFERS} items")
+        normalized_wafers = []
+        seen = set()
+        for item in wafers:
+            if not isinstance(item, dict) or set(item) != {"lot_id", "wafer_id"}:
+                raise WorkbenchError("context wafers must contain lot_id and wafer_id only")
+            lot_id, wafer_id = item["lot_id"], item["wafer_id"]
+            if (not isinstance(lot_id, str) or not lot_id.strip() or len(lot_id) > 128
+                    or not isinstance(wafer_id, str) or not wafer_id.strip() or len(wafer_id) > 128):
+                raise WorkbenchError("context wafer tuple fields are invalid")
+            pair = (lot_id, wafer_id)
+            if pair in seen:
+                raise WorkbenchError("context wafers must be unique")
+            seen.add(pair)
+            normalized_wafers.append({"lot_id": lot_id, "wafer_id": wafer_id})
+        workspace = self._workspace(incident_number, include_meetings=False)
+        registered = {(item.get("lot_id"), item.get("wafer_id")) for item in workspace["wafers"]}
+        if any((item["lot_id"], item["wafer_id"]) not in registered for item in normalized_wafers):
+            raise WorkbenchError("context wafer tuple is outside the registered incident scope")
+        normalized["wafers"] = normalized_wafers
+        return normalized
+
+    @staticmethod
+    def _analysis_scope_text(sources, context):
+        wafer_text = ", ".join(f"{item['lot_id']}/{item['wafer_id']}" for item in context["wafers"]) or "none"
+        return (f"sources={','.join(sources)}; incident={context['incident_number']}; "
+                f"item={context.get('item') or 'none'}; step={context.get('step') or 'none'}; "
+                f"equipment={context['equipment'] if context['equipment'] else 'all'}; "
+                f"date={context['from']}..{context['to']}; wafers={wafer_text}")
+
+    def _analysis_answer(self, data, sources, context):
+        incident, lots, wafers, meetings = data["incident"], data["lots"], data["wafers"], data["meetings"]
+        incident_number = incident["incident_number"]
+        lines = [
+            f"{incident_number} 선택 소스 분석 결과 (synthetic demo)",
+            "실제 LLM에 연결되지 않았습니다. 이 답변은 선택된 합성 DB 조회 결과이며 추론이나 Router/Judge 실행을 주장하지 않습니다.",
+            f"사고 DB: 제목={incident.get('title') or '기록 없음'}; 발생시각={incident.get('occurred_at') or '기록 없음'}",
+            f"사고 DB 필드: 분석={incident.get('analysis_detail') or '기록 없음'}; 확인 원인={incident.get('confirmed_cause') or '확정되지 않음'}",
+            f"등록 Lot: {len(lots)}건 (기대 {incident.get('expected_lot_count')})",
+            f"등록 Wafer: {len(wafers)}건 (기대 {incident.get('affected_wafer_count')})",
+            f"뷰어 선택 Wafer: {len(context['wafers'])}건. 사고 등록 키만 검증했으며 실제 Fab 시각/설비 매칭은 미연결입니다.",
+            f"요청 scope: {self._analysis_scope_text(sources, context)}",
+        ]
+        attachments = [self._ref("data", incident_number, incident["incident_id"], incident_number)]
+        steps = [{"source": "incident", "status": "completed",
+                  "detail": f"local synthetic incident DB queried; lots={len(lots)}, wafers={len(wafers)}"}]
+        for source in sources[1:]:
+            if source == "meetings":
+                steps.append({"source": "meetings", "status": "completed",
+                              "detail": f"selected incident-scoped meeting retrieval completed; excerpts={len(meetings)}"})
+                if meetings:
+                    lines.append("선택된 회의 excerpts:")
+                    for item in meetings:
+                        lines.append(f"- {item['meeting_date']} {item['title']}: {item['text']}")
+                        attachments.append(self._ref("inform", item["title"], item["chunk_id"], incident_number))
+            else:
+                steps.append({"source": source, "status": "unavailable",
+                              "detail": "UI-only synthetic source; backend is unavailable and no real LLM inference was used."})
+        return "\n".join(lines), attachments, steps
+
+    def _append_analysis(self, room_id, content, sources, context, answer, answer_attachments, analysis):
+        scope_text = self._analysis_scope_text(sources, context)
+        scope_attachment = self._ref("data", "selected analysis scope", context["incident_number"], context["incident_number"])
+        user = {"id": "msg-" + uuid.uuid4().hex, "role": "user",
+                "content": content + "\n분석 scope: " + scope_text,
+                "created_at": _now(), "attachments": [scope_attachment]}
+        assistant = {"id": "msg-" + uuid.uuid4().hex, "role": "assistant",
+                     "content": answer,
+                     "created_at": _now(), "attachments": answer_attachments}
+        now = _now()
+        with self.lock, self._db() as db:
+            db.execute("BEGIN IMMEDIATE")
+            room = db.execute("SELECT * FROM rooms WHERE id=?", (room_id,)).fetchone()
+            if not room:
+                raise WorkbenchError("room not found")
+            if room["incident_number"] != context["incident_number"]:
+                raise WorkbenchError("analysis scope incident does not match the room")
+            db.execute("""INSERT INTO analysis_scopes
+                (room_id, incident_number, sources, context, steps, created_at, updated_at)
+                VALUES (?,?,?,?,?,?,?)
+                ON CONFLICT(room_id) DO UPDATE SET incident_number=excluded.incident_number,
+                sources=excluded.sources, context=excluded.context, steps=excluded.steps,
+                updated_at=excluded.updated_at""",
+                        (room_id, context["incident_number"], json.dumps(sources, ensure_ascii=False),
+                         json.dumps(context, ensure_ascii=False), json.dumps(analysis["steps"], ensure_ascii=False), now, now))
+            for item in (user, assistant):
+                db.execute("INSERT INTO messages VALUES (?,?,?,?,?,?)", (item["id"], room_id, item["role"],
+                             item["content"], item["created_at"], json.dumps(item["attachments"], ensure_ascii=False)))
+            db.execute("UPDATE rooms SET updated_at=? WHERE id=?", (now, room_id))
+            db.commit()
+        return {"messages": [user, assistant], "room": _summary(self._room(room_id)), "analysis": analysis}
 
     def _append_messages(self, room_id, content, attachments, answer, answer_attachments, room=None):
         user = {"id": "msg-" + uuid.uuid4().hex, "role": "user", "content": content, "created_at": _now(), "attachments": attachments}
@@ -495,8 +721,10 @@ class Handler(BaseHTTPRequestHandler):
                 if len(values) > 1 or (values and not values[0]):
                     raise WorkbenchError("invalid before cursor")
                 return self.app.room(room_id, values[0] if values else None)
+            if len(parts) == 4 and parts[3] == "analysis" and method == "GET": return self.app.analysis_metadata(room_id)
             if len(parts) == 3 and method == "PATCH": return self.app.update_room(room_id, self._read())
             if len(parts) == 3 and method == "DELETE": return self.app.delete_room(room_id)
+            if len(parts) == 4 and parts[3] == "analysis" and method == "POST": return self.app.analysis(room_id, self._read())
             if len(parts) == 4 and parts[3] == "messages" and method == "POST": return self.app.message(room_id, self._read())
         if parts == ["api", "rooms"] and method == "POST":
             body = self._read()

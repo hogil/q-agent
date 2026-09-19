@@ -762,7 +762,10 @@ export default function App() {
                 className="icon-button plan-toggle"
                 title="분석 계획 보기/접기"
                 onClick={() => {
-                  if (window.matchMedia('(max-width: 900px)').matches) {
+                  if (
+                    tab !== 'trend' &&
+                    window.matchMedia('(max-width: 900px)').matches
+                  ) {
                     const heading =
                       document.querySelector<HTMLElement>('.inspector-header');
                     heading?.scrollIntoView({ block: 'start' });
@@ -967,6 +970,16 @@ export default function App() {
                     key={`${roomId}:${workspace!.incident.incident_number}`}
                     {...activeProps}
                     roomId={roomId}
+                    onConversationChange={() => {
+                      void api<Room>(`/rooms/${roomId}`)
+                        .then((value) =>
+                          setRoom((current) =>
+                            current?.id === value.id ? value : current,
+                          ),
+                        )
+                        .catch(reportError);
+                      void refreshRooms().catch(reportError);
+                    }}
                     tab={tab}
                     reference={detailMode}
                     attachments={attachments}
@@ -1040,7 +1053,10 @@ export default function App() {
                   className="icon-button"
                   title="분석 화면 넓게 보기"
                   onClick={() => {
-                    if (window.matchMedia('(max-width: 900px)').matches) {
+                    if (
+                      tab !== 'trend' &&
+                      window.matchMedia('(max-width: 900px)').matches
+                    ) {
                       contentColumns.current?.scrollTo(0, 0);
                       document
                         .querySelector<HTMLElement>('.analysis-title-row h1')

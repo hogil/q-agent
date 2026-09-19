@@ -8,6 +8,7 @@ import {
   MarkAreaComponent,
   DataZoomComponent,
   BrushComponent,
+  LegendComponent,
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import { waferData, type Die } from './waferMaps';
@@ -22,6 +23,7 @@ echarts.use([
   MarkAreaComponent,
   DataZoomComponent,
   BrushComponent,
+  LegendComponent,
   CanvasRenderer,
 ]);
 

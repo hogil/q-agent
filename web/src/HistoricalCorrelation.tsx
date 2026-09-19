@@ -32,9 +32,19 @@ function dateLabel(value: string): string {
   return value.slice(5, 16).replace('T', ' ');
 }
 
-function axisMax(values: number[]): number {
-  const maximum = Math.max(...values, 1);
-  return maximum <= 10 ? Math.ceil(maximum + 1) : Math.ceil(maximum + 5);
+function axisBounds(values: number[]): { min: number; max: number } {
+  const finite = values.filter(Number.isFinite);
+  if (!finite.length) return { min: 0, max: 1 };
+  const minimum = Math.min(...finite);
+  const maximum = Math.max(...finite);
+  const span = maximum - minimum;
+  const margin =
+    span > 0 ? span * 0.12 : Math.max(Math.abs(maximum) * 0.05, 0.5);
+  return { min: minimum - margin, max: maximum + margin };
+}
+
+function axisValueLabel(value: number): string {
+  return Number.isFinite(value) ? value.toFixed(2) : '';
 }
 
 export default function HistoricalCorrelation({
@@ -79,39 +89,38 @@ export default function HistoricalCorrelation({
       record,
     ],
   );
-  const trendValues = records.map((record): [string, number] => [
-    dateLabel(record.edsAt),
-    value(record, yMetric),
-  ]);
+  const xBounds = axisBounds(records.map((record) => value(record, xMetric)));
+  const yBounds = axisBounds(records.map((record) => value(record, yMetric)));
   const scatterOption = {
     animation: false,
     grid: {
-      left: compact ? 26 : 42,
+      left: compact ? 47 : 52,
       right: 12,
       top: compact ? 8 : 20,
-      bottom: compact ? 20 : 36,
+      bottom: compact ? 31 : 40,
     },
     xAxis: {
       type: 'value',
       scale: true,
       splitNumber: 3,
-      name: compact ? '' : xLabels[xMetric],
+      name: xLabels[xMetric],
       nameLocation: 'middle',
-      nameGap: 22,
+      nameGap: compact ? 24 : 25,
       nameTextStyle: { fontSize: compact ? 9 : 11 },
-      axisLabel: { fontSize: 9 },
+      axisLabel: { fontSize: 9, formatter: axisValueLabel },
+      min: xBounds.min,
+      max: xBounds.max,
     },
     yAxis: {
       type: 'value',
-      name: compact ? '' : yLabels[yMetric],
+      name: yLabels[yMetric],
       splitNumber: compact ? 2 : 4,
-      nameTextStyle: { fontSize: 9 },
-      min: 0,
-      max:
-        yMetric === 'yieldPct'
-          ? 100
-          : axisMax(records.map((record) => value(record, yMetric))),
-      axisLabel: { fontSize: 9 },
+      nameLocation: 'middle',
+      nameGap: compact ? 35 : 40,
+      nameTextStyle: { fontSize: compact ? 9 : 11 },
+      min: yBounds.min,
+      max: yBounds.max,
+      axisLabel: { fontSize: 9, formatter: axisValueLabel },
     },
     tooltip: {
       renderMode: 'richText',
@@ -129,50 +138,6 @@ export default function HistoricalCorrelation({
       },
     ],
   };
-  const trendOption = {
-    animation: false,
-    grid: {
-      left: compact ? 26 : 34,
-      right: 10,
-      top: compact ? 8 : 20,
-      bottom: compact ? 20 : 36,
-    },
-    xAxis: {
-      type: 'category',
-      data: trendValues.map(([date]) => date),
-      axisLabel: {
-        fontSize: 8,
-        interval: Math.max(0, Math.ceil(records.length / 5) - 1),
-        formatter: (value: string) => value.slice(0, 5),
-      },
-    },
-    yAxis: {
-      type: 'value',
-      name: compact ? '' : yLabels[yMetric],
-      splitNumber: compact ? 2 : 4,
-      max:
-        yMetric === 'yieldPct'
-          ? 100
-          : axisMax(records.map((record) => value(record, yMetric))),
-      axisLabel: { fontSize: 8 },
-    },
-    tooltip: {
-      trigger: 'axis',
-      renderMode: 'richText',
-      formatter: (params: Array<{ axisValue: string; value: number }>) =>
-        `${params[0]?.axisValue || ''}\n${yLabels[yMetric]} ${Number(params[0]?.value || 0).toFixed(2)}`,
-    },
-    series: [
-      {
-        type: 'line',
-        symbolSize: 4,
-        data: trendValues.map(([, value]) => value),
-        lineStyle: { color: '#c3874e', width: 2 },
-        itemStyle: { color: '#c3874e' },
-      },
-    ],
-  };
-
   return (
     <section
       className={`history-correlation ${compact ? 'compact' : 'detail-view'}`}
@@ -180,7 +145,7 @@ export default function HistoricalCorrelation({
     >
       <div className="history-heading">
         <div>
-          <h3>과거 Fab × EDS</h3>
+          <h3>Fab × EDS Corr</h3>
           <span>{selectedSignal?.item || 'Item 없음'} · 과거 완료</span>
         </div>
         <span className="status-tag">SYN-HIST</span>
@@ -224,13 +189,6 @@ export default function HistoricalCorrelation({
               option={scatterOption}
               className="history-scatter-chart"
               label="과거 Fab과 EDS 산점도"
-            />
-          </div>
-          <div className="history-trend">
-            <Chart
-              option={trendOption}
-              className="history-trend-chart"
-              label="과거 EDS 지표 추이"
             />
           </div>
         </div>

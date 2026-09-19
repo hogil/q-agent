@@ -42,6 +42,9 @@ export type YieldRow = {
 
 export type WipRow = {
   lotId: string;
+  productCode: string;
+  layer: number;
+  endLayer: number;
   step: string;
   equipment: string;
   recipe: string;
@@ -303,6 +306,9 @@ export function makeEngineeringData(workspace: Workspace): EngineeringData {
     const status = (['RUN', 'WAIT', 'HOLD'] as const)[index % 3];
     return {
       lotId: lot.lot_id,
+      productCode: lot.product_code,
+      layer: Number((8 + index * 1.5 + unit(`${seed}:layer`)).toFixed(1)),
+      endLayer: 40,
       step: STEP,
       equipment: equipmentFor(`${seed}:equipment`),
       recipe: recipeFor(`${seed}:recipe`),

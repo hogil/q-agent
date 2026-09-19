@@ -17,6 +17,7 @@ import { OperationsView } from './OperationsView';
 import InvestigationBoard from './InvestigationBoard';
 import HistoricalCorrelation from './HistoricalCorrelation';
 import { historicalData, selectHistoricalData } from './historicalData';
+import { anomalyTrendOption, trendSelectionFromTime } from './anomalyTrend';
 import {
   makeEngineeringData,
   type EngineeringData,
@@ -35,11 +36,6 @@ import {
 import './engineering.css';
 
 const time = (value: string) => value.slice(5, 16).replace('T', ' ');
-const metrics = {
-  temperature: { name: 'Fab 공정 온도', unit: '°C', limit: 67 },
-  queue: { name: 'Queue time', unit: 'h', limit: 6 },
-  availability: { name: '설비 가동률', unit: '%', limit: 90 },
-};
 type SelectionChange = (patch: Partial<InvestigationSelection>) => void;
 
 function EngineeringTrend({
@@ -54,117 +50,19 @@ function EngineeringTrend({
   compact?: boolean;
 }) {
   const signal = data.signals.find((s) => s.id === selection.signalId)!;
-  const metric = metrics[signal.metric];
-  const changes = data.changes.filter(
-    (event) => event.equipment === signal.equipment,
-  );
   const option = useMemo(
-    () => ({
-      animationDuration: 180,
-      textStyle: {
-        fontFamily: 'Segoe UI, Malgun Gothic, sans-serif',
-        fontSize: 11,
-      },
-      grid: { left: 40, right: 15, top: 22, bottom: 28 },
-      tooltip: { trigger: 'axis', renderMode: 'richText' },
-      brush: compact
-        ? undefined
-        : {
-            xAxisIndex: 0,
-            brushType: 'lineX',
-            brushMode: 'single',
-            throttleType: 'debounce',
-            throttleDelay: 200,
-          },
-      xAxis: {
-        type: 'category',
-        data: data.trend.map((p) => time(p.timestamp)),
-        axisLabel: { color: '#73818a', interval: 4 },
-        axisTick: { show: false },
-        axisLine: { lineStyle: { color: '#dce4e5' } },
-      },
-      yAxis: {
-        type: 'value',
-        scale: true,
-        name: metric.unit,
-        nameTextStyle: { color: '#62767e' },
-        splitLine: { lineStyle: { color: '#e8edef', type: 'dashed' } },
-      },
-      series: [
-        {
-          type: 'line',
-          name: `${metric.name} · 합성`,
-          smooth: false,
-          symbolSize: 5,
-          data: data.trend.map((p) => p[signal.metric]),
-          lineStyle: { width: 2.5, color: '#367f99' },
-          itemStyle: { color: '#367f99' },
-          markArea: {
-            silent: true,
-            itemStyle: { color: 'rgba(54,127,153,.12)' },
-            data: [[{ xAxis: selection.start }, { xAxis: selection.end }]],
-          },
-          markLine: {
-            silent: true,
-            symbol: 'none',
-            label: { formatter: '예시 기준', position: 'insideEndTop' },
-            lineStyle: { color: '#c3874e', type: 'dashed' },
-            data: [
-              { yAxis: metric.limit },
-              {
-                xAxis: signal.onsetIndex,
-                lineStyle: { color: '#bf5563' },
-                label: {
-                  formatter: '변동 시작',
-                  position: 'insideEndTop',
-                  color: '#a34350',
-                },
-              },
-              ...changes.map((event) => ({
-                xAxis: data.trend.findIndex(
-                  (point) => point.timestamp === event.timestamp,
-                ),
-                lineStyle: {
-                  color: event.kind === 'recipe' ? '#82749c' : '#6e818b',
-                  type: 'dotted',
-                },
-                label: {
-                  formatter: event.kind === 'recipe' ? 'Recipe' : '전산 변경',
-                  position: 'insideStartTop',
-                  color: '#5c6871',
-                },
-              })),
-            ],
-          },
-        },
-        {
-          type: 'line',
-          name: '변동 구간 · 합성 기준',
-          symbol: 'none',
-          lineStyle: { width: 2.5, color: '#c85d66' },
-          data: data.trend.map((point, index) =>
-            index >= signal.onsetIndex && index <= signal.endIndex
-              ? point[signal.metric]
-              : null,
-          ),
-        },
-      ],
-    }),
-    [data, signal, selection.start, selection.end, compact, metric],
+    () => anomalyTrendOption(data, selection, compact),
+    [data, selection, compact],
   );
   return (
     <Chart
       option={option}
-      label={`합성 ${metric.name} 구간 Trend`}
+      label={`합성 ${signal.title} 구간 Trend`}
       className={compact ? 'eng-preview-chart' : 'eng-trend-chart'}
       onRange={
         compact
           ? undefined
-          : ([a, b]) =>
-              change({
-                start: Math.max(0, Math.min(a, b)),
-                end: Math.min(data.trend.length - 1, Math.max(a, b)),
-              })
+          : (range) => change(trendSelectionFromTime(data, range))
       }
     />
   );
@@ -185,7 +83,7 @@ function SignalList({
     .filter(
       (s) =>
         (severity === 'all' || s.severity === severity) &&
-        `${s.title} ${s.equipment} ${s.step} ${s.recipe}`
+        `${s.item} ${s.title} ${s.equipment} ${s.step} ${s.recipe}`
           .toLowerCase()
           .includes(search.toLowerCase()),
     )
@@ -254,7 +152,7 @@ function SignalList({
           <thead>
             <tr>
               <th>우선순위</th>
-              <th>감지 항목 / 공정</th>
+              <th>Item / Step</th>
               <th>설비</th>
               <th>감지 시각 · UTC</th>
               <th>조회</th>
@@ -276,7 +174,9 @@ function SignalList({
                     className="eng-record-button"
                     onClick={() => choose(signal)}
                   >
-                    <strong>{signal.title}</strong>
+                    <strong>
+                      {signal.item} · {signal.title}
+                    </strong>
                     <small>
                       {signal.step} · {signal.recipe}
                     </small>
@@ -323,9 +223,11 @@ export default function EngineeringWorkspace({
   prepare,
   attachments,
   incidents,
+  onConversationChange,
   ...props
 }: ViewProps & {
   roomId: string;
+  onConversationChange: () => void;
   tab: Tab;
   reference: string;
   prepare: (question: string) => void;
@@ -565,6 +467,8 @@ export default function EngineeringWorkspace({
       ) : tab === 'trend' ? (
         <InvestigationBoard
           {...props}
+          roomId={roomId}
+          onConversationChange={onConversationChange}
           incidents={incidents}
           data={data}
           selection={selection}
@@ -572,7 +476,6 @@ export default function EngineeringWorkspace({
           choose={choose}
           focusedKey={selectedPairKey}
           onFocus={(row) => setSelectedPairKey(pairKey(row))}
-          prepare={prepare}
           trend={
             <EngineeringTrend
               data={data}
