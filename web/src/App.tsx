@@ -27,6 +27,8 @@ import {
   MessageSquare,
   MoreHorizontal,
   Pencil,
+  PanelRightClose,
+  PanelRightOpen,
   Plus,
   Search,
   Settings2,
@@ -49,6 +51,12 @@ import PlanPanel from './PlanPanel';
 import Images from './Images';
 import { HistoryView, InformWorkspace, ProductionView } from './Sources';
 import { modules } from './modules';
+import ReviewView from './ReviewView';
+import {
+  clearReviewDraft,
+  loadReviewDraft,
+  saveReviewDraft,
+} from './reviewState';
 
 const tabs = modules;
 type ModalType =
@@ -112,6 +120,17 @@ export default function App() {
   );
   const [draft, setDraft] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [notes, setNotes] = useState('');
+  const [reviewContext, setReviewContext] = useState('');
+  const [storageError, setStorageError] = useState(false);
+  const [planCollapsed, setPlanCollapsed] = useState(false);
+  const [storage] = useState(() => {
+    try {
+      return window.localStorage;
+    } catch {
+      return null;
+    }
+  });
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -140,15 +159,59 @@ export default function App() {
     setBootstrap(data);
     return data;
   }
+  function restoreReview(id: string, incident: string) {
+    const saved = loadReviewDraft(storage, id, incident);
+    setDraft(saved.text);
+    setAttachments(saved.attachments);
+    setNotes(saved.notes);
+    setReviewContext(`${id}:${incident}`);
+  }
+  function persistReview() {
+    if (!room || !workspace) return false;
+    const saved = saveReviewDraft(
+      storage,
+      room.id,
+      workspace.incident.incident_number,
+      { text: draft, attachments, notes },
+    );
+    setStorageError(!saved);
+    const hasDraft = !!(draft.trim() || attachments.length || notes.trim());
+    if (!saved && hasDraft)
+      setError(
+        '브라우저 저장 실패. 이동 전 초안을 내려받고 브라우저 저장 공간과 설정을 확인해 주세요.',
+      );
+    return saved || !hasDraft;
+  }
+  function downloadDraft() {
+    download(
+      `${workspace?.incident.incident_number}-draft.json`,
+      JSON.stringify(
+        {
+          synthetic: true,
+          room_id: roomId,
+          incident_number: workspace?.incident.incident_number,
+          prepared_question: draft,
+          notes,
+          references: attachments,
+          review_type: 'manual_notes_not_agent_verdict',
+        },
+        null,
+        2,
+      ),
+    );
+  }
   useEffect(() => {
     let active = true;
     api<Bootstrap>('/bootstrap')
       .then((data) => {
         if (!active) return;
         setBootstrap(data);
-        const previous =
-          new URLSearchParams(location.search).get('room') ||
-          localStorage.getItem('q-agent-room');
+        let previous = new URLSearchParams(location.search).get('room');
+        try {
+          previous ||= storage?.getItem('q-agent-room') || null;
+        } catch {
+          /* Storage does not gate the server room list. */
+        }
         setRoomId(
           data.rooms.find((r) => r.id === previous)?.id ||
             data.rooms[0]?.id ||
@@ -174,6 +237,8 @@ export default function App() {
     setWorkspace(null);
     setAttachments([]);
     setDraft('');
+    setNotes('');
+    setReviewContext('');
     setDocumentId(new URLSearchParams(location.search).get('document'));
     api<Room>(`/rooms/${roomId}`)
       .then(async (value) => {
@@ -184,23 +249,15 @@ export default function App() {
         setRoom(value);
         setWorkspace(data);
         setLoading(false);
-        localStorage.setItem('q-agent-room', roomId);
+        try {
+          storage?.setItem('q-agent-room', roomId);
+        } catch {
+          /* Optional last room preference. */
+        }
         const url = new URL(location.href);
         url.searchParams.set('room', roomId);
         history.replaceState(null, '', url);
-        {
-          const saved = sessionStorage.getItem(`q-agent-draft-${roomId}`);
-          if (saved) {
-            try {
-              const next = JSON.parse(saved);
-              setDraft(next.text || '');
-              setAttachments(next.attachments || []);
-            } catch {
-              /* Ignore invalid local draft, not server history. */
-            }
-            sessionStorage.removeItem(`q-agent-draft-${roomId}`);
-          }
-        }
+        restoreReview(roomId, data.incident.incident_number);
       })
       .catch((e) => {
         if (active) {
@@ -213,6 +270,32 @@ export default function App() {
     };
   }, [roomId, reload]);
   useEffect(() => {
+    if (
+      loading ||
+      !workspace ||
+      room?.id !== roomId ||
+      reviewContext !== `${roomId}:${workspace.incident.incident_number}`
+    )
+      return;
+    setStorageError(
+      !saveReviewDraft(storage, roomId, workspace.incident.incident_number, {
+        text: draft,
+        attachments,
+        notes,
+      }),
+    );
+  }, [
+    roomId,
+    workspace,
+    room?.id,
+    loading,
+    reviewContext,
+    draft,
+    attachments,
+    notes,
+    storage,
+  ]);
+  useEffect(() => {
     if (skipScroll.current) {
       skipScroll.current = false;
       return;
@@ -222,6 +305,15 @@ export default function App() {
   useEffect(() => {
     contentColumns.current?.scrollTo(0, 0);
     contentColumns.current?.querySelector('.analysis-scroll')?.scrollTo(0, 0);
+    const tabs = document.querySelector<HTMLElement>('.workspace-tabs');
+    const active = tabs?.querySelector<HTMLElement>('.active');
+    if (tabs && active)
+      tabs.scrollTo({
+        left:
+          active.offsetLeft -
+          tabs.offsetLeft -
+          (tabs.clientWidth - active.clientWidth) / 2,
+      });
   }, [tab, workspace?.incident.incident_number]);
   useEffect(() => {
     if (!notice) return;
@@ -241,6 +333,7 @@ export default function App() {
   }, []);
 
   async function createRoom() {
+    if (room && workspace && !persistReview()) return;
     setBusy(true);
     setError('');
     try {
@@ -262,6 +355,7 @@ export default function App() {
   }
   async function selectIncident(number: string) {
     if (!roomId || busy) return;
+    if (!persistReview()) return;
     setBusy(true);
     setError('');
     try {
@@ -279,26 +373,34 @@ export default function App() {
   }
   function attach(item: Attachment) {
     if (busy) return;
-    setAttachments((items) =>
-      items.some((a) => a.id === item.id && a.kind === item.kind)
-        ? items
-        : [
-            ...items,
-            {
-              ...item,
-              incident_number:
-                item.incident_number || workspace?.incident.incident_number,
-            },
-          ].slice(-8),
-    );
+    const reference = {
+      ...item,
+      incident_number:
+        item.incident_number || workspace?.incident.incident_number,
+    };
+    if (
+      attachments.some(
+        (a) =>
+          a.id === reference.id &&
+          a.kind === reference.kind &&
+          a.incident_number === reference.incident_number,
+      )
+    ) {
+      setNotice('이미 검토 목록에 있는 근거입니다.');
+      return;
+    }
+    if (attachments.length >= 8) {
+      setNotice(
+        '검토 근거는 최대 8개입니다. 기존 항목을 제거한 뒤 추가해 주세요.',
+      );
+      return;
+    }
+    setAttachments((items) => [...items, reference]);
     setNotice('검토 대상에 추가했습니다.');
     if (isChat) setTimeout(() => composer.current?.focus(), 60);
   }
   function launchChat() {
-    sessionStorage.setItem(
-      `q-agent-draft-${roomId}`,
-      JSON.stringify({ text: draft, attachments }),
-    );
+    if (!persistReview()) return;
     location.assign(`/?view=chat&room=${encodeURIComponent(roomId)}`);
   }
   function navigate(
@@ -307,16 +409,25 @@ export default function App() {
     mode?: string,
     preserveDraft = true,
   ) {
+    const selected = value === 'inform' ? document || documentId : null;
     if (isChat) {
-      if (preserveDraft)
-        sessionStorage.setItem(
-          `q-agent-draft-${roomId}`,
-          JSON.stringify({ text: draft, attachments }),
-        );
+      if (preserveDraft && !persistReview()) return;
       location.assign(
-        `/?room=${encodeURIComponent(roomId)}&tab=${value}${document ? `&document=${encodeURIComponent(document)}` : ''}${mode ? `&mode=${mode}` : ''}`,
+        `/?room=${encodeURIComponent(roomId)}&tab=${value}${selected ? `&document=${encodeURIComponent(selected)}` : ''}${mode ? `&mode=${encodeURIComponent(mode)}` : ''}`,
       );
-    } else setTab(value);
+    } else {
+      setTab(value);
+      setDocumentId(selected);
+      setDetailMode(mode || '');
+      const url = new URL(location.href);
+      url.searchParams.set('tab', value);
+      if (selected) url.searchParams.set('document', selected);
+      else url.searchParams.delete('document');
+      if (mode) url.searchParams.set('mode', mode);
+      else url.searchParams.delete('mode');
+      history.replaceState(null, '', url);
+      contentColumns.current?.scrollTo(0, 0);
+    }
     setSidebarOpen(false);
   }
   async function send(event?: FormEvent) {
@@ -341,12 +452,19 @@ export default function App() {
       );
       setDraft('');
       setAttachments([]);
+      if (workspace)
+        saveReviewDraft(storage, room.id, workspace.incident.incident_number, {
+          text: '',
+          attachments: [],
+          notes,
+        });
       if (result.room.incident_number !== workspace?.incident.incident_number) {
         const next = await api<Workspace>(
           `/workspace?incident=${encodeURIComponent(result.room.incident_number)}`,
         );
         setWorkspace(next);
         setDocumentId(null);
+        restoreReview(room.id, next.incident.incident_number);
       }
       await refreshRooms();
     } catch (e) {
@@ -367,6 +485,9 @@ export default function App() {
         await refreshRooms();
       } else {
         await api(`/rooms/${roomId}`, 'DELETE');
+        bootstrap?.incidents.forEach((i) =>
+          clearReviewDraft(storage, roomId, i.incident_number),
+        );
         const data = await refreshRooms();
         setRoomId(data.rooms[0]?.id || '');
         setRoom(null);
@@ -391,6 +512,7 @@ export default function App() {
         return;
       }
       if (busy) return;
+      if (!persistReview()) return;
       setBusy(true);
       try {
         const next = await api<Workspace>(
@@ -405,8 +527,7 @@ export default function App() {
             ? { ...current, incident_number: item.incident_number! }
             : current,
         );
-        setAttachments([]);
-        setDraft('');
+        restoreReview(roomId, next.incident.incident_number);
         await refreshRooms();
         setModal(null);
         setPendingAttachment(null);
@@ -486,12 +607,20 @@ export default function App() {
         attach,
         navigate,
         selectedDocument: documentId,
-        selectDocument: setDocumentId,
+        selectDocument: (id: string | null) => {
+          setDocumentId(id);
+          const url = new URL(location.href);
+          if (id) url.searchParams.set('document', id);
+          else url.searchParams.delete('document');
+          history.replaceState(null, '', url);
+        },
       }
     : null;
 
   return (
-    <div className={`app-shell ${isChat ? 'chat-view' : 'workbench-view'}`}>
+    <div
+      className={`app-shell ${isChat ? 'chat-view' : 'workbench-view'} ${planCollapsed ? 'plan-collapsed' : ''}`}
+    >
       {sidebarOpen && (
         <button
           className="mobile-scrim"
@@ -563,6 +692,7 @@ export default function App() {
               disabled={busy}
               className={`room-item ${item.id === roomId ? 'selected' : ''}`}
               onClick={() => {
+                if (room && workspace && !persistReview()) return;
                 setRoomId(item.id);
                 setSidebarOpen(false);
               }}
@@ -617,6 +747,26 @@ export default function App() {
             <strong>{isChat ? 'Analysis chat' : 'Quality analysis'}</strong>
           </div>
           <div className="topbar-actions">
+            {!isChat && (
+              <button
+                className="icon-button plan-toggle"
+                title="분석 계획 보기/접기"
+                onClick={() => {
+                  if (window.matchMedia('(max-width: 900px)').matches) {
+                    const heading =
+                      document.querySelector<HTMLElement>('.inspector-header');
+                    heading?.scrollIntoView({ block: 'start' });
+                    heading?.focus({ preventScroll: true });
+                  } else setPlanCollapsed((value) => !value);
+                }}
+              >
+                {planCollapsed ? (
+                  <PanelRightOpen size={18} />
+                ) : (
+                  <ClipboardList size={18} />
+                )}
+              </button>
+            )}
             <span className="environment-badge">
               <span />
               SYNTHETIC
@@ -655,7 +805,7 @@ export default function App() {
                   </span>
                 </div>
                 <div className="analysis-title-row">
-                  <h1>
+                  <h1 tabIndex={-1}>
                     {room?.title ||
                       (loading ? '분석 불러오는 중' : '새로운 분석')}
                   </h1>
@@ -672,7 +822,7 @@ export default function App() {
                   </button>
                   <button
                     className="icon-button export-button"
-                    title="대화와 분석 결과 다운로드"
+                    title="현재 조회 결과 다운로드"
                     disabled={!room || !workspace}
                     onClick={() =>
                       download(
@@ -702,6 +852,19 @@ export default function App() {
                     회의록 기준 {workspace?.as_of || '2026-03-31'}
                   </span>
                 </div>
+                {workspace && (
+                  <div className="scope-facts">
+                    <span>
+                      <Factory size={13} />
+                      {workspace.incident.department} ·{' '}
+                      {workspace.incident.line}
+                    </span>
+                    <span>
+                      발생 {workspace.incident.occurred_at.slice(0, 10)}
+                    </span>
+                    <span className="scope-source">합성 DB · 읽기 전용</span>
+                  </div>
+                )}
               </header>
               <nav className="workspace-tabs" aria-label="분석 보기">
                 {tabs.map((item) => (
@@ -709,12 +872,15 @@ export default function App() {
                     key={item.id}
                     className={tab === item.id ? 'active' : ''}
                     aria-current={tab === item.id ? 'page' : undefined}
-                    onClick={() => setTab(item.id)}
+                    onClick={() => navigate(item.id)}
                   >
                     <item.icon size={16} />
                     <span>{item.label}</span>
                     {item.id === 'inform' && workspace && (
                       <small>{workspace.meetings.length}</small>
+                    )}
+                    {item.id === 'review' && attachments.length > 0 && (
+                      <small>{attachments.length}</small>
                     )}
                   </button>
                 ))}
@@ -722,9 +888,19 @@ export default function App() {
               {error && (
                 <div className="error-banner" role="alert">
                   <span>{error}</span>
+                  {storageError && (
+                    <button
+                      className="icon-button"
+                      title="초안 JSON 다운로드"
+                      onClick={downloadDraft}
+                    >
+                      <ArrowDownToLine size={17} />
+                    </button>
+                  )}
                   <button
                     className="text-button"
                     onClick={() => {
+                      if (room && workspace && !persistReview()) return;
                       setError('');
                       if (roomId) setReload((r) => r + 1);
                       else location.reload();
@@ -786,6 +962,22 @@ export default function App() {
                       />
                     )}
                     {tab === 'data' && <DataView {...activeProps} />}
+                    {tab === 'review' && (
+                      <ReviewView
+                        workspace={workspace!}
+                        attachments={attachments}
+                        question={draft}
+                        notes={notes}
+                        setNotes={setNotes}
+                        open={openAttachment}
+                        remove={(index) =>
+                          setAttachments((items) =>
+                            items.filter((_, i) => i !== index),
+                          )
+                        }
+                        storageError={storageError}
+                      />
+                    )}
                   </div>
                 )}
                 <footer className="analysis-footer">
@@ -799,10 +991,24 @@ export default function App() {
 
           {!isChat && (
             <aside className="investigation-panel" aria-label="분석 검토 목록">
-              <header className="inspector-header">
+              <header className="inspector-header" tabIndex={-1}>
                 <ClipboardList size={17} />
                 <h2>Investigation plan</h2>
                 <span className="status-tag">수동 검토</span>
+                <button
+                  className="icon-button"
+                  title="분석 화면 넓게 보기"
+                  onClick={() => {
+                    if (window.matchMedia('(max-width: 900px)').matches) {
+                      contentColumns.current?.scrollTo(0, 0);
+                      document
+                        .querySelector<HTMLElement>('.analysis-title-row h1')
+                        ?.focus();
+                    } else setPlanCollapsed(true);
+                  }}
+                >
+                  <PanelRightClose size={16} />
+                </button>
               </header>
               <div className="inspector-scroll">
                 {room && (
@@ -821,7 +1027,13 @@ export default function App() {
                 )}
                 <section className="review-section">
                   <div className="section-title">
-                    <h2>검토 대상</h2>
+                    <button
+                      className="review-open"
+                      onClick={() => navigate('review')}
+                    >
+                      <h2>검토 대상</h2>
+                      <ArrowUpRight size={15} />
+                    </button>
                     <span className="review-count">
                       {attachments.length} / 8
                     </span>
@@ -856,6 +1068,20 @@ export default function App() {
                       <Link2 size={20} />
                       <span>선택된 근거 없음</span>
                     </div>
+                  )}
+                  {attachments.length > 0 && (
+                    <button
+                      className="outline-button review-all"
+                      onClick={() => navigate('review')}
+                    >
+                      <FileText size={14} />
+                      근거 검토 · 비교
+                    </button>
+                  )}
+                  {storageError && (
+                    <p className="save-error" role="status">
+                      브라우저 저장 실패 · 기록 다운로드 필요
+                    </p>
                   )}
                 </section>
                 {draft && (
@@ -982,6 +1208,15 @@ export default function App() {
               {error && (
                 <div className="error-banner" role="alert">
                   <span>{error}</span>
+                  {storageError && (
+                    <button
+                      className="icon-button"
+                      title="초안 JSON 다운로드"
+                      onClick={downloadDraft}
+                    >
+                      <ArrowDownToLine size={17} />
+                    </button>
+                  )}
                   <button
                     className="icon-button"
                     title="오류 닫기"
@@ -1267,7 +1502,7 @@ export default function App() {
               ))}
           </div>
           <p className="modal-note">
-            사고를 변경하면 이전 첨부 선택은 초기화됩니다. 기존 대화 기록은
+            선택 근거와 메모는 사고별로 분리해 보관합니다. 기존 대화 기록은
             보존됩니다.
           </p>
         </Modal>

@@ -6,6 +6,7 @@ import {
   Focus,
   History,
   LayoutDashboard,
+  NotebookPen,
 } from 'lucide-react';
 import type { Tab } from './Views';
 
@@ -72,5 +73,13 @@ export const modules: {
     status: '합성 DB',
     icon: Database,
     plan: true,
+  },
+  {
+    id: 'review',
+    label: 'Review',
+    name: '근거 검토',
+    status: '수동 검토',
+    icon: NotebookPen,
+    plan: false,
   },
 ];

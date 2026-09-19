@@ -50,7 +50,8 @@ golden 기반 검증과 개선 제안은 오프라인이며, 원본 Skill을 자
 
 분석 작업실과 채팅은 별도 화면입니다. 작업실에서 기능을 열고 근거를 선택한 뒤 같은 대화방의 채팅으로 넘깁니다.
 
-- 작업실: Overview, Trend, Wafer/SEM/Image/Overlay Map, Inform, Production, History, Data.
+- 작업실: Overview, Trend, Wafer/SEM/Image/Overlay Map, Inform, Production, History, Data, Review.
+- Overview는 사고 DB 기록과 최근 승인 회의록을 분리해 보여줍니다. Review에서 선택 근거의 원문·기준일·버전을 비교하고 사용자 메모와 출처를 JSON으로 내보냅니다. 이 검토는 Judge의 판정이 아닙니다.
 - 분석 계획: 기능별 체크, 화면 이동, 질문 준비. 선택은 실제 Agent 실행이나 검증 완료를 의미하지 않습니다.
 - 채팅: 방별 질문·답변 저장, 이름 변경·삭제, 이전 기록 조회, 근거의 사고 범위 확인.
 
@@ -58,6 +59,7 @@ golden 기반 검증과 개선 제안은 오프라인이며, 원본 Skill을 자
 
 ```powershell
 npm --prefix web ci
+npm --prefix web test
 npm --prefix web run build
 python app/workbench.py --port 8787
 ```
@@ -68,6 +70,7 @@ python app/workbench.py --port 8787
 설정은 `D:\project\q-agent\config\workbench.yaml`입니다. 기본 DB 설정은 기존 `config.yaml` + `demo.yaml`을 사용합니다.
 첫 실행에서 합성 DB가 모두 없을 때만 생성하고, 일부만 있으면 덮어쓰지 않고 중단합니다.
 대화는 `D:\project\q-agent\var\data\workbench\conversations.sqlite`에 별도로 저장합니다.
+준비한 질문·선택 근거·검토 메모는 대화방과 사고별로 이 브라우저의 localStorage에 저장합니다. 다른 브라우저와 동기화되지 않으며 브라우저 데이터 삭제 시 사라집니다. 문서 원문은 저장하지 않고 조회 시 가져옵니다. 개인정보가 포함된 메모를 공용 PC에 남기지 마세요.
 
 **연결 범위:** 사고·Lot·Wafer·회의록은 합성 DB를 실제 조회합니다. Trend/Map은 합성 데이터, SEM은 AI 생성 이미지입니다.
 Eng’r Inform·생산 시스템·LLM은 미연결입니다. 채팅은 결정적 DB 조회 데모이며, 대화 저장이 모델 메모리 연결을 뜻하지 않습니다.

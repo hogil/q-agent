@@ -27,11 +27,12 @@ export type Tab =
   | 'inform'
   | 'data'
   | 'production'
-  | 'history';
+  | 'history'
+  | 'review';
 export type ViewProps = {
   workspace: Workspace;
   attach: (item: Attachment) => void;
-  navigate: (tab: Tab) => void;
+  navigate: (tab: Tab, document?: string) => void;
   selectedDocument: string | null;
   selectDocument: (id: string | null) => void;
 };
@@ -97,8 +98,13 @@ function Legend({ map = false }: { map?: boolean }) {
 }
 
 export function Overview(props: Props) {
-  const { workspace: w, attach, navigate, selectDocument } = props;
+  const { workspace: w, attach, navigate } = props;
   const seed = incidentSeed(w);
+  const latestMeeting = [...w.meetings].sort(
+    (a, b) =>
+      b.meeting_date.localeCompare(a.meeting_date) ||
+      b.version.localeCompare(a.version, undefined, { numeric: true }),
+  )[0];
   return (
     <div className="overview">
       <div className="stat-band">
@@ -127,6 +133,47 @@ export function Overview(props: Props) {
           <p>{w.as_of} 기준 승인 문서</p>
         </div>
       </div>
+      <section className="record-comparison" aria-label="DB와 회의록 기록 비교">
+        <div>
+          <div className="section-title">
+            <h2>사고 DB 기록</h2>
+            <span
+              className={`status-tag ${w.incident.confirmed_cause ? 'green' : 'amber'}`}
+            >
+              {w.incident.confirmed_cause ? '확정 원인 필드' : '원인 미확정'}
+            </span>
+          </div>
+          <p>
+            {w.incident.confirmed_cause ||
+              w.incident.analysis_detail ||
+              '분석 기록 없음'}
+          </p>
+          <button className="text-button" onClick={() => navigate('data')}>
+            DB 원문
+            <ArrowUpRight size={14} />
+          </button>
+        </div>
+        <div>
+          <div className="section-title">
+            <h2>최근 승인 회의록</h2>
+            <FileText size={16} />
+          </div>
+          {latestMeeting ? (
+            <>
+              <p>{latestMeeting.text}</p>
+              <button
+                className="text-button"
+                onClick={() => navigate('inform', latestMeeting.chunk_id)}
+              >
+                {latestMeeting.meeting_date} · {latestMeeting.version}
+                <ArrowUpRight size={14} />
+              </button>
+            </>
+          ) : (
+            <p className="muted">현재 범위의 승인 회의록 없음</p>
+          )}
+        </div>
+      </section>
       <div className="visual-band">
         <section className="overview-trend">
           <SectionTitle
@@ -197,8 +244,8 @@ export function Overview(props: Props) {
       </div>
       <section className="findings-section">
         <SectionTitle
-          title="확인된 기록"
-          note="Incident record"
+          title="후속 확인"
+          note="사고 DB의 미완료 기록"
           action={
             <button className="text-button" onClick={() => navigate('data')}>
               DB 보기 <ChevronRight size={14} />
@@ -207,22 +254,6 @@ export function Overview(props: Props) {
         />
         <div className="finding-row">
           <span className="record-index">01</span>
-          <div>
-            <h3>사고 DB</h3>
-            <p>
-              {w.incident.confirmed_cause ||
-                w.incident.analysis_detail ||
-                '원인 기록이 없습니다.'}
-            </p>
-          </div>
-          <span
-            className={`status-tag ${w.incident.confirmed_cause ? 'green' : 'amber'}`}
-          >
-            {w.incident.confirmed_cause ? '원인 기록 있음' : '미확정'}
-          </span>
-        </div>
-        <div className="finding-row">
-          <span className="record-index">02</span>
           <div>
             <h3>조회 범위</h3>
             <p>
@@ -249,8 +280,7 @@ export function Overview(props: Props) {
               className="source-row"
               key={item.chunk_id}
               onClick={() => {
-                selectDocument(item.chunk_id);
-                navigate('inform');
+                navigate('inform', item.chunk_id);
               }}
             >
               <span className="document-icon">
