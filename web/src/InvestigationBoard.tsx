@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { download, type Attachment, type Incident } from './api';
 import { Chart } from './charts';
-import { metricUnits } from './anomalyTrend';
+import { metricUnits, trendBoxPlotOption } from './anomalyTrend';
 import type { ViewProps } from './Views';
 import {
   pairKey,
@@ -33,7 +33,6 @@ import {
 } from './waferMaps';
 import HistoricalCorrelation from './HistoricalCorrelation';
 import BoardSem from './BoardSem';
-import BoardOverlay from './BoardOverlay';
 import { availableEquipment, compareEquipment } from './equipmentComparison';
 import BoardAnalysis from './BoardAnalysis';
 import DetectionFlow from './DetectionFlow';
@@ -205,17 +204,16 @@ export default function InvestigationBoard({
     selection.start,
     selection.end,
   );
-  const peerMap = useMemo(
+  const distribution = useMemo(
     () =>
-      peer
-        ? {
-            lotId: peer.lotId,
-            waferId: peer.waferId,
-            gridId,
-            dies: waferData(waferSeed(incident, peer.lotId, peer.waferId)),
-          }
-        : undefined,
-    [incident, peer],
+      trendBoxPlotOption(data, selection, peerEquipment, {
+        members: [],
+        dimOthers: false,
+        zoomToSelection: false,
+        showChanges: false,
+        showLegend: false,
+      }),
+    [data, selection, peerEquipment],
   );
   const maps = useMemo(
     () =>
@@ -424,7 +422,8 @@ export default function InvestigationBoard({
       (index, row, i) => (Date.parse(row.timestamp) <= toTime ? i : index),
       -1,
     );
-    if (first >= 0 && last >= first) change({ start: first, end: last });
+    if (first >= 0 && last >= first)
+      change({ start: first, end: last, valueRange: undefined });
   };
   const number = (value: number | null) =>
     value === null ? '-' : value.toFixed(2);
@@ -618,7 +617,11 @@ export default function InvestigationBoard({
               className="icon-button"
               title="감지 구간 복원"
               onClick={() =>
-                change({ start: signal.startIndex, end: signal.endIndex })
+                change({
+                  start: signal.startIndex,
+                  end: signal.endIndex,
+                  valueRange: undefined,
+                })
               }
             >
               <RotateCcw size={14} />
@@ -751,6 +754,7 @@ export default function InvestigationBoard({
                     change({
                       start: Math.max(0, index - 2),
                       end: Math.min(data.trend.length - 1, index + 2),
+                      valueRange: undefined,
                     });
                   }}
                 >
@@ -934,7 +938,7 @@ export default function InvestigationBoard({
           aria-label="개별 Wafer Map"
         >
           <header>
-            <h2>Wafer Map</h2>
+            <h2>개별 Map</h2>
             <span>합성</span>
             <button
               className="icon-button"
@@ -994,7 +998,8 @@ export default function InvestigationBoard({
           aria-label="선택 Wafer 합성 Map"
         >
           <header>
-            <h2>합성 Map</h2>
+            <h2>전체 Map</h2>
+            <span>합성</span>
             <output>{composite.waferCount} Wafers</output>
             <button
               className="icon-button"
@@ -1059,17 +1064,37 @@ export default function InvestigationBoard({
           </footer>
         </section>
         <section
-          className="board-panel board-overlay"
-          aria-label="Wafer A B Overlay 비교"
+          className="board-panel board-distribution"
+          aria-label="Legend별 Box plot"
         >
-          <BoardOverlay
-            a={current}
-            b={peerMap}
-            coordinate={die}
-            selectDie={selectDie}
-            region={region}
-            selectRegion={selectRegion}
-          />
+          <header>
+            <h2>Legend별 Box plot</h2>
+            <span>
+              {signal.item} · {metricUnits[signal.metric]}
+            </span>
+          </header>
+          {distribution.series[0].data.some((group) => group.count > 0) ? (
+            <Chart
+              option={distribution}
+              className="board-distribution-chart"
+              label={`${signal.item} Legend별 ${selection.rangeSelected === false ? '전체' : '선택 X·Y 범위'} 분포`}
+            />
+          ) : (
+            <p className="board-empty">선택 범위 표본 없음</p>
+          )}
+          <footer>
+            {selection.rangeSelected === false
+              ? '전체 구간'
+              : `${time(from)} ~ ${time(to)}`}
+            {selection.rangeSelected !== false &&
+              selection.valueRange &&
+              ` · Y ${selection.valueRange[0].toFixed(2)} ~ ${selection.valueRange[1].toFixed(2)}`}
+            {' · '}n=
+            {distribution.series[0].data.reduce(
+              (sum, group) => sum + group.count,
+              0,
+            )}
+          </footer>
         </section>
         <section
           className="board-panel board-images"

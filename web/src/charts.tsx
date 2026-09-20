@@ -33,20 +33,16 @@ echarts.use([
 type ChartProps = {
   option: echarts.EChartsCoreOption;
   onSelect?: (value: any) => void;
-  onRange?: (range: [number, number]) => void;
-  rangeSelection?: [number, number] | null;
-  onRangeClear?: () => void;
   onArea?: (region: DieRegion | null) => void;
+  areaSelection?: DieRegion | null;
   label: string;
   className?: string;
 };
 export function Chart({
   option,
   onSelect,
-  onRange,
-  rangeSelection,
-  onRangeClear,
   onArea,
+  areaSelection,
   label,
   className = '',
 }: ChartProps) {
@@ -54,10 +50,6 @@ export function Chart({
   const instance = useRef<echarts.EChartsType | null>(null);
   const handler = useRef(onSelect);
   handler.current = onSelect;
-  const rangeHandler = useRef(onRange);
-  rangeHandler.current = onRange;
-  const rangeClearHandler = useRef(onRangeClear);
-  rangeClearHandler.current = onRangeClear;
   const areaHandler = useRef(onArea);
   areaHandler.current = onArea;
   useEffect(() => {
@@ -69,7 +61,6 @@ export function Chart({
     chart.on('click', (params) => handler.current?.(params));
     chart.on('brushEnd', (params: any) => {
       const range = params.areas?.[0]?.coordRange;
-      if (!params.areas?.length) rangeClearHandler.current?.();
       if (areaHandler.current) {
         if (!params.areas?.length) areaHandler.current(null);
         else if (
@@ -83,13 +74,6 @@ export function Chart({
           )
         )
           areaHandler.current(range as DieRegion);
-      }
-      if (
-        Array.isArray(range) &&
-        range.length === 2 &&
-        range.every(Number.isFinite)
-      ) {
-        rangeHandler.current?.([Math.round(range[0]), Math.round(range[1])]);
       }
     });
     const observer = new ResizeObserver(() => chart.resize());
@@ -112,29 +96,30 @@ export function Chart({
       },
       { notMerge: true },
     );
-    if (rangeHandler.current || areaHandler.current)
+    if (areaHandler.current)
       chart.dispatchAction({
         type: 'takeGlobalCursor',
         key: 'brush',
         brushOption: {
-          brushType: areaHandler.current ? 'rect' : 'lineX',
+          brushType: 'rect',
           brushMode: 'single',
         },
       });
-    if (rangeHandler.current && rangeSelection !== undefined)
+    if (areaHandler.current && areaSelection !== undefined)
       chart.dispatchAction({
         type: 'brush',
-        areas: rangeSelection
+        areas: areaSelection
           ? [
               {
-                brushType: 'lineX',
+                brushType: 'rect',
                 xAxisIndex: 0,
-                coordRange: rangeSelection,
+                yAxisIndex: 0,
+                coordRange: areaSelection,
               },
             ]
           : [],
       });
-  }, [option, rangeSelection]);
+  }, [option, areaSelection]);
   return (
     <div
       ref={element}

@@ -100,18 +100,23 @@ function EngineeringTrend({
     }),
     [members, dimOthers, zoomToSelection, showChanges],
   );
+  const trendOption = useMemo(
+    () =>
+      anomalyTrendOption(
+        data,
+        selection,
+        compact,
+        comparisonEquipment,
+        compact ? undefined : display,
+      ),
+    [data, selection, compact, comparisonEquipment, display],
+  );
   const option = useMemo(
     () =>
       mode === 'box' && !compact
         ? trendBoxPlotOption(data, selection, comparisonEquipment, display)
-        : anomalyTrendOption(
-            data,
-            selection,
-            compact,
-            comparisonEquipment,
-            compact ? undefined : display,
-          ),
-    [data, selection, compact, comparisonEquipment, mode, display],
+        : trendOption,
+    [data, selection, compact, comparisonEquipment, mode, display, trendOption],
   );
   useEffect(() => setZoomToSelection(false), [signal.id]);
   const rangeSelection = useMemo<[number, number] | null>(
@@ -125,9 +130,27 @@ function EngineeringTrend({
     [data, selection.start, selection.end, selection.rangeSelected],
   );
   const clearRange = () => {
-    change({ start: 0, end: data.trend.length - 1, rangeSelected: false });
+    change({
+      start: 0,
+      end: data.trend.length - 1,
+      rangeSelected: false,
+      valueRange: undefined,
+    });
     setZoomToSelection(false);
   };
+  const areaSelection = useMemo<[[number, number], [number, number]] | null>(
+    () =>
+      rangeSelection && 'yAxis' in trendOption
+        ? [
+            rangeSelection,
+            selection.valueRange ?? [
+              trendOption.yAxis.min,
+              trendOption.yAxis.max,
+            ],
+          ]
+        : null,
+    [rangeSelection, selection.valueRange, trendOption],
+  );
   const exportSelection = () => {
     const from = Date.parse(data.trend[selection.start].timestamp);
     const to = Date.parse(data.trend[selection.end].timestamp);
@@ -142,6 +165,7 @@ function EngineeringTrend({
           legendAxis: signal.legendAxis,
           from: rangeSelection ? new Date(from).toISOString() : null,
           to: rangeSelection ? new Date(to).toISOString() : null,
+          valueRange: rangeSelection ? (selection.valueRange ?? null) : null,
           groups: groups
             .filter(
               (group) => !members.length || members.includes(group.member),
@@ -256,13 +280,21 @@ function EngineeringTrend({
               : `합성 ${signal.title} 구간 Trend`
           }
           className="eng-trend-chart"
-          onRange={
+          onArea={
             mode === 'trend'
-              ? (range) => change(trendSelectionFromTime(data, range))
+              ? (area) =>
+                  area
+                    ? change({
+                        ...trendSelectionFromTime(data, area[0]),
+                        valueRange: [
+                          Math.min(...area[1]),
+                          Math.max(...area[1]),
+                        ],
+                      })
+                    : clearRange()
               : undefined
           }
-          rangeSelection={mode === 'trend' ? rangeSelection : undefined}
-          onRangeClear={mode === 'trend' ? clearRange : undefined}
+          areaSelection={mode === 'trend' ? areaSelection : undefined}
           onSelect={
             mode === 'box'
               ? (point) => {
@@ -296,7 +328,7 @@ function EngineeringTrend({
               Legend
             </label>
             <span
-              title={`${rangeSelection ? '선택' : '전체'} 시간 구간의 표본 수`}
+              title={`${rangeSelection ? '선택 X·Y 범위' : '전체 구간'}의 표본 수`}
             >
               n
             </span>
@@ -577,6 +609,7 @@ export default function EngineeringWorkspace({
           ),
           end: end < 0 ? data.trend.length - 1 : end,
           rangeSelected: true,
+          valueRange: undefined,
         }));
       } else if (wip) {
         setSelection((current) => ({
@@ -707,6 +740,7 @@ export default function EngineeringWorkspace({
                   start: signal.startIndex,
                   end: signal.endIndex,
                   rangeSelected: true,
+                  valueRange: undefined,
                   equipment: signal.equipment,
                 })
               }

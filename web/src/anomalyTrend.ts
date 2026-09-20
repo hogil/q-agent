@@ -104,14 +104,19 @@ function selectionWindow(
     : null;
 }
 
-function pointsInWindow(points: number[][], window: [number, number] | null) {
+function pointsInWindow(
+  points: number[][],
+  window: [number, number] | null,
+  valueRange?: [number, number],
+) {
   if (!window) return [];
   return points.filter(
     ([timestamp, value]) =>
       Number.isFinite(timestamp) &&
       Number.isFinite(value) &&
       timestamp >= window[0] &&
-      timestamp <= window[1],
+      timestamp <= window[1] &&
+      (!valueRange || (value >= valueRange[0] && value <= valueRange[1])),
   );
 }
 
@@ -125,6 +130,8 @@ export function trendLegendGroups(
   if (!signal || !selectedWindow || !data.trend.length) return [];
   const window: [number, number] =
     selection.rangeSelected === false ? [-Infinity, Infinity] : selectedWindow;
+  const valueRange =
+    selection.rangeSelected === false ? undefined : selection.valueRange;
 
   const fleet = makeTrendFleet(data, signal);
   const target = fleet.find((row) => row.highlighted);
@@ -133,14 +140,14 @@ export function trendLegendGroups(
     {
       member: target.member,
       color: '#4878CF',
-      points: pointsInWindow(target.points, window),
+      points: pointsInWindow(target.points, window, valueRange),
     },
     ...fleet
       .filter((row) => !row.highlighted)
       .map((row, index) => ({
         member: row.member,
         color: fleetColors[index],
-        points: pointsInWindow(row.points, window),
+        points: pointsInWindow(row.points, window, valueRange),
       })),
   ];
 
@@ -153,6 +160,7 @@ export function trendLegendGroups(
         points: pointsInWindow(
           peer.map((row) => [Date.parse(row.timestamp), row.value]),
           window,
+          valueRange,
         ),
       });
     }
@@ -204,12 +212,14 @@ function displayPoint(
   member: string,
   display: TrendDisplayOptions | undefined,
   window: [number, number] | null,
+  valueRange?: [number, number],
 ) {
   if (!display) return point;
   const hasFilter = display.members.length > 0 || window !== null;
   const selected =
     (display.members.length === 0 || display.members.includes(member)) &&
-    (window === null || (point[0] >= window[0] && point[0] <= window[1]));
+    (window === null || (point[0] >= window[0] && point[0] <= window[1])) &&
+    (!valueRange || (point[1] >= valueRange[0] && point[1] <= valueRange[1]));
   return {
     value: point,
     itemStyle: {
@@ -246,8 +256,9 @@ export function trendBoxPlotOption(
     outliers: group.outliers,
     box: group.box,
     itemStyle: {
-      color: group.color,
+      color: `${group.color}55`,
       borderColor: group.color,
+      borderWidth: 1.2,
       opacity: opacity(group.member),
     },
   }));
@@ -409,7 +420,8 @@ export function anomalyTrendOption(
       ? undefined
       : {
           xAxisIndex: 0,
-          brushType: 'lineX',
+          yAxisIndex: 0,
+          brushType: 'rect',
           brushMode: 'single',
           transformable: true,
           brushStyle: {
@@ -500,8 +512,16 @@ export function anomalyTrendOption(
                   [
                     {
                       xAxis: Date.parse(data.trend[selection.start].timestamp),
+                      ...(selection.valueRange
+                        ? { yAxis: selection.valueRange[0] }
+                        : {}),
                     },
-                    { xAxis: Date.parse(data.trend[selection.end].timestamp) },
+                    {
+                      xAxis: Date.parse(data.trend[selection.end].timestamp),
+                      ...(selection.valueRange
+                        ? { yAxis: selection.valueRange[1] }
+                        : {}),
+                    },
                   ],
                 ],
         },
@@ -560,17 +580,27 @@ export function anomalyTrendOption(
       selection.rangeSelected === false
         ? null
         : selectionWindow(data, selection);
+    const valueRange = window ? selection.valueRange : undefined;
     const pointData = (points: number[][], member: string) =>
-      points.map((point) => displayPoint(point, member, display, window));
+      points.map((point) =>
+        displayPoint(point, member, display, window, valueRange),
+      );
     const xAxis = { ...option.xAxis };
+    const yAxis = { ...option.yAxis };
     if (display.zoomToSelection && window) {
       const padding = Math.max((window[1] - window[0]) * 0.05, HOUR * 0.5);
       xAxis.min = window[0] - padding;
       xAxis.max = window[1] + padding;
+      if (valueRange) {
+        const margin = Math.max((valueRange[1] - valueRange[0]) * 0.08, 0.01);
+        yAxis.min = valueRange[0] - margin;
+        yAxis.max = valueRange[1] + margin;
+      }
     }
     return {
       ...option,
       xAxis,
+      yAxis,
       grid: { ...option.grid, right: display.showLegend === false ? 12 : 109 },
       legend: { ...option.legend, show: display.showLegend !== false },
       series: option.series.map((series) => ({

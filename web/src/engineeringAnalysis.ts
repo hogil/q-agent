@@ -6,6 +6,7 @@ export type InvestigationSelection = {
   start: number;
   end: number;
   rangeSelected?: boolean;
+  valueRange?: [number, number];
   equipment: string;
   recipe: string;
   maxLagDays: number;
@@ -70,6 +71,11 @@ export function parseSelection(
     s.end < s.start ||
     s.end >= data.trend.length ||
     (s.rangeSelected !== undefined && typeof s.rangeSelected !== 'boolean') ||
+    (s.valueRange !== undefined &&
+      (!Array.isArray(s.valueRange) ||
+        s.valueRange.length !== 2 ||
+        !s.valueRange.every(Number.isFinite) ||
+        s.valueRange[0] > s.valueRange[1])) ||
     !Number.isInteger(s.maxLagDays) ||
     s.maxLagDays < 0 ||
     s.maxLagDays > 30 ||
@@ -87,6 +93,9 @@ export function parseSelection(
     ...(s.rangeSelected === undefined
       ? {}
       : { rangeSelected: s.rangeSelected }),
+    ...(s.rangeSelected === false || s.valueRange === undefined
+      ? {}
+      : { valueRange: [...s.valueRange] as [number, number] }),
     equipment: s.equipment,
     recipe: s.recipe,
     maxLagDays: s.maxLagDays,
@@ -167,6 +176,7 @@ function signalWindowStats(
   data: EngineeringData,
   metric: Signal['metric'] | null,
   indexes: number[],
+  valueRange?: [number, number],
 ): SignalWindowStats {
   if (!metric) return emptySignalWindowStats();
   const points = indexes.flatMap((index) => {
@@ -175,6 +185,8 @@ function signalWindowStats(
     const timestamp = Date.parse(row.timestamp);
     const value = row[metric];
     if (!Number.isFinite(timestamp) || !Number.isFinite(value)) return [];
+    if (valueRange && (value < valueRange[0] || value > valueRange[1]))
+      return [];
     return [{ timestamp, timestampText: row.timestamp, value }];
   });
   if (!points.length) return emptySignalWindowStats();
@@ -246,6 +258,7 @@ export function summarizeSignalWindow(
       { length: selection.end - selection.start + 1 },
       (_, offset) => selection.start + offset,
     ),
+    selection.rangeSelected === false ? undefined : selection.valueRange,
   );
   const comparable = baseline.n >= 3 && selected.n >= 3;
   return {
@@ -354,9 +367,18 @@ export function engineeringReference(
   kind: 'trend' | 'corr',
   selection: InvestigationSelection,
 ) {
-  const { signalId, start, end, equipment, recipe, maxLagDays, rangeSelected } =
-    selection;
-  return `engineering:${kind}:${JSON.stringify([signalId, start, end, equipment, recipe, maxLagDays, ...(rangeSelected === undefined ? [] : [rangeSelected])])}`;
+  const {
+    signalId,
+    start,
+    end,
+    equipment,
+    recipe,
+    maxLagDays,
+    rangeSelected,
+    valueRange,
+  } = selection;
+  const bounds = valueRange === undefined ? [] : [valueRange];
+  return `engineering:${kind}:${JSON.stringify([signalId, start, end, equipment, recipe, maxLagDays, ...(rangeSelected === undefined && !bounds.length ? [] : [rangeSelected ?? true]), ...bounds])}`;
 }
 
 export function parseEngineeringReference(
@@ -371,11 +393,28 @@ export function parseEngineeringReference(
   if (!prefix) return null;
   try {
     const value = JSON.parse(reference.slice(prefix.length));
-    if (!Array.isArray(value) || ![6, 7].includes(value.length)) return null;
-    const [signalId, start, end, equipment, recipe, maxLagDays, rangeSelected] =
-      value;
+    if (!Array.isArray(value) || ![6, 7, 8].includes(value.length)) return null;
+    const [
+      signalId,
+      start,
+      end,
+      equipment,
+      recipe,
+      maxLagDays,
+      rangeSelected,
+      valueRange,
+    ] = value;
     return parseSelection(
-      { signalId, start, end, equipment, recipe, maxLagDays, rangeSelected },
+      {
+        signalId,
+        start,
+        end,
+        equipment,
+        recipe,
+        maxLagDays,
+        rangeSelected,
+        valueRange,
+      },
       data,
     );
   } catch {

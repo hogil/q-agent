@@ -314,7 +314,7 @@ test('keeps the default fleet stable with omitted or empty comparison equipment'
       omitted.series.slice(4).map((series) => series.itemStyle.color),
       ['#4878CF', '#D62728'],
     );
-    assert.equal(omitted.brush?.brushType, compact ? undefined : 'lineX');
+    assert.equal(omitted.brush?.brushType, compact ? undefined : 'rect');
     const point = {
       seriesName: expectedNames[4],
       value: [Date.parse(data.trend[0].timestamp), 10],
@@ -393,7 +393,7 @@ test('renders same-step EQP-2 at exactly the helper timestamps and values', () =
         .slice(-2)
         .every((series) => series.itemStyle.color !== peer.itemStyle.color),
     );
-    assert.equal(option.brush?.brushType, compact ? undefined : 'lineX');
+    assert.equal(option.brush?.brushType, compact ? undefined : 'rect');
   }
 });
 
@@ -478,6 +478,66 @@ test('groups exact inclusive trend samples by member and adds only a valid diffe
     trendLegendGroups(comparisonData, selection, 'UNKNOWN-EQP').length,
     5,
   );
+});
+
+test('rectangular selection uses the same X and Y bounds for point emphasis, counts and boxes', () => {
+  const xy = { ...selection, rangeSelected: true, valueRange: [10.9, 11.2] };
+  const display = {
+    members: [],
+    dimOthers: true,
+    zoomToSelection: true,
+    showChanges: true,
+  };
+  const option = anomalyTrendOption(
+    comparisonData,
+    xy,
+    false,
+    'EQP-2',
+    display,
+  );
+  assert.equal(option.brush.brushType, 'rect');
+  assert.equal(option.brush.yAxisIndex, 0);
+  const [start, end] = [
+    Date.parse(data.trend[xy.start].timestamp),
+    Date.parse(data.trend[xy.end].timestamp),
+  ];
+  const points = option.series.flatMap((series) => series.data);
+  const expected = points.filter(
+    ({ value: [x, y] }) =>
+      x >= start && x <= end && y >= xy.valueRange[0] && y <= xy.valueRange[1],
+  );
+  assert.ok(expected.length > 0 && expected.length < points.length);
+  assert.equal(
+    points.filter((p) => p.itemStyle.opacity === 0.95).length,
+    expected.length,
+  );
+  assert.equal(
+    trendLegendGroups(comparisonData, xy, 'EQP-2').reduce(
+      (n, g) => n + g.points.length,
+      0,
+    ),
+    expected.length,
+  );
+  assert.equal(
+    trendBoxSummaries(comparisonData, xy, 'EQP-2').reduce(
+      (n, g) => n + g.count,
+      0,
+    ),
+    expected.length,
+  );
+  assert.ok(option.yAxis.min < xy.valueRange[0] && option.yAxis.min > 10);
+  assert.ok(option.yAxis.max > xy.valueRange[1] && option.yAxis.max < 12);
+  const markArea = option.series.find((s) => s.markArea).markArea.data[0];
+  assert.deepEqual(
+    markArea.map((p) => p.yAxis),
+    xy.valueRange,
+  );
+  const empty = trendBoxSummaries(
+    comparisonData,
+    { ...xy, valueRange: [100, 200] },
+    'EQP-2',
+  );
+  assert.ok(empty.every((g) => g.count === 0 && g.box === null));
 });
 
 test('box summaries keep empty and singleton groups finite and exact', () => {

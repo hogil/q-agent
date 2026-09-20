@@ -223,8 +223,13 @@
 .board-composite {
   grid-area: 2 / 5 / 3 / 7;
 }
-.board-overlay {
+.board-distribution {
   grid-area: 2 / 7 / 3 / 10;
+}
+.board-distribution-chart {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
 }
 .board-images {
   grid-area: 2 / 10 / 3 / 13;
@@ -1229,52 +1234,6 @@
 }
 .board-reference-dialog .evidence-original {
   max-height: none;
-}
-.overlay-modes {
-  display: flex;
-  margin-left: auto;
-}
-.overlay-modes button[aria-pressed='true'] {
-  color: #2f7561;
-  background: #e8f2ed;
-}
-.overlay-identity {
-  display: flex;
-  justify-content: space-between;
-  gap: 7px;
-  flex-wrap: wrap;
-  font-size: 9px;
-  color: #76877e;
-}
-.overlay-controls-compact {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  height: 20px;
-  flex-shrink: 0;
-  font-size: 10px;
-}
-.overlay-controls-compact label {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-.overlay-controls-compact input[type='range'] {
-  width: 80px;
-  height: 12px;
-  accent-color: #318dab;
-}
-.overlay-counts {
-  display: flex;
-  gap: 10px;
-  font-size: 10px;
-  flex-shrink: 0;
-}
-.overlay-counts i {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  margin-right: 3px;
 }
 .sem-preview figcaption {
   flex-shrink: 0;

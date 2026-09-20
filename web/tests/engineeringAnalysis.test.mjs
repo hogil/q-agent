@@ -394,8 +394,41 @@ test('investigation selection validates scope IDs and ordered bounded windows', 
     { signalId: 'other' },
     { maxLagDays: 31 },
     { rangeSelected: 'false' },
+    { valueRange: [14, 12] },
+    { valueRange: [NaN, 14] },
+    { valueRange: [12] },
+    { valueRange: null },
   ])
     assert.equal(parseSelection({ ...selection, ...patch }, data), null);
+});
+
+test('XY selections preserve value bounds through parsing and pinned references', () => {
+  const selected = {
+    ...defaultSelection(data),
+    start: 2,
+    end: 8,
+    rangeSelected: true,
+    valueRange: [11.25, 12.75],
+  };
+  assert.deepEqual(parseSelection(selected, data), selected);
+  assert.deepEqual(
+    parseEngineeringReference(engineeringReference('trend', selected), data),
+    selected,
+  );
+  assert.deepEqual(
+    parseSelection({ ...selected, rangeSelected: false }, data),
+    defaultSelection(data),
+  );
+});
+
+test('selected signal statistics respect Y bounds without clipping the baseline', () => {
+  const result = summarizeSignalWindow(signalWindowData, {
+    ...windowSelection,
+    valueRange: [14.5, 15.5],
+  });
+  assert.equal(result.selected.n, 1);
+  assert.equal(result.selected.median, 15);
+  assert.equal(result.baseline.n, 4);
 });
 
 test('initial and cleared selections have no active time filter', () => {
