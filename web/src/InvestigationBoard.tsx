@@ -7,6 +7,8 @@ import {
   Pin,
   Check,
   X,
+  Columns2,
+  ListFilter,
 } from 'lucide-react';
 import { download, type Attachment, type Incident } from './api';
 import { Chart } from './charts';
@@ -21,7 +23,12 @@ import {
   type InvestigationSelection,
 } from './engineeringAnalysis';
 import type { EngineeringData, FabRow, Signal } from './engineeringData';
-import { compositeWaferMaps, waferData, waferSeed } from './waferMaps';
+import {
+  compositeWaferMaps,
+  inspectWaferDie,
+  waferData,
+  waferSeed,
+} from './waferMaps';
 import HistoricalCorrelation from './HistoricalCorrelation';
 import BoardSem from './BoardSem';
 import BoardOverlay from './BoardOverlay';
@@ -34,6 +41,7 @@ import {
   selectInformNotes,
   documentUrl,
   wipLayerOption,
+  semRecord,
 } from './investigationData';
 
 const gridId = 'synthetic-grid-v1';
@@ -208,6 +216,9 @@ export default function InvestigationBoard({
     [incident, candidates],
   );
   const selectedMaps = maps.filter((row) => checked.has(pairKey(row)));
+  const dieEvidence = useMemo(() => inspectWaferDie(maps, die), [maps, die]);
+  const dieByWafer = new Map(dieEvidence.map((row) => [pairKey(row), row]));
+  const flaggedDieWafers = dieEvidence.filter((row) => row.flag === true);
   const composite = useMemo(
     () => compositeWaferMaps(selectedMaps),
     [maps, checked],
@@ -287,6 +298,8 @@ export default function InvestigationBoard({
           flagRule: 'bin >= 3',
           denominator: 'observed wafers per coordinate; missing is not pass',
           physicalAlignmentVerified: false,
+          selectedCoordinate: die,
+          coordinateObservations: dieEvidence,
           displayThresholdPercent: threshold,
           ...composite,
         },
@@ -398,6 +411,9 @@ export default function InvestigationBoard({
           {focused
             ? `${focused.lotId} / ${focused.waferId} · ${focused.equipment}`
             : 'Wafer 없음'}
+          {focused && !checked.has(pairKey(focused)) && (
+            <span className="board-focus-excluded"> · A 분석 제외</span>
+          )}
         </strong>
         <label>
           설비 B
@@ -435,6 +451,9 @@ export default function InvestigationBoard({
             {peerCandidates.map((row) => (
               <option value={pairKey(row)} key={pairKey(row)}>
                 {row.lotId} / {row.waferId} · {row.timestamp.slice(11, 16)}
+                {semRecord(workspace, row.lotId, row.waferId)
+                  ? ' · SEM 등록'
+                  : ' · SEM 없음'}
               </option>
             ))}
           </select>
@@ -712,6 +731,31 @@ export default function InvestigationBoard({
               }
             />
           </header>
+          {die && (
+            <div className="board-die-scope" aria-live="polite">
+              <span>
+                Die ({die[0]},{die[1]}) · 구간 Flag {flaggedDieWafers.length}/
+                {dieEvidence.filter((row) => row.bin !== null).length}
+              </span>
+              <button
+                className="icon-button"
+                title="해당 Die의 Flag Wafer만 분석에 포함"
+                disabled={!flaggedDieWafers.length}
+                onClick={() =>
+                  setChecked(new Set(flaggedDieWafers.map(pairKey)))
+                }
+              >
+                <ListFilter size={13} />
+              </button>
+              <button
+                className="icon-button"
+                title="Wafer 목록의 Die 선택 해제"
+                onClick={() => setDie(null)}
+              >
+                <X size={13} />
+              </button>
+            </div>
+          )}
           <div className="board-wafer-list">
             {candidates.map((row) => (
               <div
@@ -744,6 +788,34 @@ export default function InvestigationBoard({
                   <small>
                     {row.equipment} · {row.timestamp.slice(11, 16)}
                   </small>
+                  {die && (
+                    <small
+                      className={
+                        dieByWafer.get(pairKey(row))?.flag
+                          ? 'board-die-flag'
+                          : 'board-die-clear'
+                      }
+                    >
+                      {dieByWafer.get(pairKey(row))?.bin == null
+                        ? '미관측'
+                        : `Bin ${dieByWafer.get(pairKey(row))!.bin} · ${dieByWafer.get(pairKey(row))!.flag ? 'Flag' : 'Flag 없음'}`}
+                    </small>
+                  )}
+                </button>
+                <button
+                  className="icon-button board-peer-pick"
+                  title={`${row.lotId}/${row.waferId} 비교 B 지정`}
+                  disabled={!!focused && pairKey(focused) === pairKey(row)}
+                  aria-pressed={!!peer && pairKey(peer) === pairKey(row)}
+                  onClick={() =>
+                    setPeerState({
+                      scope,
+                      equipment: row.equipment,
+                      key: pairKey(row),
+                    })
+                  }
+                >
+                  <Columns2 size={13} />
                 </button>
               </div>
             ))}

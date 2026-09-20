@@ -1,7 +1,70 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { compositeWaferMaps, waferData, waferSeed } from '../src/waferMaps.ts';
+import {
+  compositeWaferMaps,
+  inspectWaferDie,
+  waferData,
+  waferSeed,
+} from '../src/waferMaps.ts';
+
+test('Die inspection preserves wafer identity and distinguishes missing observations from non-Flag bins', () => {
+  const maps = [
+    {
+      lotId: 'L/1',
+      waferId: 'W1',
+      gridId: 'G',
+      dies: [{ x: 10, y: 8, bin: 4 }],
+    },
+    {
+      lotId: 'L',
+      waferId: '1/W1',
+      gridId: 'G',
+      dies: [{ x: 10, y: 8, bin: 0 }],
+    },
+    { lotId: 'L3', waferId: 'W1', gridId: 'G', dies: [] },
+  ];
+  assert.deepEqual(inspectWaferDie(maps, [10, 8]), [
+    { lotId: 'L/1', waferId: 'W1', bin: 4, flag: true },
+    { lotId: 'L', waferId: '1/W1', bin: 0, flag: false },
+    { lotId: 'L3', waferId: 'W1', bin: null, flag: null },
+  ]);
+  assert.deepEqual(inspectWaferDie(maps, null), []);
+  assert.deepEqual(inspectWaferDie([], [10, 8]), []);
+  const rows = inspectWaferDie(maps, [10, 8]);
+  const composite = compositeWaferMaps(maps).dies[0];
+  assert.equal(rows.filter((row) => row.flag === true).length, composite.flags);
+  assert.equal(
+    rows.filter((row) => row.bin !== null).length,
+    composite.observed,
+  );
+});
+
+test('Die inspection rejects invalid coordinates, map identities and untrusted bin data', () => {
+  const map = {
+    lotId: 'L',
+    waferId: 'W',
+    gridId: 'G',
+    dies: [{ x: 0, y: 0, bin: 3 }],
+  };
+  for (const point of [
+    [NaN, 0],
+    [0, Infinity],
+    [0.5, 0],
+  ])
+    assert.throws(() => inspectWaferDie([map], point));
+  assert.throws(() => inspectWaferDie([map, map], [0, 0]));
+  assert.throws(() =>
+    inspectWaferDie([map, { ...map, waferId: 'W2', gridId: 'H' }], [0, 0]),
+  );
+  assert.throws(() => inspectWaferDie([{ ...map, gridId: '' }], [0, 0]));
+  assert.throws(() =>
+    inspectWaferDie([{ ...map, dies: [{ x: 0, y: 0, bin: -1 }] }], [0, 0]),
+  );
+  assert.throws(() =>
+    inspectWaferDie([{ ...map, dies: [...map.dies, ...map.dies] }], [0, 0]),
+  );
+});
 
 test('waferData is deterministic and keeps the existing die count', () => {
   assert.deepEqual(waferData(17), waferData(17));

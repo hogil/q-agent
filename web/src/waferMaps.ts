@@ -113,6 +113,31 @@ function validatedDieMap(map: WaferMap): Map<string, Die> {
   return dies;
 }
 
+export function inspectWaferDie(
+  maps: WaferMap[],
+  coordinate: [number, number] | null,
+) {
+  if (!coordinate) return [];
+  if (!coordinate.every(Number.isInteger))
+    throw new Error('Die coordinates must be finite integers');
+  const keys = new Set<string>();
+  const target = JSON.stringify(coordinate);
+  return maps.map((map) => {
+    if (!map.gridId.trim() || map.gridId !== maps[0].gridId)
+      throw new Error('Mixed or blank wafer gridId values');
+    const key = JSON.stringify([map.lotId, map.waferId]);
+    if (keys.has(key)) throw new Error('Duplicate lot/wafer tuple');
+    keys.add(key);
+    const bin = validatedDieMap(map).get(target)?.bin ?? null;
+    return {
+      lotId: map.lotId,
+      waferId: map.waferId,
+      bin,
+      flag: bin === null ? null : bin >= 3,
+    };
+  });
+}
+
 export function compareWaferMaps(a: WaferMap, b: WaferMap): WaferComparison {
   if (a.gridId.trim().length === 0 || b.gridId.trim().length === 0)
     throw new Error('Wafer gridId must not be blank');

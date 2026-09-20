@@ -319,6 +319,38 @@
   color: #7a867e;
   white-space: nowrap;
 }
+.board-wafer-list .board-peer-pick {
+  flex: none;
+  align-self: center;
+}
+.board-peer-pick[aria-pressed='true'] {
+  background: #e7f2f7;
+  color: #286789;
+}
+.board-wafer-list button .board-die-flag {
+  color: #a33d47;
+}
+.board-wafer-list button .board-die-clear {
+  color: #64746d;
+}
+.board-die-scope {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 2px;
+  min-height: 24px;
+  border-bottom: 1px solid #dce5df;
+}
+.board-die-scope > span {
+  flex: 1;
+  font-size: 9px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.board-focus-excluded {
+  color: #9a7042;
+  font-weight: 400;
+}
 .board-map-label {
   font-size: 9px;
   color: #7a867e;
@@ -515,6 +547,47 @@
   border: 1px solid #dce5df;
   background: white;
   border-radius: 2px;
+}
+.analysis-dialog.history-record-dialog {
+  width: min(650px, 94vw);
+  height: fit-content;
+  overflow: auto;
+}
+.analysis-dialog.history-record-dialog[open] {
+  display: block;
+}
+.analysis-dialog.history-record-dialog header {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.analysis-dialog.history-record-dialog header > button {
+  margin-left: 0;
+}
+.history-record-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0;
+  font-size: 12px;
+}
+.history-record-picker select {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  padding: 6px;
+}
+.history-record-dialog dl {
+  display: grid;
+  grid-template-columns: minmax(100px, 0.4fr) minmax(0, 1fr);
+  gap: 10px;
+  font-size: 12px;
+}
+.history-record-dialog dt {
+  color: #6b7f75;
+}
+.history-record-dialog dd {
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 .history-charts {
   flex: 1;

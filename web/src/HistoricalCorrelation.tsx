@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Download, FileSearch, X } from 'lucide-react';
 import { correlationSummary } from './engineeringAnalysis';
 import type { EngineeringData } from './engineeringData';
 import { Chart } from './charts';
@@ -7,7 +8,7 @@ import {
   selectHistoricalData,
   type HistoricalRecord,
 } from './historicalData';
-import type { Workspace } from './api';
+import { download, type Workspace } from './api';
 import type { InvestigationSelection } from './engineeringAnalysis';
 
 type XMetric = 'temperature' | 'queue' | 'availability';
@@ -82,6 +83,21 @@ export default function HistoricalCorrelation({
     if (selectedSignal) setXMetric(selectedSignal.metric);
   }, [selectedSignal?.id]);
   const cutoff = data.trend[selection.start]?.timestamp || '';
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const detail = records.find((record) => record.id === detailId);
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    setDetailId(null);
+  }, [
+    workspace.incident.incident_number,
+    selection.signalId,
+    selection.equipment,
+    selection.recipe,
+    cutoff,
+  ]);
+  useEffect(() => {
+    if (detail) dialog.current?.showModal();
+  }, [detail]);
   const scatterValues = records.map(
     (record): [number, number, HistoricalRecord] => [
       value(record, xMetric),
@@ -124,14 +140,18 @@ export default function HistoricalCorrelation({
     },
     tooltip: {
       renderMode: 'richText',
-      formatter: (params: { value: [number, number, string] }) =>
-        `${xLabels[xMetric]} ${params.value[0].toFixed(2)}\n${yLabels[yMetric]} ${params.value[1].toFixed(2)}\nEDS ${dateLabel(String(params.value[2]))}`,
+      formatter: (params: {
+        data: { record: HistoricalRecord };
+        value: [number, number, string];
+      }) =>
+        `${params.data.record.lotId} / ${params.data.record.waferId}\n${xLabels[xMetric]} ${params.value[0].toFixed(2)}\n${yLabels[yMetric]} ${params.value[1].toFixed(2)}\nFab ${dateLabel(params.data.record.fabAt)}\nEDS ${dateLabel(params.data.record.edsAt)} · 합성`,
     },
     series: [
       {
         type: 'scatter',
         symbolSize: 7,
         data: scatterValues.map(([x, y, record]) => ({
+          record,
           value: [x, y, (record as HistoricalRecord).edsAt],
           itemStyle: { color: '#367f99' },
         })),
@@ -179,6 +199,14 @@ export default function HistoricalCorrelation({
             ))}
           </select>
         </label>
+        <button
+          className="icon-button"
+          title="과거 Fab EDS 표본 상세"
+          disabled={!records.length}
+          onClick={() => setDetailId(records[0].id)}
+        >
+          <FileSearch size={14} />
+        </button>
       </div>
       {!records.length ? (
         <p className="board-empty">조건에 맞는 과거 완료 표본 없음</p>
@@ -189,6 +217,10 @@ export default function HistoricalCorrelation({
               option={scatterOption}
               className="history-scatter-chart"
               label="과거 Fab과 EDS 산점도"
+              onSelect={(event) => {
+                const record = records[event.dataIndex];
+                if (record) setDetailId(record.id);
+              }}
             />
           </div>
         </div>
@@ -204,6 +236,92 @@ export default function HistoricalCorrelation({
           EDS cutoff &lt; {cutoff ? dateLabel(cutoff) : 'N/A'} · 합성 출처
         </span>
       </div>
+      {detail && (
+        <dialog
+          ref={dialog}
+          className="analysis-dialog history-record-dialog"
+          aria-label="과거 Fab EDS 표본 상세"
+          onCancel={() => setDetailId(null)}
+          onClose={() => setDetailId(null)}
+        >
+          <header>
+            <h2>과거 Fab / EDS 표본</h2>
+            <span>합성 · 현재 Fab Wafer 아님</span>
+            <button
+              className="icon-button"
+              title="과거 표본 JSON 다운로드"
+              onClick={() =>
+                download(
+                  `${detail.id}.json`,
+                  JSON.stringify(
+                    {
+                      synthetic: true,
+                      source: 'synthetic://historical/v1',
+                      incident_number: workspace.incident.incident_number,
+                      selection,
+                      cutoff,
+                      xMetric,
+                      yMetric,
+                      record: detail,
+                    },
+                    null,
+                    2,
+                  ),
+                )
+              }
+            >
+              <Download size={16} />
+            </button>
+            <button
+              className="icon-button"
+              title="과거 표본 닫기"
+              onClick={() => setDetailId(null)}
+            >
+              <X size={18} />
+            </button>
+          </header>
+          <label className="history-record-picker">
+            표본
+            <select
+              aria-label="상세 과거 표본 선택"
+              value={detail.id}
+              onChange={(event) => setDetailId(event.target.value)}
+            >
+              {records.map((record) => (
+                <option key={record.id} value={record.id}>
+                  {record.lotId} / {record.waferId}
+                </option>
+              ))}
+            </select>
+          </label>
+          <dl>
+            <dt>Lot / Wafer</dt>
+            <dd>
+              {detail.lotId} / {detail.waferId}
+            </dd>
+            <dt>Item / Step</dt>
+            <dd>
+              {detail.item} / {detail.step}
+            </dd>
+            <dt>설비 / Recipe</dt>
+            <dd>
+              {detail.equipment} / {detail.recipe}
+            </dd>
+            <dt>Fab 시각 · UTC</dt>
+            <dd>{detail.fabAt}</dd>
+            <dt>EDS 시각 · UTC</dt>
+            <dd>{detail.edsAt}</dd>
+            <dt>X · {xLabels[xMetric]}</dt>
+            <dd>{value(detail, xMetric).toFixed(2)}</dd>
+            <dt>Y · {yLabels[yMetric]}</dt>
+            <dd>{value(detail, yMetric).toFixed(2)}</dd>
+            <dt>EDS cutoff · UTC</dt>
+            <dd>{cutoff}</dd>
+            <dt>출처</dt>
+            <dd>synthetic://historical/v1 · {detail.id}</dd>
+          </dl>
+        </dialog>
+      )}
     </section>
   );
 }

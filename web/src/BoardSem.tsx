@@ -31,6 +31,11 @@ export default function BoardSem({
   const [expanded, setExpanded] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [wipe, setWipe] = useState(50);
+  const [failedSrc, setFailedSrc] = useState<Set<string>>(() => new Set());
+  const [retryBySrc, setRetryBySrc] = useState<Record<string, number>>({});
+  const [failedThumbnailSrc, setFailedThumbnailSrc] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const drag = useRef<{ x: number; y: number; px: number; py: number } | null>(
     null,
@@ -38,8 +43,52 @@ export default function BoardSem({
   const dialog = useRef<HTMLDialogElement>(null);
   const a = focused && semRecord(workspace, focused.lotId, focused.waferId);
   const b = compare && semRecord(workspace, compare.lotId, compare.waferId);
+  const clearThumbnailFailure = (src: string) => {
+    setFailedThumbnailSrc((current) => {
+      if (!current.has(src)) return current;
+      const next = new Set(current);
+      next.delete(src);
+      return next;
+    });
+  };
+  const markLoaded = (src: string) => {
+    setFailedSrc((current) => {
+      if (!current.has(src)) return current;
+      const next = new Set(current);
+      next.delete(src);
+      return next;
+    });
+    clearThumbnailFailure(src);
+  };
+  const markFailed = (src: string) => {
+    setFailedSrc((current) => {
+      if (current.has(src)) return current;
+      return new Set(current).add(src);
+    });
+  };
+  const retry = (src: string) => {
+    setFailedSrc((current) => {
+      if (!current.has(src)) return current;
+      const next = new Set(current);
+      next.delete(src);
+      return next;
+    });
+    setRetryBySrc((current) => ({
+      ...current,
+      [src]: (current[src] || 0) + 1,
+    }));
+  };
+  const markThumbnailFailed = (src: string) => {
+    setFailedThumbnailSrc((current) => {
+      if (current.has(src)) return current;
+      return new Set(current).add(src);
+    });
+  };
   const mode =
-    requestedMode === 'wipe' && (!a || !b) ? 'compare' : requestedMode;
+    requestedMode === 'wipe' &&
+    (!a || !b || failedSrc.has(a.src) || failedSrc.has(b.src))
+      ? 'compare'
+      : requestedMode;
   const reset = () => {
     drag.current = null;
     setZoom(1);
@@ -108,13 +157,29 @@ export default function BoardSem({
             drag.current = null;
           }}
         >
-          {record ? (
+          {record && !failedSrc.has(record.src) ? (
             <img
+              key={`${record.src}:${retryBySrc[record.src] || 0}`}
               draggable={false}
               style={imageStyle}
               src={record.src}
               alt={`${label} ${record.lotId}/${record.waferId} · ${record.description} · 합성`}
+              onLoad={() => markLoaded(record.src)}
+              onError={() => markFailed(record.src)}
             />
+          ) : record ? (
+            <div className="sem-missing">
+              <Image size={20} />
+              <span>SEM 로드 실패</span>
+              <button
+                className="icon-button"
+                title="SEM 다시 시도"
+                aria-label="SEM 다시 시도"
+                onClick={() => retry(record.src)}
+              >
+                <RotateCcw size={13} />
+              </button>
+            </div>
           ) : (
             <div className="sem-missing">
               <Image size={20} />
@@ -174,15 +239,33 @@ export default function BoardSem({
   );
   const content = (
     <div className={`sem-preview ${mode === 'compare' ? 'comparison' : ''}`}>
-      {mode === 'wipe' && a && b ? (
+      {mode === 'wipe' &&
+      a &&
+      b &&
+      !failedSrc.has(a.src) &&
+      !failedSrc.has(b.src) ? (
         <figure>
           <div className="sem-wipe">
-            <img style={imageStyle} src={a.src} alt="SEM A 합성" />
+            <img
+              key={`${a.src}:${retryBySrc[a.src] || 0}`}
+              style={imageStyle}
+              src={a.src}
+              alt="SEM A 합성"
+              onLoad={() => markLoaded(a.src)}
+              onError={() => markFailed(a.src)}
+            />
             <div
               className="sem-wipe-b"
               style={{ clipPath: `inset(0 0 0 ${wipe}%)` }}
             >
-              <img style={imageStyle} src={b.src} alt="SEM B 합성" />
+              <img
+                key={`${b.src}:${retryBySrc[b.src] || 0}`}
+                style={imageStyle}
+                src={b.src}
+                alt="SEM B 합성"
+                onLoad={() => markLoaded(b.src)}
+                onError={() => markFailed(b.src)}
+              />
             </div>
             <i style={{ left: `${wipe}%` }} />
           </div>
@@ -213,7 +296,10 @@ export default function BoardSem({
           className="icon-button"
           title={title}
           aria-pressed={mode === id}
-          disabled={id === 'wipe' && (!a || !b)}
+          disabled={
+            id === 'wipe' &&
+            (!a || !b || failedSrc.has(a.src) || failedSrc.has(b.src))
+          }
           onClick={() => setMode(id)}
         >
           <Icon size={14} />
@@ -247,7 +333,16 @@ export default function BoardSem({
               aria-pressed={!!focused && pairKey(row) === pairKey(focused)}
               onClick={() => onFocus(row)}
             >
-              {record ? <img src={record.src} alt="" /> : <Image size={14} />}
+              {record && !failedThumbnailSrc.has(record.src) ? (
+                <img
+                  src={record.src}
+                  alt=""
+                  onLoad={() => clearThumbnailFailure(record.src)}
+                  onError={() => markThumbnailFailed(record.src)}
+                />
+              ) : (
+                <Image size={14} />
+              )}
               <span>{row.waferId}</span>
             </button>
           );
