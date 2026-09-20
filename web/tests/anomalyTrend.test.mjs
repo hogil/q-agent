@@ -2,6 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   anomalyTrendOption,
+  makeTrendFleet,
+  trendBoxPlotOption,
+  trendBoxSummaries,
+  trendLegendGroups,
   trendSelectionFromTime,
 } from '../src/anomalyTrend.ts';
 import { makeEquipmentTrace } from '../src/equipmentComparison.ts';
@@ -346,4 +350,222 @@ test('switching the selected signal updates B values and axis/tooltip units for 
   assert.notDeepEqual(peerValues[0], peerValues[1]);
   assert.notDeepEqual(peerValues[0], peerValues[2]);
   assert.notDeepEqual(peerValues[1], peerValues[2]);
+});
+
+test('groups exact inclusive trend samples by member and adds only a valid different peer', () => {
+  const groups = trendLegendGroups(comparisonData, selection, 'EQP-2');
+  assert.deepEqual(
+    groups.map((group) => group.member),
+    ['EQP-1', 'SYN-REF-1', 'SYN-REF-2', 'SYN-REF-3', 'SYN-REF-4', 'EQP-2'],
+  );
+  assert.equal(groups[0].color, '#4878CF');
+  assert.deepEqual(
+    groups.slice(1, 5).map((group) => group.color),
+    ['#7EB8DA', '#A8D8A8', '#D4A8D4', '#F0C987'],
+  );
+  assert.equal(groups.at(-1).color, '#148574');
+  for (const group of groups) {
+    assert.ok(
+      group.points.every(
+        ([timestamp]) =>
+          timestamp >= Date.parse(data.trend[selection.start].timestamp) &&
+          timestamp <= Date.parse(data.trend[selection.end].timestamp),
+      ),
+    );
+  }
+  const fleet = makeTrendFleet(data, data.signals[0]);
+  assert.deepEqual(
+    groups[1].points,
+    fleet[1].points.filter(
+      ([timestamp]) =>
+        timestamp >= Date.parse(data.trend[selection.start].timestamp) &&
+        timestamp <= Date.parse(data.trend[selection.end].timestamp),
+    ),
+  );
+  assert.equal(trendLegendGroups(comparisonData, selection, 'EQP-1').length, 5);
+  assert.equal(
+    trendLegendGroups(comparisonData, selection, 'UNKNOWN-EQP').length,
+    5,
+  );
+});
+
+test('box summaries keep empty and singleton groups finite and exact', () => {
+  const singletonSelection = { ...selection, start: 1, end: 1 };
+  const summaries = trendBoxSummaries(
+    comparisonData,
+    singletonSelection,
+    'EQP-2',
+  );
+  const target = summaries.find((group) => group.member === 'EQP-1');
+  const peer = summaries.find((group) => group.member === 'EQP-2');
+  assert.equal(target.count, 0);
+  assert.equal(target.box, null);
+  assert.deepEqual(target.outliers, []);
+  assert.equal(peer.count, 1);
+  const peerValue = trendLegendGroups(
+    comparisonData,
+    singletonSelection,
+    'EQP-2',
+  ).find((group) => group.member === 'EQP-2').points[0][1];
+  assert.deepEqual(peer.box, [
+    peerValue,
+    peerValue,
+    peerValue,
+    peerValue,
+    peerValue,
+  ]);
+  assert.deepEqual(peer.outliers, []);
+  assert.ok(
+    summaries.every(
+      (group) =>
+        group.box === null ||
+        group.box.every((value) => Number.isFinite(value)),
+    ),
+  );
+});
+
+test('display options dim at point level, zoom without dropping data, and suppress only changes', () => {
+  const display = {
+    members: ['EQP-1'],
+    dimOthers: true,
+    zoomToSelection: true,
+    showChanges: false,
+    showLegend: false,
+  };
+  const option = anomalyTrendOption(data, selection, false, '', display);
+  const from = Date.parse(data.trend[selection.start].timestamp);
+  const to = Date.parse(data.trend[selection.end].timestamp);
+  assert.equal(option.legend.show, false);
+  assert.equal(option.grid.right, 12);
+  assert.equal(option.xAxis.min, from - 1800000);
+  assert.equal(option.xAxis.max, to + 1800000);
+  const normal = option.series.find((series) => series.name === 'EQP-1 · N');
+  const reference = option.series.find((series) => series.name === 'SYN-REF-1');
+  assert.ok(normal.data.every((point) => point.itemStyle));
+  assert.ok(reference.data.every((point) => point.itemStyle.opacity === 0.1));
+  assert.ok(
+    normal.data.some(
+      (point) =>
+        point.itemStyle.opacity === 0.95 &&
+        point.value[0] >= from &&
+        point.value[0] <= to,
+    ),
+  );
+  assert.ok(normal.data.some((point) => point.itemStyle.opacity === 0.1));
+  const normalMarkers = normal.markLine.data.filter(
+    (marker) => marker.label?.show,
+  );
+  assert.deepEqual(normalMarkers, []);
+  assert.ok(normal.markLine.data.some((marker) => marker.yAxis !== undefined));
+  assert.ok(normal.markLine.data.some((marker) => marker.xAxis !== undefined));
+});
+
+test('boxplot keeps all groups, names each datum, and reports raw unit/group/count', () => {
+  const display = {
+    members: ['EQP-1', 'EQP-2'],
+    dimOthers: true,
+    zoomToSelection: false,
+    showChanges: true,
+    showLegend: false,
+  };
+  const option = trendBoxPlotOption(
+    comparisonData,
+    selection,
+    'EQP-2',
+    display,
+  );
+  const boxes = option.series.find((series) => series.type === 'boxplot');
+  assert.deepEqual(
+    boxes.data.map((datum) => datum.name),
+    option.xAxis.data,
+  );
+  assert.equal(option.legend.show, false);
+  assert.equal(option.grid.right, 12);
+  const reference = boxes.data.find((datum) => datum.name === 'SYN-REF-1');
+  assert.equal(reference.itemStyle.opacity, 0.12);
+  const peer = boxes.data.find((datum) => datum.name === 'EQP-2');
+  assert.equal(peer.itemStyle.opacity, 1);
+  const boxTooltip = option.tooltip.formatter({
+    data: {
+      kind: 'box',
+      group: peer.name,
+      count: peer.count,
+      box: peer.value,
+      outliers: [],
+    },
+    value: peer.value,
+  });
+  assert.ok(boxTooltip.includes('EQP-2'));
+  assert.ok(boxTooltip.includes('Low'));
+  assert.ok(boxTooltip.includes('Q1'));
+  assert.ok(boxTooltip.includes('Median'));
+  assert.ok(boxTooltip.includes('Q3'));
+  assert.ok(boxTooltip.includes('High'));
+  assert.ok(boxTooltip.includes('N 3'));
+  assert.equal(option.tooltip.confine, true);
+  assert.equal(option.yAxis.scale, true);
+  const rawTooltip = option.tooltip.formatter({
+    data: { kind: 'outlier', group: peer.name, count: peer.count },
+    value: [0, 11],
+  });
+  assert.ok(rawTooltip.includes('Raw 11.000 °C'));
+});
+
+test('Tukey boxes use selected sample quartiles and keep extreme samples as outliers', () => {
+  const fixture = {
+    ...data,
+    trend: [
+      ...data.trend.map((row) => ({ ...row, temperature: 11 })),
+      {
+        ...data.trend[0],
+        timestamp: '2026-01-01T04:00:00.000Z',
+        temperature: 200,
+      },
+    ],
+  };
+  const [group] = trendBoxSummaries(fixture, {
+    ...selection,
+    start: 0,
+    end: 4,
+  });
+  const values = group.points.map(([, value]) => value).sort((a, b) => a - b);
+  assert.equal(values.length, 24);
+  // simple-statistics uses linearly interpolated (R type 7) quartiles.
+  assert.equal(group.box[1], values[5] + 0.75 * (values[6] - values[5]));
+  assert.equal(group.box[2], values[11] + 0.5 * (values[12] - values[11]));
+  assert.equal(group.box[3], values[17] + 0.25 * (values[18] - values[17]));
+  assert.ok(group.outliers.some((value) => value > 100));
+  assert.ok(group.box[4] < 20);
+  assert.ok(values.includes(group.box[0]));
+  assert.ok(values.includes(group.box[4]));
+});
+
+test('legend focus preserves samples and axes and turning dimming off restores context opacity', () => {
+  const plain = anomalyTrendOption(comparisonData, selection, false, 'EQP-2');
+  for (const dimOthers of [true, false]) {
+    const option = anomalyTrendOption(
+      comparisonData,
+      selection,
+      false,
+      'EQP-2',
+      {
+        members: ['SYN-REF-2'],
+        dimOthers,
+        zoomToSelection: false,
+        showChanges: true,
+      },
+    );
+    assert.equal(JSON.stringify(option.xAxis), JSON.stringify(plain.xAxis));
+    assert.equal(JSON.stringify(option.yAxis), JSON.stringify(plain.yAxis));
+    assert.deepEqual(
+      option.series.map((series) => series.data.map((point) => point.value)),
+      plain.series.map((series) => series.data),
+    );
+    const target = option.series.find((series) => series.name === 'EQP-1 · A');
+    assert.ok(
+      target.data.every(
+        (point) => point.itemStyle.opacity === (dimOthers ? 0.1 : 0.75),
+      ),
+    );
+  }
 });

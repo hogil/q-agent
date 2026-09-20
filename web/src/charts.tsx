@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import * as echarts from 'echarts/core';
-import { LineChart, ScatterChart } from 'echarts/charts';
+import { LineChart, ScatterChart, BoxplotChart } from 'echarts/charts';
 import {
   GridComponent,
   TooltipComponent,
@@ -18,6 +18,7 @@ export { waferData, type Die } from './waferMaps';
 echarts.use([
   LineChart,
   ScatterChart,
+  BoxplotChart,
   GridComponent,
   TooltipComponent,
   MarkLineComponent,

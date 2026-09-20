@@ -8,16 +8,26 @@ import {
   RotateCcw,
   Search,
   ShieldAlert,
+  ChartScatter,
+  ChartCandlestick,
+  ZoomIn,
+  ArrowDownToLine,
   X,
 } from 'lucide-react';
-import { type Attachment, type Incident } from './api';
+import { download, type Attachment, type Incident } from './api';
 import { Chart } from './charts';
 import { Empty, type Tab, type ViewProps } from './Views';
 import { OperationsView } from './OperationsView';
 import InvestigationBoard from './InvestigationBoard';
 import HistoricalCorrelation from './HistoricalCorrelation';
 import { historicalData, selectHistoricalData } from './historicalData';
-import { anomalyTrendOption, trendSelectionFromTime } from './anomalyTrend';
+import {
+  anomalyTrendOption,
+  trendSelectionFromTime,
+  trendLegendGroups,
+  trendBoxSummaries,
+  trendBoxPlotOption,
+} from './anomalyTrend';
 import {
   makeEngineeringData,
   type EngineeringData,
@@ -52,21 +62,259 @@ function EngineeringTrend({
   comparisonEquipment?: string;
 }) {
   const signal = data.signals.find((s) => s.id === selection.signalId)!;
-  const option = useMemo(
-    () => anomalyTrendOption(data, selection, compact, comparisonEquipment),
-    [data, selection, compact, comparisonEquipment],
+  const [mode, setMode] = useState<'trend' | 'box'>('trend');
+  const [dimOthers, setDimOthers] = useState(true);
+  const [zoomToSelection, setZoomToSelection] = useState(false);
+  const [showChanges, setShowChanges] = useState(true);
+  const groups = useMemo(
+    () =>
+      compact ? [] : trendLegendGroups(data, selection, comparisonEquipment),
+    [data, selection, comparisonEquipment, compact],
   );
+  const focusKey = JSON.stringify([
+    signal.id,
+    groups.map((group) => group.member),
+  ]);
+  const [focusState, setFocusState] = useState<{
+    key: string;
+    members: string[];
+  }>({ key: '', members: [] });
+  const members = useMemo(
+    () =>
+      focusState.key === focusKey
+        ? focusState.members
+        : groups
+            .filter(
+              (group) =>
+                group.member === signal.equipment ||
+                group.member === comparisonEquipment,
+            )
+            .map((group) => group.member),
+    [focusState, focusKey, groups, signal.equipment, comparisonEquipment],
+  );
+  const focus = (next: string[]) =>
+    setFocusState({ key: focusKey, members: next });
+  const summaries = useMemo(
+    () =>
+      compact ? [] : trendBoxSummaries(data, selection, comparisonEquipment),
+    [data, selection, comparisonEquipment, compact],
+  );
+  const display = useMemo(
+    () => ({
+      members,
+      dimOthers,
+      zoomToSelection,
+      showChanges,
+      showLegend: false,
+    }),
+    [members, dimOthers, zoomToSelection, showChanges],
+  );
+  const option = useMemo(
+    () =>
+      mode === 'box' && !compact
+        ? trendBoxPlotOption(data, selection, comparisonEquipment, display)
+        : anomalyTrendOption(
+            data,
+            selection,
+            compact,
+            comparisonEquipment,
+            compact ? undefined : display,
+          ),
+    [data, selection, compact, comparisonEquipment, mode, display],
+  );
+  useEffect(() => setZoomToSelection(false), [signal.id]);
+  const exportSelection = () => {
+    const from = Date.parse(data.trend[selection.start].timestamp);
+    const to = Date.parse(data.trend[selection.end].timestamp);
+    download(
+      `${signal.item}-trend-selection.json`,
+      JSON.stringify(
+        {
+          synthetic: true,
+          device: signal.device,
+          step: signal.step,
+          item: signal.item,
+          legendAxis: signal.legendAxis,
+          from: new Date(from).toISOString(),
+          to: new Date(to).toISOString(),
+          groups: groups
+            .filter((group) => members.includes(group.member))
+            .map((group) => ({
+              member: group.member,
+              samples: group.points
+                .filter(([t]) => t >= from && t <= to)
+                .map(([t, value]) => ({
+                  timestamp: new Date(t).toISOString(),
+                  value,
+                })),
+            })),
+        },
+        null,
+        2,
+      ),
+      'application/json',
+    );
+  };
+  if (compact)
+    return (
+      <Chart
+        option={option}
+        label={`합성 ${signal.title} 구간 Trend`}
+        className="eng-preview-chart"
+      />
+    );
   return (
-    <Chart
-      option={option}
-      label={`합성 ${signal.title} 구간 Trend`}
-      className={compact ? 'eng-preview-chart' : 'eng-trend-chart'}
-      onRange={
-        compact
-          ? undefined
-          : (range) => change(trendSelectionFromTime(data, range))
-      }
-    />
+    <div className="eng-trend-inspector">
+      <div className="eng-trend-tools">
+        <div
+          className="eng-trend-modes"
+          role="group"
+          aria-label="Trend 표시 방식"
+        >
+          <button
+            title="시간별 Trend"
+            aria-pressed={mode === 'trend'}
+            onClick={() => setMode('trend')}
+          >
+            <ChartScatter size={13} />
+            Trend
+          </button>
+          <button
+            title="Legend별 Box plot"
+            aria-pressed={mode === 'box'}
+            onClick={() => setMode('box')}
+          >
+            <ChartCandlestick size={13} />
+            Box plot
+          </button>
+        </div>
+        <label>
+          <input
+            type="checkbox"
+            checked={dimOthers}
+            onChange={(event) => setDimOthers(event.target.checked)}
+          />
+          비선택 흐림
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={showChanges}
+            disabled={mode === 'box'}
+            onChange={(event) => setShowChanges(event.target.checked)}
+          />
+          변경 이력
+        </label>
+        <div className="eng-trend-actions">
+          <button
+            className="icon-button"
+            title="선택 구간 확대"
+            aria-pressed={zoomToSelection}
+            disabled={mode === 'box'}
+            onClick={() => setZoomToSelection((value) => !value)}
+          >
+            <ZoomIn size={14} />
+          </button>
+          <button
+            className="icon-button"
+            title="전체 시간 구간 선택"
+            onClick={() => {
+              change({ start: 0, end: data.trend.length - 1 });
+              setZoomToSelection(false);
+            }}
+          >
+            <RotateCcw size={14} />
+          </button>
+          <button
+            className="icon-button"
+            title="선택 Legend·구간 표본 다운로드"
+            disabled={
+              !summaries.some(
+                (row) => members.includes(row.member) && row.count,
+              )
+            }
+            onClick={exportSelection}
+          >
+            <ArrowDownToLine size={14} />
+          </button>
+        </div>
+      </div>
+      <div className="eng-trend-plot-row">
+        <Chart
+          key={mode}
+          option={option}
+          label={
+            mode === 'box'
+              ? `선택 구간 Legend별 ${signal.item} Box plot`
+              : `합성 ${signal.title} 구간 Trend`
+          }
+          className="eng-trend-chart"
+          onRange={
+            mode === 'trend'
+              ? (range) => change(trendSelectionFromTime(data, range))
+              : undefined
+          }
+          onSelect={
+            mode === 'box'
+              ? (point) => {
+                  if (groups.some((group) => group.member === point.name))
+                    focus([point.name]);
+                }
+              : undefined
+          }
+        />
+        <fieldset className="eng-trend-legend" aria-label="Trend 강조 Legend">
+          <legend className="sr-only">Legend</legend>
+          <div className="eng-trend-legend-heading">
+            <label>
+              <input
+                type="checkbox"
+                aria-label="전체 Legend 강조"
+                checked={members.length === groups.length}
+                ref={(node) => {
+                  if (node)
+                    node.indeterminate =
+                      members.length > 0 && members.length < groups.length;
+                }}
+                onChange={(event) =>
+                  focus(
+                    event.target.checked
+                      ? groups.map((group) => group.member)
+                      : [],
+                  )
+                }
+              />
+              Legend
+            </label>
+            <span title="선택 시간 구간의 표본 수">n</span>
+          </div>
+          <div className="eng-trend-legend-list">
+            {summaries.map((row) => (
+              <label
+                key={row.member}
+                title={`${row.member} · n=${row.count} · 중앙값 ${row.box?.[2].toFixed(3) ?? 'N/A'}`}
+              >
+                <input
+                  type="checkbox"
+                  aria-label={`${row.member} 강조`}
+                  checked={members.includes(row.member)}
+                  onChange={(event) =>
+                    focus(
+                      event.target.checked
+                        ? [...members, row.member]
+                        : members.filter((member) => member !== row.member),
+                    )
+                  }
+                />
+                <i style={{ background: row.color }} />
+                <span>{row.member}</span>
+                <output>{row.count}</output>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      </div>
+    </div>
   );
 }
 

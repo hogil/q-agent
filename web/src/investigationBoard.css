@@ -150,7 +150,7 @@
   min-height: 0;
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  grid-template-rows: minmax(0, 1.4fr) minmax(0, 1.35fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1.65fr) minmax(0, 1.35fr) minmax(0, 1fr);
   gap: 1px;
   background: #dce5df;
   border: 1px solid #dce5df;
@@ -209,10 +209,10 @@
   grid-area: 1 / 1 / 2 / 6;
 }
 .board-trend {
-  grid-area: 1 / 6 / 2 / 9;
+  grid-area: 1 / 6 / 2 / 11;
 }
 .board-correlation {
-  grid-area: 1 / 9 / 2 / 13;
+  grid-area: 1 / 11 / 2 / 13;
 }
 .board-cohort {
   grid-area: 2 / 1 / 3 / 3;
@@ -237,14 +237,17 @@
 }
 .board-assessment {
   grid-area: 3 / 8 / 4 / 13;
-  padding-top: 6px;
-  padding-bottom: 6px;
+  padding-top: 4px;
+  padding-bottom: 4px;
 }
 .board-trend-body {
   flex: 1;
   min-height: 0;
 }
 .board-workspace .board-trend-body .eng-trend-chart {
+  height: 100%;
+}
+.board-trend-body .eng-trend-inspector {
   height: 100%;
 }
 .board-range {
@@ -683,14 +686,6 @@
 .sem-tool-modes button[aria-pressed='true'] {
   background: #e9f1f8;
   color: #346f9f;
-}
-@media (min-width: 1101px) and (max-width: 1599px) and (min-height: 651px) {
-  .board-trend {
-    grid-area: 1 / 6 / 2 / 10;
-  }
-  .board-correlation {
-    grid-area: 1 / 10 / 2 / 13;
-  }
 }
 .board-signal-table table,
 .board-doc-list table {
