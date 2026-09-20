@@ -34,6 +34,8 @@ type ChartProps = {
   option: echarts.EChartsCoreOption;
   onSelect?: (value: any) => void;
   onRange?: (range: [number, number]) => void;
+  rangeSelection?: [number, number] | null;
+  onRangeClear?: () => void;
   onArea?: (region: DieRegion | null) => void;
   label: string;
   className?: string;
@@ -42,6 +44,8 @@ export function Chart({
   option,
   onSelect,
   onRange,
+  rangeSelection,
+  onRangeClear,
   onArea,
   label,
   className = '',
@@ -52,6 +56,8 @@ export function Chart({
   handler.current = onSelect;
   const rangeHandler = useRef(onRange);
   rangeHandler.current = onRange;
+  const rangeClearHandler = useRef(onRangeClear);
+  rangeClearHandler.current = onRangeClear;
   const areaHandler = useRef(onArea);
   areaHandler.current = onArea;
   useEffect(() => {
@@ -63,6 +69,7 @@ export function Chart({
     chart.on('click', (params) => handler.current?.(params));
     chart.on('brushEnd', (params: any) => {
       const range = params.areas?.[0]?.coordRange;
+      if (!params.areas?.length) rangeClearHandler.current?.();
       if (areaHandler.current) {
         if (!params.areas?.length) areaHandler.current(null);
         else if (
@@ -114,7 +121,20 @@ export function Chart({
           brushMode: 'single',
         },
       });
-  }, [option]);
+    if (rangeHandler.current && rangeSelection !== undefined)
+      chart.dispatchAction({
+        type: 'brush',
+        areas: rangeSelection
+          ? [
+              {
+                brushType: 'lineX',
+                xAxisIndex: 0,
+                coordRange: rangeSelection,
+              },
+            ]
+          : [],
+      });
+  }, [option, rangeSelection]);
   return (
     <div
       ref={element}

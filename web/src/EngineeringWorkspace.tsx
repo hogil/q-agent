@@ -80,17 +80,8 @@ function EngineeringTrend({
     members: string[];
   }>({ key: '', members: [] });
   const members = useMemo(
-    () =>
-      focusState.key === focusKey
-        ? focusState.members
-        : groups
-            .filter(
-              (group) =>
-                group.member === signal.equipment ||
-                group.member === comparisonEquipment,
-            )
-            .map((group) => group.member),
-    [focusState, focusKey, groups, signal.equipment, comparisonEquipment],
+    () => (focusState.key === focusKey ? focusState.members : []),
+    [focusState, focusKey],
   );
   const focus = (next: string[]) =>
     setFocusState({ key: focusKey, members: next });
@@ -123,6 +114,20 @@ function EngineeringTrend({
     [data, selection, compact, comparisonEquipment, mode, display],
   );
   useEffect(() => setZoomToSelection(false), [signal.id]);
+  const rangeSelection = useMemo<[number, number] | null>(
+    () =>
+      selection.rangeSelected === false
+        ? null
+        : [
+            Date.parse(data.trend[selection.start].timestamp),
+            Date.parse(data.trend[selection.end].timestamp),
+          ],
+    [data, selection.start, selection.end, selection.rangeSelected],
+  );
+  const clearRange = () => {
+    change({ start: 0, end: data.trend.length - 1, rangeSelected: false });
+    setZoomToSelection(false);
+  };
   const exportSelection = () => {
     const from = Date.parse(data.trend[selection.start].timestamp);
     const to = Date.parse(data.trend[selection.end].timestamp);
@@ -135,18 +140,18 @@ function EngineeringTrend({
           step: signal.step,
           item: signal.item,
           legendAxis: signal.legendAxis,
-          from: new Date(from).toISOString(),
-          to: new Date(to).toISOString(),
+          from: rangeSelection ? new Date(from).toISOString() : null,
+          to: rangeSelection ? new Date(to).toISOString() : null,
           groups: groups
-            .filter((group) => members.includes(group.member))
+            .filter(
+              (group) => !members.length || members.includes(group.member),
+            )
             .map((group) => ({
               member: group.member,
-              samples: group.points
-                .filter(([t]) => t >= from && t <= to)
-                .map(([t, value]) => ({
-                  timestamp: new Date(t).toISOString(),
-                  value,
-                })),
+              samples: group.points.map(([t, value]) => ({
+                timestamp: new Date(t).toISOString(),
+                value,
+              })),
             })),
         },
         null,
@@ -210,17 +215,17 @@ function EngineeringTrend({
             className="icon-button"
             title="선택 구간 확대"
             aria-pressed={zoomToSelection}
-            disabled={mode === 'box'}
+            disabled={mode === 'box' || !rangeSelection}
             onClick={() => setZoomToSelection((value) => !value)}
           >
             <ZoomIn size={14} />
           </button>
           <button
             className="icon-button"
-            title="전체 시간 구간 선택"
+            title="Trend 선택 초기화"
             onClick={() => {
-              change({ start: 0, end: data.trend.length - 1 });
-              setZoomToSelection(false);
+              clearRange();
+              focus([]);
             }}
           >
             <RotateCcw size={14} />
@@ -230,7 +235,9 @@ function EngineeringTrend({
             title="선택 Legend·구간 표본 다운로드"
             disabled={
               !summaries.some(
-                (row) => members.includes(row.member) && row.count,
+                (row) =>
+                  (!members.length || members.includes(row.member)) &&
+                  row.count,
               )
             }
             onClick={exportSelection}
@@ -245,7 +252,7 @@ function EngineeringTrend({
           option={option}
           label={
             mode === 'box'
-              ? `선택 구간 Legend별 ${signal.item} Box plot`
+              ? `${rangeSelection ? '선택' : '전체'} 구간 Legend별 ${signal.item} Box plot`
               : `합성 ${signal.title} 구간 Trend`
           }
           className="eng-trend-chart"
@@ -254,6 +261,8 @@ function EngineeringTrend({
               ? (range) => change(trendSelectionFromTime(data, range))
               : undefined
           }
+          rangeSelection={mode === 'trend' ? rangeSelection : undefined}
+          onRangeClear={mode === 'trend' ? clearRange : undefined}
           onSelect={
             mode === 'box'
               ? (point) => {
@@ -286,7 +295,11 @@ function EngineeringTrend({
               />
               Legend
             </label>
-            <span title="선택 시간 구간의 표본 수">n</span>
+            <span
+              title={`${rangeSelection ? '선택' : '전체'} 시간 구간의 표본 수`}
+            >
+              n
+            </span>
           </div>
           <div className="eng-trend-legend-list">
             {summaries.map((row) => (
@@ -505,7 +518,7 @@ export default function EngineeringWorkspace({
     () => makeEngineeringData(props.workspace),
     [props.workspace],
   );
-  const key = `engineering-context:v1:${encodeURIComponent(roomId)}:${encodeURIComponent(props.workspace.incident.incident_number)}`;
+  const key = `engineering-context:v2:${encodeURIComponent(roomId)}:${encodeURIComponent(props.workspace.incident.incident_number)}`;
   const [selection, setSelection] = useState<InvestigationSelection>(() => {
     try {
       return (
@@ -563,6 +576,7 @@ export default function EngineeringWorkspace({
               1,
           ),
           end: end < 0 ? data.trend.length - 1 : end,
+          rangeSelected: true,
         }));
       } else if (wip) {
         setSelection((current) => ({
@@ -577,7 +591,17 @@ export default function EngineeringWorkspace({
     data.signals.find((s) => s.id === selection.signalId) || data.signals[0];
   const change: SelectionChange = (patch) => {
     setSelection(
-      (current) => parseSelection({ ...current, ...patch }, data) || current,
+      (current) =>
+        parseSelection(
+          {
+            ...current,
+            ...(patch.start !== undefined || patch.end !== undefined
+              ? { rangeSelected: true }
+              : {}),
+            ...patch,
+          },
+          data,
+        ) || current,
     );
     setSelectedPairKey('');
   };
@@ -601,8 +625,6 @@ export default function EngineeringWorkspace({
     setSelection({
       ...defaultSelection(data),
       signalId: s.id,
-      start: s.startIndex,
-      end: s.endIndex,
       equipment: s.equipment,
     });
     setSelectedPairKey('');
@@ -684,6 +706,7 @@ export default function EngineeringWorkspace({
                   signalId: signal.id,
                   start: signal.startIndex,
                   end: signal.endIndex,
+                  rangeSelected: true,
                   equipment: signal.equipment,
                 })
               }
@@ -748,6 +771,7 @@ export default function EngineeringWorkspace({
           onFocus={(row) => setSelectedPairKey(pairKey(row))}
           trend={(comparisonEquipment) => (
             <EngineeringTrend
+              key={selection.signalId}
               data={data}
               selection={selection}
               change={change}

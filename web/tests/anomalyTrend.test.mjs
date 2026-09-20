@@ -9,6 +9,7 @@ import {
   trendSelectionFromTime,
 } from '../src/anomalyTrend.ts';
 import { makeEquipmentTrace } from '../src/equipmentComparison.ts';
+import { defaultSelection, changeTiming } from '../src/engineeringAnalysis.ts';
 
 const data = {
   signals: [
@@ -102,6 +103,91 @@ test('maps a brushed datetime range to ordered nearest trend indexes', () => {
   assert.deepEqual(trendSelectionFromTime(data, range), { start: 0, end: 3 });
 });
 
+test('initial trend has no time shading, zoom or legend emphasis and includes all raw samples', () => {
+  const initial = defaultSelection(comparisonData);
+  const display = {
+    members: [],
+    dimOthers: true,
+    zoomToSelection: true,
+    showChanges: true,
+  };
+  const option = anomalyTrendOption(
+    comparisonData,
+    initial,
+    false,
+    'EQP-2',
+    display,
+  );
+  assert.ok(
+    option.series.every((series) =>
+      series.data.every((point) => point.itemStyle.opacity === 0.75),
+    ),
+  );
+  assert.deepEqual(
+    option.series.find((series) => series.markArea).markArea.data,
+    [],
+  );
+  assert.equal(option.xAxis.min, Date.parse(data.trend[0].timestamp) - 1800000);
+  assert.equal(option.brush.transformable, true);
+  const groups = trendLegendGroups(comparisonData, initial, 'EQP-2');
+  assert.ok(
+    groups
+      .slice(0, 5)
+      .every((group) => group.points.length === data.trend.length * 6),
+  );
+  assert.equal(groups.at(-1).points.length, data.trend.length);
+  const boxes = trendBoxPlotOption(comparisonData, initial, 'EQP-2', display)
+    .series[0].data;
+  assert.ok(boxes.every((box) => box.itemStyle.opacity === 1));
+  assert.equal(boxes[0].count, data.trend.length * 6);
+});
+
+test('a time range applies to every legend when no member is singled out', () => {
+  const option = anomalyTrendOption(
+    comparisonData,
+    { ...selection, rangeSelected: true },
+    false,
+    'EQP-2',
+    {
+      members: [],
+      dimOthers: true,
+      zoomToSelection: false,
+      showChanges: true,
+    },
+  );
+  const from = Date.parse(data.trend[selection.start].timestamp);
+  const to = Date.parse(data.trend[selection.end].timestamp);
+  for (const series of option.series)
+    for (const point of series.data)
+      assert.equal(
+        point.itemStyle.opacity,
+        point.value[0] >= from && point.value[0] <= to ? 0.95 : 0.1,
+      );
+});
+
+test('legend-only focus does not impose a hidden time range', () => {
+  const option = anomalyTrendOption(
+    comparisonData,
+    defaultSelection(comparisonData),
+    false,
+    '',
+    {
+      members: ['SYN-REF-2'],
+      dimOthers: true,
+      zoomToSelection: false,
+      showChanges: true,
+    },
+  );
+  for (const series of option.series)
+    assert.ok(
+      series.data.every(
+        (point) =>
+          point.itemStyle.opacity ===
+          (series.name === 'SYN-REF-2' ? 0.95 : 0.1),
+      ),
+    );
+});
+
 test('constrains the trend legend to one scrolling column in short panels', () => {
   const { legend } = anomalyTrendOption(
     comparisonData,
@@ -142,6 +228,11 @@ test('change markers use the same equipment, recipe and time extent as the chang
   const markers = normal.markLine.data.filter((marker) => marker.label?.show);
   assert.equal(markers.length, 1);
   assert.equal(markers[0].xAxis, Date.parse(event.timestamp));
+  assert.ok(
+    changeTiming(fixture, fixture.signals[0], defaultSelection(fixture)).every(
+      (event) => !event.inSelection,
+    ),
+  );
 });
 
 test('builds a datetime scatter overlay with split target colors and median baseline', () => {

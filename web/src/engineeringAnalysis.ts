@@ -5,6 +5,7 @@ export type InvestigationSelection = {
   signalId: string;
   start: number;
   end: number;
+  rangeSelected?: boolean;
   equipment: string;
   recipe: string;
   maxLagDays: number;
@@ -46,8 +47,9 @@ export function defaultSelection(
   const signal = data.signals[0];
   return {
     signalId: signal?.id || '',
-    start: signal?.startIndex || 0,
-    end: signal?.endIndex ?? Math.max(0, data.trend.length - 1),
+    start: 0,
+    end: Math.max(0, data.trend.length - 1),
+    rangeSelected: false,
     equipment: signal?.equipment || '',
     recipe: '',
     maxLagDays: 14,
@@ -67,6 +69,7 @@ export function parseSelection(
     s.start < 0 ||
     s.end < s.start ||
     s.end >= data.trend.length ||
+    (s.rangeSelected !== undefined && typeof s.rangeSelected !== 'boolean') ||
     !Number.isInteger(s.maxLagDays) ||
     s.maxLagDays < 0 ||
     s.maxLagDays > 30 ||
@@ -79,8 +82,11 @@ export function parseSelection(
     return null;
   return {
     signalId: s.signalId,
-    start: s.start,
-    end: s.end,
+    start: s.rangeSelected === false ? 0 : s.start,
+    end: s.rangeSelected === false ? data.trend.length - 1 : s.end,
+    ...(s.rangeSelected === undefined
+      ? {}
+      : { rangeSelected: s.rangeSelected }),
     equipment: s.equipment,
     recipe: s.recipe,
     maxLagDays: s.maxLagDays,
@@ -297,6 +303,7 @@ export function changeTiming(
   const extentFrom = Math.min(...trendTimes);
   const extentTo = Math.max(...trendTimes);
   const hasSelection =
+    selection.rangeSelected !== false &&
     Number.isInteger(selection?.start) &&
     Number.isInteger(selection?.end) &&
     selection.start >= 0 &&
@@ -347,8 +354,9 @@ export function engineeringReference(
   kind: 'trend' | 'corr',
   selection: InvestigationSelection,
 ) {
-  const { signalId, start, end, equipment, recipe, maxLagDays } = selection;
-  return `engineering:${kind}:${JSON.stringify([signalId, start, end, equipment, recipe, maxLagDays])}`;
+  const { signalId, start, end, equipment, recipe, maxLagDays, rangeSelected } =
+    selection;
+  return `engineering:${kind}:${JSON.stringify([signalId, start, end, equipment, recipe, maxLagDays, ...(rangeSelected === undefined ? [] : [rangeSelected])])}`;
 }
 
 export function parseEngineeringReference(
@@ -363,10 +371,11 @@ export function parseEngineeringReference(
   if (!prefix) return null;
   try {
     const value = JSON.parse(reference.slice(prefix.length));
-    if (!Array.isArray(value) || value.length !== 6) return null;
-    const [signalId, start, end, equipment, recipe, maxLagDays] = value;
+    if (!Array.isArray(value) || ![6, 7].includes(value.length)) return null;
+    const [signalId, start, end, equipment, recipe, maxLagDays, rangeSelected] =
+      value;
     return parseSelection(
-      { signalId, start, end, equipment, recipe, maxLagDays },
+      { signalId, start, end, equipment, recipe, maxLagDays, rangeSelected },
       data,
     );
   } catch {

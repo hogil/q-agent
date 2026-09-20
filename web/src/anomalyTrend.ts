@@ -121,8 +121,10 @@ export function trendLegendGroups(
   comparisonEquipment = '',
 ): TrendLegendGroup[] {
   const signal = selectedSignal(data, selection);
-  const window = selectionWindow(data, selection);
-  if (!signal || !window || !data.trend.length) return [];
+  const selectedWindow = selectionWindow(data, selection);
+  if (!signal || !selectedWindow || !data.trend.length) return [];
+  const window: [number, number] =
+    selection.rangeSelected === false ? [-Infinity, Infinity] : selectedWindow;
 
   const fleet = makeTrendFleet(data, signal);
   const target = fleet.find((row) => row.highlighted);
@@ -204,15 +206,20 @@ function displayPoint(
   window: [number, number] | null,
 ) {
   if (!display) return point;
+  const hasFilter = display.members.length > 0 || window !== null;
   const selected =
-    display.members.includes(member) &&
-    window !== null &&
-    point[0] >= window[0] &&
-    point[0] <= window[1];
+    (display.members.length === 0 || display.members.includes(member)) &&
+    (window === null || (point[0] >= window[0] && point[0] <= window[1]));
   return {
     value: point,
     itemStyle: {
-      opacity: selected ? 0.95 : display.dimOthers ? 0.1 : 0.75,
+      opacity: !hasFilter
+        ? 0.75
+        : selected
+          ? 0.95
+          : display.dimOthers
+            ? 0.1
+            : 0.75,
     },
   };
 }
@@ -228,7 +235,7 @@ export function trendBoxPlotOption(
   const unit = signal ? metricUnits[signal.metric] : '';
   const selected = new Set(display.members);
   const opacity = (member: string) =>
-    display.dimOthers && !selected.has(member) ? 0.12 : 1;
+    display.dimOthers && selected.size > 0 && !selected.has(member) ? 0.12 : 1;
   const categories = summaries.map((group) => group.member);
   const boxData = summaries.map((group) => ({
     name: group.member,
@@ -404,6 +411,14 @@ export function anomalyTrendOption(
           xAxisIndex: 0,
           brushType: 'lineX',
           brushMode: 'single',
+          transformable: true,
+          brushStyle: {
+            color: 'rgba(54,127,153,.08)',
+            borderColor: '#367f99',
+            borderWidth: 1.5,
+          },
+          inBrush: { colorAlpha: 1 },
+          outOfBrush: { colorAlpha: 1 },
           throttleType: 'debounce',
           throttleDelay: 100,
         },
@@ -478,12 +493,17 @@ export function anomalyTrendOption(
         markArea: {
           silent: true,
           itemStyle: { color: 'rgba(54,127,153,.065)' },
-          data: [
-            [
-              { xAxis: Date.parse(data.trend[selection.start].timestamp) },
-              { xAxis: Date.parse(data.trend[selection.end].timestamp) },
-            ],
-          ],
+          data:
+            selection.rangeSelected === false
+              ? []
+              : [
+                  [
+                    {
+                      xAxis: Date.parse(data.trend[selection.start].timestamp),
+                    },
+                    { xAxis: Date.parse(data.trend[selection.end].timestamp) },
+                  ],
+                ],
         },
         markLine: {
           silent: true,
@@ -536,7 +556,10 @@ export function anomalyTrendOption(
   };
 
   if (display) {
-    const window = selectionWindow(data, selection);
+    const window =
+      selection.rangeSelected === false
+        ? null
+        : selectionWindow(data, selection);
     const pointData = (points: number[][], member: string) =>
       points.map((point) => displayPoint(point, member, display, window));
     const xAxis = { ...option.xAxis };

@@ -393,8 +393,31 @@ test('investigation selection validates scope IDs and ordered bounded windows', 
     { recipe: 'OTHER' },
     { signalId: 'other' },
     { maxLagDays: 31 },
+    { rangeSelected: 'false' },
   ])
     assert.equal(parseSelection({ ...selection, ...patch }, data), null);
+});
+
+test('initial and cleared selections have no active time filter', () => {
+  const initial = defaultSelection(data);
+  assert.equal(initial.rangeSelected, false);
+  assert.equal(initial.start, 0);
+  assert.equal(initial.end, data.trend.length - 1);
+  assert.deepEqual(
+    parseSelection({ ...initial, start: 2, end: 8 }, data),
+    initial,
+  );
+  const selected = { ...initial, start: 2, end: 8, rangeSelected: true };
+  assert.deepEqual(parseSelection(selected, data), selected);
+  assert.deepEqual(
+    parseEngineeringReference(engineeringReference('trend', selected), data),
+    selected,
+  );
+  const { rangeSelected, ...legacy } = selected;
+  assert.deepEqual(
+    parseEngineeringReference(engineeringReference('trend', legacy), data),
+    legacy,
+  );
 });
 test('source references preserve a validated analysis snapshot without trusting arbitrary JSON', () => {
   const selection = { ...defaultSelection(data), recipe: 'SYN-RCP-A' };

@@ -209,10 +209,10 @@
   grid-area: 1 / 1 / 2 / 6;
 }
 .board-trend {
-  grid-area: 1 / 6 / 2 / 11;
+  grid-area: 1 / 6 / 2 / 10;
 }
 .board-correlation {
-  grid-area: 1 / 11 / 2 / 13;
+  grid-area: 1 / 10 / 2 / 13;
 }
 .board-cohort {
   grid-area: 2 / 1 / 3 / 3;

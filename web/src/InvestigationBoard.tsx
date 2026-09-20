@@ -626,29 +626,40 @@ export default function InvestigationBoard({
           </header>
           <div
             className="board-baseline-stats"
-            aria-label="감지 전과 선택 구간 비교"
+            aria-label={
+              selection.rangeSelected === false
+                ? '전체 Trend 통계'
+                : '감지 전과 선택 구간 비교'
+            }
             aria-live="polite"
           >
-            <span
-              title={`감지 전 기준: ${windowSummary.baseline.from || '-'} ~ ${windowSummary.baseline.to || '-'} · 정상 검증 아님`}
-            >
-              감지 전 n={windowSummary.baseline.n}{' '}
-              <b>{number(windowSummary.baseline.median)}</b>
-            </span>
+            {selection.rangeSelected !== false && (
+              <span
+                title={`감지 전 기준: ${windowSummary.baseline.from || '-'} ~ ${windowSummary.baseline.to || '-'} · 정상 검증 아님`}
+              >
+                감지 전 n={windowSummary.baseline.n}{' '}
+                <b>{number(windowSummary.baseline.median)}</b>
+              </span>
+            )}
             <span>
-              선택 n={windowSummary.selected.n}{' '}
+              {selection.rangeSelected === false ? '전체' : '선택'} n=
+              {windowSummary.selected.n}{' '}
               <b>{number(windowSummary.selected.median)}</b>
             </span>
-            <span>
-              Δ 중앙값{' '}
-              <b>
-                {windowSummary.comparable
-                  ? number(windowSummary.deltaMedian)
-                  : '표본 부족'}
-              </b>{' '}
-              {metricUnits[signal.metric]}
-            </span>
-            <span title="선택 구간의 최솟값과 최댓값">
+            {selection.rangeSelected !== false && (
+              <span>
+                Δ 중앙값{' '}
+                <b>
+                  {windowSummary.comparable
+                    ? number(windowSummary.deltaMedian)
+                    : '표본 부족'}
+                </b>{' '}
+                {metricUnits[signal.metric]}
+              </span>
+            )}
+            <span
+              title={`${selection.rangeSelected === false ? '전체' : '선택'} 구간의 최솟값과 최댓값`}
+            >
               범위 {number(windowSummary.selected.min)}~
               {number(windowSummary.selected.max)}
             </span>
