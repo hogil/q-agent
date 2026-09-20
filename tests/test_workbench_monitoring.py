@@ -214,7 +214,7 @@ class WorkbenchMonitoringHTTPTests(unittest.TestCase):
         with closing(sqlite3.connect(self.chat)) as db:
             db.execute("INSERT INTO rooms VALUES (?,?,?,?)",
                        (room_id, "stale", "SYN-2026-01", timestamp))
-            db.execute("INSERT INTO analysis_scopes VALUES (?,?,?,?,?,?,?)",
+            db.execute("INSERT INTO analysis_scopes (room_id,incident_number,sources,context,steps,created_at,updated_at) VALUES (?,?,?,?,?,?,?)",
                        (room_id, "SYN-2026-02", '["incident"]', '{}', '[]', timestamp, timestamp))
             db.commit()
         with self.assertRaisesRegex(WorkbenchError, "detection analysis room scope changed"):

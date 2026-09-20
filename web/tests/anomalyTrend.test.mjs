@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   anomalyTrendOption,
+  anomalyPattern,
   makeTrendFleet,
   trendBoxPlotOption,
   trendBoxSummaries,
@@ -101,6 +102,46 @@ test('maps a brushed datetime range to ordered nearest trend indexes', () => {
     Date.parse('2026-01-01T00:18:00.000Z'),
   ];
   assert.deepEqual(trendSelectionFromTime(data, range), { start: 0, end: 3 });
+});
+
+test('renders each synthetic anomaly pattern as a distinct finite target trace', () => {
+  const patterns = [
+    'abrupt_level_shift',
+    'spike',
+    'variance_burst',
+    'periodic_pattern',
+  ];
+  const patternData = {
+    ...data,
+    signals: patterns.map((pattern, index) => ({
+      ...data.signals[0],
+      id: `pattern-${index}`,
+      pattern,
+      onsetIndex: 1,
+      startIndex: 1,
+      endIndex: 3,
+    })),
+  };
+  const traces = patternData.signals.map((signal) => {
+    assert.equal(anomalyPattern(signal), signal.pattern);
+    const fleet = makeTrendFleet(patternData, signal);
+    assert.equal(fleet[0].points.length, data.trend.length * 6);
+    assert.ok(fleet[0].points.every(([x, y]) => Number.isFinite(x) && Number.isFinite(y)));
+    return fleet[0].points.map(([, value]) => Number(value.toFixed(6)));
+  });
+  for (let left = 0; left < traces.length; left += 1) {
+    for (let right = left + 1; right < traces.length; right += 1) {
+      assert.notDeepEqual(traces[left], traces[right]);
+    }
+  }
+});
+
+test('keeps the original fixture signals on their legacy raw trend path', () => {
+  const fleet = makeTrendFleet(data, data.signals[0]);
+  const target = fleet[0].points;
+  assert.equal(target.length, data.trend.length * 6);
+  assert.equal(target[2][1], data.trend[0].temperature);
+  assert.equal(anomalyPattern(data.signals[0]), 'drift');
 });
 
 test('initial trend has no time shading, zoom or legend emphasis and includes all raw samples', () => {
@@ -527,17 +568,85 @@ test('rectangular selection uses the same X and Y bounds for point emphasis, cou
   );
   assert.ok(option.yAxis.min < xy.valueRange[0] && option.yAxis.min > 10);
   assert.ok(option.yAxis.max > xy.valueRange[1] && option.yAxis.max < 12);
-  const markArea = option.series.find((s) => s.markArea).markArea.data[0];
-  assert.deepEqual(
-    markArea.map((p) => p.yAxis),
-    xy.valueRange,
-  );
+  assert.deepEqual(option.series.find((s) => s.markArea).markArea.data, []);
   const empty = trendBoxSummaries(
     comparisonData,
     { ...xy, valueRange: [100, 200] },
     'EQP-2',
   );
   assert.ok(empty.every((g) => g.count === 0 && g.box === null));
+});
+
+test('disjoint rectangles keep union highlighting without persistent boxes or selected gaps', () => {
+  const t1 = Date.parse(data.trend[1].timestamp);
+  const t3 = Date.parse(data.trend[3].timestamp);
+  const disjoint = {
+    ...selection,
+    rangeSelected: true,
+    valueRange: [10.9, 14.1],
+    regions: [
+      [
+        [t1 - 300000, t1 + 300000],
+        [10.9, 11.2],
+      ],
+      [
+        [t3 - 300000, t3 + 300000],
+        [13.9, 14.1],
+      ],
+    ],
+  };
+  const display = {
+    members: [],
+    dimOthers: true,
+    zoomToSelection: false,
+    showChanges: true,
+  };
+  const option = anomalyTrendOption(
+    comparisonData,
+    disjoint,
+    false,
+    'EQP-2',
+    display,
+  );
+  const points = option.series.flatMap((series) => series.data);
+  const selectedPoints = points.filter(
+    (point) =>
+      point.itemStyle.opacity === 0.95 &&
+      ((point.value[0] >= t1 - 300000 &&
+        point.value[0] <= t1 + 300000 &&
+        point.value[1] >= 10.9 &&
+        point.value[1] <= 11.2) ||
+        (point.value[0] >= t3 - 300000 &&
+          point.value[0] <= t3 + 300000 &&
+          point.value[1] >= 13.9 &&
+          point.value[1] <= 14.1)),
+  );
+  assert.ok(selectedPoints.length > 0);
+  assert.ok(
+    points.every(
+      (point) =>
+        point.value[0] < t1 + 300000 ||
+        point.value[0] > t3 - 300000 ||
+        point.itemStyle.opacity !== 0.95,
+    ),
+  );
+  assert.equal(
+    trendLegendGroups(comparisonData, disjoint, 'EQP-2').reduce(
+      (count, group) => count + group.points.length,
+      0,
+    ),
+    selectedPoints.length,
+  );
+  assert.equal(
+    trendBoxSummaries(comparisonData, disjoint, 'EQP-2').reduce(
+      (count, group) => count + group.count,
+      0,
+    ),
+    selectedPoints.length,
+  );
+  const markArea = option.series.find((series) => series.markArea).markArea
+    .data;
+  assert.deepEqual(markArea, []);
 });
 
 test('box summaries keep empty and singleton groups finite and exact', () => {
@@ -629,6 +738,19 @@ test('boxplot keeps all groups, names each datum, and reports raw unit/group/cou
   assert.deepEqual(
     boxes.data.map((datum) => datum.name),
     option.xAxis.data,
+  );
+  assert.deepEqual(
+    option.legend.data.map((item) => item.name),
+    option.xAxis.data,
+  );
+  assert.deepEqual(
+    option.legend.data.map((item) => item.itemStyle.color),
+    boxes.data.map((datum) => datum.itemStyle.borderColor),
+  );
+  assert.ok(
+    option.xAxis.axisLabel
+      .formatter(option.xAxis.data[0])
+      .includes('{swatch0|'),
   );
   assert.equal(option.legend.show, false);
   assert.equal(option.grid.right, 12);

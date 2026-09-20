@@ -8,3 +8,7 @@ chat:
   history_limit: 40
 cutoff: 2026-03-31
 static_root: ../web/dist
+server:
+  port: 8787
+sources:
+  raw_file: ../data/workbench/raw.example.json

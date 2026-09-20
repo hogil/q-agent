@@ -20,6 +20,8 @@ Source: local agent.py, Tool signatures and role schemas, 2026-09-18. Company da
 - ready_for_judge requests review, not answer permission. Judge and Answer return schema JSON without fences.
 - Judge covers each requirement verbatim and uses current evidence IDs. Code PASS proves structure/scope, not factual truth or source completeness.
 - Invalid output may be corrected without rerunning a successful query. Formatting corrections cannot clear a failed Tool; a subsequent successful business query is required.
+- A missing Router function call is a format error, not an executed Tool. The runtime may request correction within max_retries and max_agent_steps while retaining checked evidence. Refusals and transport failures are not silently retried as format errors. Local synthetic-model failure evidence, 2026-09-21.
+- When the configured endpoint supports structured outputs, Judge/Answer generation can be constrained by their existing schema and current evidence IDs. This does not relax the post-response scope or evidence checks.
 - Exhausted retrieval requires abstain. Answer runs last after pass/abstain and preserves partial coverage and limitations.
 - as_of bounds meeting-version availability, not the current DB's historical state. Later DB updates cannot establish past knowledge.
 - Approved meeting text can contain unconfirmed hypotheses. Attribute findings to dates/versions and distinguish them from DB facts.

@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   makeInformNotes,
   selectInformNotes,
+  formatInformTimestamp,
   documentUrl,
   semRecord,
   wipLayerBounds,
@@ -31,6 +32,10 @@ test('Inform list is strictly filtered by step and equipment', () => {
   const notes = makeInformNotes(makeEngineeringData(workspace));
   assert.equal(notes.length, 4);
   assert.equal(selectInformNotes(notes, 'SYN-ETCH-10', 'SYN-EQP-01').length, 2);
+  assert.deepEqual(
+    selectInformNotes(notes, 'SYN-ETCH-10', 'SYN-EQP-01').map((n) => n.title),
+    ['설비 점검 후 확인', 'Recipe 변경 검토'],
+  );
   assert.ok(
     selectInformNotes(notes, 'SYN-ETCH-10', 'SYN-EQP-02').every(
       (n) => n.equipment === 'SYN-EQP-02' && n.body.includes('합성'),
@@ -38,6 +43,11 @@ test('Inform list is strictly filtered by step and equipment', () => {
   );
   assert.deepEqual(selectInformNotes(notes, 'unknown', ''), []);
   assert.deepEqual(selectInformNotes(notes, 'SYN-ETCH-10', 'unknown'), []);
+  assert.deepEqual(selectInformNotes(notes, 'SYN-ETCH-10', ''), []);
+  assert.equal(
+    formatInformTimestamp('2026-01-15T12:34:56.000Z'),
+    '2026-01-15 12:34 UTC',
+  );
   assert.equal(
     new URL(
       documentUrl('SYN-2026-01', 'inform', 'note & 1'),

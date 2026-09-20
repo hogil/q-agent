@@ -7,10 +7,81 @@ export type InvestigationSelection = {
   end: number;
   rangeSelected?: boolean;
   valueRange?: [number, number];
+  regions: TrendSelectionRegion[];
   equipment: string;
   recipe: string;
   maxLagDays: number;
 };
+
+export type TrendSelectionRegion = [[number, number], [number, number]];
+
+export const MAX_TREND_REGIONS = 16;
+
+function isTrendSelectionRegion(value: unknown): value is TrendSelectionRegion {
+  return (
+    Array.isArray(value) &&
+    value.length === 2 &&
+    value.every(
+      (axis) =>
+        Array.isArray(axis) &&
+        axis.length === 2 &&
+        axis.every(Number.isFinite) &&
+        axis[0] <= axis[1],
+    )
+  );
+}
+
+function trendTimeWindow(
+  data: EngineeringData,
+  selection: InvestigationSelection,
+): [number, number] | null {
+  const from = data.trend[selection.start]?.timestamp;
+  const to = data.trend[selection.end]?.timestamp;
+  const start = from ? Date.parse(from) : NaN;
+  const end = to ? Date.parse(to) : NaN;
+  return Number.isFinite(start) && Number.isFinite(end)
+    ? [Math.min(start, end), Math.max(start, end)]
+    : null;
+}
+
+export function selectionTimeWindows(
+  data: EngineeringData,
+  selection: InvestigationSelection,
+): [number, number][] {
+  if (selection.rangeSelected === false) return [];
+  const regions = Array.isArray(selection.regions)
+    ? selection.regions.filter(isTrendSelectionRegion)
+    : [];
+  if (regions.length) return regions.map(([x]) => x);
+  const window = trendTimeWindow(data, selection);
+  return window ? [window] : [];
+}
+
+export function pointInSelection(
+  timestamp: number,
+  value: number,
+  data: EngineeringData,
+  selection: InvestigationSelection,
+): boolean {
+  if (selection.rangeSelected === false) return true;
+  const regions = Array.isArray(selection.regions)
+    ? selection.regions.filter(isTrendSelectionRegion)
+    : [];
+  if (regions.length) {
+    return regions.some(
+      ([[from, to], [low, high]]) =>
+        timestamp >= from && timestamp <= to && value >= low && value <= high,
+    );
+  }
+  const window = trendTimeWindow(data, selection);
+  return Boolean(
+    window &&
+      timestamp >= window[0] &&
+      timestamp <= window[1] &&
+      (!selection.valueRange ||
+        (value >= selection.valueRange[0] && value <= selection.valueRange[1])),
+  );
+}
 
 export function pairKey(row: { lotId: string; waferId: string }): string {
   return JSON.stringify([row.lotId, row.waferId]);
@@ -21,17 +92,22 @@ export function selectFabRows(
   selection: InvestigationSelection,
 ) {
   const signal = data.signals.find((row) => row.id === selection.signalId);
-  const from = data.trend[selection.start]?.timestamp;
-  const to = data.trend[selection.end]?.timestamp;
-  if (!signal || !from || !to) return [];
-  const rows = data.fab.filter(
-    (row) =>
+  const windows = selectionTimeWindows(data, selection);
+  if (!signal || (selection.rangeSelected !== false && !windows.length))
+    return [];
+  const rows = data.fab.filter((row) => {
+    const timestamp = Date.parse(row.timestamp);
+    return (
       row.step === signal.step &&
-      row.timestamp >= from &&
-      row.timestamp <= to &&
+      (selection.rangeSelected === false ||
+        (Number.isFinite(timestamp) &&
+          windows.some(
+            ([from, to]) => timestamp >= from && timestamp <= to,
+          ))) &&
       (!selection.equipment || row.equipment === selection.equipment) &&
-      (!selection.recipe || row.recipe === selection.recipe),
-  );
+      (!selection.recipe || row.recipe === selection.recipe)
+    );
+  });
   return [...new Map(rows.map((row) => [pairKey(row), row])).values()];
 }
 
@@ -51,6 +127,7 @@ export function defaultSelection(
     start: 0,
     end: Math.max(0, data.trend.length - 1),
     rangeSelected: false,
+    regions: [],
     equipment: signal?.equipment || '',
     recipe: '',
     maxLagDays: 14,
@@ -76,6 +153,10 @@ export function parseSelection(
         s.valueRange.length !== 2 ||
         !s.valueRange.every(Number.isFinite) ||
         s.valueRange[0] > s.valueRange[1])) ||
+    (s.regions !== undefined &&
+      (!Array.isArray(s.regions) ||
+        s.regions.length > MAX_TREND_REGIONS ||
+        !s.regions.every(isTrendSelectionRegion))) ||
     !Number.isInteger(s.maxLagDays) ||
     s.maxLagDays < 0 ||
     s.maxLagDays > 30 ||
@@ -96,6 +177,13 @@ export function parseSelection(
     ...(s.rangeSelected === false || s.valueRange === undefined
       ? {}
       : { valueRange: [...s.valueRange] as [number, number] }),
+    regions:
+      s.rangeSelected === false
+        ? []
+        : (s.regions || []).map(
+            (region) =>
+              [[...region[0]], [...region[1]]] as TrendSelectionRegion,
+          ),
     equipment: s.equipment,
     recipe: s.recipe,
     maxLagDays: s.maxLagDays,
@@ -257,8 +345,15 @@ export function summarizeSignalWindow(
     Array.from(
       { length: selection.end - selection.start + 1 },
       (_, offset) => selection.start + offset,
-    ),
-    selection.rangeSelected === false ? undefined : selection.valueRange,
+    ).filter((index) => {
+      if (selection.rangeSelected === false) return true;
+      const row = data.trend[index];
+      const timestamp = row ? Date.parse(row.timestamp) : NaN;
+      const value = row?.[metric || 'temperature'];
+      return Number.isFinite(timestamp) && Number.isFinite(value)
+        ? pointInSelection(timestamp, value, data, selection)
+        : false;
+    }),
   );
   const comparable = baseline.n >= 3 && selected.n >= 3;
   return {
@@ -322,17 +417,7 @@ export function changeTiming(
     selection.start >= 0 &&
     selection.start <= selection.end &&
     selection.end < data.trend.length;
-  const selectionTimes = hasSelection
-    ? data.trend.slice(selection.start, selection.end + 1).flatMap((row) => {
-        const timestamp =
-          typeof row.timestamp === 'string' ? Date.parse(row.timestamp) : NaN;
-        return Number.isFinite(timestamp) ? [timestamp] : [];
-      })
-    : [];
-  const selectionFrom = selectionTimes.length
-    ? Math.min(...selectionTimes)
-    : NaN;
-  const selectionTo = selectionTimes.length ? Math.max(...selectionTimes) : NaN;
+  const windows = hasSelection ? selectionTimeWindows(data, selection) : [];
   return (data.changes || [])
     .flatMap((event) => {
       const timestamp =
@@ -350,10 +435,9 @@ export function changeTiming(
         {
           ...event,
           minutesFromOnset: (timestamp - onset) / 60000,
-          inSelection:
-            Number.isFinite(selectionFrom) &&
-            timestamp >= selectionFrom &&
-            timestamp <= selectionTo,
+          inSelection: windows.some(
+            ([from, to]) => timestamp >= from && timestamp <= to,
+          ),
         },
       ];
     })
@@ -375,10 +459,16 @@ export function engineeringReference(
     recipe,
     maxLagDays,
     rangeSelected,
-    valueRange,
+    valueRange: rawValueRange,
+    regions: rawRegions,
   } = selection;
-  const bounds = valueRange === undefined ? [] : [valueRange];
-  return `engineering:${kind}:${JSON.stringify([signalId, start, end, equipment, recipe, maxLagDays, ...(rangeSelected === undefined && !bounds.length ? [] : [rangeSelected ?? true]), ...bounds])}`;
+  const regions = Array.isArray(rawRegions) ? rawRegions : [];
+  const bounds =
+    rawValueRange === undefined && !regions.length
+      ? []
+      : [rawValueRange === undefined ? null : rawValueRange];
+  const regionBounds = regions.length ? [regions] : [];
+  return `engineering:${kind}:${JSON.stringify([signalId, start, end, equipment, recipe, maxLagDays, ...(rangeSelected === undefined && !bounds.length && !regionBounds.length ? [] : [rangeSelected ?? true]), ...bounds, ...regionBounds])}`;
 }
 
 export function parseEngineeringReference(
@@ -393,7 +483,8 @@ export function parseEngineeringReference(
   if (!prefix) return null;
   try {
     const value = JSON.parse(reference.slice(prefix.length));
-    if (!Array.isArray(value) || ![6, 7, 8].includes(value.length)) return null;
+    if (!Array.isArray(value) || ![6, 7, 8, 9].includes(value.length))
+      return null;
     const [
       signalId,
       start,
@@ -402,7 +493,8 @@ export function parseEngineeringReference(
       recipe,
       maxLagDays,
       rangeSelected,
-      valueRange,
+      rawValueRange,
+      regions,
     ] = value;
     return parseSelection(
       {
@@ -413,7 +505,8 @@ export function parseEngineeringReference(
         recipe,
         maxLagDays,
         rangeSelected,
-        valueRange,
+        valueRange: rawValueRange === null ? undefined : rawValueRange,
+        regions,
       },
       data,
     );

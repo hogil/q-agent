@@ -398,8 +398,111 @@ test('investigation selection validates scope IDs and ordered bounded windows', 
     { valueRange: [NaN, 14] },
     { valueRange: [12] },
     { valueRange: null },
+    {
+      regions: new Array(17).fill([
+        [0, 1],
+        [0, 1],
+      ]),
+    },
+    {
+      regions: [
+        [
+          [2, 1],
+          [0, 1],
+        ],
+      ],
+    },
+    {
+      regions: [
+        [
+          [0, 1],
+          [NaN, 1],
+        ],
+      ],
+    },
   ])
     assert.equal(parseSelection({ ...selection, ...patch }, data), null);
+});
+
+test('disjoint trend regions form a time union for Fab rows without filling the gap', () => {
+  const regionalData = {
+    ...data,
+    trend: [0, 1, 2, 3].map((hour) => ({
+      timestamp: `2026-01-01T0${hour}:00:00.000Z`,
+    })),
+    fab: [
+      {
+        lotId: 'L0',
+        waferId: 'W0',
+        timestamp: '2026-01-01T00:00:00.000Z',
+        step: 'ETCH',
+        equipment: 'SYN-EQP-01',
+        recipe: 'SYN-RCP-A',
+      },
+      {
+        lotId: 'L1',
+        waferId: 'W1',
+        timestamp: '2026-01-01T01:00:00.000Z',
+        step: 'ETCH',
+        equipment: 'SYN-EQP-01',
+        recipe: 'SYN-RCP-A',
+      },
+      {
+        lotId: 'L2',
+        waferId: 'W2',
+        timestamp: '2026-01-01T02:00:00.000Z',
+        step: 'ETCH',
+        equipment: 'SYN-EQP-01',
+        recipe: 'SYN-RCP-A',
+      },
+      {
+        lotId: 'L2',
+        waferId: 'W2',
+        timestamp: '2026-01-01T02:30:00.000Z',
+        step: 'ETCH',
+        equipment: 'SYN-EQP-01',
+        recipe: 'SYN-RCP-A',
+      },
+      {
+        lotId: 'L3',
+        waferId: 'W3',
+        timestamp: '2026-01-01T03:00:00.000Z',
+        step: 'ETCH',
+        equipment: 'SYN-EQP-01',
+        recipe: 'SYN-RCP-A',
+      },
+    ],
+  };
+  const t = regionalData.trend.map((row) => Date.parse(row.timestamp));
+  const selected = {
+    ...defaultSelection(regionalData),
+    start: 0,
+    end: 3,
+    rangeSelected: true,
+    valueRange: [0, 1],
+    regions: [
+      [
+        [t[0], t[0]],
+        [0, 1],
+      ],
+      [
+        [t[2], t[2]],
+        [0, 1],
+      ],
+    ],
+  };
+  assert.deepEqual(
+    selectFabRows(regionalData, selected).map((row) => row.lotId),
+    ['L0', 'L2'],
+  );
+  assert.deepEqual(parseSelection(selected, regionalData), selected);
+  assert.deepEqual(
+    parseEngineeringReference(
+      engineeringReference('trend', selected),
+      regionalData,
+    ),
+    selected,
+  );
 });
 
 test('XY selections preserve value bounds through parsing and pinned references', () => {

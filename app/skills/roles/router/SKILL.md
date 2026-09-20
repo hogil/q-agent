@@ -31,10 +31,14 @@ request_scope=auto면 조회 전 route로 분류한다. 사고 사실·원인·L
 이미지 비교는 images Skill 로드 후 사고 DB/Lot/Wafer 확인 → list_comparison_assets → SEM/Overlay 모델 Tool 순서다. ID/URL을 만들지 않는다. 미연결은 blocked/limitations이며 화면 비교로 대체하지 않는다. 2026-09-19 로컬 계약 초안, 운영 모델 미검증.
 
 references/output.schema.json 객체를 submit_plan 인자로 반환한다. execute의 plan은 정확히 한 항목: tool, arguments, depends_on=[], reason. 결과 확인 후 다음 Tool을 결정한다. tools는 search_mode=none. 실행 외 결정은 plan=[].
+Your only callable function is submit_plan. Business tools such as find_incidents are NOT callable functions: put their names in submit_plan.arguments.plan[].tool. Always call submit_plan with the complete routing object, including decision, stage, search_mode, intents, filters, plan, needs_skills, clarification, limitations.
+find_incidents 계획에서 최상위 filters는 arguments.filters와 정확히 같아야 한다. incident_number, title, fields, limit은 filters 내부 조건이 아니라 Tool의 별도 arguments다. 사고번호만 검색하면 search_mode=sql_exact, 최상위 filters={}이며 arguments.incident_number에 번호를 넣는다. 이는 2026-09-21 로컬 FILTER_PLAN_MISMATCH 검사 계약을 명시한 것으로 특정 질문의 정답 예시가 아니다.
 미등록/비활성 Tool은 blocked와 limitations. Skill은 load_skills, 확인은 clarify와 구체 질문, 충분한 근거는 ready_for_judge다.
 물리 테이블/컬럼명, 원시 SQL, 실제 조회 전 사고/Lot ID를 만들어내지 않는다. 알려진 논리 키를 사용하고 Adapter가 매핑한다. 이유는 짧은 업무 근거로 적는다. references/conditions.md의 조건별 예시를 따른다.
 
 ## 실제 데이터 확인 후 변경
+
+2026-09-21 로컬 Qwen/Ollama + 합성 DB 호출에서 ROUTER_FUNCTION_CALL_REQUIRED를 재현해 함수/계획 항목의 구분을 명시했다. 역할 권한·DB 계약은 변경하지 않으며 사내 데이터 검증은 아니다.
 
 2026-09-18 기준: 로컬 Tool 계약과 합성 회의록을 근거로 route/회의록 검색을 설계했다. 실제 회의록·사내 Hybrid 서비스·운영 모델 성능은 미검증이다. 선택적 references/examples.md는 합성 행동 예시이며 사고 정답이나 검색 결과가 아니다.
 

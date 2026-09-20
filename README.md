@@ -54,12 +54,13 @@ golden 기반 검증과 개선 제안은 오프라인이며, 원본 Skill을 자
 - 감지 항목을 선택하면 옆의 Trend가 바뀝니다. 드래그/슬라이더로 선택한 시간과 설비·Recipe 조건에 맞는 Fab Wafer를 표시합니다. 합성 포함 체크박스로 같은 Die 좌표의 Flag 빈도를 다시 계산합니다. 분모는 좌표별 관측 Wafer 수이며, 누락 좌표를 정상으로 세지 않습니다. 서로 다른 grid나 중복 Wafer는 합성을 거부합니다.
 - 변동 시작점과 Recipe/전산 변경 시각은 합성 메타데이터입니다. 시간상 선후 관계를 보여줄 뿐 원인을 판정하지 않습니다. Map과 SEM의 실제 측정·좌표 정렬도 검증하지 않았습니다.
 - Trend는 `D:\project\anomaly-detection\src\data\image_renderer.py`의 표시 방식을 참고한 합성 scatter입니다. Fleet, 선택 설비의 정상/이상 구간, 기준선과 변동 시작점을 표시합니다. 원본 실험 데이터는 복사하지 않았습니다.
+- Trend의 XY 드래그는 선택을 교체하며 Ctrl/Meta 드래그는 영역을 추가합니다(최대 16개). 마우스를 놓으면 박스는 사라지고 선택 점만 강조됩니다. 떨어진 영역 사이의 빈 구간은 포함하지 않습니다. Trend/Box plot은 같은 Legend 색을 사용합니다. Lot/Wafer 표는 개별 행 또는 체크된 목록을 탭 구분으로 복사합니다.
 - 현재 Wafer는 Fab 단계로 EDS 결과를 생성하지 않습니다. Fab/EDS Corr는 같은 Item·Step의 과거 완료 이력에 설비·Recipe 조건을 적용하고, 현재 선택 시작 시각 이후 완료된 기록을 제외합니다. X는 Fab 온도/Queue/가동률 값, Y는 Yield/Bin 3/Bin 4 값인 산점도입니다. Pearson r은 `simple-statistics`로 계산하며 3쌍 미만 또는 변동이 없으면 N/A입니다. 상관관계를 원인으로 해석하지 않습니다.
 - 조사 조건과 선택 Wafer는 방·사고별로 저장합니다. 합성 대상 체크는 현재 화면 상태이며 범위 변경 시 초기화됩니다. 예전 Fab/EDS 근거 참조는 조건만 복원하고, 새 과거 비교가 이전 계산 결과의 재현은 아니라는 안내를 표시합니다.
 - Production은 합성 재공 스냅샷(RUN/WAIT/HOLD, Queue, Recipe)과 다운코드를 제공합니다. 다운타임 KPI는 선택 구간과 겹치는 시간의 합계이며, 표의 Duration은 각 이벤트 전체 시간입니다. Assessment는 계산 결과·회의록·미연결 근거를 보여주는 로컬 요약으로, 실제 Judge/Answer 실행 결과가 아닙니다.
-- 통합 재공 차트는 Y축 제품, X축 Layer입니다. 제품별 Fab 0.0~End 선 위에 Lot 위치를 표시하고, 현재 재공이 있는 구간으로 축을 제한합니다. SEM은 Lot/Wafer 키로 선택하며 썸네일 전환·2개 비교·확대를 지원합니다. 합성 SEM 한 장만 예시 Wafer에 연결되어 있고, 나머지는 미등록으로 표시합니다.
-- Eng’r Inform은 선택 Step·설비의 합성 문서 목록입니다. 클릭하면 새 창에서 전체 합성 문서를 표시합니다. 회의록 링크는 DB에 저장된 전체 chunk를 열며, 회의 전체 문서를 뜻하지 않습니다.
-- 자료 체크 후 분석 실행 시 `/api/rooms/{id}/analysis`가 사고 범위와 Wafer 키를 검증하고 사고 DB 및 선택한 회의록만 조회합니다. 다른 자료는 백엔드 미연결로 표시합니다. 조건과 대화는 SQLite에 저장하고 후속 질문에서 재사용합니다. 조건을 변경하면 재분석이 필요하며, 실제 LLM 추론이나 자동 판정은 수행하지 않습니다.
+- 통합 재공 차트는 Y축 제품, X축 Layer입니다. 제품별 Fab 0.0~End 선 위에 Lot 위치를 표시하고, 현재 재공이 있는 구간으로 축을 제한합니다. 우측 상단 SEM은 Lot/Wafer·EQP·시간으로 A/B를 선택하고 동기 확대·이동, 교환, 전체 화면 비교를 지원합니다. 등록된 합성 이미지 두 장만 표시하며 미등록 이미지는 생성하지 않습니다. Fab × EDS는 그 아래에 있습니다.
+- Eng’r Inform은 선택 이상 항목의 Step·EQP에 일치하는 합성 문서를 최신순 표로 표시합니다. UTC 날짜/시간을 포함하며 후속 설비 필터와 분리됩니다. 클릭하면 새 창에서 전체 합성 문서를 표시합니다. 회의록 링크는 DB에 저장된 전체 chunk를 열며, 회의 전체 문서를 뜻하지 않습니다.
+- 이상 항목을 선택하면 자동 분석을 시작하고 `/api/rooms/{id}/analysis/progress`에서 실제 실행 단계를 표시합니다. 실행 중 다른 항목을 선택하면 최신 선택 하나만 대기합니다. 드래그·Wafer 체크 변경은 자동 재호출하지 않으며 수동 재분석합니다. `/api/rooms/{id}/analysis`는 사고 범위와 Wafer 키를 검증합니다. 기본값은 DB 조회 데모이며 명시적인 `agent_overlay`를 설정하면 Router → Tool → Judge → Answer를 실제 호출합니다. 선택하지 않은 회의록과 UI 이미지 모델 호출은 차단합니다. 조건과 역할 실행 기록은 SQLite에 저장하고 후속 질문에서 재사용합니다. 모델 오류를 데모 답변으로 대체하지 않습니다.
 - Overview는 사고 DB 기록과 최근 승인 회의록을 분리해 보여줍니다. Review에서 선택 근거의 원문·기준일·버전을 비교하고 사용자 메모와 출처를 JSON으로 내보냅니다. 이 검토는 Judge의 판정이 아닙니다.
 - 분석 계획: 기능별 체크, 화면 이동, 질문 준비. 선택은 실제 Agent 실행이나 검증 완료를 의미하지 않습니다.
 - 채팅: 방별 질문·답변 저장, 이름 변경·삭제, 이전 기록 조회, 근거의 사고 범위 확인.
@@ -82,6 +83,55 @@ python app/workbench.py --port 8787
 준비한 질문·선택 근거·검토 메모는 대화방과 사고별로 이 브라우저의 localStorage에 저장합니다. 다른 브라우저와 동기화되지 않으며 브라우저 데이터 삭제 시 사라집니다. 문서 원문은 저장하지 않고 조회 시 가져옵니다. 개인정보가 포함된 메모를 공용 PC에 남기지 마세요.
 
 **연결 범위:** 사고·Lot·Wafer·회의록은 합성 DB를 실제 조회합니다. Trend/Map은 합성 데이터, SEM은 AI 생성 이미지입니다.
-Eng’r Inform·생산 시스템·LLM은 미연결입니다. 채팅은 결정적 DB 조회 데모이며, 대화 저장이 모델 메모리 연결을 뜻하지 않습니다.
-감지 이벤트·현재 Fab·재공·다운코드·변경 이력은 `D:\project\q-agent\web\src\engineeringData.ts`, 과거 완료 Fab/EDS는 `D:\project\q-agent\web\src\historicalData.ts`의 결정적 합성 데이터입니다. 통합 화면은 `D:\project\q-agent\web\src\InvestigationBoard.tsx`, Map 계산은 `D:\project\q-agent\web\src\waferMaps.ts`입니다. 등록 Lot/Wafer ID를 재사용해도 실제 생산 상태나 영향 범위가 검증된 것은 아닙니다. 실제 연결에는 서버 측 권한 검증, 원본 Adapter, 단위·시간대·재작업 매칭, Agent Tool 계약이 필요합니다.
+Eng’r Inform·생산 시스템·이미지/Trend 모델은 미연결입니다. 기본 채팅은 결정적 DB 조회 데모입니다. LLM 모드는 같은 방·사고의 최근 8개 메시지를 각각 600자까지 참고 입력으로 전달하며, 이전 답변을 Tool 근거로 사용하지 않습니다. 무제한 대화 메모리는 아닙니다.
+감지 항목·Trend·현재 Fab·재공·다운코드·변경 이력·Inform·SEM 연결은 설정의 `sources.raw_file`에서 읽습니다. 과거 완료 Fab/EDS와 Map은 아직 `D:\project\q-agent\web\src\historicalData.ts`, `D:\project\q-agent\web\src\waferMaps.ts`의 합성 데이터입니다. 등록 Lot/Wafer ID를 재사용해도 실제 생산 상태나 영향 범위가 검증된 것은 아닙니다. 실제 연결에는 서버 측 권한 검증, 원본 Adapter, 단위·시간대·재작업 매칭, Agent Tool 계약이 필요합니다.
 서버는 localhost 전용 단일 사용자 데모입니다. 사내 원격 서비스로 공개하지 마세요.
+
+### Raw 데이터와 환경 설정
+
+UI 실행 설정의 진입점은 `D:\project\q-agent\config\workbench.yaml`입니다. Agent 설정은 이 파일이 지정하는 `D:\project\q-agent\config\config.yaml` + overlay를 그대로 사용합니다.
+
+| 설정 | 용도 |
+|---|---|
+| `server.port` | HTTP 포트 |
+| `sources.raw_file` | Raw JSON 파일 |
+| `demo.base_config`, `demo.overlay` | Agent 기본/합성 DB 설정 |
+| `agent_overlay` | 선택적 LLM 설정 파일 |
+| `chat.sqlite_file`, `static_root` | 대화 DB, 빌드된 UI 폴더 |
+
+YAML 안의 상대 경로는 해당 YAML 폴더 기준입니다. CLI/환경변수의 상대 경로는 실행 디렉터리 기준이며 환경변수가 YAML보다 우선합니다. API 키는 기존 `api_key_env`가 가리키는 환경변수로만 전달합니다.
+
+Raw 예제는 `D:\project\q-agent\data\workbench\raw.example.json`입니다. `incidents[사고번호].engineering.signals`가 이상 Raw 목록이며, `trend_fleets`, `comparison_traces`, `inform_notes`, `sem_assets`가 연결 자료입니다. Drift, level shift, spike, variance burst, periodic pattern을 포함합니다. 파일 누락·잘못된 값·참조 불일치는 중단하며 자동 데모 대체는 없습니다. 현재 로더는 **합성 자료만 허용**합니다. 실제 자료 전환 시 `synthetic` 표시를 거짓으로 바꾸는 것만으로 운영 연결이 되지는 않습니다.
+
+Linux 실행 예시(경로는 Linux 배치 위치로 지정):
+
+```bash
+QAGENT_WORKBENCH_CONFIG=/srv/q-agent/config/workbench.yaml \
+QAGENT_RAW_FILE=/srv/q-agent/data/workbench/raw.example.json \
+QAGENT_PORT=8787 PYTHON_BINARY=python3 \
+bash /srv/q-agent/start.sh
+```
+
+LLM을 켜려면 `QAGENT_LLM_OVERLAY=/srv/q-agent/config/llm.local.yaml`과 설정된 키 환경변수도 함께 전달합니다. Windows는 `D:\project\q-agent\start.ps1`에 같은 환경변수를 사용합니다. 스크립트는 설치·빌드·Skill 수정을 자동 수행하지 않습니다.
+
+예제를 다시 생성할 때는 실행 중인 로컬 합성 서버에 대해 `node --experimental-strip-types D:/project/q-agent/web/scripts/export-workbench-data.mjs --output D:/project/q-agent/var/raw.preview.json`을 사용합니다. 기존 출력 파일은 덮어쓰지 않습니다.
+
+### 로컬 LLM 연결
+
+`D:\project\q-agent\config\workbench.local.yaml`에 기본 workbench 설정과 `agent_overlay: llm.local.yaml`을 지정합니다. `D:\project\q-agent\config\llm.local.yaml`은 `models`, `roles`, `runtime`만 재정의하며 DB 경로 변경은 거부합니다. 두 로컬 파일은 Git에서 제외됩니다.
+
+```yaml
+models:
+  text:
+    enabled: true
+    base_url: http://127.0.0.1:11434/v1
+    served_model: YOUR_INSTALLED_TOOL_CALLING_MODEL
+    api_key_env: QAGENT_LLM_API_KEY
+```
+
+```powershell
+$env:QAGENT_LLM_API_KEY = 'ollama' # Only for local Ollama; not a real credential.
+python D:/project/q-agent/app/workbench.py --config D:/project/q-agent/config/workbench.local.yaml --port 8787
+```
+
+OpenAI-compatible endpoint, native `submit_plan` function calling, Judge/Answer JSON 응답이 필요합니다. 긴 Skill 입력이 서버 컨텍스트에서 잘리지 않도록 모델 설정을 확인하세요. 설정됨·실제 응답 확인·검증된 최종 답변은 별개이며, 합성 DB 모델 실행을 사내 데이터 품질 검증으로 해석하지 않습니다.

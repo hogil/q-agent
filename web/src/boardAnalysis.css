@@ -1,0 +1,101 @@
+.board-analysis-progress {
+  margin: 4px 0 6px;
+  padding: 5px 7px;
+  border: 1px solid #dbe5df;
+  border-radius: 4px;
+  background: #fbfcfb;
+}
+
+.board-analysis-progress.running {
+  border-color: #b8d7c9;
+  background: #f6fbf8;
+}
+
+.board-analysis-progress.failed {
+  border-color: #e2baba;
+  background: #fff9f9;
+}
+
+.board-analysis-progress-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10px;
+}
+
+.board-analysis-progress-head span {
+  color: #809087;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.board-analysis-timeline {
+  display: grid;
+  gap: 3px;
+  margin: 5px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.board-analysis-timeline li {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  align-items: start;
+  gap: 5px;
+  min-width: 0;
+  font-size: 9px;
+}
+
+.board-analysis-timeline-dot {
+  width: 6px;
+  height: 6px;
+  margin-top: 3px;
+  border-radius: 50%;
+  background: #4d9878;
+}
+
+.board-analysis-timeline li.error .board-analysis-timeline-dot {
+  background: #bb5555;
+}
+
+.board-analysis-timeline li > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 7px;
+  min-width: 0;
+}
+
+.board-analysis-timeline strong {
+  overflow-wrap: anywhere;
+}
+
+.board-analysis-timeline span,
+.board-analysis-timeline small {
+  color: #788980;
+}
+
+.board-analysis-timeline p,
+.board-analysis-progress-error {
+  flex-basis: 100%;
+  margin: 0;
+  color: #a34848;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.board-analysis-current-activity {
+  color: #4d7d68;
+}
+
+.board-analysis-dialog-progress {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-height: 30%;
+}
+
+@media (max-width: 760px) {
+  .board-analysis-dialog-progress {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

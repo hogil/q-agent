@@ -1,4 +1,15 @@
 import type { Workspace } from './api';
+import type { InformNote } from './investigationData';
+import type { EquipmentTracePoint } from './equipmentComparison';
+
+export type TrendFleet = { member: string; highlighted: boolean; points: number[][] };
+
+export type AnomalyPattern =
+  | 'drift'
+  | 'abrupt_level_shift'
+  | 'spike'
+  | 'variance_burst'
+  | 'periodic_pattern';
 
 export type Signal = {
   id: string;
@@ -16,6 +27,7 @@ export type Signal = {
   endIndex: number;
   description: string;
   onsetIndex: number;
+  pattern?: AnomalyPattern;
 };
 
 export type TrendPoint = {
@@ -67,6 +79,9 @@ export type DownEvent = {
 };
 
 export type EngineeringData = {
+  trendFleets?: Record<string, TrendFleet[]>;
+  comparisonTraces?: Record<string, Record<string, EquipmentTracePoint[]>>;
+  informNotes?: InformNote[];
   signals: Signal[];
   trend: TrendPoint[];
   fab: FabRow[];
@@ -199,6 +214,12 @@ function recipeFor(seed: string) {
 }
 
 export function makeEngineeringData(workspace: Workspace): EngineeringData {
+  if (workspace.raw) return {
+    ...workspace.raw.engineering,
+    trendFleets: workspace.raw.trend_fleets,
+    comparisonTraces: workspace.raw.comparison_traces,
+    informNotes: workspace.raw.inform_notes,
+  };
   const anchor = makeAnchor(workspace);
   const incidentAt = iso(anchor);
   const source = incidentAt;
@@ -282,6 +303,78 @@ export function makeEngineeringData(workspace: Workspace): EngineeringData {
       endIndex: 17,
       description: 'SYN-EQP-02 · 합성 설비 가동률',
       onsetIndex: 14,
+    },
+    {
+      id: 'synthetic-signal-level-shift',
+      title: '공정 온도 Level shift',
+      severity: 'high',
+      metric: 'temperature',
+      device: 'SYN-DEV-01',
+      equipment: 'SYN-EQP-01',
+      step: STEP,
+      item: 'SYN-MEAN-SHIFT',
+      legendAxis: 'eqp_id',
+      recipe: 'SYN-RCP-A',
+      detectedAt: incidentAt,
+      startIndex: 8,
+      endIndex: 17,
+      description: 'SYN-EQP-01 · SYN-ETCH-10 · 합성 급격한 평균값 변화',
+      onsetIndex: 8,
+      pattern: 'abrupt_level_shift',
+    },
+    {
+      id: 'synthetic-signal-spike',
+      title: 'Queue spike 반복',
+      severity: 'high',
+      metric: 'queue',
+      device: 'SYN-DEV-01',
+      equipment: 'SYN-EQP-02',
+      step: STEP,
+      item: 'SYN-SPIKE',
+      legendAxis: 'eqp_id',
+      recipe: 'SYN-RCP-B',
+      detectedAt: incidentAt,
+      startIndex: 7,
+      endIndex: 20,
+      description: 'SYN-EQP-02 · SYN-ETCH-10 · 합성 국소 Spike 패턴',
+      onsetIndex: 7,
+      pattern: 'spike',
+    },
+    {
+      id: 'synthetic-signal-variance-burst',
+      title: '설비 가동률 분산 급증',
+      severity: 'medium',
+      metric: 'availability',
+      device: 'SYN-DEV-01',
+      equipment: 'SYN-EQP-02',
+      step: STEP,
+      item: 'SYN-VARIANCE',
+      legendAxis: 'eqp_id',
+      recipe: 'SYN-RCP-B',
+      detectedAt: incidentAt,
+      startIndex: 9,
+      endIndex: 19,
+      description: 'SYN-EQP-02 · SYN-ETCH-10 · 합성 분산 급증 패턴',
+      onsetIndex: 9,
+      pattern: 'variance_burst',
+    },
+    {
+      id: 'synthetic-signal-periodic',
+      title: '공정 온도 주기성 변동',
+      severity: 'medium',
+      metric: 'temperature',
+      device: 'SYN-DEV-01',
+      equipment: 'SYN-EQP-01',
+      step: STEP,
+      item: 'SYN-PERIODIC',
+      legendAxis: 'eqp_id',
+      recipe: 'SYN-RCP-A',
+      detectedAt: incidentAt,
+      startIndex: 6,
+      endIndex: 21,
+      description: 'SYN-EQP-01 · SYN-ETCH-10 · 합성 주기성 변동 패턴',
+      onsetIndex: 6,
+      pattern: 'periodic_pattern',
     },
   ];
 

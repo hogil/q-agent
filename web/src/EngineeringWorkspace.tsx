@@ -41,7 +41,9 @@ import {
   parseSelection,
   parsePairKey,
   pairKey,
+  MAX_TREND_REGIONS,
   type InvestigationSelection,
+  type TrendSelectionRegion,
 } from './engineeringAnalysis';
 import './engineering.css';
 
@@ -111,6 +113,10 @@ function EngineeringTrend({
       ),
     [data, selection, compact, comparisonEquipment, display],
   );
+  const trendYAxis =
+    'yAxis' in trendOption
+      ? (trendOption.yAxis as { min: number; max: number })
+      : { min: 0, max: 1 };
   const option = useMemo(
     () =>
       mode === 'box' && !compact
@@ -135,22 +141,10 @@ function EngineeringTrend({
       end: data.trend.length - 1,
       rangeSelected: false,
       valueRange: undefined,
+      regions: [],
     });
     setZoomToSelection(false);
   };
-  const areaSelection = useMemo<[[number, number], [number, number]] | null>(
-    () =>
-      rangeSelection && 'yAxis' in trendOption
-        ? [
-            rangeSelection,
-            selection.valueRange ?? [
-              trendOption.yAxis.min,
-              trendOption.yAxis.max,
-            ],
-          ]
-        : null,
-    [rangeSelection, selection.valueRange, trendOption],
-  );
   const exportSelection = () => {
     const from = Date.parse(data.trend[selection.start].timestamp);
     const to = Date.parse(data.trend[selection.end].timestamp);
@@ -166,6 +160,7 @@ function EngineeringTrend({
           from: rangeSelection ? new Date(from).toISOString() : null,
           to: rangeSelection ? new Date(to).toISOString() : null,
           valueRange: rangeSelection ? (selection.valueRange ?? null) : null,
+          regions: rangeSelection ? selection.regions : [],
           groups: groups
             .filter(
               (group) => !members.length || members.includes(group.member),
@@ -282,19 +277,49 @@ function EngineeringTrend({
           className="eng-trend-chart"
           onArea={
             mode === 'trend'
-              ? (area) =>
-                  area
-                    ? change({
-                        ...trendSelectionFromTime(data, area[0]),
-                        valueRange: [
-                          Math.min(...area[1]),
-                          Math.max(...area[1]),
-                        ],
-                      })
-                    : clearRange()
+              ? (area, additive) => {
+                  if (!area) return clearRange();
+                  const normalized: TrendSelectionRegion = [
+                    [Math.min(...area[0]), Math.max(...area[0])],
+                    [Math.min(...area[1]), Math.max(...area[1])],
+                  ];
+                  const currentRegions: TrendSelectionRegion[] =
+                    additive && selection.rangeSelected !== false
+                      ? selection.regions.length
+                        ? selection.regions
+                        : rangeSelection
+                          ? [
+                              [
+                                rangeSelection,
+                                selection.valueRange ?? [
+                                  trendYAxis.min,
+                                  trendYAxis.max,
+                                ],
+                              ],
+                            ]
+                          : []
+                      : [];
+                  const regions = [...currentRegions, normalized].slice(
+                    -MAX_TREND_REGIONS,
+                  );
+                  const xFrom = Math.min(
+                    ...regions.map((region) => region[0][0]),
+                  );
+                  const xTo = Math.max(
+                    ...regions.map((region) => region[0][1]),
+                  );
+                  change({
+                    ...trendSelectionFromTime(data, [xFrom, xTo]),
+                    rangeSelected: true,
+                    valueRange: [
+                      Math.min(...regions.map((region) => region[1][0])),
+                      Math.max(...regions.map((region) => region[1][1])),
+                    ],
+                    regions,
+                  });
+                }
               : undefined
           }
-          areaSelection={mode === 'trend' ? areaSelection : undefined}
           onSelect={
             mode === 'box'
               ? (point) => {
@@ -351,7 +376,11 @@ function EngineeringTrend({
                     )
                   }
                 />
-                <i style={{ background: row.color }} />
+                <i
+                  className="eng-trend-swatch"
+                  aria-hidden="true"
+                  style={{ color: row.color }}
+                />
                 <span>{row.member}</span>
                 <output>{row.count}</output>
               </label>
@@ -610,6 +639,7 @@ export default function EngineeringWorkspace({
           end: end < 0 ? data.trend.length - 1 : end,
           rangeSelected: true,
           valueRange: undefined,
+          regions: [],
         }));
       } else if (wip) {
         setSelection((current) => ({
@@ -623,19 +653,16 @@ export default function EngineeringWorkspace({
   const signal =
     data.signals.find((s) => s.id === selection.signalId) || data.signals[0];
   const change: SelectionChange = (patch) => {
-    setSelection(
-      (current) =>
-        parseSelection(
-          {
-            ...current,
-            ...(patch.start !== undefined || patch.end !== undefined
-              ? { rangeSelected: true }
-              : {}),
-            ...patch,
-          },
-          data,
-        ) || current,
-    );
+    setSelection((current) => {
+      const next = {
+        ...current,
+        ...(patch.start !== undefined || patch.end !== undefined
+          ? { rangeSelected: true, regions: [] }
+          : {}),
+        ...patch,
+      };
+      return parseSelection(next, data) || current;
+    });
     setSelectedPairKey('');
   };
   const history = useMemo(
@@ -741,6 +768,7 @@ export default function EngineeringWorkspace({
                   end: signal.endIndex,
                   rangeSelected: true,
                   valueRange: undefined,
+                  regions: [],
                   equipment: signal.equipment,
                 })
               }

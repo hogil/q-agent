@@ -31,10 +31,20 @@ class RoleClient:
             paths = self.settings.data['paths']
             schema = read_role_reference('router', 'output.schema.json', paths['skills_root'], paths['registry_file'])
             options.update(tools=[{'type': 'function', 'function': {'name': 'submit_plan',
-                           'description': 'Submit the next validated routing decision and Tool plan.', 'parameters': schema}}],
+                           'description': schema['description'], 'parameters': schema}}],
                            tool_choice={'type': 'function', 'function': {'name': 'submit_plan'}}, parallel_tool_calls=False)
         else:
             options['response_format'] = {'type': 'json_object'}
+            if model['structured_outputs']:
+                paths = self.settings.data['paths']
+                schema = read_role_reference(role, 'output.schema.json', paths['skills_root'], paths['registry_file'])
+                rows = schema['properties']['coverage' if role == 'judge' else 'claims']['items']['properties']
+                if payload.get('evidence_ids'):
+                    rows['evidence_ids']['items']['enum'] = list(payload['evidence_ids'])
+                if role == 'judge' and payload.get('requirements'):
+                    rows['requirement']['enum'] = list(payload['requirements'])
+                options['response_format'] = {'type': 'json_schema', 'json_schema': {
+                    'name': role + '_output', 'strict': True, 'schema': schema}}
         # Count the complete request, including function schemas; this is not a token budget.
         if len(json.dumps(options, ensure_ascii=False)) > self.settings.data['runtime']['max_context_characters']:
             raise LLMError('MODEL_CONTEXT_LIMIT')

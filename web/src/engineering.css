@@ -329,6 +329,9 @@
 .eng-trend-legend-list i {
   width: 6px;
   height: 6px;
+  display: block;
+  border-radius: 50%;
+  background: currentColor;
 }
 .eng-trend-legend-list span {
   overflow: hidden;

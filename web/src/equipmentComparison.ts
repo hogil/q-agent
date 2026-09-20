@@ -123,6 +123,7 @@ export function makeEquipmentTrace(
   signal: Signal,
   equipment: string,
 ): EquipmentTracePoint[] {
+  if (data.comparisonTraces) return data.comparisonTraces[signal.id]?.[equipment] || [];
   if (
     !isSignal(signal) ||
     typeof equipment !== 'string' ||

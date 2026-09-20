@@ -29,8 +29,11 @@ description: Judge 검토 뒤 확인된 근거로 최종 답변과 제한을 작
 7. DB 0건, DB 오류, 후보 미확정, 미등록, 연결 누락, 부분 적재, 권한 제한을 구분한다. 모든 페이지를 받았어도 source_completeness가 unknown이면 그 한계를 남긴다.
 
 references/output.schema.json만 반환한다. status는 요청 범위 충족이면 answered, 일부만 확인하면 partial, 답변 근거/검토가 없으면 unavailable이다. answer, claims, limitations를 쓴다. 사실 주장마다 실제 evidence_ids를 연결하고 누락은 limitations에 적는다. missing_evidence 같은 미정의 필드를 추가하지 않는다. references/conditions.md의 예시를 따른다.
+claims.evidence_ids의 각 문자열은 입력 evidence_ids 목록에서 그대로 복사한다. row 번호 접미사나 chunk_id로 ID를 변형하지 않는다. 예를 들어 입력이 ["e1"]이면 "e1-0"이나 "e1.data[0]"는 없는 근거다. 여러 주장이 같은 Tool 결과를 사용하면 같은 ID를 재사용한다.
 
 ## 실제 데이터 확인 후 변경
+
+2026-09-21 로컬 Qwen/Ollama + 합성 사고 DB에서 Answer가 "e1"을 "e1-0"으로 바꾸어 UNKNOWN_EVIDENCE가 발생했다. 입력 ID를 보존하는 계약만 명시했으며 답변 사실이나 사내 근거를 추가한 변경이 아니다.
 
 2026-09-18 회의록 표현 규칙은 로컬 계약과 합성 사례 기반이며 실제 전문가 검증 미완료다. 선택적 references/examples.md의 사고·수치는 실제 답변 근거가 아니다.
 

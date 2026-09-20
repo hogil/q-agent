@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import mimetypes
@@ -21,12 +22,15 @@ REPO_ROOT = APP_ROOT.parent
 if str(APP_ROOT) not in sys.path:
     sys.path.insert(0, str(APP_ROOT))
 
-from config_loader import ConfigError, load_config, read_config  # noqa: E402
+from config_loader import (ConfigError, Settings, SPEC, check_shape, load_config,
+                           merge, read_config, resolve_paths, validate_values)  # noqa: E402
+from agent import run as run_agent  # noqa: E402
 from demo_data import generate  # noqa: E402
 from incident_tools import ToolError  # noqa: E402
 from meeting_tools import MeetingTools  # noqa: E402
 from runtime_factory import open_incident_tools  # noqa: E402
 from detection_workflow import DetectionWorkflow  # noqa: E402
+from workbench_data import load_workbench_data  # noqa: E402
 
 
 MAX_BODY = 64 * 1024
@@ -107,13 +111,22 @@ def _path(value: str, base: Path) -> Path:
     return (target if target.is_absolute() else base / target).resolve()
 
 
-def load_workbench(path: str | Path) -> dict:
+def load_workbench(path: str | Path, *, raw_file=None, agent_overlay=None) -> dict:
     config_path = Path(path).expanduser().resolve()
     raw = read_config(config_path)
-    if set(raw) != {"config_version", "demo", "chat", "cutoff", "static_root"}:
+    if set(raw) - {"agent_overlay", "sources", "server"} != {"config_version", "demo", "chat", "cutoff", "static_root"}:
         raise WorkbenchError("workbench config keys are invalid")
     if raw["config_version"] != 1:
         raise WorkbenchError("unsupported workbench config version")
+    server = raw.get("server", {"port": 8787})
+    if (not isinstance(server, dict) or set(server) != {"port"}
+            or type(server["port"]) is not int or not 1 <= server["port"] <= 65535):
+        raise WorkbenchError("server.port must be between 1 and 65535")
+    sources = {"raw_file": str(Path(raw_file).expanduser().resolve())} if raw_file is not None else raw.get("sources")
+    try:
+        raw_data = load_workbench_data(sources, config_path.parent)
+    except ValueError as exc:
+        raise WorkbenchError(str(exc)) from None
     demo = raw["demo"]
     chat = raw["chat"]
     if not isinstance(demo, dict) or set(demo) != {"base_config", "overlay"}:
@@ -131,6 +144,17 @@ def load_workbench(path: str | Path) -> dict:
         raise WorkbenchError("synthetic workbench requires config.yaml plus demo.yaml")
     try:
         settings = load_config(base, overlay)
+        overlay_path = str(Path(agent_overlay).expanduser().resolve()) if agent_overlay is not None else raw.get("agent_overlay")
+        if overlay_path:
+            agent_path = _path(overlay_path, config_path.parent)
+            agent_config = read_config(agent_path)
+            if set(agent_config) - {"models", "roles", "runtime"}:
+                raise WorkbenchError("agent_overlay may only configure models, roles and runtime")
+            merged = merge(settings.data, agent_config)
+            check_shape(merged, SPEC)
+            validate_values(merged)
+            resolve_paths(merged, base.parent)
+            settings = Settings(merged, [*settings.source_files, str(agent_path)])
     except ConfigError as exc:
         raise WorkbenchError(str(exc)) from None
     if settings.data.get("environment") != "demo":
@@ -160,6 +184,7 @@ def load_workbench(path: str | Path) -> dict:
     registry = json.loads(Path(data["paths"]["registry_file"]).read_text(encoding="utf-8"))
     return {"settings": settings, "cutoff": cutoff, "static_root": static_root,
             "chat_db": chat_db, "history_limit": chat["history_limit"],
+            "raw_data": raw_data, "port": server["port"],
             "release": registry.get("release", "unknown")}
 
 
@@ -177,8 +202,12 @@ class Workbench:
         self.chat_db = config["chat_db"]
         self.history_limit = config["history_limit"]
         self.release = config["release"]
+        self.raw_data = config.get("raw_data")
         self.actor = "local-workbench"
         self.lock = threading.RLock()
+        self.running_rooms = set()
+        self.analysis_runs = {}
+        self.llm_connected = False
         self.chat_db.parent.mkdir(parents=True, exist_ok=True)
         self._init_chat_db()
         self.monitor = DetectionWorkflow(self.chat_db, self._analyze_detection)
@@ -236,6 +265,8 @@ class Workbench:
             columns = {row["name"] for row in db.execute("PRAGMA table_info(analysis_scopes)")}
             if "steps" not in columns:
                 db.execute("ALTER TABLE analysis_scopes ADD COLUMN steps TEXT NOT NULL DEFAULT '[]'")
+            if "runtime" not in columns:
+                db.execute("ALTER TABLE analysis_scopes ADD COLUMN runtime TEXT NOT NULL DEFAULT '{}'")
 
     def _rooms(self):
         with self.lock, self._db() as db:
@@ -290,13 +321,32 @@ class Workbench:
                 )["items"]
         except (ToolError, KeyError, OSError) as exc:
             raise WorkbenchError(str(exc)) from None
-        return {"incident": incident, "lots": lots, "wafers": wafers, "meetings": meetings,
-                "synthetic": True, "as_of": self.cutoff}
+        result = {"incident": incident, "lots": lots, "wafers": wafers, "meetings": meetings,
+                  "synthetic": True, "as_of": self.cutoff}
+        if self.raw_data is not None:
+            record = self.raw_data.get(incident_number)
+            if record is None:
+                raise WorkbenchError("configured raw data has no selected incident")
+            registered = {(row["lot_id"], row["wafer_id"]) for row in wafers}
+            supplied = {(row["lotId"], row["waferId"]) for row in record["engineering"]["fab"]}
+            if not supplied <= registered:
+                raise WorkbenchError("raw data includes wafers outside the selected incident")
+            result["raw"] = record
+        return result
 
     def bootstrap(self):
-        return {"synthetic": True, "mode": "demo", "llm_connected": False,
+        return {"synthetic": True, **self.llm_status(),
                 "incidents": self._incidents(), "rooms": [_summary(row) for row in self._rooms()],
                 "release": self.release}
+
+    def llm_status(self):
+        profiles = {role: self.settings.model_profile(role)["deployment"]
+                    for role in ("router", "judge", "answer")}
+        configured = any(profile["enabled"] for profile in profiles.values())
+        return {"mode": "llm" if configured else "demo", "llm_configured": configured,
+                "llm_connected": self.llm_connected,
+                "models": {role: profile["served_model"] for role, profile in profiles.items()
+                           if profile["enabled"]}}
 
     def monitoring(self):
         value = self.monitor.snapshot()
@@ -334,14 +384,14 @@ class Workbench:
         with self.lock, self._db() as db:
             db.execute("INSERT OR IGNORE INTO rooms VALUES (?,?,?,?)", (room_id,
                        "합성 감지 · " + context["item"], context["incident_number"], _now()))
-        with self.lock:
-            scope = self._analysis_scope(room_id)
-            if self._room(room_id)["incident_number"] != context["incident_number"] or (scope is not None and scope["context"] != context):
-                raise WorkbenchError("detection analysis room scope changed")
-            if scope is None:
-                self.analysis(room_id, {"content": "합성 감지 이벤트 자동 조회. 실제 모델 판정이나 생산 조치가 아닙니다.",
-                                       "sources": ["incident", "meetings", "sem", "maps", "trend"], "context": context})
-        return {"room_id": room_id, "analysis_mode": "demo", "model_inference": False,
+        scope = self._analysis_scope(room_id)
+        if self._room(room_id)["incident_number"] != context["incident_number"] or (scope is not None and scope["context"] != context):
+            raise WorkbenchError("detection analysis room scope changed")
+        if scope is None:
+            self.analysis(room_id, {"content": "합성 감지 이벤트의 사고 DB와 회의록 근거를 확인해줘. 실제 감지 모델 판정이나 생산 조치는 요청하지 않습니다.",
+                                   "sources": ["incident", "meetings", "sem", "maps", "trend"], "context": context})
+        metadata = self.analysis_metadata(room_id)["analysis"]
+        return {"room_id": room_id, "analysis_mode": metadata["mode"], "model_inference": metadata["llm_connected"],
                 "comparison": event["comparison"], "comparison_status": "image_models_not_invoked",
                 "action": "엔지니어 검토 요청", "production_executed": False}
 
@@ -370,6 +420,7 @@ class Workbench:
             return self._update_room_locked(room_id, values)
 
     def _update_room_locked(self, room_id, values):
+        self._require_idle(room_id)
         if not isinstance(values, dict) or set(values) - {"title", "incident_number"}:
             raise WorkbenchError("invalid room fields")
         room = self._room(room_id)
@@ -383,8 +434,10 @@ class Workbench:
 
     def delete_room(self, room_id):
         with self.lock, self._db() as db:
+            self._require_idle(room_id)
             if not db.execute("DELETE FROM rooms WHERE id=?", (room_id,)).rowcount:
                 raise WorkbenchError("room not found")
+            self.analysis_runs.pop(room_id, None)
         return {"ok": True}
 
     def room(self, room_id, before=None):
@@ -417,8 +470,85 @@ class Workbench:
                     "has_more": has_more, "oldest_id": messages[0]["id"] if messages else None}
 
     def message(self, room_id, body):
+        if self.llm_status()["llm_configured"]:
+            return self._live_message(room_id, body)
         with self.lock:
+            self._require_idle(room_id)
             return self._message_locked(room_id, body)
+
+    def _require_idle(self, room_id):
+        if room_id in self.running_rooms:
+            raise WorkbenchError("analysis is already running in this room")
+
+    def analysis_progress(self, room_id):
+        with self.lock:
+            self._room(room_id)
+            return {"run": copy.deepcopy(self.analysis_runs.get(room_id))}
+
+    def _begin_analysis_run(self, room_id, sources, context):
+        self.analysis_runs[room_id] = {"id": uuid.uuid4().hex, "status": "running",
+            "context": copy.deepcopy(context), "sources": list(sources), "events": [],
+            "started_at": _now()}
+        self._analysis_event(room_id, {"event": "scope_validated"})
+
+    def _analysis_event(self, room_id, event):
+        allowed = ("event", "role", "model", "step", "source", "error", "status")
+        item = {key: event[key] for key in allowed if key in event}
+        item["time"] = _now()
+        if event.get("event") == "tool_result":
+            item["status"] = event.get("result", {}).get("status", "completed")
+        if event.get("event") == "llm_output":
+            output = event.get("output", {})
+            item["status"] = output.get("decision", output.get("verdict", output.get("status", "completed")))
+        with self.lock:
+            run = self.analysis_runs.get(room_id)
+            if run and run["status"] == "running":
+                run["events"] = [*run["events"], item][-200:]
+
+    def _finish_analysis_run(self, room_id, error=None):
+        with self.lock:
+            run = self.analysis_runs[room_id]
+            run.update(status="failed" if error else "completed", finished_at=_now())
+            if error:
+                run["error"] = str(error) if isinstance(error, WorkbenchError) else type(error).__name__
+
+    def _live_message(self, room_id, body):
+        if not isinstance(body, dict) or set(body) - {"content", "attachments"}:
+            raise WorkbenchError("invalid message fields")
+        content = body.get("content")
+        if not isinstance(content, str) or not content.strip() or len(content) > 12000:
+            raise WorkbenchError("content must be a nonempty string up to 12000 characters")
+        with self.lock:
+            self._require_idle(room_id)
+            room = self._room(room_id)
+            numbers = set(INCIDENT_RE.findall(content))
+            if len(numbers) > 1:
+                raise WorkbenchError("select one incident for this conversation")
+            target = next(iter(numbers), room["incident_number"])
+            self._require_incident(target)
+            attachments = self._attachments(body.get("attachments", []), target)
+            attachments.insert(0, self._ref("data", "conversation scope", target, target))
+            scope = self._analysis_scope(room_id)
+            if scope and scope["incident_number"] == target:
+                sources, context = scope["sources"], scope["context"]
+            else:
+                sources = ["incident", "meetings"]
+                context = {"incident_number": target, "item": "", "step": "", "equipment": "",
+                           "from": self.cutoff, "to": self.cutoff, "wafers": []}
+            self.running_rooms.add(room_id)
+            self._begin_analysis_run(room_id, sources, context)
+        try:
+            answer, refs, _ = self._llm_answer(room_id, content, sources, context)
+            result = self._append_messages(room_id, content, attachments, answer, refs,
+                                           room={**room, "incident_number": target})
+            self._finish_analysis_run(room_id)
+            return result
+        except Exception as exc:
+            self._finish_analysis_run(room_id, exc)
+            raise
+        finally:
+            with self.lock:
+                self.running_rooms.discard(room_id)
 
     def _message_locked(self, room_id, body):
         room = self._room(room_id)
@@ -451,15 +581,73 @@ class Workbench:
 
     def analysis(self, room_id, body):
         with self.lock:
+            self._require_idle(room_id)
             room = self._room(room_id)
             scope = self._analysis_scope(room_id)
             content, sources, context = self._analysis_request(room, scope, body)
-            data = self._workspace(room["incident_number"], include_meetings="meetings" in sources)
-            answer, answer_attachments, steps = self._analysis_answer(data, sources, context)
-            analysis = {"mode": "demo", "llm_connected": False, "sources": sources,
-                        "context": context, "steps": steps}
-            return self._append_analysis(room_id, content, sources, context, answer,
-                                         answer_attachments, analysis)
+            self.running_rooms.add(room_id)
+            self._begin_analysis_run(room_id, sources, context)
+        try:
+            if self.llm_status()["llm_configured"]:
+                answer, answer_attachments, runtime = self._llm_answer(room_id, content, sources, context)
+            else:
+                data = self._workspace(room["incident_number"], include_meetings="meetings" in sources)
+                answer, answer_attachments, steps = self._analysis_answer(data, sources, context)
+                runtime = {"mode": "demo", "llm_connected": False, "steps": steps}
+                for step in steps:
+                    self._analysis_event(room_id, {"event": "source_result", **step})
+            analysis = {**runtime, "sources": sources, "context": context}
+            result = self._append_analysis(room_id, content, sources, context, answer,
+                                           answer_attachments, analysis)
+            self._finish_analysis_run(room_id)
+            return result
+        except Exception as exc:
+            self._finish_analysis_run(room_id, exc)
+            raise
+        finally:
+            with self.lock:
+                self.running_rooms.discard(room_id)
+
+    def _llm_answer(self, room_id, content, sources, context):
+        # UI context and earlier messages are unverified input, never tool evidence.
+        incident = self._incident_map()[context["incident_number"]]
+        history = [{"role": message["role"], "content": message["content"][:600]}
+                   for message in self.room(room_id)["messages"][-8:]
+                   if any(ref.get("incident_number") == context["incident_number"]
+                          for ref in message["attachments"])]
+        payload = {"synthetic_data": True,
+                   "selected_incident": context["incident_number"], "ui_context_unverified": context,
+                   "requested_sources": sources, "previous_messages_unverified": history,
+                   "unavailable_sources": [source for source in sources if source not in ("incident", "meetings")]}
+        config = merge(self.settings.data, {"meetings": {"enabled": "meetings" in sources
+                       and self.settings.data["meetings"]["enabled"]},
+                       "image_tools": {name: {"enabled": False} for name in self.settings.data["image_tools"]}})
+        result = run_agent(Settings(config, self.settings.source_files), content, actor=self.actor,
+                           selected=[incident["incident_id"]], request_scope="incident", as_of=self.cutoff,
+                           context_data=payload, emit=lambda event: self._analysis_event(room_id, event))
+        events = result.get("events", [])
+        self.llm_connected = any(event["event"] == "llm_output" for event in events)
+        if result["status"] not in ("answered", "partial") or not result.get("answer"):
+            errors = [event.get("error", "") for event in events if event["event"] in ("run_error", "validation_or_tool_error")]
+            raise WorkbenchError("LLM analysis did not complete: " + result["status"] +
+                                 (" / " + errors[-1] if errors else ""))
+        tool_names = {event["source"] for event in events if event["event"] == "tool_result"}
+        retrieved = {"incident": "find_incidents" in tool_names,
+                     "meetings": "search_meeting_minutes" in tool_names}
+        steps = [{"source": source, "status": "completed" if retrieved.get(source) else "unavailable",
+                  "detail": "Agent tool queried synthetic data" if retrieved.get(source)
+                  else "Not queried; UI fixtures are not model evidence"} for source in sources]
+        trace = [{"role": event["role"], "model": event["model"], "step": event["step"]}
+                 for event in events if event["event"] == "llm_start"]
+        runtime = {"mode": "llm", "llm_connected": self.llm_connected, "steps": steps,
+                   "status": result["status"], "trace": trace, "tool_calls": result["tool_calls"],
+                   "llm_calls": result["llm_calls"], "limitations": result.get("limitations", [])}
+        answer = result["answer"]
+        if result.get("limitations"):
+            answer += "\n\n제한 사항:\n" + "\n".join(result["limitations"])
+        answer += "\n\n[합성 데이터 · LLM 생성 답변]"
+        refs = [self._ref("data", context["incident_number"], incident["incident_id"], context["incident_number"])]
+        return answer, refs, runtime
 
     def analysis_metadata(self, room_id):
         with self.lock:
@@ -467,7 +655,7 @@ class Workbench:
             scope = self._analysis_scope(room_id)
             if scope is None or scope["incident_number"] != room["incident_number"]:
                 return {"analysis": None}
-            return {"analysis": {"mode": "demo", "llm_connected": False,
+            return {"analysis": {"mode": "demo", "llm_connected": False, **scope["runtime"],
                                   "sources": scope["sources"], "context": scope["context"],
                                   "steps": scope["steps"]}}
 
@@ -479,6 +667,7 @@ class Workbench:
             return {"room_id": row["room_id"], "incident_number": row["incident_number"],
                     "sources": json.loads(row["sources"]), "context": json.loads(row["context"]),
                     "steps": json.loads(row["steps"]),
+                    "runtime": json.loads(row["runtime"]),
                     "created_at": row["created_at"], "updated_at": row["updated_at"]}
 
     def _analysis_request(self, room, scope, body):
@@ -617,13 +806,14 @@ class Workbench:
             if room["incident_number"] != context["incident_number"]:
                 raise WorkbenchError("analysis scope incident does not match the room")
             db.execute("""INSERT INTO analysis_scopes
-                (room_id, incident_number, sources, context, steps, created_at, updated_at)
-                VALUES (?,?,?,?,?,?,?)
+                (room_id, incident_number, sources, context, steps, runtime, created_at, updated_at)
+                VALUES (?,?,?,?,?,?,?,?)
                 ON CONFLICT(room_id) DO UPDATE SET incident_number=excluded.incident_number,
-                sources=excluded.sources, context=excluded.context, steps=excluded.steps,
+                sources=excluded.sources, context=excluded.context, steps=excluded.steps, runtime=excluded.runtime,
                 updated_at=excluded.updated_at""",
                         (room_id, context["incident_number"], json.dumps(sources, ensure_ascii=False),
-                         json.dumps(context, ensure_ascii=False), json.dumps(analysis["steps"], ensure_ascii=False), now, now))
+                         json.dumps(context, ensure_ascii=False), json.dumps(analysis["steps"], ensure_ascii=False),
+                         json.dumps({k: v for k, v in analysis.items() if k not in ("sources", "context", "steps")}, ensure_ascii=False), now, now))
             for item in (user, assistant):
                 db.execute("INSERT INTO messages VALUES (?,?,?,?,?,?)", (item["id"], room_id, item["role"],
                              item["content"], item["created_at"], json.dumps(item["attachments"], ensure_ascii=False)))
@@ -783,6 +973,7 @@ class Handler(BaseHTTPRequestHandler):
                     raise WorkbenchError("invalid before cursor")
                 return self.app.room(room_id, values[0] if values else None)
             if len(parts) == 4 and parts[3] == "analysis" and method == "GET": return self.app.analysis_metadata(room_id)
+            if len(parts) == 5 and parts[3:] == ["analysis", "progress"] and method == "GET": return self.app.analysis_progress(room_id)
             if len(parts) == 3 and method == "PATCH": return self.app.update_room(room_id, self._read())
             if len(parts) == 3 and method == "DELETE": return self.app.delete_room(room_id)
             if len(parts) == 4 and parts[3] == "analysis" and method == "POST": return self.app.analysis(room_id, self._read())
@@ -834,11 +1025,12 @@ class WorkbenchServer(ThreadingHTTPServer):
         super().server_close()
 
 
-def create_server(config_path: str | Path = REPO_ROOT / "config/workbench.yaml", port: int = 8787):
-    if type(port) is not int or not 0 <= port <= 65535:
+def create_server(config_path: str | Path = REPO_ROOT / "config/workbench.yaml", port: int | None = None,
+                  *, raw_file=None, agent_overlay=None):
+    if port is not None and (type(port) is not int or not 0 <= port <= 65535):
         raise WorkbenchError("port must be between 0 and 65535")
-    config = load_workbench(config_path)
-    server = WorkbenchServer(("127.0.0.1", port), Handler)
+    config = load_workbench(config_path, raw_file=raw_file, agent_overlay=agent_overlay)
+    server = WorkbenchServer(("127.0.0.1", config["port"] if port is None else port), Handler)
     server.app = Workbench(config)
     server.app.monitor.start()
     return server
@@ -846,14 +1038,16 @@ def create_server(config_path: str | Path = REPO_ROOT / "config/workbench.yaml",
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--port", type=int, default=8787)
+    parser.add_argument("--port", type=int)
     parser.add_argument("--config", default=str(REPO_ROOT / "config/workbench.yaml"))
+    parser.add_argument("--raw-file")
+    parser.add_argument("--agent-overlay")
     args = parser.parse_args(argv)
     try:
-        server = create_server(args.config, args.port)
+        server = create_server(args.config, args.port, raw_file=args.raw_file, agent_overlay=args.agent_overlay)
     except (WorkbenchError, ConfigError) as exc:
         parser.exit(2, f"WORKBENCH_ERROR: {exc}\n")
-    print(f"Q-Agent synthetic workbench: http://127.0.0.1:{args.port}", flush=True)
+    print(f"Q-Agent synthetic workbench: http://127.0.0.1:{server.server_port}", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

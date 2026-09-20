@@ -1,4 +1,5 @@
 {
+  "description": "Always call submit_plan to submit the complete routing object (decision, stage, search_mode, intents, filters, plan, needs_skills, clarification, limitations). Business tools listed in available_tools are NOT callable functions: place their names only in plan[].tool. For an incident-number lookup, set top-level filters to {}, search_mode to sql_exact, put incident_number in plan[0].arguments, and omit arguments.filters when there are no extra conditions.",
   "type": "object",
   "additionalProperties": false,
   "required": [

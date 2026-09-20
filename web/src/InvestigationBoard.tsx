@@ -9,6 +9,7 @@ import {
   X,
   Columns2,
   ListFilter,
+  Copy,
 } from 'lucide-react';
 import { download, type Attachment, type Incident } from './api';
 import { Chart } from './charts';
@@ -40,6 +41,7 @@ import { SourcePreview } from './ReviewView';
 import {
   makeInformNotes,
   selectInformNotes,
+  formatInformTimestamp,
   documentUrl,
   wipLayerOption,
   semRecord,
@@ -108,6 +110,7 @@ export default function InvestigationBoard({
   const events = changeTiming(data, signal, selection);
   const windowSummary = summarizeSignalWindow(data, selection);
   const [productionNotice, setProductionNotice] = useState('');
+  const [copyStatus, setCopyStatus] = useState('');
   const [preview, setPreview] = useState<Attachment | null>(null);
   const previewDialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -129,7 +132,7 @@ export default function InvestigationBoard({
   const informNotes = selectInformNotes(
     makeInformNotes(data),
     signal.step,
-    selection.equipment,
+    signal.equipment,
   );
   const scope = JSON.stringify([
     selection.signalId,
@@ -227,7 +230,6 @@ export default function InvestigationBoard({
   );
   const selectedMaps = maps.filter((row) => checked.has(pairKey(row)));
   const dieEvidence = useMemo(() => inspectWaferDie(maps, die), [maps, die]);
-  const dieByWafer = new Map(dieEvidence.map((row) => [pairKey(row), row]));
   const flaggedDieWafers = dieEvidence.filter((row) => row.flag === true);
   const composite = useMemo(
     () => compositeWaferMaps(selectedMaps),
@@ -427,6 +429,16 @@ export default function InvestigationBoard({
   };
   const number = (value: number | null) =>
     value === null ? '-' : value.toFixed(2);
+  const copyWaferTuples = async (rows: typeof candidates, label: string) => {
+    try {
+      await navigator.clipboard.writeText(
+        rows.map((row) => `${row.lotId}\t${row.waferId}`).join('\n'),
+      );
+      setCopyStatus(`${label} 복사 완료`);
+    } catch {
+      setCopyStatus(`${label} 복사 실패`);
+    }
+  };
   return (
     <div className="investigation-board">
       <div className="board-scope">
@@ -461,7 +473,7 @@ export default function InvestigationBoard({
         <span className="board-scope-window">
           {time(from)} ~ {time(to)} UTC
         </span>
-        <span className="board-demo">SYNTHETIC · 실측 / LLM 미연결</span>
+        <span className="board-demo">SYNTHETIC · 실측 미연결</span>
       </div>
       <div className="board-comparison-scope">
         <strong>
@@ -793,10 +805,28 @@ export default function InvestigationBoard({
           aria-label="선택 구간 Wafer 목록"
         >
           <header>
-            <h2>Wafer</h2>
+            <h2>Lot / Wafer</h2>
             <output aria-live="polite">
               {checked.size} / {candidates.length}
             </output>
+            <button
+              className="icon-button"
+              title="체크된 Lot/Wafer 전체 복사"
+              aria-label="체크된 Lot/Wafer 전체 복사"
+              disabled={!checked.size}
+              onClick={() =>
+                void copyWaferTuples(
+                  candidates.filter((row) => checked.has(pairKey(row))),
+                  '체크된 Lot/Wafer',
+                )
+              }
+            >
+              {copyStatus === '체크된 Lot/Wafer 복사 완료' ? (
+                <Check size={13} />
+              ) : (
+                <Copy size={13} />
+              )}
+            </button>
             <input
               type="checkbox"
               aria-label="Wafer 전체 선택"
@@ -855,75 +885,100 @@ export default function InvestigationBoard({
             </div>
           )}
           <div className="board-wafer-list">
-            {candidates.map((row) => (
-              <div
-                key={pairKey(row)}
-                className={
-                  focused && pairKey(focused) === pairKey(row) ? 'selected' : ''
-                }
-              >
-                <input
-                  type="checkbox"
-                  aria-label={`${row.lotId} / ${row.waferId} 합성 포함`}
-                  checked={checked.has(pairKey(row))}
-                  onChange={(event) =>
-                    setChecked((previous) => {
-                      const next = new Set(previous);
-                      if (event.target.checked) next.add(pairKey(row));
-                      else next.delete(pairKey(row));
-                      return next;
-                    })
-                  }
-                />
-                <button
-                  title={`${row.lotId} / ${row.waferId} 개별 Map`}
-                  aria-pressed={!!focused && pairKey(focused) === pairKey(row)}
-                  onClick={() => onFocus(row)}
-                >
-                  <span>
-                    {row.lotId} <strong>{row.waferId}</strong>
-                  </span>
-                  <small>
-                    {row.equipment} · {row.timestamp.slice(11, 16)}
-                  </small>
-                  {region && (
-                    <small>
-                      영역 Flag {regionByWafer.get(pairKey(row))?.flags ?? 0}/
-                      {regionByWafer.get(pairKey(row))?.observed ?? 0}
-                    </small>
-                  )}
-                  {die && (
-                    <small
-                      className={
-                        dieByWafer.get(pairKey(row))?.flag
-                          ? 'board-die-flag'
-                          : 'board-die-clear'
-                      }
-                    >
-                      {dieByWafer.get(pairKey(row))?.bin == null
-                        ? '미관측'
-                        : `Bin ${dieByWafer.get(pairKey(row))!.bin} · ${dieByWafer.get(pairKey(row))!.flag ? 'Flag' : 'Flag 없음'}`}
-                    </small>
-                  )}
-                </button>
-                <button
-                  className="icon-button board-peer-pick"
-                  title={`${row.lotId}/${row.waferId} 비교 B 지정`}
-                  disabled={!!focused && pairKey(focused) === pairKey(row)}
-                  aria-pressed={!!peer && pairKey(peer) === pairKey(row)}
-                  onClick={() =>
-                    setPeerState({
-                      scope,
-                      equipment: row.equipment,
-                      key: pairKey(row),
-                    })
-                  }
-                >
-                  <Columns2 size={13} />
-                </button>
-              </div>
-            ))}
+            <table>
+              <thead>
+                <tr>
+                  <th aria-label="선택" />
+                  <th>Lot</th>
+                  <th>Wafer</th>
+                  <th aria-label="복사 및 비교" />
+                </tr>
+              </thead>
+              <tbody>
+                {candidates.map((row) => (
+                  <tr
+                    key={pairKey(row)}
+                    className={
+                      focused && pairKey(focused) === pairKey(row)
+                        ? 'selected'
+                        : ''
+                    }
+                  >
+                    <td>
+                      <input
+                        type="checkbox"
+                        aria-label={`${row.lotId} / ${row.waferId} 합성 포함`}
+                        checked={checked.has(pairKey(row))}
+                        onChange={(event) =>
+                          setChecked((previous) => {
+                            const next = new Set(previous);
+                            if (event.target.checked) next.add(pairKey(row));
+                            else next.delete(pairKey(row));
+                            return next;
+                          })
+                        }
+                      />
+                    </td>
+                    <td>{row.lotId}</td>
+                    <td>
+                      <button
+                        className="board-wafer-focus"
+                        title={`${row.lotId} / ${row.waferId} 개별 Map`}
+                        aria-pressed={
+                          !!focused && pairKey(focused) === pairKey(row)
+                        }
+                        onClick={() => onFocus(row)}
+                      >
+                        {row.waferId}
+                      </button>
+                    </td>
+                    <td className="board-wafer-actions">
+                      <button
+                        className="icon-button"
+                        title={`${row.lotId}/${row.waferId} Lot/Wafer 복사`}
+                        aria-label={`${row.lotId}/${row.waferId} Lot/Wafer 복사`}
+                        onClick={() =>
+                          void copyWaferTuples(
+                            [row],
+                            `${row.lotId}/${row.waferId}`,
+                          )
+                        }
+                      >
+                        {copyStatus ===
+                        `${row.lotId}/${row.waferId} 복사 완료` ? (
+                          <Check size={13} />
+                        ) : (
+                          <Copy size={13} />
+                        )}
+                      </button>
+                      <button
+                        className="icon-button board-peer-pick"
+                        title={`${row.lotId}/${row.waferId} · ${row.equipment} · ${row.timestamp} · 비교 B 지정`}
+                        disabled={
+                          !!focused && pairKey(focused) === pairKey(row)
+                        }
+                        aria-pressed={!!peer && pairKey(peer) === pairKey(row)}
+                        onClick={() =>
+                          setPeerState({
+                            scope,
+                            equipment: row.equipment,
+                            key: pairKey(row),
+                          })
+                        }
+                      >
+                        <Columns2 size={13} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
+          {copyStatus && (
+            <span className="board-copy-status" role="status">
+              {copyStatus}
+            </span>
+          )}
           {!candidates.length && (
             <p className="board-empty">해당 구간 Wafer 없음</p>
           )}
@@ -1105,7 +1160,7 @@ export default function InvestigationBoard({
             focused={focused}
             compare={peer}
             selected={candidates.filter((row) => checked.has(pairKey(row)))}
-            onFocus={onFocus}
+            options={[...candidates, ...peerCandidates]}
           />
         </section>
         <section
@@ -1199,19 +1254,24 @@ export default function InvestigationBoard({
             <span>합성</span>
           </header>
           <div className="board-inform-state">
-            {signal.step} / {selection.equipment || '전체 설비'}
+            {signal.step} / {signal.equipment}
           </div>
           <div className="board-doc-list">
-            <table>
+            <table className="board-inform-table">
               <thead>
                 <tr>
-                  <th>문서</th>
-                  <th>날짜</th>
+                  <th>날짜/시간 (UTC)</th>
+                  <th>EQP</th>
+                  <th>Step</th>
+                  <th>제목</th>
                 </tr>
               </thead>
               <tbody>
                 {informNotes.map((note) => (
                   <tr key={note.id}>
+                    <td>{formatInformTimestamp(note.date)}</td>
+                    <td>{note.equipment}</td>
+                    <td>{note.step}</td>
                     <td>
                       <a
                         href={documentUrl(incident, 'inform', note.id)}
@@ -1223,7 +1283,6 @@ export default function InvestigationBoard({
                         <ArrowUpRight size={11} />
                       </a>
                     </td>
-                    <td>{note.date.slice(5, 10)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1271,6 +1330,7 @@ export default function InvestigationBoard({
         >
           <BoardAnalysis
             roomId={roomId}
+            autoKey={`${incident}:${signal.id}`}
             onChange={onConversationChange}
             context={analysisContext}
             attachments={attachments}

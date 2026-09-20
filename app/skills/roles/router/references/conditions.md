@@ -18,3 +18,11 @@ request_scope=independent인 용어 설명/제공 자료 요약은 stage=indepen
 | 도시/기간/사고 변경 | 이전 scope와 연결 근거를 폐기하고 다시 조회한다. |
 | 등록 Lot 목록만 요청 | 원인 조사나 문서 검색을 추가하지 않는다. |
 | 회의록 분석 필요 | meetings topic과 search_meeting_minutes. as_of/IDs는 코드가 바인딩. |
+
+## 정확한 사고번호 조회 형식
+
+2026-09-21 로컬 합성 모델 실행의 FILTER_PLAN_MISMATCH와 NONEMPTY_FILTER_OBJECT_REQUIRED를 기준으로 추가한 구조 예시다. 아래 번호는 placeholder이며 질문 또는 검증된 선택 범위의 값으로 바꾼다. 정답이나 조회 결과가 아니다. 필터 조건이 없으면 최상위 filters={}이고 arguments.filters는 생략한다. 빈 arguments.filters={}는 허용되지 않는다. fields는 출력 컬럼이다.
+
+```json
+{"decision":"execute","stage":"incident","search_mode":"sql_exact","intents":["search"],"filters":{},"plan":[{"tool":"find_incidents","arguments":{"incident_number":"<selected incident number>","fields":["department"]},"depends_on":[],"reason":"선택 사고의 부서 조회"}],"needs_skills":[],"clarification":null,"limitations":[]}
+```

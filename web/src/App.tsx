@@ -1259,7 +1259,9 @@ export default function App() {
                   <h2>{room?.title || 'Analysis chat'}</h2>
                   <span>
                     <i />
-                    Demo 조회 · LLM 미연결
+                    {bootstrap?.llm_configured
+                      ? `LLM · ${bootstrap.models?.router || '설정됨'}`
+                      : 'Demo 조회 · LLM 미연결'}
                   </span>
                 </div>
                 <button
@@ -1512,7 +1514,9 @@ export default function App() {
                 </form>
                 <div className="chat-disclaimer">
                   <ShieldCheck size={11} />
-                  로컬 대화 저장 · 실제 LLM 답변 아님
+                  {bootstrap?.llm_configured
+                    ? '로컬 대화 저장 · 합성 DB · LLM 답변'
+                    : '로컬 대화 저장 · 실제 LLM 답변 아님'}
                 </div>
               </div>
             </main>
@@ -1689,12 +1693,17 @@ export default function App() {
         <Modal title="Agent execution" close={() => setModal(null)}>
           <div className="execution-list">
             {[
-              ['Router', '모델 미연결'],
+              ['Router', bootstrap?.models?.router || '모델 미연결'],
               ['사고 DB', '합성 DB 조회 가능'],
               ['후속 Tool', 'Lot · Wafer · 회의록'],
-              ['Judge', '모델 미연결'],
-              ['Answer', '모델 미연결'],
-              ['최종 조회 상태', 'Demo 조회 결과 · 실제 Agent 판정 아님'],
+              ['Judge', bootstrap?.models?.judge || '모델 미연결'],
+              ['Answer', bootstrap?.models?.answer || '모델 미연결'],
+              [
+                '최종 조회 상태',
+                bootstrap?.llm_configured
+                  ? '각 답변의 조회 근거와 제한 사항 확인'
+                  : 'Demo 조회 결과 · 실제 Agent 판정 아님',
+              ],
             ].map(([label, status], i) => (
               <div key={label}>
                 <span>{String(i + 1).padStart(2, '0')}</span>
@@ -1706,8 +1715,9 @@ export default function App() {
             ))}
           </div>
           <p className="modal-note">
-            현재 채팅은 데이터 조회 데모입니다. LLM 실행이나 Judge 통과를
-            모사하지 않습니다.
+            {bootstrap?.llm_configured
+              ? '합성 DB를 조회하는 LLM 분석입니다. 실제 생산계 및 이미지 모델은 미연결입니다.'
+              : '현재 채팅은 데이터 조회 데모입니다. LLM 실행이나 Judge 통과를 모사하지 않습니다.'}
           </p>
         </Modal>
       )}

@@ -37,7 +37,8 @@ TABLE_FIELDS = {
     'trend_metadata': 'trend_id incident_ref metric unit storage_ref timezone'.split(),
 }
 MODEL_SPEC = dict(enabled=bool, mode=str, base_url=str, api_key_env=str, served_model=str,
-                  local_dir=str, checkpoint_file=str, tokenizer_dir=str, timeout_seconds=int)
+                  local_dir=str, checkpoint_file=str, tokenizer_dir=str, timeout_seconds=int,
+                  structured_outputs=bool)
 RAG_SPEC = dict(enabled=bool, endpoint=str, api_key_env=str, index_name=str,
                 existing_chunks=bool, methods=list, fusion=str, reranker=str,
                 top_k=int, timeout_seconds=int)

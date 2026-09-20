@@ -16,7 +16,8 @@ from runtime_factory import open_incident_tools
 from skill_loader import compile_prompt, read_role_reference
 
 
-def run(settings, question, actor, request_scope='incident', topics=None, selected=None, emit=None, as_of=None):
+def run(settings, question, actor, request_scope='incident', topics=None, selected=None, emit=None, as_of=None,
+        context_data=None):
     if not isinstance(question, str) or not question.strip() or len(question) > 12000:
         raise ValueError('QUESTION_REQUIRED_OR_TOO_LONG')
     if not actor or not actor.strip() or request_scope not in ('auto', 'incident', 'independent'):
@@ -82,6 +83,8 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                                        for name, spec in catalog.items()},
                    'mapped_fields': context()['mapped_fields'],
                    'loaded_topics': prompt['topics']}
+        if context_data is not None:
+            payload['context_data_unverified'] = context_data
         calls += 1
         event('llm_start', role=role, step=calls, release=prompt['release'],
               model=settings.model_profile(role)['deployment']['served_model'],
@@ -173,8 +176,9 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                 return item
 
             while calls < limits['max_agent_steps']:
-                output, call_id = ask('router')
+                call_id = None
                 try:
+                    output, call_id = ask('router')
                     validate_output('router', output, context())
                     if state['code_gate'] == 'PASS':
                         state['last_error'] = None
@@ -253,7 +257,9 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                         return finish(answer['status'], answer=answer['answer'], claims=answer['claims'],
                                       limitations=answer['limitations'], judge=judge)
                     errors = 0
-                except (ValueError, TypeError, KeyError, ToolError, ConfigError, sqlite3.Error) as exc:
+                except (ValueError, TypeError, KeyError, ToolError, ConfigError, sqlite3.Error, LLMError) as exc:
+                    if isinstance(exc, LLMError) and str(exc) != 'ROUTER_FUNCTION_CALL_REQUIRED':
+                        raise
                     errors += 1
                     error = type(exc).__name__ if isinstance(exc, (sqlite3.Error, TypeError, KeyError)) else str(exc)
                     state['last_error'] = error
@@ -264,7 +270,7 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                         invalidate_scope(keep_pending=True)
                     event('validation_or_tool_error', error=error)
                     # Only a pending Router function call needs a tool response.
-                    if history and history[-1]['role'] == 'assistant':
+                    if call_id is not None and history and history[-1]['role'] == 'assistant':
                         observe(call_id, {'error': error})
                     if errors > limits['max_retries'] or state['judge'] is not None and state['judge']['return_to'] == 'answer':
                         return finish('unavailable', limitations=[error])

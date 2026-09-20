@@ -34,7 +34,7 @@ test('creates deterministic, incident-scoped synthetic engineering data', () => 
 
   assert.deepEqual(first, second);
   assert.equal(first.trend.length, 24);
-  assert.equal(first.signals.length, 3);
+  assert.equal(first.signals.length, 7);
   assert.deepEqual(first.signals[0], {
     id: 'synthetic-signal-heater-drift',
     title: '공정 온도 상승',
@@ -104,7 +104,7 @@ test('keeps synthetic signal chart metadata explicit and separate from highlight
   const signals = makeEngineeringData(workspace).signals;
 
   assert.deepEqual(
-    signals.map(({ device, step, item, legendAxis }) => ({
+    signals.slice(0, 3).map(({ device, step, item, legendAxis }) => ({
       device,
       step,
       item,
@@ -132,8 +132,29 @@ test('keeps synthetic signal chart metadata explicit and separate from highlight
     ],
   );
   assert.deepEqual(
-    signals.map(({ equipment }) => equipment),
+    signals.slice(0, 3).map(({ equipment }) => equipment),
     ['SYN-EQP-01', 'SYN-EQP-02', 'SYN-EQP-02'],
+  );
+  assert.deepEqual(
+    signals.slice(3).map(({ id, metric, pattern }) => ({ id, metric, pattern })),
+    [
+      {
+        id: 'synthetic-signal-level-shift',
+        metric: 'temperature',
+        pattern: 'abrupt_level_shift',
+      },
+      { id: 'synthetic-signal-spike', metric: 'queue', pattern: 'spike' },
+      {
+        id: 'synthetic-signal-variance-burst',
+        metric: 'availability',
+        pattern: 'variance_burst',
+      },
+      {
+        id: 'synthetic-signal-periodic',
+        metric: 'temperature',
+        pattern: 'periodic_pattern',
+      },
+    ],
   );
 });
 

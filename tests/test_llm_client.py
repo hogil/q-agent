@@ -119,9 +119,25 @@ class RoleClientTests(unittest.TestCase):
 
         options = self.create.call_args.kwargs
         self.assertEqual(options['tools'][0]['function']['name'], 'submit_plan')
+        self.assertEqual(options['tools'][0]['function']['description'],
+                         options['tools'][0]['function']['parameters']['description'])
         self.assertEqual(options['tool_choice']['function']['name'], 'submit_plan')
         self.assertFalse(options['parallel_tool_calls'])
         self.assertNotIn('response_format', options)
+
+    def test_configured_structured_outputs_preserve_schema_and_current_evidence_ids(self):
+        self.settings.data['models']['text']['structured_outputs'] = True
+        self.create.return_value = completion(content='{}', tool_call=False)
+        client = self.make_client()
+        client.call('answer', 'answer', {'evidence_ids': ['e7']}, [])
+        output = self.create.call_args.kwargs['response_format']
+        self.assertEqual(output['type'], 'json_schema')
+        self.assertEqual(output['json_schema']['schema']['properties']['claims']['items']
+                         ['properties']['evidence_ids']['items']['enum'], ['e7'])
+        client.call('judge', 'judge', {'evidence_ids': ['e2'], 'requirements': ['current question']}, [])
+        rows = self.create.call_args.kwargs['response_format']['json_schema']['schema']['properties']['coverage']['items']['properties']
+        self.assertEqual(rows['requirement']['enum'], ['current question'])
+        self.assertEqual(rows['evidence_ids']['items']['enum'], ['e2'])
 
     def test_disabled_or_non_api_model_fails_at_initialization(self):
         for enabled, mode in ((False, 'api'), (True, 'local')):

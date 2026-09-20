@@ -33,7 +33,7 @@ echarts.use([
 type ChartProps = {
   option: echarts.EChartsCoreOption;
   onSelect?: (value: any) => void;
-  onArea?: (region: DieRegion | null) => void;
+  onArea?: (region: DieRegion | null, additive?: boolean) => void;
   areaSelection?: DieRegion | null;
   label: string;
   className?: string;
@@ -48,6 +48,7 @@ export function Chart({
 }: ChartProps) {
   const element = useRef<HTMLDivElement>(null);
   const instance = useRef<echarts.EChartsType | null>(null);
+  const brushModifier = useRef(false);
   const handler = useRef(onSelect);
   handler.current = onSelect;
   const areaHandler = useRef(onArea);
@@ -59,10 +60,26 @@ export function Chart({
     });
     instance.current = chart;
     chart.on('click', (params) => handler.current?.(params));
+    const zr = chart.getZr();
+    const rememberBrushModifier = (event: any) => {
+      const nativeEvent = event?.event ?? event;
+      brushModifier.current = Boolean(
+        nativeEvent?.ctrlKey || nativeEvent?.metaKey,
+      );
+    };
+    zr.on('mousedown', rememberBrushModifier);
     chart.on('brushEnd', (params: any) => {
       const range = params.areas?.[0]?.coordRange;
+      const nativeEvent =
+        params.event?.event ??
+        params.event ??
+        params.batch?.[0]?.event ??
+        params.batch?.[0];
+      const additive = Boolean(
+        nativeEvent?.ctrlKey || nativeEvent?.metaKey || brushModifier.current,
+      );
       if (areaHandler.current) {
-        if (!params.areas?.length) areaHandler.current(null);
+        if (!params.areas?.length) areaHandler.current(null, additive);
         else if (
           Array.isArray(range) &&
           range.length === 2 &&
@@ -73,13 +90,16 @@ export function Chart({
               axis.every(Number.isFinite),
           )
         )
-          areaHandler.current(range as DieRegion);
+          areaHandler.current(range as DieRegion, additive);
       }
+      brushModifier.current = false;
+      chart.dispatchAction({ type: 'brush', areas: [] });
     });
     const observer = new ResizeObserver(() => chart.resize());
     observer.observe(element.current);
     return () => {
       observer.disconnect();
+      zr.off('mousedown', rememberBrushModifier);
       chart.dispose();
       instance.current = null;
     };

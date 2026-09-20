@@ -1,0 +1,312 @@
+.sem-viewer {
+  --sem-border: #d8e2dc;
+  --sem-muted: #718078;
+  --sem-ink: #29483c;
+  --sem-a: #356f9c;
+  --sem-b: #9b654b;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  color: var(--sem-ink);
+  font-size: 10px;
+}
+
+.sem-viewer-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 25px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--sem-border);
+}
+
+.sem-viewer-header > div {
+  min-width: 0;
+}
+
+.sem-viewer-header h2 {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.sem-viewer-header span {
+  display: block;
+  overflow: hidden;
+  color: var(--sem-muted);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sem-viewer-header .icon-button {
+  margin-left: auto;
+}
+
+.sem-compare-picks {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 16px minmax(0, 1fr) 23px;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 0 4px;
+}
+
+.sem-select-field {
+  display: grid;
+  grid-template-columns: 17px minmax(0, 1fr);
+  grid-template-rows: 22px 12px;
+  align-items: center;
+  gap: 1px 4px;
+  min-width: 0;
+}
+
+.sem-select-field select {
+  width: 100%;
+  min-width: 0;
+  height: 22px;
+  border: 1px solid var(--sem-border);
+  border-radius: 3px;
+  background: #fbfcfb;
+  color: var(--sem-ink);
+  font: inherit;
+  font-size: 9px;
+  text-overflow: ellipsis;
+}
+
+.sem-select-field small {
+  grid-column: 2;
+  overflow: hidden;
+  color: var(--sem-muted);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sem-owner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 2px;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.sem-owner-A {
+  background: var(--sem-a);
+}
+
+.sem-owner-B {
+  background: var(--sem-b);
+}
+
+.sem-compare-arrow {
+  color: var(--sem-muted);
+}
+
+.sem-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 24px;
+  padding: 3px 0;
+  border-top: 1px solid #edf1ee;
+  border-bottom: 1px solid #edf1ee;
+}
+
+.sem-toolbar output {
+  min-width: 34px;
+  color: var(--sem-ink);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.sem-sync-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 4px;
+  color: var(--sem-muted);
+  white-space: nowrap;
+}
+
+.sem-sync-toggle input {
+  width: 12px;
+  height: 12px;
+  margin: 0;
+  accent-color: #3e8172;
+}
+
+.sem-active-note {
+  margin-left: auto;
+  overflow: hidden;
+  color: var(--sem-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sem-panes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  flex: 1;
+  min-height: 110px;
+  padding-top: 5px;
+}
+
+.sem-pane {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  margin: 0;
+}
+
+.sem-pane figcaption {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  height: 19px;
+  padding-bottom: 3px;
+}
+
+.sem-pane figcaption strong {
+  overflow: hidden;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sem-pane figcaption .sem-owner {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  font-size: 9px;
+}
+
+.sem-pane-status {
+  margin-left: auto;
+  color: var(--sem-muted);
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.sem-canvas {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid var(--sem-border);
+  background: #151b19;
+  touch-action: none;
+}
+
+.sem-canvas img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  will-change: transform;
+}
+
+.sem-missing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  color: #c7d1cc;
+  text-align: center;
+}
+
+.sem-missing small {
+  color: #9fada5;
+  font-size: 8px;
+}
+
+.sem-pane-detail {
+  overflow: hidden;
+  min-height: 12px;
+  padding-top: 3px;
+  color: var(--sem-muted);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sem-viewer-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 15px;
+  padding-top: 3px;
+  color: var(--sem-muted);
+  font-size: 8px;
+}
+
+.sem-viewer-footer span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sem-dialog {
+  width: min(1500px, 96vw);
+  height: min(900px, 94dvh);
+  max-width: 96vw;
+  max-height: 94dvh;
+  padding: 14px;
+  border: 1px solid #becdc3;
+  border-radius: 5px;
+  color: var(--sem-ink);
+}
+
+.sem-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.sem-dialog::backdrop {
+  background: #182820aa;
+}
+
+.sem-dialog .sem-viewer {
+  min-height: 0;
+}
+
+.sem-dialog .sem-panes {
+  min-height: 0;
+}
+
+@media (max-width: 700px) {
+  .sem-compare-picks {
+    grid-template-columns: minmax(0, 1fr) 16px minmax(0, 1fr);
+  }
+
+  .sem-compare-picks > .icon-button {
+    display: none;
+  }
+
+  .sem-panes {
+    gap: 3px;
+  }
+
+  .sem-sync-toggle span,
+  .sem-active-note {
+    display: none;
+  }
+}

@@ -11,8 +11,18 @@ export type InformNote = {
   body: string;
 };
 
+export type SemAsset = {
+  id: string;
+  lotId: string;
+  waferId: string;
+  src: string;
+  provenance: string;
+  description: string;
+};
+
 // UI fixtures only; never treated as retrieved company documents.
 export function makeInformNotes(data: EngineeringData): InformNote[] {
+  if (data.informNotes) return data.informNotes;
   const scopes = [
     ...new Map(
       data.signals.map((s) => [`${s.step}:${s.equipment}`, s]),
@@ -45,10 +55,16 @@ export function selectInformNotes(
   step: string,
   equipment: string,
 ) {
-  return notes.filter(
-    (note) =>
-      note.step === step && (!equipment || note.equipment === equipment),
-  );
+  return notes
+    .filter((note) => note.step === step && note.equipment === equipment)
+    .sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
+}
+
+export function formatInformTimestamp(timestamp: string) {
+  const parsed = new Date(timestamp);
+  return Number.isNaN(parsed.getTime())
+    ? `${timestamp} UTC`
+    : `${parsed.toISOString().slice(0, 16).replace('T', ' ')} UTC`;
 }
 
 export function documentUrl(
@@ -64,6 +80,9 @@ export function semRecord(
   lotId: string,
   waferId: string,
 ) {
+  if (workspace.raw) return workspace.raw.sem_assets.find(
+    (asset) => asset.lotId === lotId && asset.waferId === waferId,
+  ) || null;
   const owners = [...workspace.wafers].sort(
     (a, b) =>
       a.lot_id.localeCompare(b.lot_id) || a.wafer_id.localeCompare(b.wafer_id),

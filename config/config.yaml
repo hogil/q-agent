@@ -140,6 +140,7 @@ storage:
 # 모델 폴더/파일명과 API 모델명. enabled만 바꿔도 서버가 시작되는 것은 아닙니다.
 models:
   text:
+    structured_outputs: false
     enabled: false
     mode: api
     base_url: http://127.0.0.1:8000/v1
@@ -150,6 +151,7 @@ models:
     tokenizer_dir: ${paths.model_root}/text-model
     timeout_seconds: 120
   image:
+    structured_outputs: false
     enabled: false
     mode: local
     base_url: ''
@@ -160,6 +162,7 @@ models:
     tokenizer_dir: ''
     timeout_seconds: 60
   trend:
+    structured_outputs: false
     enabled: false
     mode: local
     base_url: ''

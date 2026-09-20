@@ -56,11 +56,20 @@ export type Workspace = {
   meetings: Meeting[];
   synthetic: true;
   as_of: string;
+  raw?: {
+    engineering: EngineeringData;
+    trend_fleets: Record<string, TrendFleet[]>;
+    comparison_traces: Record<string, Record<string, EquipmentTracePoint[]>>;
+    inform_notes: InformNote[];
+    sem_assets: SemAsset[];
+  };
 };
 export type Bootstrap = {
   synthetic: true;
   mode: string;
   llm_connected: boolean;
+  llm_configured?: boolean;
+  models?: Record<string, string>;
   incidents: Incident[];
   rooms: RoomSummary[];
   release: string;
@@ -96,3 +105,6 @@ export function download(
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+import type { EngineeringData, TrendFleet } from './engineeringData';
+import type { InformNote, SemAsset } from './investigationData';
+import type { EquipmentTracePoint } from './equipmentComparison';

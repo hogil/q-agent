@@ -101,6 +101,26 @@ class AgentContracts(unittest.TestCase):
         self.assertIn('syn-chunk-002', [x['chunk_id'] for x in result['evidence'][-1]['result']['items']])
         self.assertEqual(result['request_scope'], 'incident')
 
+    def test_ui_context_stays_separate_from_requirements_and_evidence(self):
+        context = {'previous_messages_unverified': [{'role': 'assistant', 'content': 'unverified'}],
+                   'selected_incident': 'SYN-2026-01', 'unavailable_sources': ['sem']}
+        result, client = self.run_script([self.lookup(), *self.finish_steps()], context_data=context)
+        self.assertEqual(result['status'], 'answered', result)
+        for _, _, payload in client.calls:
+            self.assertEqual(payload['context_data_unverified'], context)
+            self.assertEqual(payload['requirements'], ['synthetic contract question'])
+        self.assertNotIn('unverified', json.dumps(result['evidence']))
+
+    def test_missing_router_call_retries_without_discarding_checked_evidence(self):
+        def malformed(_):
+            raise agent.LLMError('ROUTER_FUNCTION_CALL_REQUIRED')
+        result, client = self.run_script([self.lookup(), ('router', malformed), *self.finish_steps()])
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertEqual(result['tool_calls'], 1)
+        self.assertEqual(result['llm_calls'], 5)
+        self.assertEqual(client.calls[2][2]['last_error'], 'ROUTER_FUNCTION_CALL_REQUIRED')
+        self.assertEqual(client.calls[2][2]['evidence_ids'], ['e1'])
+
     def test_independent_never_opens_incident_db(self):
         steps = [('router', plan('route', 'independent')),
                  ('router', plan(stage='independent', tool='search_meeting_minutes', arguments={'query': '교정'})),

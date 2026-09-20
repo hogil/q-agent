@@ -1,7 +1,14 @@
 import { median, quantileSorted } from 'simple-statistics';
-import type { EngineeringData, Signal } from './engineeringData';
-import type { InvestigationSelection } from './engineeringAnalysis';
-import { changeTiming } from './engineeringAnalysis.ts';
+import type {
+  AnomalyPattern,
+  EngineeringData,
+  Signal,
+} from './engineeringData';
+import {
+  changeTiming,
+  pointInSelection,
+  type InvestigationSelection,
+} from './engineeringAnalysis.ts';
 import { makeEquipmentTrace } from './equipmentComparison.ts';
 
 const HOUR = 3600000;
@@ -28,7 +35,46 @@ export type TrendBoxSummary = TrendLegendGroup & {
   outliers: number[];
 };
 
+export function anomalyPattern(signal: Signal): AnomalyPattern {
+  return signal.pattern ?? 'drift';
+}
+
+function targetPatternValue(
+  data: EngineeringData,
+  signal: Signal,
+  index: number,
+  sample: number,
+  baseline: number,
+  spread: number,
+) {
+  const pattern = anomalyPattern(signal);
+  const phase = index + sample * 0.37 + 1;
+  const noise = Math.sin(phase * 13.7 + sample * 7.3) * spread;
+  const postOnset = index >= signal.onsetIndex;
+  if (pattern === 'drift') {
+    return data.trend[index][signal.metric] + noise * 0.8;
+  }
+  if (pattern === 'abrupt_level_shift') {
+    return baseline + (postOnset ? spread * 7.5 : 0) + noise * 0.45;
+  }
+  if (pattern === 'spike') {
+    const spike = postOnset && (index - signal.onsetIndex) % 4 === 1;
+    return baseline + noise * 0.8 + (spike ? spread * (sample === 2 ? 9 : 6) : 0);
+  }
+  if (pattern === 'variance_burst') {
+    return baseline + noise * (postOnset ? 4.3 : 0.8);
+  }
+  return (
+    baseline +
+    (postOnset
+      ? Math.sin((index - signal.onsetIndex) * Math.PI * 0.5) * spread * 4.3
+      : 0) +
+    noise * 0.8
+  );
+}
+
 export function makeTrendFleet(data: EngineeringData, signal: Signal) {
+  if (data.trendFleets) return data.trendFleets[signal.id] || [];
   const before = data.trend.slice(0, Math.max(1, signal.onsetIndex));
   const baseline = median(before.map((row) => row[signal.metric]));
   const spread = signal.metric === 'temperature' ? 0.22 : 0.16;
@@ -42,15 +88,24 @@ export function makeTrendFleet(data: EngineeringData, signal: Signal) {
     points: data.trend.flatMap((row, index) =>
       Array.from({ length: 6 }, (_, sample) => {
         const offset = (sample - 2.5) / 8;
-        const noise = Math.sin(
-          (index + 1) * 13.7 + sample * 7.3 + memberIndex * 2.1,
-        );
-        return [
-          Date.parse(row.timestamp) + offset * HOUR,
-          memberIndex === 0
-            ? row[signal.metric] + (sample === 2 ? 0 : noise * spread * 0.8)
-            : baseline +
-              noise * spread +
+          const noise = Math.sin(
+            (index + 1) * 13.7 + sample * 7.3 + memberIndex * 2.1,
+          );
+          return [
+            Date.parse(row.timestamp) + offset * HOUR,
+            memberIndex === 0
+              ? signal.pattern
+                ? targetPatternValue(
+                    data,
+                    signal,
+                    index,
+                    sample,
+                    baseline,
+                    spread,
+                  )
+                : row[signal.metric] + (sample === 2 ? 0 : noise * spread * 0.8)
+              : baseline +
+                noise * spread +
               Math.cos(index * 1.3 + memberIndex) * spread * 0.5,
         ];
       }),
@@ -106,17 +161,14 @@ function selectionWindow(
 
 function pointsInWindow(
   points: number[][],
-  window: [number, number] | null,
-  valueRange?: [number, number],
+  data: EngineeringData,
+  selection: InvestigationSelection,
 ) {
-  if (!window) return [];
   return points.filter(
     ([timestamp, value]) =>
       Number.isFinite(timestamp) &&
       Number.isFinite(value) &&
-      timestamp >= window[0] &&
-      timestamp <= window[1] &&
-      (!valueRange || (value >= valueRange[0] && value <= valueRange[1])),
+      pointInSelection(timestamp, value, data, selection),
   );
 }
 
@@ -128,10 +180,6 @@ export function trendLegendGroups(
   const signal = selectedSignal(data, selection);
   const selectedWindow = selectionWindow(data, selection);
   if (!signal || !selectedWindow || !data.trend.length) return [];
-  const window: [number, number] =
-    selection.rangeSelected === false ? [-Infinity, Infinity] : selectedWindow;
-  const valueRange =
-    selection.rangeSelected === false ? undefined : selection.valueRange;
 
   const fleet = makeTrendFleet(data, signal);
   const target = fleet.find((row) => row.highlighted);
@@ -140,14 +188,14 @@ export function trendLegendGroups(
     {
       member: target.member,
       color: '#4878CF',
-      points: pointsInWindow(target.points, window, valueRange),
+      points: pointsInWindow(target.points, data, selection),
     },
     ...fleet
       .filter((row) => !row.highlighted)
       .map((row, index) => ({
         member: row.member,
         color: fleetColors[index],
-        points: pointsInWindow(row.points, window, valueRange),
+        points: pointsInWindow(row.points, data, selection),
       })),
   ];
 
@@ -159,8 +207,8 @@ export function trendLegendGroups(
         color: '#148574',
         points: pointsInWindow(
           peer.map((row) => [Date.parse(row.timestamp), row.value]),
-          window,
-          valueRange,
+          data,
+          selection,
         ),
       });
     }
@@ -211,15 +259,15 @@ function displayPoint(
   point: number[],
   member: string,
   display: TrendDisplayOptions | undefined,
-  window: [number, number] | null,
-  valueRange?: [number, number],
+  data: EngineeringData,
+  selection: InvestigationSelection,
 ) {
   if (!display) return point;
-  const hasFilter = display.members.length > 0 || window !== null;
+  const hasFilter =
+    display.members.length > 0 || selection.rangeSelected !== false;
   const selected =
     (display.members.length === 0 || display.members.includes(member)) &&
-    (window === null || (point[0] >= window[0] && point[0] <= window[1])) &&
-    (!valueRange || (point[1] >= valueRange[0] && point[1] <= valueRange[1]));
+    pointInSelection(point[0], point[1], data, selection);
   return {
     value: point,
     itemStyle: {
@@ -247,6 +295,26 @@ export function trendBoxPlotOption(
   const opacity = (member: string) =>
     display.dimOthers && selected.size > 0 && !selected.has(member) ? 0.12 : 1;
   const categories = summaries.map((group) => group.member);
+  const categoryLegend = summaries.map((group) => ({
+    name: group.member,
+    icon: 'roundRect',
+    itemStyle: {
+      color: group.color,
+      borderColor: group.color,
+      opacity: opacity(group.member),
+    },
+  }));
+  const categoryRich = Object.fromEntries(
+    summaries.map((group, index) => [
+      `swatch${index}`,
+      {
+        color: group.color,
+        fontSize: 10,
+        fontWeight: 'bold',
+        opacity: opacity(group.member),
+      },
+    ]),
+  );
   const boxData = summaries.map((group) => ({
     name: group.member,
     kind: 'box' as const,
@@ -287,7 +355,7 @@ export function trendBoxPlotOption(
       top: 2,
       bottom: 2,
       width: 100,
-      data: categories,
+      data: categoryLegend,
       selectedMode: false,
     },
     tooltip: {
@@ -324,7 +392,17 @@ export function trendBoxPlotOption(
     xAxis: {
       type: 'category',
       data: categories,
-      axisLabel: { fontSize: 9, interval: 0, hideOverlap: true, rotate: 25 },
+      axisLabel: {
+        fontSize: 9,
+        interval: 0,
+        hideOverlap: true,
+        rotate: 25,
+        rich: categoryRich,
+        formatter: (value: string) => {
+          const index = categories.indexOf(value);
+          return index < 0 ? value : `{swatch${index}|●} ${value}`;
+        },
+      },
       axisTick: { show: false },
     },
     yAxis: {
@@ -505,25 +583,7 @@ export function anomalyTrendOption(
         markArea: {
           silent: true,
           itemStyle: { color: 'rgba(54,127,153,.065)' },
-          data:
-            selection.rangeSelected === false
-              ? []
-              : [
-                  [
-                    {
-                      xAxis: Date.parse(data.trend[selection.start].timestamp),
-                      ...(selection.valueRange
-                        ? { yAxis: selection.valueRange[0] }
-                        : {}),
-                    },
-                    {
-                      xAxis: Date.parse(data.trend[selection.end].timestamp),
-                      ...(selection.valueRange
-                        ? { yAxis: selection.valueRange[1] }
-                        : {}),
-                    },
-                  ],
-                ],
+          data: [],
         },
         markLine: {
           silent: true,
@@ -580,10 +640,9 @@ export function anomalyTrendOption(
       selection.rangeSelected === false
         ? null
         : selectionWindow(data, selection);
-    const valueRange = window ? selection.valueRange : undefined;
     const pointData = (points: number[][], member: string) =>
       points.map((point) =>
-        displayPoint(point, member, display, window, valueRange),
+        displayPoint(point, member, display, data, selection),
       );
     const xAxis = { ...option.xAxis };
     const yAxis = { ...option.yAxis };
@@ -591,10 +650,13 @@ export function anomalyTrendOption(
       const padding = Math.max((window[1] - window[0]) * 0.05, HOUR * 0.5);
       xAxis.min = window[0] - padding;
       xAxis.max = window[1] + padding;
-      if (valueRange) {
-        const margin = Math.max((valueRange[1] - valueRange[0]) * 0.08, 0.01);
-        yAxis.min = valueRange[0] - margin;
-        yAxis.max = valueRange[1] + margin;
+      if (selection.valueRange) {
+        const margin = Math.max(
+          (selection.valueRange[1] - selection.valueRange[0]) * 0.08,
+          0.01,
+        );
+        yAxis.min = selection.valueRange[0] - margin;
+        yAxis.max = selection.valueRange[1] + margin;
       }
     }
     return {
