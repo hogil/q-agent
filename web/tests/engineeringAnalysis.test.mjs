@@ -9,6 +9,8 @@ import {
   parsePairKey,
   pairKey,
   selectFabRows,
+  summarizeSignalWindow,
+  changeTiming,
 } from '../src/engineeringAnalysis.ts';
 
 const data = {
@@ -23,6 +25,162 @@ const data = {
   ],
   trend: Array.from({ length: 24 }, () => ({})),
   fab: [{ recipe: 'SYN-RCP-A' }],
+};
+
+const signalWindowData = {
+  signals: [
+    {
+      id: 'temperature-signal',
+      metric: 'temperature',
+      equipment: 'EQP-A',
+      item: 'TEMP-A',
+      onsetIndex: 4,
+    },
+    {
+      id: 'queue-signal',
+      metric: 'queue',
+      equipment: 'EQP-A',
+      item: 'QUEUE-A',
+      onsetIndex: 4,
+    },
+  ],
+  trend: [
+    {
+      timestamp: '2026-01-01T00:00:00.000Z',
+      temperature: 10,
+      queue: 100,
+      availability: 90,
+    },
+    {
+      timestamp: '2026-01-01T01:00:00.000Z',
+      temperature: 11,
+      queue: 101,
+      availability: 91,
+    },
+    {
+      timestamp: '2026-01-01T02:00:00.000Z',
+      temperature: 12,
+      queue: 102,
+      availability: 92,
+    },
+    {
+      timestamp: '2026-01-01T03:00:00.000Z',
+      temperature: 13,
+      queue: 103,
+      availability: 93,
+    },
+    {
+      timestamp: '2026-01-01T04:00:00.000Z',
+      temperature: 14,
+      queue: 104,
+      availability: 94,
+    },
+    {
+      timestamp: '2026-01-01T05:00:00.000Z',
+      temperature: 15,
+      queue: 105,
+      availability: 95,
+    },
+    {
+      timestamp: '2026-01-01T06:00:00.000Z',
+      temperature: 16,
+      queue: 106,
+      availability: 96,
+    },
+    {
+      timestamp: 'not-a-timestamp',
+      temperature: 17,
+      queue: 107,
+      availability: 97,
+    },
+    {
+      timestamp: '2026-01-01T08:00:00.000Z',
+      temperature: Number.NaN,
+      queue: 108,
+      availability: 98,
+    },
+    {
+      timestamp: '2026-01-01T09:00:00.000Z',
+      temperature: 19,
+      queue: 109,
+      availability: 99,
+    },
+  ],
+  fab: [{ value: 9999 }],
+  yields: [],
+  wip: [],
+  downtime: [],
+  changes: [
+    {
+      id: 'change-b',
+      equipment: 'EQP-A',
+      recipe: 'RCP-A',
+      kind: 'recipe',
+      timestamp: '2026-01-01T05:00:00.000Z',
+      before: 'A',
+      after: 'B',
+      sourceRef: 'S2',
+    },
+    {
+      id: 'change-a',
+      equipment: 'EQP-A',
+      recipe: '',
+      kind: 'system',
+      timestamp: '2026-01-01T04:00:00.000Z',
+      before: 'A',
+      after: 'B',
+      sourceRef: 'S1',
+    },
+    {
+      id: 'other-equipment',
+      equipment: 'EQP-B',
+      recipe: 'RCP-A',
+      kind: 'recipe',
+      timestamp: '2026-01-01T05:30:00.000Z',
+      before: 'A',
+      after: 'B',
+      sourceRef: 'S3',
+    },
+    {
+      id: 'outside-before',
+      equipment: 'EQP-A',
+      recipe: 'RCP-A',
+      kind: 'recipe',
+      timestamp: '2025-12-31T23:00:00.000Z',
+      before: 'A',
+      after: 'B',
+      sourceRef: 'S4',
+    },
+    {
+      id: 'outside-after',
+      equipment: 'EQP-A',
+      recipe: 'RCP-A',
+      kind: 'recipe',
+      timestamp: '2026-01-01T10:00:00.000Z',
+      before: 'A',
+      after: 'B',
+      sourceRef: 'S5',
+    },
+    {
+      id: 'wrong-recipe',
+      equipment: 'EQP-A',
+      recipe: 'RCP-B',
+      kind: 'recipe',
+      timestamp: '2026-01-01T06:00:00.000Z',
+      before: 'A',
+      after: 'B',
+      sourceRef: 'S6',
+    },
+  ],
+};
+
+const windowSelection = {
+  signalId: 'temperature-signal',
+  start: 4,
+  end: 6,
+  equipment: 'COUNTERFACTUAL-EQP',
+  recipe: 'RCP-A',
+  maxLagDays: 14,
 };
 
 test('map cohort uses inclusive Fab scope without depending on EDS presence or lag', () => {
@@ -252,4 +410,139 @@ test('source references preserve a validated analysis snapshot without trusting 
     'unexpected:[]',
   ])
     assert.equal(parseEngineeringReference(invalid, data), null);
+});
+
+test('summarizes strict pre-onset baseline and inclusive selected boundaries', () => {
+  const result = summarizeSignalWindow(signalWindowData, windowSelection);
+  assert.deepEqual(result.baseline, {
+    n: 4,
+    median: 11.5,
+    min: 10,
+    max: 13,
+    from: signalWindowData.trend[0].timestamp,
+    to: signalWindowData.trend[3].timestamp,
+  });
+  assert.deepEqual(result.selected, {
+    n: 3,
+    median: 15,
+    min: 14,
+    max: 16,
+    from: signalWindowData.trend[4].timestamp,
+    to: signalWindowData.trend[6].timestamp,
+  });
+  assert.equal(result.deltaMedian, 3.5);
+  assert.equal(result.comparable, true);
+  assert.equal(result.reason, null);
+  assert.equal(result.onsetAt, signalWindowData.trend[4].timestamp);
+  assert.equal(result.metric, 'temperature');
+  assert.equal(result.equipment, 'EQP-A');
+  assert.equal(result.item, 'TEMP-A');
+});
+
+test('keeps valid counts while rejecting missing, NaN, and invalid timestamps', () => {
+  const result = summarizeSignalWindow(signalWindowData, {
+    ...windowSelection,
+    start: 5,
+    end: 9,
+  });
+  assert.equal(result.baseline.n, 4);
+  assert.equal(result.selected.n, 3);
+  assert.equal(result.selected.max, 19);
+  assert.equal(result.comparable, true);
+
+  const insufficient = summarizeSignalWindow(signalWindowData, {
+    ...windowSelection,
+    start: 2,
+    end: 4,
+  });
+  assert.equal(insufficient.baseline.n, 2);
+  assert.equal(insufficient.selected.n, 3);
+  assert.equal(insufficient.deltaMedian, null);
+  assert.equal(insufficient.reason, 'insufficient-baseline');
+});
+
+test('uses only the signal metric and does not fabricate a zero or use Fab values', () => {
+  const queue = summarizeSignalWindow(signalWindowData, {
+    ...windowSelection,
+    signalId: 'queue-signal',
+    start: 4,
+    end: 6,
+  });
+  assert.equal(queue.metric, 'queue');
+  assert.equal(queue.baseline.median, 101.5);
+  assert.equal(queue.selected.median, 105);
+  assert.equal(queue.deltaMedian, 3.5);
+
+  const empty = summarizeSignalWindow(signalWindowData, {
+    ...windowSelection,
+    start: 0,
+    end: 0,
+  });
+  assert.equal(empty.baseline.n, 0);
+  assert.equal(empty.selected.n, 1);
+  assert.equal(empty.deltaMedian, null);
+  assert.equal(empty.reason, 'insufficient-baseline');
+
+  const invalid = summarizeSignalWindow(signalWindowData, {
+    ...windowSelection,
+    start: -1,
+  });
+  assert.equal(invalid.reason, 'invalid-range');
+  assert.equal(invalid.comparable, false);
+  assert.equal(invalid.baseline.n, 0);
+  assert.equal(invalid.selected.n, 0);
+});
+
+test('change timing applies equipment, optional recipe, recorded extent, and inclusive time filters', () => {
+  const changes = changeTiming(
+    signalWindowData,
+    signalWindowData.signals[0],
+    windowSelection,
+  );
+  assert.deepEqual(
+    changes.map((event) => event.id),
+    ['change-a', 'change-b'],
+  );
+  assert.deepEqual(
+    changes.map((event) => event.minutesFromOnset),
+    [0, 60],
+  );
+  assert.deepEqual(
+    changes.map((event) => event.inSelection),
+    [true, true],
+  );
+  assert.equal(changes[0].sourceRef, 'S1');
+
+  const recipeFiltered = changeTiming(
+    signalWindowData,
+    signalWindowData.signals[0],
+    {
+      ...windowSelection,
+      recipe: 'RCP-B',
+    },
+  );
+  assert.deepEqual(
+    recipeFiltered.map((event) => event.id),
+    ['change-a', 'wrong-recipe'],
+  );
+  assert.deepEqual(
+    recipeFiltered.map((event) => event.inSelection),
+    [true, true],
+  );
+});
+
+test('change timing makes no counterfactual equipment or causal assumption', () => {
+  const changes = changeTiming(signalWindowData, signalWindowData.signals[0], {
+    ...windowSelection,
+    equipment: 'EQP-B',
+    start: 6,
+    end: 6,
+  });
+  assert.deepEqual(
+    changes.map((event) => event.id),
+    ['change-a', 'change-b'],
+  );
+  assert.equal('causal' in changes[0], false);
+  assert.equal(changes[0].inSelection, false);
+  assert.equal(changes[1].inSelection, false);
 });

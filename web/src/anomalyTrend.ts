@@ -1,6 +1,7 @@
 import { median } from 'simple-statistics';
 import type { EngineeringData, Signal } from './engineeringData';
 import type { InvestigationSelection } from './engineeringAnalysis';
+import { changeTiming } from './engineeringAnalysis.ts';
 import { makeEquipmentTrace } from './equipmentComparison.ts';
 
 const HOUR = 3600000;
@@ -96,9 +97,15 @@ export function anomalyTrendOption(
     },
     grid: { left: 49, right: 109, top: 17, bottom: 33 },
     legend: {
+      type: 'scroll',
       orient: 'vertical',
       right: 0,
-      top: 'middle',
+      top: 2,
+      bottom: 2,
+      width: 100,
+      pageIconSize: 9,
+      pageTextStyle: { fontSize: 9 },
+      scrollDataIndex: references.length,
       itemWidth: 7,
       itemHeight: 7,
       itemGap: 7,
@@ -221,19 +228,17 @@ export function anomalyTrendOption(
               xAxis: onset,
               lineStyle: { color: '#b8b8b8', width: 1, type: 'dashed' },
             },
-            ...data.changes
-              .filter((event) => event.equipment === signal.equipment)
-              .map((event) => ({
-                xAxis: Date.parse(event.timestamp),
-                lineStyle: { color: '#a8b2ad', width: 0.7, type: 'dotted' },
-                label: {
-                  show: true,
-                  formatter: event.kind === 'recipe' ? 'Recipe' : 'MES',
-                  position: 'insideEndTop',
-                  fontSize: 8,
-                  color: '#8a958d',
-                },
-              })),
+            ...changeTiming(data, signal, selection).map((event) => ({
+              xAxis: Date.parse(event.timestamp),
+              lineStyle: { color: '#a8b2ad', width: 0.7, type: 'dotted' },
+              label: {
+                show: true,
+                formatter: event.kind === 'recipe' ? 'Recipe' : 'MES',
+                position: 'insideEndTop',
+                fontSize: 8,
+                color: '#8a958d',
+              },
+            })),
           ],
         },
       },

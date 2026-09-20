@@ -98,6 +98,48 @@ test('maps a brushed datetime range to ordered nearest trend indexes', () => {
   assert.deepEqual(trendSelectionFromTime(data, range), { start: 0, end: 3 });
 });
 
+test('constrains the trend legend to one scrolling column in short panels', () => {
+  const { legend } = anomalyTrendOption(
+    comparisonData,
+    selection,
+    false,
+    'EQP-2',
+  );
+  assert.equal(legend.type, 'scroll');
+  assert.equal(legend.orient, 'vertical');
+  assert.equal(legend.width, 100);
+  assert.equal(legend.top, 2);
+  assert.equal(legend.bottom, 2);
+  assert.equal(legend.scrollDataIndex, 4);
+});
+
+test('change markers use the same equipment, recipe and time extent as the change strip', () => {
+  const event = {
+    id: 'change',
+    equipment: 'EQP-1',
+    recipe: 'RCP-A',
+    kind: 'recipe',
+    timestamp: data.trend[1].timestamp,
+    before: 'v1',
+    after: 'v2',
+    sourceRef: 'synthetic://recipe',
+  };
+  const fixture = {
+    ...data,
+    changes: [
+      event,
+      { ...event, id: 'wrong-recipe', recipe: 'RCP-B' },
+      { ...event, id: 'other-equipment', equipment: 'EQP-2' },
+      { ...event, id: 'outside', timestamp: '2025-12-31T23:00:00.000Z' },
+    ],
+  };
+  const option = anomalyTrendOption(fixture, selection);
+  const normal = option.series.find((series) => series.name === 'EQP-1 · N');
+  const markers = normal.markLine.data.filter((marker) => marker.label?.show);
+  assert.equal(markers.length, 1);
+  assert.equal(markers[0].xAxis, Date.parse(event.timestamp));
+});
+
 test('builds a datetime scatter overlay with split target colors and median baseline', () => {
   const option = anomalyTrendOption(data, selection);
   assert.equal(option.xAxis.type, 'time');

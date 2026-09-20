@@ -1,5 +1,5 @@
-import { mean, sampleCorrelation } from 'simple-statistics';
-import type { EngineeringData } from './engineeringData';
+import { mean, median, sampleCorrelation } from 'simple-statistics';
+import type { ChangeEvent, EngineeringData, Signal } from './engineeringData';
 
 export type InvestigationSelection = {
   signalId: string;
@@ -113,6 +113,234 @@ export function correlationSummary(
     meanYield: valid.length ? mean(y) : null,
     invalid: rows.length - valid.length,
   };
+}
+
+export type SignalWindowStats = {
+  n: number;
+  median: number | null;
+  min: number | null;
+  max: number | null;
+  from: string | null;
+  to: string | null;
+};
+
+export type SignalWindowSummary = {
+  baseline: SignalWindowStats;
+  selected: SignalWindowStats;
+  deltaMedian: number | null;
+  comparable: boolean;
+  reason:
+    | 'invalid-range'
+    | 'insufficient-baseline'
+    | 'insufficient-selected'
+    | null;
+  onsetAt: string | null;
+  metric: Signal['metric'] | null;
+  equipment: string;
+  item: string;
+};
+
+const SIGNAL_METRICS: readonly Signal['metric'][] = [
+  'temperature',
+  'queue',
+  'availability',
+];
+
+function isSignalMetric(value: unknown): value is Signal['metric'] {
+  return (
+    typeof value === 'string' &&
+    SIGNAL_METRICS.includes(value as Signal['metric'])
+  );
+}
+
+function emptySignalWindowStats(): SignalWindowStats {
+  return { n: 0, median: null, min: null, max: null, from: null, to: null };
+}
+
+function signalWindowStats(
+  data: EngineeringData,
+  metric: Signal['metric'] | null,
+  indexes: number[],
+): SignalWindowStats {
+  if (!metric) return emptySignalWindowStats();
+  const points = indexes.flatMap((index) => {
+    const row = data.trend[index];
+    if (!row || typeof row.timestamp !== 'string') return [];
+    const timestamp = Date.parse(row.timestamp);
+    const value = row[metric];
+    if (!Number.isFinite(timestamp) || !Number.isFinite(value)) return [];
+    return [{ timestamp, timestampText: row.timestamp, value }];
+  });
+  if (!points.length) return emptySignalWindowStats();
+  const values = points.map((point) => point.value);
+  const ordered = [...points].sort((a, b) => a.timestamp - b.timestamp);
+  return {
+    n: values.length,
+    median: median(values),
+    min: Math.min(...values),
+    max: Math.max(...values),
+    from: ordered[0].timestampText,
+    to: ordered.at(-1)!.timestampText,
+  };
+}
+
+function validWindowIndexes(
+  data: EngineeringData,
+  signal: Signal | undefined,
+  selection: InvestigationSelection,
+) {
+  return Boolean(
+    signal &&
+      Array.isArray(data?.trend) &&
+      Number.isInteger(signal.onsetIndex) &&
+      signal.onsetIndex >= 0 &&
+      signal.onsetIndex < data.trend.length &&
+      Number.isInteger(selection.start) &&
+      Number.isInteger(selection.end) &&
+      selection.start >= 0 &&
+      selection.start <= selection.end &&
+      selection.end < data.trend.length,
+  );
+}
+
+export function summarizeSignalWindow(
+  data: EngineeringData,
+  selection: InvestigationSelection,
+): SignalWindowSummary {
+  const signal = data?.signals?.find((row) => row.id === selection?.signalId);
+  const metric = isSignalMetric(signal?.metric) ? signal.metric : null;
+  const equipment =
+    typeof signal?.equipment === 'string' ? signal.equipment : '';
+  const item = typeof signal?.item === 'string' ? signal.item : '';
+  const empty = emptySignalWindowStats();
+  if (!signal || !validWindowIndexes(data, signal, selection)) {
+    return {
+      baseline: empty,
+      selected: emptySignalWindowStats(),
+      deltaMedian: null,
+      comparable: false,
+      reason: 'invalid-range',
+      onsetAt: null,
+      metric,
+      equipment,
+      item,
+    };
+  }
+
+  const baselineEnd = Math.min(signal.onsetIndex, selection.start);
+  const baseline = signalWindowStats(
+    data,
+    metric,
+    Array.from({ length: baselineEnd }, (_, index) => index),
+  );
+  const selected = signalWindowStats(
+    data,
+    metric,
+    Array.from(
+      { length: selection.end - selection.start + 1 },
+      (_, offset) => selection.start + offset,
+    ),
+  );
+  const comparable = baseline.n >= 3 && selected.n >= 3;
+  return {
+    baseline,
+    selected,
+    deltaMedian: comparable ? selected.median! - baseline.median! : null,
+    comparable,
+    reason: comparable
+      ? null
+      : baseline.n < 3
+        ? 'insufficient-baseline'
+        : 'insufficient-selected',
+    onsetAt:
+      typeof data.trend[signal.onsetIndex].timestamp === 'string' &&
+      Number.isFinite(Date.parse(data.trend[signal.onsetIndex].timestamp))
+        ? data.trend[signal.onsetIndex].timestamp
+        : null,
+    metric,
+    equipment,
+    item,
+  };
+}
+
+export type TimedChangeEvent = ChangeEvent & {
+  minutesFromOnset: number;
+  inSelection: boolean;
+};
+
+export function changeTiming(
+  data: EngineeringData,
+  signal: Signal,
+  selection: InvestigationSelection,
+): TimedChangeEvent[] {
+  if (
+    !signal ||
+    typeof signal.equipment !== 'string' ||
+    !Array.isArray(data?.trend) ||
+    !Number.isInteger(signal.onsetIndex) ||
+    signal.onsetIndex < 0 ||
+    signal.onsetIndex >= data.trend.length
+  ) {
+    return [];
+  }
+  const trendTimes = data.trend.flatMap((row) => {
+    const timestamp =
+      typeof row.timestamp === 'string' ? Date.parse(row.timestamp) : NaN;
+    return Number.isFinite(timestamp) ? [timestamp] : [];
+  });
+  const onsetRow = data.trend[signal.onsetIndex];
+  const onset =
+    typeof onsetRow.timestamp === 'string'
+      ? Date.parse(onsetRow.timestamp)
+      : NaN;
+  if (!trendTimes.length || !Number.isFinite(onset)) return [];
+  const extentFrom = Math.min(...trendTimes);
+  const extentTo = Math.max(...trendTimes);
+  const hasSelection =
+    Number.isInteger(selection?.start) &&
+    Number.isInteger(selection?.end) &&
+    selection.start >= 0 &&
+    selection.start <= selection.end &&
+    selection.end < data.trend.length;
+  const selectionTimes = hasSelection
+    ? data.trend.slice(selection.start, selection.end + 1).flatMap((row) => {
+        const timestamp =
+          typeof row.timestamp === 'string' ? Date.parse(row.timestamp) : NaN;
+        return Number.isFinite(timestamp) ? [timestamp] : [];
+      })
+    : [];
+  const selectionFrom = selectionTimes.length
+    ? Math.min(...selectionTimes)
+    : NaN;
+  const selectionTo = selectionTimes.length ? Math.max(...selectionTimes) : NaN;
+  return (data.changes || [])
+    .flatMap((event) => {
+      const timestamp =
+        typeof event.timestamp === 'string' ? Date.parse(event.timestamp) : NaN;
+      if (
+        event.equipment !== signal.equipment ||
+        !Number.isFinite(timestamp) ||
+        timestamp < extentFrom ||
+        timestamp > extentTo ||
+        (selection.recipe && event.recipe && event.recipe !== selection.recipe)
+      ) {
+        return [];
+      }
+      return [
+        {
+          ...event,
+          minutesFromOnset: (timestamp - onset) / 60000,
+          inSelection:
+            Number.isFinite(selectionFrom) &&
+            timestamp >= selectionFrom &&
+            timestamp <= selectionTo,
+        },
+      ];
+    })
+    .sort((a, b) => {
+      const time = Date.parse(a.timestamp) - Date.parse(b.timestamp);
+      return time || a.id.localeCompare(b.id);
+    });
 }
 
 export function engineeringReference(

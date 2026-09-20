@@ -1,17 +1,23 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   AlertTriangle,
   ArrowDownToLine,
   ArrowUpRight,
   RotateCcw,
+  Pin,
+  Check,
+  X,
 } from 'lucide-react';
-import { download, type Incident } from './api';
+import { download, type Attachment, type Incident } from './api';
 import { Chart } from './charts';
 import { metricUnits } from './anomalyTrend';
 import type { ViewProps } from './Views';
 import {
   pairKey,
   selectFabRows,
+  engineeringReference,
+  summarizeSignalWindow,
+  changeTiming,
   type InvestigationSelection,
 } from './engineeringAnalysis';
 import type { EngineeringData, FabRow, Signal } from './engineeringData';
@@ -22,6 +28,7 @@ import BoardOverlay from './BoardOverlay';
 import { availableEquipment, compareEquipment } from './equipmentComparison';
 import BoardAnalysis from './BoardAnalysis';
 import DetectionFlow from './DetectionFlow';
+import { SourcePreview } from './ReviewView';
 import {
   makeInformNotes,
   selectInformNotes,
@@ -56,6 +63,13 @@ export default function InvestigationBoard({
   incidents,
   roomId,
   onConversationChange,
+  attach,
+  attachments,
+  notes,
+  onNotes,
+  onRemoveAttachment,
+  onOpenAttachment,
+  storageError,
 }: ViewProps & {
   data: EngineeringData;
   selection: InvestigationSelection;
@@ -67,6 +81,12 @@ export default function InvestigationBoard({
   incidents: Incident[];
   roomId: string;
   onConversationChange: () => void;
+  attachments: Attachment[];
+  notes: string;
+  onNotes: (value: string) => void;
+  onRemoveAttachment: (item: Attachment) => void;
+  onOpenAttachment: (item: Attachment) => void;
+  storageError: boolean;
 }) {
   const incident = workspace.incident.incident_number;
   const signal = data.signals.find((row) => row.id === selection.signalId)!;
@@ -76,13 +96,17 @@ export default function InvestigationBoard({
   );
   const from = data.trend[selection.start].timestamp;
   const to = data.trend[selection.end].timestamp;
-  const events = data.changes.filter(
-    (row) =>
-      (!selection.equipment || row.equipment === selection.equipment) &&
-      (!selection.recipe || !row.recipe || row.recipe === selection.recipe),
-  );
+  const events = changeTiming(data, signal, selection);
+  const windowSummary = summarizeSignalWindow(data, selection);
+  const [productionNotice, setProductionNotice] = useState('');
+  const [preview, setPreview] = useState<Attachment | null>(null);
+  const previewDialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (preview) previewDialog.current?.showModal();
+  }, [preview]);
   const wip = data.wip.filter(
     (row) =>
+      row.step === signal.step &&
       (!selection.equipment || row.equipment === selection.equipment) &&
       (!selection.recipe || row.recipe === selection.recipe),
   );
@@ -128,7 +152,10 @@ export default function InvestigationBoard({
       previous.scope === scope ? previous : { scope, keys: allKeys },
     );
   }, [scope, allKeys]);
-  useEffect(() => setDie(null), [scope]);
+  useEffect(() => {
+    setDie(null);
+    setProductionNotice('');
+  }, [scope]);
   const focused =
     candidates.find((row) => pairKey(row) === focusedKey) || candidates[0];
   const equipmentOptions = availableEquipment(data, signal);
@@ -292,6 +319,43 @@ export default function InvestigationBoard({
       <ArrowUpRight size={14} />
     </button>
   );
+  const pin = (item: Attachment, label: string) => {
+    const selected = attachments.some(
+      (row) =>
+        row.id === item.id &&
+        row.kind === item.kind &&
+        row.incident_number === incident,
+    );
+    return (
+      <button
+        className="icon-button board-pin"
+        title={selected ? `${label} 고정 해제` : `${label} 검토에 고정`}
+        aria-pressed={selected}
+        disabled={!selected && attachments.length >= 8}
+        onClick={() =>
+          selected
+            ? onRemoveAttachment({ ...item, incident_number: incident })
+            : attach({ ...item, incident_number: incident })
+        }
+      >
+        {selected ? <Check size={13} /> : <Pin size={13} />}
+      </button>
+    );
+  };
+  const focusWindow = (start: string, end: string) => {
+    const fromTime = Date.parse(start),
+      toTime = Date.parse(end);
+    const first = data.trend.findIndex(
+      (row) => Date.parse(row.timestamp) >= fromTime,
+    );
+    const last = data.trend.reduce(
+      (index, row, i) => (Date.parse(row.timestamp) <= toTime ? i : index),
+      -1,
+    );
+    if (first >= 0 && last >= first) change({ start: first, end: last });
+  };
+  const number = (value: number | null) =>
+    value === null ? '-' : value.toFixed(2);
   return (
     <div className="investigation-board">
       <div className="board-scope">
@@ -454,6 +518,14 @@ export default function InvestigationBoard({
               {signal.equipment} · 시작{' '}
               {time(data.trend[signal.onsetIndex].timestamp)}
             </span>
+            {pin(
+              {
+                kind: 'trend',
+                id: engineeringReference('trend', selection),
+                label: `${signal.item} ${time(from)}~${time(to)} · 합성`,
+              },
+              'Trend 구간',
+            )}
             <button
               className="icon-button"
               title="감지 구간 복원"
@@ -464,6 +536,35 @@ export default function InvestigationBoard({
               <RotateCcw size={14} />
             </button>
           </header>
+          <div
+            className="board-baseline-stats"
+            aria-label="감지 전과 선택 구간 비교"
+            aria-live="polite"
+          >
+            <span
+              title={`감지 전 기준: ${windowSummary.baseline.from || '-'} ~ ${windowSummary.baseline.to || '-'} · 정상 검증 아님`}
+            >
+              감지 전 n={windowSummary.baseline.n}{' '}
+              <b>{number(windowSummary.baseline.median)}</b>
+            </span>
+            <span>
+              선택 n={windowSummary.selected.n}{' '}
+              <b>{number(windowSummary.selected.median)}</b>
+            </span>
+            <span>
+              Δ 중앙값{' '}
+              <b>
+                {windowSummary.comparable
+                  ? number(windowSummary.deltaMedian)
+                  : '표본 부족'}
+              </b>{' '}
+              {metricUnits[signal.metric]}
+            </span>
+            <span title="선택 구간의 최솟값과 최댓값">
+              범위 {number(windowSummary.selected.min)}~
+              {number(windowSummary.selected.max)}
+            </span>
+          </div>
           <div className="board-equipment-stats" aria-live="polite">
             <span>
               Signal A {signal.equipment} · B {peerEquipment} 합성 기준선
@@ -528,34 +629,48 @@ export default function InvestigationBoard({
             aria-label="Recipe와 전산 변경 이력"
           >
             {events.map((event) => (
-              <button
-                key={event.id}
-                title={`${event.sourceRef} · ${event.before} → ${event.after} · 원인 미확정`}
-                onClick={() => {
-                  const index = data.trend.reduce(
-                    (best, row, i) =>
-                      Math.abs(
-                        Date.parse(row.timestamp) - Date.parse(event.timestamp),
-                      ) <
-                      Math.abs(
-                        Date.parse(data.trend[best].timestamp) -
-                          Date.parse(event.timestamp),
-                      )
-                        ? i
-                        : best,
-                    0,
-                  );
-                  change({
-                    start: Math.max(0, index - 2),
-                    end: Math.min(data.trend.length - 1, index + 2),
-                  });
-                }}
-              >
-                <time>{time(event.timestamp)}</time>{' '}
-                {event.kind === 'recipe' ? 'Recipe' : 'MES Rule'} ·{' '}
-                {event.before} → {event.after}
-              </button>
+              <span className="board-change-entry" key={event.id}>
+                <button
+                  className={event.inSelection ? 'in-range' : ''}
+                  title={`${event.equipment} · ${event.sourceRef} · ${event.before} → ${event.after} · 원인 미확정`}
+                  onClick={() => {
+                    const index = data.trend.reduce(
+                      (best, row, i) =>
+                        Math.abs(
+                          Date.parse(row.timestamp) -
+                            Date.parse(event.timestamp),
+                        ) <
+                        Math.abs(
+                          Date.parse(data.trend[best].timestamp) -
+                            Date.parse(event.timestamp),
+                        )
+                          ? i
+                          : best,
+                      0,
+                    );
+                    change({
+                      start: Math.max(0, index - 2),
+                      end: Math.min(data.trend.length - 1, index + 2),
+                    });
+                  }}
+                >
+                  <time>{time(event.timestamp)}</time>{' '}
+                  {event.kind === 'recipe' ? 'Recipe' : 'MES Rule'} ·{' '}
+                  {event.before} → {event.after} · 감지{' '}
+                  {Math.abs(event.minutesFromOnset / 60).toFixed(1)}h{' '}
+                  {event.minutesFromOnset < 0 ? '전' : '후'}
+                </button>
+                {pin(
+                  {
+                    kind: 'data',
+                    id: `engineering:change:${event.id}`,
+                    label: `${event.kind === 'recipe' ? 'Recipe' : 'MES Rule'} ${time(event.timestamp)} · 합성`,
+                  },
+                  '변경 이력',
+                )}
+              </span>
             ))}
+            {!events.length && <span>Trend 설비의 변경 이력 없음</span>}
           </div>
         </section>
         <section
@@ -769,6 +884,22 @@ export default function InvestigationBoard({
                   className="board-wip-chart"
                   option={wipLayerOption(wip)}
                   label="제품별 재공 Layer · X Layer Y 제품"
+                  onSelect={(value) => {
+                    const lot = value.data?.lot;
+                    if (!lot) return;
+                    const matches = candidates.filter(
+                      (row) => row.lotId === lot.lotId,
+                    );
+                    if (matches.length) {
+                      onFocus(matches[0]);
+                      setProductionNotice(
+                        `${lot.lotId} · 구간 내 ${matches.length} Wafers`,
+                      );
+                    } else
+                      setProductionNotice(
+                        `${lot.lotId} · 선택 구간에 Wafer 없음`,
+                      );
+                  }}
                 />
               )}
               {!wip.length && <p className="board-empty">일치 재공 없음</p>}
@@ -779,10 +910,23 @@ export default function InvestigationBoard({
               </h3>
               <div className="board-downcodes">
                 {downtime.map((row) => (
-                  <div key={row.id}>
-                    <time>{row.start.slice(11, 16)}</time>
-                    <b>{row.code}</b>
-                    <span>{row.category}</span>
+                  <div key={row.id} className="board-down-row">
+                    <button
+                      title={`${row.equipment} · ${row.description} · ${time(row.start)}~${time(row.end)}`}
+                      onClick={() => focusWindow(row.start, row.end)}
+                    >
+                      <time>{row.start.slice(11, 16)}</time>
+                      <b>{row.code}</b>
+                      <span>{row.category}</span>
+                    </button>
+                    {pin(
+                      {
+                        kind: 'data',
+                        id: `engineering:down:${row.id}`,
+                        label: `${row.code} ${time(row.start)} · 합성`,
+                      },
+                      '다운코드',
+                    )}
                   </div>
                 ))}
               </div>
@@ -792,6 +936,11 @@ export default function InvestigationBoard({
             </div>
           </div>
           <footer>
+            {productionNotice && (
+              <span className="board-production-notice" role="status">
+                {productionNotice}
+              </span>
+            )}
             <span className="wip-legend run">RUN</span> ·{' '}
             <span className="wip-legend wait">WAIT</span> ·{' '}
             <span className="wip-legend hold">HOLD</span> · Fab 0.0 → End · 재공
@@ -840,24 +989,33 @@ export default function InvestigationBoard({
               <p className="board-empty">해당 Step / 설비 Inform 없음</p>
             )}
             {workspace.meetings.map((meeting) => (
-              <a
-                className="board-meeting-link"
-                key={meeting.chunk_id}
-                href={documentUrl(incident, 'meeting', meeting.chunk_id)}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={meeting.title}
-              >
-                회의록 · {meeting.title}
-                <ArrowUpRight size={11} />
-              </a>
+              <div className="board-meeting-row" key={meeting.chunk_id}>
+                <a
+                  className="board-meeting-link"
+                  href={documentUrl(incident, 'meeting', meeting.chunk_id)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={meeting.title}
+                >
+                  회의록 · {meeting.title}
+                  <ArrowUpRight size={11} />
+                </a>
+                {pin(
+                  {
+                    kind: 'inform',
+                    id: meeting.chunk_id,
+                    label: meeting.title,
+                  },
+                  '회의록',
+                )}
+              </div>
             ))}
           </div>
           {!workspace.meetings.length && (
             <p className="board-empty">현재 범위 회의록 없음</p>
           )}
           <footer>
-            이전 사고 {related.length}건 ·{' '}
+            다른 등록 사고 {related.length}건 · 관련성 미검증 ·{' '}
             {related
               .slice(0, 2)
               .map((row) => row.incident_number)
@@ -872,9 +1030,52 @@ export default function InvestigationBoard({
             roomId={roomId}
             onChange={onConversationChange}
             context={analysisContext}
+            attachments={attachments}
+            notes={notes}
+            onNotes={onNotes}
+            onRemoveAttachment={onRemoveAttachment}
+            onOpenAttachment={setPreview}
           />
+          {storageError && (
+            <p className="save-error" role="alert">
+              검토 저장 실패 · 내보내기 필요
+            </p>
+          )}
         </section>
       </div>
+      {preview && (
+        <dialog
+          className="analysis-dialog board-reference-dialog"
+          ref={previewDialog}
+          aria-label="고정 참조 원문"
+          onCancel={() => setPreview(null)}
+          onClose={() => setPreview(null)}
+        >
+          <header>
+            <h2>고정 참조 원문</h2>
+            <button
+              className="icon-button"
+              title="참조 닫기"
+              onClick={() => setPreview(null)}
+            >
+              <X size={18} />
+            </button>
+          </header>
+          <SourcePreview
+            item={preview}
+            workspace={workspace}
+            open={
+              preview.id.startsWith('engineering:change:') ||
+              preview.id.startsWith('engineering:down:')
+                ? undefined
+                : (item) => {
+                    setPreview(null);
+                    onOpenAttachment(item);
+                  }
+            }
+          />
+        </dialog>
+      )}
     </div>
   );
 }

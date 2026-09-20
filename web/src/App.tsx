@@ -1004,6 +1004,20 @@ export default function App() {
                     tab={tab}
                     reference={detailMode}
                     attachments={attachments}
+                    notes={notes}
+                    onNotes={setNotes}
+                    onRemoveAttachment={(item) =>
+                      setAttachments((current) =>
+                        current.filter(
+                          (row) =>
+                            row.id !== item.id ||
+                            row.kind !== item.kind ||
+                            row.incident_number !== item.incident_number,
+                        ),
+                      )
+                    }
+                    onOpenAttachment={openAttachment}
+                    storageError={storageError}
                     incidents={bootstrap?.incidents || []}
                     prepare={(question) => {
                       setDraft(question);

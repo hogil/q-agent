@@ -224,6 +224,11 @@ export default function EngineeringWorkspace({
   children,
   prepare,
   attachments,
+  notes,
+  onNotes,
+  onRemoveAttachment,
+  onOpenAttachment,
+  storageError,
   incidents,
   onConversationChange,
   ...props
@@ -234,6 +239,11 @@ export default function EngineeringWorkspace({
   reference: string;
   prepare: (question: string) => void;
   attachments: Attachment[];
+  notes: string;
+  onNotes: (value: string) => void;
+  onRemoveAttachment: (item: Attachment) => void;
+  onOpenAttachment: (item: Attachment) => void;
+  storageError: boolean;
   incidents: Incident[];
   children: (context: {
     initialWafer?: { lotId: string; waferId: string };
@@ -471,6 +481,12 @@ export default function EngineeringWorkspace({
           {...props}
           roomId={roomId}
           onConversationChange={onConversationChange}
+          attachments={attachments}
+          notes={notes}
+          onNotes={onNotes}
+          onRemoveAttachment={onRemoveAttachment}
+          onOpenAttachment={onOpenAttachment}
+          storageError={storageError}
           incidents={incidents}
           data={data}
           selection={selection}

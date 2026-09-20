@@ -14,6 +14,7 @@ import { makeEngineeringData, matchFabYield } from './engineeringData';
 import {
   correlationSummary,
   parseEngineeringReference,
+  summarizeSignalWindow,
 } from './engineeringAnalysis';
 
 const kinds: Record<string, string> = {
@@ -37,6 +38,9 @@ function resolveSource(item: Attachment, workspace: Workspace) {
     const wip = data.wip.find(
       (row) => item.id === `engineering:wip:${row.lotId}`,
     );
+    const change = data.changes.find(
+      (row) => item.id === `engineering:change:${row.id}`,
+    );
     const matched = selection
       ? matchFabYield(data.fab, data.yields, {
           from: data.trend[selection.start].timestamp,
@@ -59,17 +63,19 @@ function resolveSource(item: Attachment, workspace: Workspace) {
                   summary: correlationSummary(matched.pairs),
                 }
               : {
+                  summary: summarizeSignalWindow(data, selection),
                   trace: data.trend.slice(selection.start, selection.end + 1),
                 }),
           }
-        : down || wip;
+        : down || wip || change;
     if (payload)
       return {
         reference: item,
         source: 'synthetic://engineering/v1',
-        date: workspace.incident.occurred_at,
+        date:
+          change?.timestamp || down?.start || workspace.incident.occurred_at,
         version: 'fixture-v1',
-        text: JSON.stringify(payload, null, 2),
+        text: JSON.stringify({ synthetic: true, ...payload }, null, 2),
       };
   }
   const meeting =
@@ -107,14 +113,14 @@ function resolveSource(item: Attachment, workspace: Workspace) {
   };
 }
 
-function SourcePreview({
+export function SourcePreview({
   item,
   workspace,
   open,
 }: {
   item: Attachment;
   workspace: Workspace;
-  open: (item: Attachment) => void;
+  open?: (item: Attachment) => void;
 }) {
   const source = resolveSource(item, workspace);
   const syntheticImage =
@@ -128,13 +134,15 @@ function SourcePreview({
             ? '합성 분석 근거'
             : kinds[item.kind] || '참조'}
         </span>
-        <button
-          className="icon-button"
-          title={`${item.label} 원본 화면 열기`}
-          onClick={() => open(item)}
-        >
-          <ArrowUpRight size={17} />
-        </button>
+        {open && (
+          <button
+            className="icon-button"
+            title={`${item.label} 원본 화면 열기`}
+            onClick={() => open(item)}
+          >
+            <ArrowUpRight size={17} />
+          </button>
+        )}
       </div>
       <h3>{item.label}</h3>
       <dl className="evidence-metadata">
