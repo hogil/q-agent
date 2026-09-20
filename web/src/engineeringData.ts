@@ -5,9 +5,11 @@ export type Signal = {
   title: string;
   severity: 'high' | 'medium';
   metric: 'temperature' | 'queue' | 'availability';
+  device: string;
   equipment: string;
   step: string;
   item: string;
+  legendAxis: 'eqp_id';
   recipe: string;
   detectedAt: string;
   startIndex: number;
@@ -235,9 +237,11 @@ export function makeEngineeringData(workspace: Workspace): EngineeringData {
       title: '공정 온도 상승',
       severity: 'high',
       metric: 'temperature',
+      device: 'SYN-DEV-01',
       equipment: 'SYN-EQP-01',
       step: STEP,
       item: 'SYN-TEMP',
+      legendAxis: 'eqp_id',
       recipe: 'SYN-RCP-A',
       detectedAt: incidentAt,
       startIndex: 5,
@@ -250,9 +254,11 @@ export function makeEngineeringData(workspace: Workspace): EngineeringData {
       title: 'Queue time 증가',
       severity: 'medium',
       metric: 'queue',
+      device: 'SYN-DEV-01',
       equipment: 'SYN-EQP-02',
       step: STEP,
       item: 'SYN-QUEUE',
+      legendAxis: 'eqp_id',
       recipe: 'SYN-RCP-B',
       detectedAt: incidentAt,
       startIndex: 8,
@@ -265,9 +271,11 @@ export function makeEngineeringData(workspace: Workspace): EngineeringData {
       title: '설비 가동률 저하',
       severity: 'high',
       metric: 'availability',
+      device: 'SYN-DEV-01',
       equipment: 'SYN-EQP-02',
       step: STEP,
       item: 'SYN-AVAIL',
+      legendAxis: 'eqp_id',
       recipe: 'SYN-RCP-B',
       detectedAt: incidentAt,
       startIndex: 14,

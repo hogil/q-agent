@@ -12,7 +12,7 @@ import {
   LegendComponent,
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
-import { waferData, type Die } from './waferMaps';
+import { waferData, type Die, type DieRegion } from './waferMaps';
 export { waferData, type Die } from './waferMaps';
 
 echarts.use([
@@ -33,6 +33,7 @@ type ChartProps = {
   option: echarts.EChartsCoreOption;
   onSelect?: (value: any) => void;
   onRange?: (range: [number, number]) => void;
+  onArea?: (region: DieRegion | null) => void;
   label: string;
   className?: string;
 };
@@ -40,6 +41,7 @@ export function Chart({
   option,
   onSelect,
   onRange,
+  onArea,
   label,
   className = '',
 }: ChartProps) {
@@ -49,6 +51,8 @@ export function Chart({
   handler.current = onSelect;
   const rangeHandler = useRef(onRange);
   rangeHandler.current = onRange;
+  const areaHandler = useRef(onArea);
+  areaHandler.current = onArea;
   useEffect(() => {
     if (!element.current) return;
     const chart = echarts.init(element.current, undefined, {
@@ -58,6 +62,20 @@ export function Chart({
     chart.on('click', (params) => handler.current?.(params));
     chart.on('brushEnd', (params: any) => {
       const range = params.areas?.[0]?.coordRange;
+      if (areaHandler.current) {
+        if (!params.areas?.length) areaHandler.current(null);
+        else if (
+          Array.isArray(range) &&
+          range.length === 2 &&
+          range.every(
+            (axis) =>
+              Array.isArray(axis) &&
+              axis.length === 2 &&
+              axis.every(Number.isFinite),
+          )
+        )
+          areaHandler.current(range as DieRegion);
+      }
       if (
         Array.isArray(range) &&
         range.length === 2 &&
@@ -86,11 +104,14 @@ export function Chart({
       },
       { notMerge: true },
     );
-    if (rangeHandler.current)
+    if (rangeHandler.current || areaHandler.current)
       chart.dispatchAction({
         type: 'takeGlobalCursor',
         key: 'brush',
-        brushOption: { brushType: 'lineX', brushMode: 'single' },
+        brushOption: {
+          brushType: areaHandler.current ? 'rect' : 'lineX',
+          brushMode: 'single',
+        },
       });
   }, [option]);
   return (

@@ -40,9 +40,11 @@ test('creates deterministic, incident-scoped synthetic engineering data', () => 
     title: '공정 온도 상승',
     severity: 'high',
     metric: 'temperature',
+    device: 'SYN-DEV-01',
     equipment: 'SYN-EQP-01',
     step: 'SYN-ETCH-10',
     item: 'SYN-TEMP',
+    legendAxis: 'eqp_id',
     recipe: 'SYN-RCP-A',
     detectedAt: '2026-01-15T12:00:00.000Z',
     startIndex: 5,
@@ -95,6 +97,43 @@ test('creates deterministic, incident-scoped synthetic engineering data', () => 
         event.description.includes('합성'),
     ),
     true,
+  );
+});
+
+test('keeps synthetic signal chart metadata explicit and separate from highlighted equipment', () => {
+  const signals = makeEngineeringData(workspace).signals;
+
+  assert.deepEqual(
+    signals.map(({ device, step, item, legendAxis }) => ({
+      device,
+      step,
+      item,
+      legendAxis,
+    })),
+    [
+      {
+        device: 'SYN-DEV-01',
+        step: 'SYN-ETCH-10',
+        item: 'SYN-TEMP',
+        legendAxis: 'eqp_id',
+      },
+      {
+        device: 'SYN-DEV-01',
+        step: 'SYN-ETCH-10',
+        item: 'SYN-QUEUE',
+        legendAxis: 'eqp_id',
+      },
+      {
+        device: 'SYN-DEV-01',
+        step: 'SYN-ETCH-10',
+        item: 'SYN-AVAIL',
+        legendAxis: 'eqp_id',
+      },
+    ],
+  );
+  assert.deepEqual(
+    signals.map(({ equipment }) => equipment),
+    ['SYN-EQP-01', 'SYN-EQP-02', 'SYN-EQP-02'],
   );
 });
 

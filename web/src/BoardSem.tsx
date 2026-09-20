@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import {
   Columns2,
+  Hand,
   Image,
   Maximize2,
   RotateCcw,
-  ScanLine,
+  Scan,
   X,
 } from 'lucide-react';
 import type { Workspace } from './api';
@@ -31,6 +32,11 @@ export default function BoardSem({
   const [expanded, setExpanded] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [wipe, setWipe] = useState(50);
+  const [tool, setTool] = useState<'pan' | 'roi'>('roi');
+  const [roi, setRoi] = useState<{
+    owner: 'A' | 'B';
+    bounds: { left: number; top: number; right: number; bottom: number };
+  } | null>(null);
   const [failedSrc, setFailedSrc] = useState<Set<string>>(() => new Set());
   const [retryBySrc, setRetryBySrc] = useState<Record<string, number>>({});
   const [failedThumbnailSrc, setFailedThumbnailSrc] = useState<Set<string>>(
@@ -40,6 +46,12 @@ export default function BoardSem({
   const drag = useRef<{ x: number; y: number; px: number; py: number } | null>(
     null,
   );
+  const roiDrag = useRef<{
+    owner: 'A' | 'B';
+    start: { x: number; y: number };
+    viewport: HTMLDivElement;
+  } | null>(null);
+  const [aspectBySrc, setAspectBySrc] = useState<Record<string, number>>({});
   const dialog = useRef<HTMLDialogElement>(null);
   const a = focused && semRecord(workspace, focused.lotId, focused.waferId);
   const b = compare && semRecord(workspace, compare.lotId, compare.waferId);
@@ -91,6 +103,8 @@ export default function BoardSem({
       : requestedMode;
   const reset = () => {
     drag.current = null;
+    roiDrag.current = null;
+    setRoi(null);
     setZoom(1);
     setPan({ x: 0, y: 0 });
     setWipe(50);
@@ -105,6 +119,21 @@ export default function BoardSem({
     if (expanded) dialog.current?.showModal();
   }, [expanded]);
   const move = (event: PointerEvent<HTMLDivElement>) => {
+    if (roiDrag.current) {
+      const { owner, start, viewport } = roiDrag.current;
+      const point = imagePoint(event, viewport);
+      if (!point) return;
+      setRoi({
+        owner,
+        bounds: {
+          left: Math.min(start.x, point.x),
+          top: Math.min(start.y, point.y),
+          right: Math.max(start.x, point.x),
+          bottom: Math.max(start.y, point.y),
+        },
+      });
+      return;
+    }
     if (!drag.current) return;
     const rect = event.currentTarget.getBoundingClientRect(),
       limit = (zoom - 1) * 50;
@@ -122,21 +151,79 @@ export default function BoardSem({
   const imageStyle = {
     transform: `translate(${pan.x}%,${pan.y}%) scale(${zoom})`,
   };
-  const pane = (row: FabRow | undefined, label: string) => {
+  const imagePoint = (
+    event: PointerEvent<HTMLDivElement>,
+    viewport: HTMLDivElement,
+  ) => {
+    const image = viewport.querySelector('img');
+    if (!image || !image.naturalWidth || !image.naturalHeight) return null;
+    const imageRect = image.getBoundingClientRect();
+    const scale = Math.min(
+      imageRect.width / image.naturalWidth,
+      imageRect.height / image.naturalHeight,
+    );
+    const width = image.naturalWidth * scale;
+    const height = image.naturalHeight * scale;
+    const left = imageRect.left + (imageRect.width - width) / 2;
+    const top = imageRect.top + (imageRect.height - height) / 2;
+    return {
+      inside:
+        event.clientX >= left &&
+        event.clientX <= left + width &&
+        event.clientY >= top &&
+        event.clientY <= top + height,
+      x: Math.max(0, Math.min(100, ((event.clientX - left) / width) * 100)),
+      y: Math.max(0, Math.min(100, ((event.clientY - top) / height) * 100)),
+    };
+  };
+  const pane = (row: FabRow | undefined, label: 'A' | 'B') => {
     const record = row && semRecord(workspace, row.lotId, row.waferId);
+    const owner = label;
     return (
-      <figure>
+      <figure key={owner}>
         <div
           className="sem-image-viewport"
           style={{
-            cursor: zoom > 1 ? 'grab' : 'zoom-in',
-            touchAction: zoom > 1 ? 'none' : 'auto',
+            cursor:
+              tool === 'roi' && zoom === 1
+                ? 'crosshair'
+                : zoom > 1
+                  ? 'grab'
+                  : 'zoom-in',
+            touchAction: zoom > 1 || tool === 'roi' ? 'none' : 'auto',
           }}
           onDoubleClick={() => {
             setZoom(zoom > 1 ? 1 : 2);
             setPan({ x: 0, y: 0 });
+            setTool(zoom > 1 ? 'roi' : 'pan');
           }}
           onPointerDown={(event) => {
+            if (
+              tool === 'roi' &&
+              zoom === 1 &&
+              record &&
+              !failedSrc.has(record.src)
+            ) {
+              const point = imagePoint(event, event.currentTarget);
+              if (!point?.inside) return;
+              event.preventDefault();
+              roiDrag.current = {
+                owner,
+                start: { x: point.x, y: point.y },
+                viewport: event.currentTarget,
+              };
+              setRoi({
+                owner,
+                bounds: {
+                  left: point.x,
+                  top: point.y,
+                  right: point.x,
+                  bottom: point.y,
+                },
+              });
+              event.currentTarget.setPointerCapture(event.pointerId);
+              return;
+            }
             if (zoom <= 1) return;
             drag.current = {
               x: event.clientX,
@@ -147,14 +234,20 @@ export default function BoardSem({
             event.currentTarget.setPointerCapture(event.pointerId);
           }}
           onPointerMove={move}
-          onPointerUp={() => {
+          onPointerUp={(event) => {
             drag.current = null;
+            roiDrag.current = null;
+            if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+              event.currentTarget.releasePointerCapture(event.pointerId);
+            }
           }}
           onPointerCancel={() => {
             drag.current = null;
+            roiDrag.current = null;
           }}
           onLostPointerCapture={() => {
             drag.current = null;
+            roiDrag.current = null;
           }}
         >
           {record && !failedSrc.has(record.src) ? (
@@ -164,7 +257,14 @@ export default function BoardSem({
               style={imageStyle}
               src={record.src}
               alt={`${label} ${record.lotId}/${record.waferId} · ${record.description} · 합성`}
-              onLoad={() => markLoaded(record.src)}
+              onLoad={(event) => {
+                const image = event.currentTarget;
+                setAspectBySrc((previous) => ({
+                  ...previous,
+                  [record.src]: image.naturalWidth / image.naturalHeight,
+                }));
+                markLoaded(record.src);
+              }}
               onError={() => markFailed(record.src)}
             />
           ) : record ? (
@@ -186,6 +286,30 @@ export default function BoardSem({
               <span>{row ? 'SEM 미등록' : '선택 없음'}</span>
             </div>
           )}
+          {roi?.owner === owner &&
+            zoom === 1 &&
+            record &&
+            !failedSrc.has(record.src) &&
+            aspectBySrc[record.src] && (
+              <div
+                className="sem-roi-frame"
+                style={{
+                  width: `min(100cqw, ${aspectBySrc[record.src] * 100}cqh)`,
+                  height: `min(100cqh, ${100 / aspectBySrc[record.src]}cqw)`,
+                }}
+              >
+                <div
+                  className="sem-roi-box"
+                  style={{
+                    left: `${roi.bounds.left}%`,
+                    top: `${roi.bounds.top}%`,
+                    width: `${roi.bounds.right - roi.bounds.left}%`,
+                    height: `${roi.bounds.bottom - roi.bounds.top}%`,
+                  }}
+                  aria-label={`SEM ${owner} ROI ${roi.bounds.left.toFixed(1)}%,${roi.bounds.top.toFixed(1)}% - ${roi.bounds.right.toFixed(1)}%,${roi.bounds.bottom.toFixed(1)}%`}
+                />
+              </div>
+            )}
         </div>
         <figcaption>
           <b>{label}</b> {row ? `${row.lotId}/${row.waferId}` : '없음'}
@@ -208,8 +332,10 @@ export default function BoardSem({
           step={0.25}
           value={zoom}
           onChange={(e) => {
-            setZoom(+e.target.value);
+            const nextZoom = +e.target.value;
+            setZoom(nextZoom);
             setPan({ x: 0, y: 0 });
+            if (nextZoom > 1) setTool('pan');
           }}
         />
         <output>{zoom.toFixed(2)}×</output>
@@ -221,6 +347,33 @@ export default function BoardSem({
       >
         <RotateCcw size={13} />
       </button>
+      <div className="sem-tool-modes" role="group" aria-label="SEM 도구">
+        <button
+          className="icon-button"
+          title="SEM 이미지 이동"
+          aria-label="SEM 이미지 이동"
+          aria-pressed={tool === 'pan'}
+          onClick={() => setTool('pan')}
+        >
+          <Hand size={13} />
+        </button>
+        <button
+          className="icon-button"
+          title={
+            mode === 'wipe'
+              ? 'Wipe 비교에서는 ROI 선택을 사용할 수 없음'
+              : zoom > 1
+                ? 'ROI 선택은 1배율에서만 사용 가능'
+                : 'SEM ROI 선택'
+          }
+          aria-label="SEM ROI 선택"
+          aria-pressed={tool === 'roi'}
+          disabled={zoom > 1 || mode === 'wipe'}
+          onClick={() => setTool('roi')}
+        >
+          <Scan size={13} />
+        </button>
+      </div>
       {mode === 'wipe' && (
         <label>
           A / B{' '}
@@ -288,7 +441,7 @@ export default function BoardSem({
         [
           { id: 'single', title: '선택 SEM', Icon: Image },
           { id: 'compare', title: 'SEM 두 개 비교', Icon: Columns2 },
-          { id: 'wipe', title: 'SEM A B 경계 비교', Icon: ScanLine },
+          { id: 'wipe', title: 'SEM A B 경계 비교', Icon: Scan },
         ] as const
       ).map(({ id, title, Icon }) => (
         <button
@@ -300,7 +453,13 @@ export default function BoardSem({
             id === 'wipe' &&
             (!a || !b || failedSrc.has(a.src) || failedSrc.has(b.src))
           }
-          onClick={() => setMode(id)}
+          onClick={() => {
+            setMode(id);
+            if (id === 'wipe') {
+              setTool('pan');
+              setRoi(null);
+            }
+          }}
         >
           <Icon size={14} />
         </button>
@@ -322,6 +481,40 @@ export default function BoardSem({
       </header>
       {controls}
       {content}
+      <section className="board-image-findings" aria-label="SEM 분석 내용">
+        <p>
+          A{' '}
+          {(() => {
+            const record =
+              focused && semRecord(workspace, focused.lotId, focused.waferId);
+            return !record || !record.src
+              ? '미등록'
+              : failedSrc.has(record.src)
+                ? '로드 실패'
+                : record.description;
+          })()}{' '}
+          · B{' '}
+          {(() => {
+            const record =
+              compare && semRecord(workspace, compare.lotId, compare.waferId);
+            return !record || !record.src
+              ? '미등록'
+              : failedSrc.has(record.src)
+                ? '로드 실패'
+                : record.description;
+          })()}
+        </p>
+        <small>합성 자료 설명 · 모델 판정 미연결</small>
+        <p className="sem-roi-coordinates" aria-live="polite">
+          {roi && (
+            <>
+              ROI {roi.owner}: {roi.bounds.left.toFixed(1)}%,{' '}
+              {roi.bounds.top.toFixed(1)}% - {roi.bounds.right.toFixed(1)}%,{' '}
+              {roi.bounds.bottom.toFixed(1)}%
+            </>
+          )}
+        </p>
+      </section>
       <div className="sem-thumbnails" aria-label="선택 Wafer SEM 목록">
         {selected.map((row) => {
           const record = semRecord(workspace, row.lotId, row.waferId);
@@ -348,7 +541,6 @@ export default function BoardSem({
           );
         })}
       </div>
-      <footer>AI 합성 · 실제 SEM / 결함 판정 미연결</footer>
       {expanded && (
         <dialog
           ref={dialog}

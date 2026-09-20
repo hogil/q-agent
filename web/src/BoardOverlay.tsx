@@ -3,6 +3,8 @@ import { ArrowDownToLine, Contrast, Layers, X } from 'lucide-react';
 import { Chart } from './charts';
 import {
   compareWaferMaps,
+  selectDieRegion,
+  type DieRegion,
   type WaferMap,
   type WaferComparisonCategory,
 } from './waferMaps';
@@ -29,11 +31,15 @@ export default function BoardOverlay({
   b,
   coordinate,
   selectDie,
+  region,
+  selectRegion,
 }: {
   a?: WaferMap;
   b?: WaferMap;
   coordinate: [number, number] | null;
   selectDie: (value: [number, number] | null) => void;
+  region: DieRegion | null;
+  selectRegion: (value: DieRegion | null) => void;
 }) {
   const [mode, setMode] = useState<'difference' | 'overlay'>('difference');
   const [opacity, setOpacity] = useState(65);
@@ -42,15 +48,23 @@ export default function BoardOverlay({
   const compared = useMemo(() => {
     if (!a || !b) return { result: null, error: '' };
     try {
-      return { result: compareWaferMaps(a, b), error: '' };
+      return {
+        result: compareWaferMaps(a, b),
+        regional: compareWaferMaps(
+          { ...a, dies: selectDieRegion(a.dies, region) },
+          { ...b, dies: selectDieRegion(b.dies, region) },
+        ),
+        error: '',
+      };
     } catch (e) {
       return {
         result: null,
         error: e instanceof Error ? e.message : String(e),
       };
     }
-  }, [a, b]);
+  }, [a, b, region]);
   const result = compared.result;
+  const regional = compared.regional;
   const selected =
     coordinate &&
     result?.dies.find((d) => d.x === coordinate[0] && d.y === coordinate[1]);
@@ -70,6 +84,24 @@ export default function BoardOverlay({
     : undefined;
   const option = {
     animation: false,
+    brush: {
+      toolbox: [],
+      xAxisIndex: 0,
+      yAxisIndex: 0,
+      brushType: 'rect',
+      brushMode: 'single',
+      areas: region
+        ? [
+            {
+              brushType: 'rect',
+              xAxisIndex: 0,
+              yAxisIndex: 0,
+              coordRange: region,
+            },
+          ]
+        : [],
+      outOfBrush: { colorAlpha: 0.35 },
+    },
     grid: { left: '4%', right: '4%', top: '4%', bottom: '4%' },
     xAxis: { type: 'value', min: -18, max: 18, show: false },
     yAxis: { type: 'value', min: -18, max: 18, show: false },
@@ -155,8 +187,8 @@ export default function BoardOverlay({
         </div>
         <button
           className="icon-button"
-          title="Die 선택 해제"
-          disabled={!coordinate}
+          title="Map 영역·Die 선택 해제"
+          disabled={!coordinate && !region}
           onClick={() => selectDie(null)}
         >
           <X size={14} />
@@ -175,6 +207,8 @@ export default function BoardOverlay({
                   a: { lotId: a?.lotId, waferId: a?.waferId },
                   b: { lotId: b?.lotId, waferId: b?.waferId },
                   ...result,
+                  selectedRegion: region,
+                  regionComparison: regional,
                 },
                 null,
                 2,
@@ -229,6 +263,7 @@ export default function BoardOverlay({
                 : 'A B Wafer Overlay Map'
             }
             onSelect={(p) => selectDie([p.value[0], p.value[1]])}
+            onArea={selectRegion}
           />
         ) : (
           <p className="board-empty">{compared.error || '비교 Wafer B 없음'}</p>
@@ -238,15 +273,37 @@ export default function BoardOverlay({
         {(['aOnly', 'bothFlag', 'bOnly'] as const).map((key) => (
           <span key={key}>
             <i style={{ background: colors[key] }} />
-            {labels[key]} <b>{result?.counts[key] ?? '-'}</b>
+            {labels[key]} <b>{regional?.counts[key] ?? '-'}</b>
           </span>
         ))}
-        {!!result && result.counts.missingA + result.counts.missingB > 0 && (
-          <span>
-            <i style={{ background: colors.missingA }} />
-            미관측 {result.counts.missingA + result.counts.missingB}
-          </span>
-        )}
+        {!!regional &&
+          regional.counts.missingA + regional.counts.missingB > 0 && (
+            <span>
+              <i style={{ background: colors.missingA }} />
+              미관측 {regional.counts.missingA + regional.counts.missingB}
+            </span>
+          )}
+      </div>
+      <div
+        className="board-image-findings"
+        aria-label="Overlay Map 분석 내용"
+        aria-live="polite"
+      >
+        <p>
+          {region ? '선택 영역' : '전체 Map'} · 양쪽 관측{' '}
+          {regional?.validCompared ?? 0} Die
+        </p>
+        <p>
+          A Flag{' '}
+          {regional?.commonFailRateA == null
+            ? 'N/A'
+            : (regional.commonFailRateA * 100).toFixed(1) + '%'}{' '}
+          / B{' '}
+          {regional?.commonFailRateB == null
+            ? 'N/A'
+            : (regional.commonFailRateB * 100).toFixed(1) + '%'}
+        </p>
+        <small>합성 좌표 비교 · 실측 정렬 / 원인 판정 미검증</small>
       </div>
       <footer
         aria-live="polite"
@@ -254,8 +311,8 @@ export default function BoardOverlay({
       >
         {selected
           ? `Die (${selected.x},${selected.y}) · A ${selected.binA ?? 'N/A'} / B ${selected.binB ?? 'N/A'} · ${labels[selected.category]}`
-          : result
-            ? `공통 ${result.validCompared} Die · Jaccard ${result.jaccard === null ? 'N/A' : result.jaccard.toFixed(3)} · Δ Flag ${result.delta === null ? 'N/A' : (result.delta * 100).toFixed(1) + 'pp'}`
+          : regional
+            ? `Jaccard ${regional.jaccard === null ? 'N/A' : regional.jaccard.toFixed(3)} · Δ Flag ${regional.delta === null ? 'N/A' : (regional.delta * 100).toFixed(1) + 'pp'}`
             : '합성 좌표 · 실측 정렬 미검증'}
       </footer>
     </>

@@ -85,7 +85,7 @@ function SignalList({
     .filter(
       (s) =>
         (severity === 'all' || s.severity === severity) &&
-        `${s.item} ${s.title} ${s.equipment} ${s.step} ${s.recipe}`
+        `${s.device} ${s.item} ${s.title} ${s.equipment} ${s.step} ${s.recipe} ${s.legendAxis}`
           .toLowerCase()
           .includes(search.toLowerCase()),
     )
@@ -131,7 +131,7 @@ function SignalList({
           <Search size={15} />
           <input
             aria-label="이상 감지 검색"
-            placeholder="설비 / 공정 / 감지 항목"
+            placeholder="Device / Step / Item / 비교 대상"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -154,8 +154,10 @@ function SignalList({
           <thead>
             <tr>
               <th>우선순위</th>
-              <th>Item / Step</th>
-              <th>설비</th>
+              <th>Device</th>
+              <th>Step</th>
+              <th>Item</th>
+              <th>비교축 / 대상</th>
               <th>감지 시각 · UTC</th>
               <th>조회</th>
             </tr>
@@ -171,6 +173,8 @@ function SignalList({
                     {signal.severity.toUpperCase()}
                   </span>
                 </td>
+                <td>{signal.device}</td>
+                <td>{signal.step}</td>
                 <td>
                   <button
                     className="eng-record-button"
@@ -179,12 +183,12 @@ function SignalList({
                     <strong>
                       {signal.item} · {signal.title}
                     </strong>
-                    <small>
-                      {signal.step} · {signal.recipe}
-                    </small>
+                    <small>{signal.recipe}</small>
                   </button>
                 </td>
-                <td>{signal.equipment}</td>
+                <td>
+                  {signal.legendAxis} / {signal.equipment}
+                </td>
                 <td>{time(signal.detectedAt)}</td>
                 <td>
                   <button

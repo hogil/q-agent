@@ -4,9 +4,93 @@ import test from 'node:test';
 import {
   compositeWaferMaps,
   inspectWaferDie,
+  compareWaferMaps,
+  selectDieRegion,
   waferData,
   waferSeed,
 } from '../src/waferMaps.ts';
+
+test('rectangle selection uses coordinates in either drag direction without changing input', () => {
+  const dies = [
+    { x: 0, y: 1, bin: 3 },
+    { x: 2, y: -1, bin: 0 },
+    { x: 5, y: 5, bin: 4 },
+  ];
+  const snapshot = structuredClone(dies);
+  assert.deepEqual(
+    selectDieRegion(dies, [
+      [-0.5, 2],
+      [-1, 1.5],
+    ]),
+    dies.slice(0, 2),
+  );
+  assert.deepEqual(
+    selectDieRegion(dies, [
+      [2, -0.5],
+      [1.5, -1],
+    ]),
+    dies.slice(0, 2),
+  );
+  assert.deepEqual(
+    selectDieRegion(dies, [
+      [8, 9],
+      [8, 9],
+    ]),
+    [],
+  );
+  assert.deepEqual(selectDieRegion(dies, null), dies);
+  assert.deepEqual(dies, snapshot);
+  assert.throws(() =>
+    selectDieRegion(dies, [
+      [NaN, 1],
+      [0, 1],
+    ]),
+  );
+});
+
+test('regional comparison excludes missing dies from rate and preserves composite observations', () => {
+  const region = [
+    [0, 1],
+    [0, 0],
+  ];
+  const a = {
+    lotId: 'L',
+    waferId: 'A',
+    gridId: 'G',
+    dies: [
+      { x: 0, y: 0, bin: 3 },
+      { x: 1, y: 0, bin: 4 },
+      { x: 2, y: 0, bin: 0 },
+    ],
+  };
+  const b = {
+    lotId: 'L',
+    waferId: 'B',
+    gridId: 'G',
+    dies: [
+      { x: 0, y: 0, bin: 0 },
+      { x: 2, y: 0, bin: 3 },
+    ],
+  };
+  const cropped = [a, b].map((map) => ({
+    ...map,
+    dies: selectDieRegion(map.dies, region),
+  }));
+  const result = compareWaferMaps(...cropped);
+  assert.equal(result.validCompared, 1);
+  assert.equal(result.counts.missingB, 1);
+  assert.equal(result.commonFailRateA, 1);
+  assert.equal(result.commonFailRateB, 0);
+  const composite = selectDieRegion(compositeWaferMaps([a, b]).dies, region);
+  assert.equal(
+    composite.reduce((sum, die) => sum + die.observed, 0),
+    3,
+  );
+  assert.equal(
+    composite.reduce((sum, die) => sum + die.flags, 0),
+    2,
+  );
+});
 
 test('Die inspection preserves wafer identity and distinguishes missing observations from non-Flag bins', () => {
   const maps = [

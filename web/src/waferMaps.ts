@@ -1,4 +1,22 @@
 export type Die = { x: number; y: number; bin: number };
+export type DieRegion = [[number, number], [number, number]];
+
+export function selectDieRegion<T extends { x: number; y: number }>(
+  dies: T[],
+  region: DieRegion | null,
+): T[] {
+  if (!region) return dies;
+  if (!region.every((axis) => axis.length === 2 && axis.every(Number.isFinite)))
+    throw new Error('Die region bounds must be finite');
+  const [[x1, x2], [y1, y2]] = region;
+  return dies.filter(
+    (die) =>
+      die.x >= Math.min(x1, x2) &&
+      die.x <= Math.max(x1, x2) &&
+      die.y >= Math.min(y1, y2) &&
+      die.y <= Math.max(y1, y2),
+  );
+}
 
 export function waferData(seed: number): Die[] {
   const dice: Die[] = [];

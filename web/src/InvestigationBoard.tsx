@@ -26,6 +26,8 @@ import type { EngineeringData, FabRow, Signal } from './engineeringData';
 import {
   compositeWaferMaps,
   inspectWaferDie,
+  selectDieRegion,
+  type DieRegion,
   waferData,
   waferSeed,
 } from './waferMaps';
@@ -155,6 +157,15 @@ export default function InvestigationBoard({
     }));
   const [threshold, setThreshold] = useState(0);
   const [die, setDie] = useState<[number, number] | null>(null);
+  const [region, setRegion] = useState<DieRegion | null>(null);
+  const selectRegion = (next: DieRegion | null) => {
+    setRegion(next);
+    setDie(null);
+  };
+  const selectDie = (next: [number, number] | null) => {
+    setDie(next);
+    setRegion(null);
+  };
   useEffect(() => {
     setCheckedState((previous) =>
       previous.scope === scope ? previous : { scope, keys: allKeys },
@@ -162,6 +173,7 @@ export default function InvestigationBoard({
   }, [scope, allKeys]);
   useEffect(() => {
     setDie(null);
+    setRegion(null);
     setProductionNotice('');
   }, [scope]);
   const focused =
@@ -228,8 +240,54 @@ export default function InvestigationBoard({
   );
   const selectedDie =
     die && composite.dies.find((row) => row.x === die[0] && row.y === die[1]);
+  const regionDies = selectDieRegion(current?.dies || [], region);
+  const regionFlags = regionDies.filter((row) => row.bin >= 3).length;
+  const regionByWafer = new Map(
+    maps.map((map) => {
+      const dies = selectDieRegion(map.dies, region);
+      return [
+        pairKey(map),
+        {
+          observed: dies.length,
+          flags: dies.filter((row) => row.bin >= 3).length,
+        },
+      ];
+    }),
+  );
+  const flaggedRegionWafers = maps.filter(
+    (map) => (regionByWafer.get(pairKey(map))?.flags || 0) > 0,
+  );
+  const compositeRegion = selectDieRegion(composite.dies, region);
+  const regionObservations = compositeRegion.reduce(
+    (sum, row) => sum + row.observed,
+    0,
+  );
+  const compositeFlags = compositeRegion.reduce(
+    (sum, row) => sum + row.flags,
+    0,
+  );
+  const mapBrush = {
+    toolbox: [],
+    xAxisIndex: 0,
+    yAxisIndex: 0,
+    brushType: 'rect',
+    brushMode: 'single',
+    areas: region
+      ? [
+          {
+            brushType: 'rect',
+            xAxisIndex: 0,
+            yAxisIndex: 0,
+            coordRange: region,
+          },
+        ]
+      : [],
+    brushStyle: { borderColor: '#477eaa', color: 'rgba(71,126,170,0.12)' },
+    outOfBrush: { colorAlpha: 0.35 },
+  };
   const mapOption = (combined: boolean) => ({
     animation: false,
+    brush: mapBrush,
     grid: { left: '5%', right: '5%', top: '5%', bottom: '5%' },
     xAxis: { type: 'value', min: -18, max: 18, show: false },
     yAxis: { type: 'value', min: -18, max: 18, show: false },
@@ -299,6 +357,7 @@ export default function InvestigationBoard({
           denominator: 'observed wafers per coordinate; missing is not pass',
           physicalAlignmentVerified: false,
           selectedCoordinate: die,
+          selectedRegion: region,
           coordinateObservations: dieEvidence,
           displayThresholdPercent: threshold,
           ...composite,
@@ -483,9 +542,12 @@ export default function InvestigationBoard({
             <table>
               <thead>
                 <tr>
+                  <th>Device</th>
+                  <th>Step</th>
                   <th>Item</th>
-                  <th>설비</th>
-                  <th>상태</th>
+                  <th>비교축 / 대상</th>
+                  <th>감지 시각 · UTC</th>
+                  <th>우선순위</th>
                 </tr>
               </thead>
               <tbody>
@@ -495,6 +557,8 @@ export default function InvestigationBoard({
                     className={row.id === signal.id ? 'selected' : ''}
                     onClick={() => choose(row)}
                   >
+                    <td>{row.device}</td>
+                    <td>{row.step}</td>
                     <td>
                       <button
                         aria-pressed={row.id === signal.id}
@@ -502,19 +566,26 @@ export default function InvestigationBoard({
                           event.stopPropagation();
                           choose(row);
                         }}
-                        title={`${row.title} · ${row.step} · ${row.recipe}`}
+                        title={`${row.device} · ${row.step} · ${row.item} · ${row.title}`}
                       >
                         {row.item}
-                        <small>{row.step}</small>
+                        <small>{row.title}</small>
                       </button>
                     </td>
-                    <td>{row.equipment}</td>
+                    <td>
+                      {row.equipment}
+                      <small>
+                        {row.legendAxis} · {row.recipe}
+                      </small>
+                    </td>
+                    <td>{time(row.detectedAt)}</td>
                     <td>
                       <AlertTriangle
                         size={12}
                         className={row.severity}
                         aria-label={row.severity}
-                      />
+                      />{' '}
+                      {row.severity === 'high' ? 'High' : 'Medium'}
                     </td>
                   </tr>
                 ))}
@@ -522,9 +593,10 @@ export default function InvestigationBoard({
             </table>
           </div>
           <footer>
-            {signal.title}
+            {signal.device} / {signal.step} / {signal.item} ·{' '}
+            {signal.description}
             <br />
-            {signal.recipe}
+            합성 감지 목록 · 모델 미연결
           </footer>
         </section>
         <section
@@ -532,11 +604,8 @@ export default function InvestigationBoard({
           aria-label="선택 이상감지 Trend"
         >
           <header>
-            <h2>{signal.title} Trend</h2>
-            <span>
-              {signal.equipment} · 시작{' '}
-              {time(data.trend[signal.onsetIndex].timestamp)}
-            </span>
+            <h2>{signal.item} Trend</h2>
+            <span>시작 {time(data.trend[signal.onsetIndex].timestamp)}</span>
             {pin(
               {
                 kind: 'trend',
@@ -584,14 +653,15 @@ export default function InvestigationBoard({
               {number(windowSummary.selected.max)}
             </span>
           </div>
-          <div className="board-equipment-stats" aria-live="polite">
-            <span>
-              Signal A {signal.equipment} · B {peerEquipment} 합성 기준선
-            </span>
+          <div
+            className="board-equipment-stats"
+            aria-live="polite"
+            title={`Signal A ${signal.equipment} · B ${peerEquipment} · 합성 기준선`}
+          >
             {equipmentComparison.valid ? (
               <>
                 <b>
-                  중앙값 {equipmentComparison.medianA?.toFixed(2)} /{' '}
+                  A/B {equipmentComparison.medianA?.toFixed(2)} /{' '}
                   {equipmentComparison.medianB?.toFixed(2)}{' '}
                   {metricUnits[signal.metric]}
                 </b>
@@ -731,26 +801,39 @@ export default function InvestigationBoard({
               }
             />
           </header>
-          {die && (
+          {(die || region) && (
             <div className="board-die-scope" aria-live="polite">
               <span>
-                Die ({die[0]},{die[1]}) · 구간 Flag {flaggedDieWafers.length}/
-                {dieEvidence.filter((row) => row.bin !== null).length}
+                {die
+                  ? `Die (${die[0]},${die[1]}) · 구간 Flag ${flaggedDieWafers.length}/${dieEvidence.filter((row) => row.bin !== null).length}`
+                  : `선택 영역 · Flag Wafer ${flaggedRegionWafers.length}/${maps.length}`}
               </span>
               <button
                 className="icon-button"
-                title="해당 Die의 Flag Wafer만 분석에 포함"
-                disabled={!flaggedDieWafers.length}
+                title={
+                  region
+                    ? '선택 영역의 Flag Wafer만 분석에 포함'
+                    : '해당 Die의 Flag Wafer만 분석에 포함'
+                }
+                disabled={
+                  !(region ? flaggedRegionWafers : flaggedDieWafers).length
+                }
                 onClick={() =>
-                  setChecked(new Set(flaggedDieWafers.map(pairKey)))
+                  setChecked(
+                    new Set(
+                      (region ? flaggedRegionWafers : flaggedDieWafers).map(
+                        pairKey,
+                      ),
+                    ),
+                  )
                 }
               >
                 <ListFilter size={13} />
               </button>
               <button
                 className="icon-button"
-                title="Wafer 목록의 Die 선택 해제"
-                onClick={() => setDie(null)}
+                title="Wafer 목록의 Map 선택 해제"
+                onClick={() => selectDie(null)}
               >
                 <X size={13} />
               </button>
@@ -788,6 +871,12 @@ export default function InvestigationBoard({
                   <small>
                     {row.equipment} · {row.timestamp.slice(11, 16)}
                   </small>
+                  {region && (
+                    <small>
+                      영역 Flag {regionByWafer.get(pairKey(row))?.flags ?? 0}/
+                      {regionByWafer.get(pairKey(row))?.observed ?? 0}
+                    </small>
+                  )}
                   {die && (
                     <small
                       className={
@@ -836,6 +925,14 @@ export default function InvestigationBoard({
           <header>
             <h2>Wafer Map</h2>
             <span>합성</span>
+            <button
+              className="icon-button"
+              title="Map 영역·Die 선택 해제"
+              disabled={!region && !die}
+              onClick={() => selectDie(null)}
+            >
+              <X size={14} />
+            </button>
             {expand('개별 Map 상세', 'map', 'wafer')}
           </header>
           <div className="board-map-label">
@@ -849,11 +946,31 @@ export default function InvestigationBoard({
                 option={mapOption(false)}
                 className="board-map-canvas"
                 label="선택 Wafer 개별 Map"
-                onSelect={(p) => setDie([p.value[0], p.value[1]])}
+                onSelect={(p) => selectDie([p.value[0], p.value[1]])}
+                onArea={selectRegion}
               />
             ) : (
               <p className="board-empty">Map 없음</p>
             )}
+          </div>
+          <div
+            className="board-image-findings"
+            aria-label="Wafer Map 분석 내용"
+            aria-live="polite"
+          >
+            <p>
+              {region ? '선택 영역' : '전체 Map'} · Flag {regionFlags}/
+              {regionDies.length} (
+              {regionDies.length
+                ? ((regionFlags / regionDies.length) * 100).toFixed(1) + '%'
+                : 'N/A'}
+              )
+            </p>
+            <p>
+              Bin 3 {regionDies.filter((row) => row.bin === 3).length} · Bin 4{' '}
+              {regionDies.filter((row) => row.bin === 4).length}
+            </p>
+            <small>합성 계산 · 원인 판정 미연결</small>
           </div>
           <footer>
             <i style={{ background: bins[3] }} />
@@ -884,7 +1001,8 @@ export default function InvestigationBoard({
                 option={mapOption(true)}
                 className="board-map-canvas"
                 label={`선택 ${composite.waferCount}개 Wafer 합성 Map`}
-                onSelect={(p) => setDie([p.value[0], p.value[1]])}
+                onSelect={(p) => selectDie([p.value[0], p.value[1]])}
+                onArea={selectRegion}
               />
             ) : (
               <p className="board-empty">합성 대상 없음</p>
@@ -908,6 +1026,21 @@ export default function InvestigationBoard({
             />
             <output>{threshold}%</output>
           </div>
+          <div
+            className="board-image-findings"
+            aria-label="합성 Map 분석 내용"
+            aria-live="polite"
+          >
+            <p>
+              {region ? '선택 영역' : '전체 Map'} · {compositeRegion.length}{' '}
+              좌표
+            </p>
+            <p>
+              Flag {compositeFlags}/{regionObservations} 관측 · 2장 이상 반복{' '}
+              {compositeRegion.filter((row) => row.flags >= 2).length} 좌표
+            </p>
+            <small>합성 계산 · 미관측은 분모 제외</small>
+          </div>
           <footer aria-live="polite">
             {selectedDie
               ? `Die (${selectedDie.x},${selectedDie.y}) · ${selectedDie.flags}/${selectedDie.observed} (${selectedDie.percent.toFixed(0)}%)`
@@ -922,7 +1055,9 @@ export default function InvestigationBoard({
             a={current}
             b={peerMap}
             coordinate={die}
-            selectDie={setDie}
+            selectDie={selectDie}
+            region={region}
+            selectRegion={selectRegion}
           />
         </section>
         <section
