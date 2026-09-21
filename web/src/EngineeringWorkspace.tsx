@@ -38,12 +38,12 @@ import {
 import {
   correlationSummary,
   defaultSelection,
+  clearTrendSelection,
   selectFabRows,
   parseEngineeringReference,
   parseSelection,
   restoreSelection,
   signalScopeKey,
-  parsePairKey,
   pairKey,
   signalFabScope,
   MAX_TREND_REGIONS,
@@ -140,16 +140,12 @@ function EngineeringTrend({
           ],
     [data, selection.start, selection.end, selection.rangeSelected],
   );
-  const clearRange = () => {
-    change({
-      start: 0,
-      end: data.trend.length - 1,
-      rangeSelected: false,
-      valueRange: undefined,
-      regions: [],
-    });
+  const clearSelection = () => {
+    change(clearTrendSelection(data, selection));
     setZoomToSelection(false);
+    focus([]);
   };
+  const hasSelection = Boolean(rangeSelection || members.length);
   const exportSelection = () => {
     const from = Date.parse(data.trend[selection.start].timestamp);
     const to = Date.parse(data.trend[selection.end].timestamp);
@@ -196,7 +192,15 @@ function EngineeringTrend({
       />
     );
   return (
-    <div className="eng-trend-inspector">
+    <div
+      className="eng-trend-inspector"
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape' || !hasSelection) return;
+        event.preventDefault();
+        event.stopPropagation();
+        clearSelection();
+      }}
+    >
       <div className="eng-trend-tools">
         <div
           className="eng-trend-modes"
@@ -249,11 +253,10 @@ function EngineeringTrend({
           </button>
           <button
             className="icon-button"
-            title="Trend 선택 초기화"
-            onClick={() => {
-              clearRange();
-              focus([]);
-            }}
+            title="Trend 선택 해제 · Esc"
+            aria-label="Trend 선택 초기화"
+            disabled={!hasSelection}
+            onClick={clearSelection}
           >
             <RotateCcw size={14} />
           </button>
@@ -283,10 +286,11 @@ function EngineeringTrend({
               : `합성 ${signal.title} 구간 Trend`
           }
           className="eng-trend-chart"
+          onClearSelection={hasSelection ? clearSelection : undefined}
           onArea={
             mode === 'trend'
               ? (area, additive) => {
-                  if (!area) return clearRange();
+                  if (!area) return additive ? undefined : clearSelection();
                   const normalized: TrendSelectionRegion = [
                     [Math.min(...area[0]), Math.max(...area[0])],
                     [Math.min(...area[1]), Math.max(...area[1])],
@@ -590,26 +594,18 @@ export default function EngineeringWorkspace({
   const key = `engineering-context:v2:${encodeURIComponent(roomId)}:${encodeURIComponent(props.workspace.incident.incident_number)}`;
   const [selection, setSelection] = useState<InvestigationSelection>(() => {
     try {
-      return (
+      return clearTrendSelection(
+        data,
         restoreSelection(
           JSON.parse(localStorage.getItem(key) || 'null'),
           data,
-        ) || defaultSelection(data)
+        ) || defaultSelection(data),
       );
     } catch {
       return defaultSelection(data);
     }
   });
-  const [selectedPairKey, setSelectedPairKey] = useState(() => {
-    try {
-      return parsePairKey(
-        JSON.parse(localStorage.getItem(key) || 'null')?.selectedPairKey,
-        data,
-      );
-    } catch {
-      return '';
-    }
-  });
+  const [selectedPairKey, setSelectedPairKey] = useState('');
   const [saved, setSaved] = useState(true);
   useEffect(() => {
     try {

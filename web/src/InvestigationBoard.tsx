@@ -257,6 +257,23 @@ export default function InvestigationBoard({
           ? update(previous.scope === scope ? previous.keys : allKeys)
           : update,
     }));
+  const selectAllWafers = (label: string) => (
+    <input
+      type="checkbox"
+      aria-label={label}
+      title={label}
+      checked={!!candidates.length && checked.size === candidates.length}
+      ref={(node) => {
+        if (node)
+          node.indeterminate =
+            checked.size > 0 && checked.size < candidates.length;
+      }}
+      disabled={!candidates.length}
+      onChange={(event) =>
+        setChecked(new Set(event.target.checked ? candidates.map(pairKey) : []))
+      }
+    />
+  );
   const [threshold, setThreshold] = useState(0);
   const [die, setDie] = useState<[number, number] | null>(null);
   const [region, setRegion] = useState<DieRegion | null>(null);
@@ -1052,15 +1069,40 @@ export default function InvestigationBoard({
         >
           <header>
             <h2>개별 Map</h2>
-            <span>합성</span>
-            <button
-              className="icon-button"
-              title="Map 영역·Die 선택 해제"
-              disabled={mapMode !== 'bin' || (!region && !die)}
-              onClick={() => selectDie(null)}
+            <select
+              className="board-map-wafer-select"
+              aria-label="개별 Map Wafer 선택"
+              title={
+                focused
+                  ? `${focused.lotId} / ${focused.waferId}`
+                  : '선택 Wafer 없음'
+              }
+              value={focused ? pairKey(focused) : ''}
+              disabled={!candidates.length}
+              onChange={(event) => {
+                const row = candidates.find(
+                  (item) => pairKey(item) === event.target.value,
+                );
+                if (row) onFocus(row);
+              }}
             >
-              <X size={14} />
-            </button>
+              {!candidates.length && <option value="">Wafer 없음</option>}
+              {candidates.map((row) => (
+                <option key={pairKey(row)} value={pairKey(row)}>
+                  {row.lotId} / {row.waferId}
+                </option>
+              ))}
+            </select>
+            {mapMode === 'bin' && (
+              <button
+                className="icon-button"
+                title="Map 영역·Die 선택 해제"
+                disabled={!region && !die}
+                onClick={() => selectDie(null)}
+              >
+                <X size={14} />
+              </button>
+            )}
           </header>
           {mapModeControls('개별 Map 종류')}
           {mapMode === 'bin' ? (
@@ -1115,7 +1157,27 @@ export default function InvestigationBoard({
           <header>
             <h2>전체 Map</h2>
             <span>합성</span>
-            <output>{composite.waferCount} Wafers</output>
+            <output
+              aria-live="polite"
+              title={
+                mapMode === 'bin'
+                  ? '좌표별 Flag 빈도'
+                  : '선택 Wafer의 공통 좌표 평균 · 누락 제외'
+              }
+            >
+              {mapMode === 'bin' ? 'Wafer' : 'Avg'} {checked.size}/
+              {candidates.length}
+            </output>
+            <button
+              className="icon-button"
+              title="합성 Map Wafer 선택"
+              aria-label="합성 Map Wafer 선택"
+              aria-haspopup="dialog"
+              onClick={() => setWaferPickerOpen(true)}
+            >
+              <ListFilter size={13} />
+            </button>
+            {selectAllWafers('합성 Map Wafer 전체 선택')}
             {mapMode === 'bin' && (
               <button
                 className="icon-button"
@@ -1446,24 +1508,7 @@ export default function InvestigationBoard({
                 <Copy size={13} />
               )}
             </button>
-            <input
-              type="checkbox"
-              aria-label="Wafer 전체 선택"
-              checked={
-                !!candidates.length && checked.size === candidates.length
-              }
-              ref={(node) => {
-                if (node)
-                  node.indeterminate =
-                    checked.size > 0 && checked.size < candidates.length;
-              }}
-              disabled={!candidates.length}
-              onChange={(event) =>
-                setChecked(
-                  new Set(event.target.checked ? candidates.map(pairKey) : []),
-                )
-              }
-            />
+            {selectAllWafers('Wafer 전체 선택')}
             <button
               className="icon-button"
               title="Wafer 목록 닫기"

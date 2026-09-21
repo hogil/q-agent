@@ -62,6 +62,81 @@ test('composites vector components on a common grid and marks contributors', () 
   assert.ok(result.points.every((point) => point.contributors === 2));
 });
 
+test('selected wafer subsets and select-all restore component-wise means', () => {
+  const first = overlayFixture('LOT-A', 'W01', [
+    { x: -4, y: -4, dx: 2, dy: -4 },
+    { x: 4, y: -4, dx: 2, dy: -4 },
+    { x: 4, y: 4, dx: 2, dy: -4 },
+    { x: -4, y: 4, dx: 2, dy: -4 },
+  ]);
+  const second = overlayFixture('LOT-A', 'W02', [
+    { x: -4, y: -4, dx: 10, dy: 6 },
+    { x: 4, y: -4, dx: 10, dy: 6 },
+    { x: 4, y: 4, dx: 10, dy: 6 },
+    { x: -4, y: 4, dx: 10, dy: 6 },
+  ]);
+  const selected = compositeOverlayVectors([first], 4, 2);
+  const all = compositeOverlayVectors([first, second], 4, 2);
+  const restored = compositeOverlayVectors([first], 4, 2);
+  const selectedCenter = selected.points.find(
+    (point) => point.x === 0 && point.y === 0,
+  );
+  const allCenter = all.points.find((point) => point.x === 0 && point.y === 0);
+  assert.deepEqual(selectedCenter, {
+    x: 0,
+    y: 0,
+    dx: 2,
+    dy: -4,
+    contributors: 1,
+  });
+  assert.deepEqual(allCenter, {
+    x: 0,
+    y: 0,
+    dx: 6,
+    dy: 1,
+    contributors: 2,
+  });
+  assert.deepEqual(restored, selected);
+});
+
+test('returns no points for an empty wafer selection', () => {
+  assert.deepEqual(compositeOverlayVectors([], 4, 2), {
+    points: [],
+    waferCount: 0,
+  });
+});
+
+test('averages each coordinate over only wafers whose hull contains it', () => {
+  const full = overlayFixture('LOT-A', 'W01', [
+    { x: -4, y: -4, dx: 10, dy: 20 },
+    { x: 4, y: -4, dx: 18, dy: 28 },
+    { x: 4, y: 4, dx: 18, dy: 20 },
+    { x: -4, y: 4, dx: 10, dy: 12 },
+  ]);
+  const rightHalf = overlayFixture('LOT-A', 'W02', [
+    { x: 0, y: -4, dx: 100, dy: 200 },
+    { x: 4, y: -4, dx: 104, dy: 204 },
+    { x: 0, y: 4, dx: 104, dy: 196 },
+  ]);
+  const result = compositeOverlayVectors([full, rightHalf], 4, 2);
+  const left = result.points.find((point) => point.x === -2 && point.y === 0);
+  const right = result.points.find((point) => point.x === 2 && point.y === 0);
+  assert.deepEqual(left, {
+    x: -2,
+    y: 0,
+    dx: 12,
+    dy: 18,
+    contributors: 1,
+  });
+  assert.deepEqual(right, {
+    x: 2,
+    y: 0,
+    dx: 60,
+    dy: 111,
+    contributors: 2,
+  });
+});
+
 test('does not extrapolate vector components outside a wafer hull', () => {
   const result = compositeOverlayVectors(
     [
@@ -109,6 +184,26 @@ test('fits both vector components with QR and reports exact residual vectors', (
   result.raw.forEach((point, index) => {
     assert.equal(result.residual[index].dx, point.dx - result.fit[index].dx);
     assert.equal(result.residual[index].dy, point.dy - result.fit[index].dy);
+  });
+});
+
+test('preserves raw = fit + residual for a composite vector field', () => {
+  const raw = compositeOverlayVectors(
+    [makeOverlayFixture('LOT-A', 'W01'), makeOverlayFixture('LOT-A', 'W02')],
+    16,
+    4,
+  ).points;
+  const result = fitOverlayVectors(raw);
+  assert.ok(result);
+  result.raw.forEach((point, index) => {
+    assert.ok(
+      Math.abs(point.dx - (result.fit[index].dx + result.residual[index].dx)) <
+        1e-10,
+    );
+    assert.ok(
+      Math.abs(point.dy - (result.fit[index].dy + result.residual[index].dy)) <
+        1e-10,
+    );
   });
 });
 

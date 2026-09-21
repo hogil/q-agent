@@ -173,6 +173,20 @@ export function defaultSelection(
   };
 }
 
+export function clearTrendSelection(
+  data: EngineeringData,
+  selection: InvestigationSelection,
+): InvestigationSelection {
+  return {
+    ...selection,
+    start: 0,
+    end: Math.max(0, data.trend.length - 1),
+    rangeSelected: false,
+    valueRange: undefined,
+    regions: [],
+  };
+}
+
 export type SignalFabScope = {
   axis: Signal['legendAxis'];
   member: string;

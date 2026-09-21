@@ -1061,6 +1061,19 @@
   font-size: 10px;
   white-space: nowrap;
 }
+.board-map-wafer-select {
+  flex: 1;
+  min-width: 0;
+  width: 0;
+  height: 21px;
+  font-size: 9px;
+  text-overflow: ellipsis;
+}
+.board-composite > header > input[type='checkbox'] {
+  flex-shrink: 0;
+  margin: 0;
+  accent-color: #3c8978;
+}
 .board-wafer-dialog {
   width: min(760px, 95vw);
   height: fit-content;
@@ -1866,6 +1879,9 @@
 .board-composite > header h2 {
   min-width: 0;
   flex: 1 1 52px;
+}
+.board-single-map > header h2 {
+  flex: 0 0 auto;
 }
 
 .board-single-map > header > span,

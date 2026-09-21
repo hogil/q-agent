@@ -48,6 +48,7 @@ type ChartProps = {
   option: echarts.EChartsCoreOption;
   onSelect?: (value: any) => void;
   onArea?: (region: DieRegion | null, additive?: boolean) => void;
+  onClearSelection?: () => void;
   areaSelection?: DieRegion | null;
   label: string;
   className?: string;
@@ -57,6 +58,7 @@ export function Chart({
   option,
   onSelect,
   onArea,
+  onClearSelection,
   areaSelection,
   label,
   className = '',
@@ -72,6 +74,8 @@ export function Chart({
   handler.current = onSelect;
   const areaHandler = useRef(onArea);
   areaHandler.current = onArea;
+  const clearHandler = useRef(onClearSelection);
+  clearHandler.current = onClearSelection;
   const navigation = () => [
     {
       id: 'map-x',
@@ -125,15 +129,41 @@ export function Chart({
     instance.current = chart;
     chart.on('click', (params) => handler.current?.(params));
     const zr = chart.getZr();
+    let gesture: { x: number; y: number; dragged: boolean } | null = null;
     const rememberBrushModifier = (event: any) => {
       const nativeEvent = event?.event ?? event;
       brushModifier.current = Boolean(
         nativeEvent?.ctrlKey || nativeEvent?.metaKey,
       );
+      gesture = { x: event.offsetX, y: event.offsetY, dragged: false };
+    };
+    const trackDrag = (event: any) => {
+      if (
+        gesture &&
+        Math.hypot(event.offsetX - gesture.x, event.offsetY - gesture.y) > 4
+      )
+        gesture.dragged = true;
+    };
+    const clearOnBlankClick = (event: any) => {
+      const nativeEvent = event?.event ?? event;
+      // A brush release can also emit click; do not undo the new selection.
+      if (
+        !event.target &&
+        gesture &&
+        !gesture.dragged &&
+        !brushModifier.current &&
+        !nativeEvent?.ctrlKey &&
+        !nativeEvent?.metaKey
+      )
+        clearHandler.current?.();
+      gesture = null;
     };
     zr.on('mousedown', rememberBrushModifier);
+    zr.on('mousemove', trackDrag);
+    zr.on('click', clearOnBlankClick);
     chart.on('brushEnd', (params: any) => {
       const range = params.areas?.[0]?.coordRange;
+      if (range && gesture) gesture.dragged = true;
       const nativeEvent =
         params.event?.event ??
         params.event ??
@@ -172,6 +202,8 @@ export function Chart({
       observer.disconnect();
       cancelAnimationFrame(resizeFrame);
       zr.off('mousedown', rememberBrushModifier);
+      zr.off('mousemove', trackDrag);
+      zr.off('click', clearOnBlankClick);
       chart.dispose();
       instance.current = null;
     };
@@ -352,6 +384,11 @@ export function Chart({
       className={`chart ${className}`}
       role="img"
       aria-label={label}
+      tabIndex={onArea || onClearSelection ? 0 : undefined}
+      onPointerDownCapture={(event) => {
+        if (areaHandler.current || clearHandler.current)
+          event.currentTarget.focus({ preventScroll: true });
+      }}
     />
   );
 }

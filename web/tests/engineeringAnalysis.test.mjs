@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   correlationSummary,
+  clearTrendSelection,
   defaultSelection,
   parseSelection,
   restoreSelection,
@@ -15,6 +16,8 @@ import {
   summarizeSignalWindow,
   changeTiming,
   signalFabScope,
+  selectionTimeWindows,
+  pointInSelection,
 } from '../src/engineeringAnalysis.ts';
 
 const data = {
@@ -712,6 +715,52 @@ test('initial and cleared selections have no active time filter', () => {
     parseEngineeringReference(engineeringReference('trend', legacy), data),
     legacy,
   );
+});
+
+test('clears active disjoint XY selections without changing signal scopes', () => {
+  const original = {
+    ...defaultSelection(data),
+    signalId: 'signal-1',
+    start: 4,
+    end: 9,
+    rangeSelected: true,
+    valueRange: [10, 20],
+    regions: [
+      [
+        [1, 2],
+        [10, 12],
+      ],
+      [
+        [5, 6],
+        [14, 16],
+      ],
+    ],
+    equipment: 'SYN-EQP-01',
+    recipe: 'SYN-RCP-A',
+    maxLagDays: 7,
+  };
+  const snapshot = structuredClone(original);
+  const cleared = clearTrendSelection(data, original);
+
+  assert.notEqual(cleared, original);
+  assert.deepEqual(original, snapshot);
+  assert.deepEqual(selectionTimeWindows(data, cleared), []);
+  assert.equal(pointInSelection(1000, 1000, data, cleared), true);
+  assert.deepEqual(cleared, {
+    signalId: 'signal-1',
+    start: 0,
+    end: data.trend.length - 1,
+    rangeSelected: false,
+    valueRange: undefined,
+    regions: [],
+    equipment: 'SYN-EQP-01',
+    recipe: 'SYN-RCP-A',
+    maxLagDays: 7,
+  });
+  assert.deepEqual(clearTrendSelection({ ...data, trend: [] }, original), {
+    ...cleared,
+    end: 0,
+  });
 });
 
 test('defaults filters by recipe member and reports unmapped chamber scope', () => {

@@ -225,6 +225,13 @@
   height: 305px;
   width: 100%;
 }
+.eng-trend-chart:focus {
+  outline: none;
+}
+.eng-trend-chart:focus-visible {
+  outline: 1px solid #367f99;
+  outline-offset: -1px;
+}
 .eng-trend-inspector {
   display: flex;
   flex-direction: column;
