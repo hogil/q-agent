@@ -1,36 +1,35 @@
 export const panelRows = [
-  ['signals', 'trend', 'images'],
-  ['cohort', 'single-map', 'composite', 'distribution', 'correlation'],
-  ['production', 'documents', 'assessment'],
+  ['signals', 'trend', 'correlation'],
+  ['cohort', 'single-map', 'composite', 'images'],
+  ['distribution', 'documents', 'production'],
 ] as const;
 
-export type BoardLayout = { rows: number[]; columns: number[][] };
-export const layoutVersion = 2;
+export type BoardLayout = {
+  rows: number[];
+  columns: number[][];
+  workspace: number[];
+};
+export const layoutVersion = 3;
 export const layoutStorageKey = `qagent:board-layout:v${layoutVersion}`;
-export const legacyLayoutStorageKey = 'qagent:board-layout:v1';
-
-const legacyDefaultRows = [0.4125, 0.3375, 0.25];
-const legacyMapColumns = [2 / 12, 2 / 12, 2 / 12, 3 / 12, 3 / 12];
 
 export const defaultLayout = (): BoardLayout => ({
-  rows: [0.38, 0.29, 0.33],
+  rows: [0.4, 0.33, 0.27],
+  workspace: [0.7, 0.3],
   columns: [
-    [5 / 12, 4 / 12, 3 / 12],
-    [2.5 / 12, 2 / 12, 1.5 / 12, 3 / 12, 3 / 12],
-    [4 / 12, 3 / 12, 5 / 12],
+    [0.41, 0.37, 0.22],
+    [0.21, 0.195, 0.195, 0.4],
+    [0.32, 0.35, 0.33],
   ],
 });
-export const minRows = [240, 200, 180];
+export const minRows = [260, 230, 190];
+export const minWorkspace = [710, 350];
 export const minColumns = [
-  [340, 340, 260],
-  [145, 170, 170, 200, 230],
-  [260, 250, 360],
+  [360, 380, 250],
+  [150, 150, 150, 260],
+  [190, 230, 240],
 ];
 
-function parseVersionedLayout(
-  raw: string | null,
-  version: number,
-): BoardLayout | null {
+export function parseLayout(raw: string | null): BoardLayout | null {
   try {
     const value = JSON.parse(raw || 'null');
     const valid = (sizes: unknown, count: number): sizes is number[] =>
@@ -41,8 +40,9 @@ function parseVersionedLayout(
       ) &&
       Math.abs(sizes.reduce((a, b) => a + b, 0) - 1) < 0.0001;
     if (
-      value?.version !== version ||
+      value?.version !== layoutVersion ||
       !valid(value.rows, 3) ||
+      !valid(value.workspace, 2) ||
       !Array.isArray(value.columns) ||
       value.columns.length !== 3 ||
       !value.columns.every((row: unknown, i: number) =>
@@ -50,45 +50,14 @@ function parseVersionedLayout(
       )
     )
       return null;
-    return { rows: value.rows, columns: value.columns };
+    return {
+      rows: value.rows,
+      columns: value.columns,
+      workspace: value.workspace,
+    };
   } catch {
     return null;
   }
-}
-
-export function parseLayout(raw: string | null): BoardLayout | null {
-  return parseVersionedLayout(raw, layoutVersion);
-}
-
-function sameSizes(a: number[], b: number[]) {
-  return a.every((value, index) => Math.abs(value - b[index]) < 0.0001);
-}
-
-// Preserve custom dimensions except the two panels explicitly being resized.
-export function migrateLayout(raw: string | null): BoardLayout | null {
-  const legacy = parseVersionedLayout(raw, 1);
-  if (!legacy) return null;
-  const next = defaultLayout();
-  const rows = sameSizes(legacy.rows, legacyDefaultRows)
-    ? next.rows
-    : legacy.rows[2] < next.rows[2]
-      ? [
-          ...legacy.rows
-            .slice(0, 2)
-            .map((n) => (n * (1 - next.rows[2])) / (1 - legacy.rows[2])),
-          next.rows[2],
-        ]
-      : legacy.rows;
-  const columns = legacy.columns.map((row) => [...row]);
-  const reclaimed = Math.max(0, columns[1][2] - next.columns[1][2]);
-  columns[1][2] -= reclaimed;
-  columns[1][0] += reclaimed;
-  if (sameSizes(legacy.columns[1], legacyMapColumns))
-    columns[1] = next.columns[1];
-  return {
-    rows,
-    columns,
-  };
 }
 
 export function minimumFractions(minimums: number[], pixels: number) {
@@ -141,12 +110,20 @@ export function fitLayout(
   width: number,
   height: number,
 ): BoardLayout {
+  const workspace = fitSizes(
+    layout.workspace,
+    minimumFractions(minWorkspace, width - 1),
+  );
   return {
+    workspace,
     rows: fitSizes(layout.rows, minimumFractions(minRows, height - 2)),
     columns: layout.columns.map((sizes, i) =>
       fitSizes(
         sizes,
-        minimumFractions(minColumns[i], width - sizes.length + 1),
+        minimumFractions(
+          minColumns[i],
+          (i === 0 ? width : (width - 1) * workspace[0]) - sizes.length + 1,
+        ),
       ),
     ),
   };

@@ -598,129 +598,133 @@ export default function InvestigationBoard({
   };
   return (
     <div className="investigation-board">
-      <div className="board-scope">
-        <strong>{signal.title}</strong>
-        <span>{signal.step}</span>
-        <label>
-          후속 설비
-          <select
-            aria-label="조사 설비"
-            value={selection.equipment}
-            onChange={(event) => change({ equipment: event.target.value })}
-          >
-            <option value="">전체</option>
-            {[...new Set(data.fab.map((row) => row.equipment))].map((value) => (
-              <option key={value}>{value}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Recipe
-          <select
-            aria-label="조사 Recipe"
-            value={selection.recipe}
-            onChange={(event) => change({ recipe: event.target.value })}
-          >
-            <option value="">전체</option>
-            {[...new Set(data.fab.map((row) => row.recipe))].map((value) => (
-              <option key={value}>{value}</option>
-            ))}
-          </select>
-        </label>
-        <span className="board-scope-window">
-          {time(from)} ~ {time(to)} UTC
-        </span>
-        <span className="board-demo">SYNTHETIC · 실측 미연결</span>
-        <div className="board-layout-actions">
-          <button
-            className="icon-button"
-            aria-label="패널 크기 잠금"
-            title="패널 크기 잠금"
-            aria-pressed={layoutLocked}
-            onClick={() => setLayoutLocked((value) => !value)}
-          >
-            {layoutLocked ? (
-              <LockKeyhole size={14} />
-            ) : (
-              <UnlockKeyhole size={14} />
+      <div className="board-scope board-scope-toolbar">
+        <div className="board-scope-main">
+          <strong>{signal.title}</strong>
+          <span>{signal.step}</span>
+          <label>
+            후속 설비
+            <select
+              aria-label="조사 설비"
+              value={selection.equipment}
+              onChange={(event) => change({ equipment: event.target.value })}
+            >
+              <option value="">전체</option>
+              {[...new Set(data.fab.map((row) => row.equipment))].map(
+                (value) => (
+                  <option key={value}>{value}</option>
+                ),
+              )}
+            </select>
+          </label>
+          <label>
+            Recipe
+            <select
+              aria-label="조사 Recipe"
+              value={selection.recipe}
+              onChange={(event) => change({ recipe: event.target.value })}
+            >
+              <option value="">전체</option>
+              {[...new Set(data.fab.map((row) => row.recipe))].map((value) => (
+                <option key={value}>{value}</option>
+              ))}
+            </select>
+          </label>
+          <span className="board-scope-window">
+            {time(from)} ~ {time(to)} UTC
+          </span>
+          <span className="board-demo">SYNTHETIC · 실측 미연결</span>
+          <div className="board-layout-actions">
+            <button
+              className="icon-button"
+              aria-label="패널 크기 잠금"
+              title="패널 크기 잠금"
+              aria-pressed={layoutLocked}
+              onClick={() => setLayoutLocked((value) => !value)}
+            >
+              {layoutLocked ? (
+                <LockKeyhole size={14} />
+              ) : (
+                <UnlockKeyhole size={14} />
+              )}
+            </button>
+            <button
+              className="icon-button"
+              aria-label="기본 패널 배치 복원"
+              title={
+                layoutStorageError
+                  ? '배치 저장 실패 · 기본 배치 복원'
+                  : '기본 패널 배치 복원'
+              }
+              onClick={() => setLayoutReset((value) => value + 1)}
+            >
+              <PanelsTopLeft
+                size={14}
+                className={layoutStorageError ? 'layout-storage-error' : ''}
+              />
+            </button>
+            {layoutStorageError && (
+              <span className="sr-only" role="status">
+                브라우저 배치 저장 실패
+              </span>
             )}
-          </button>
-          <button
-            className="icon-button"
-            aria-label="기본 패널 배치 복원"
-            title={
-              layoutStorageError
-                ? '배치 저장 실패 · 기본 배치 복원'
-                : '기본 패널 배치 복원'
-            }
-            onClick={() => setLayoutReset((value) => value + 1)}
-          >
-            <PanelsTopLeft
-              size={14}
-              className={layoutStorageError ? 'layout-storage-error' : ''}
-            />
-          </button>
-          {layoutStorageError && (
-            <span className="sr-only" role="status">
-              브라우저 배치 저장 실패
-            </span>
-          )}
+          </div>
         </div>
-      </div>
-      <div className="board-comparison-scope">
-        <strong>
-          A{' '}
-          {focused
-            ? `${focused.lotId} / ${focused.waferId} · ${focused.equipment}`
-            : 'Wafer 없음'}
-          {focused && !checked.has(pairKey(focused)) && (
-            <span className="board-focus-excluded"> · A 분석 제외</span>
-          )}
-        </strong>
-        <label>
-          설비 B
-          <select
-            aria-label="비교 설비 B"
-            value={peerEquipment}
-            onChange={(event) =>
-              setPeerState({ scope, equipment: event.target.value, key: '' })
-            }
-          >
-            {equipmentOptions.map((value) => (
-              <option key={value}>{value}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Wafer B
-          <select
-            aria-label="비교 Wafer B"
-            value={peer ? pairKey(peer) : ''}
-            disabled={!peerCandidates.length}
-            onChange={(event) =>
-              setPeerState({
-                scope,
-                equipment: peerEquipment,
-                key: event.target.value,
-              })
-            }
-          >
-            {!peerCandidates.length && (
-              <option value="">
-                해당 Step · 구간 · Recipe에 비교 Wafer 없음
-              </option>
+        <div className="board-comparison-scope">
+          <strong>
+            A{' '}
+            {focused
+              ? `${focused.lotId} / ${focused.waferId} · ${focused.equipment}`
+              : 'Wafer 없음'}
+            {focused && !checked.has(pairKey(focused)) && (
+              <span className="board-focus-excluded"> · A 분석 제외</span>
             )}
-            {peerCandidates.map((row) => (
-              <option value={pairKey(row)} key={pairKey(row)}>
-                {row.lotId} / {row.waferId} · {row.timestamp.slice(11, 16)}
-                {semRecord(workspace, row.lotId, row.waferId)
-                  ? ' · SEM 등록'
-                  : ' · SEM 없음'}
-              </option>
-            ))}
-          </select>
-        </label>
-        <span>{signal.item} · 같은 Step / 구간 · 화면 비교</span>
+          </strong>
+          <label>
+            설비 B
+            <select
+              aria-label="비교 설비 B"
+              value={peerEquipment}
+              onChange={(event) =>
+                setPeerState({ scope, equipment: event.target.value, key: '' })
+              }
+            >
+              {equipmentOptions.map((value) => (
+                <option key={value}>{value}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Wafer B
+            <select
+              aria-label="비교 Wafer B"
+              value={peer ? pairKey(peer) : ''}
+              disabled={!peerCandidates.length}
+              onChange={(event) =>
+                setPeerState({
+                  scope,
+                  equipment: peerEquipment,
+                  key: event.target.value,
+                })
+              }
+            >
+              {!peerCandidates.length && (
+                <option value="">
+                  해당 Step · 구간 · Recipe에 비교 Wafer 없음
+                </option>
+              )}
+              {peerCandidates.map((row) => (
+                <option value={pairKey(row)} key={pairKey(row)}>
+                  {row.lotId} / {row.waferId} · {row.timestamp.slice(11, 16)}
+                  {semRecord(workspace, row.lotId, row.waferId)
+                    ? ' · SEM 등록'
+                    : ' · SEM 없음'}
+                </option>
+              ))}
+            </select>
+          </label>
+          <span>{signal.item} · 같은 Step / 구간 · 화면 비교</span>
+        </div>
       </div>
       <DetectionFlow
         context={analysisContext}

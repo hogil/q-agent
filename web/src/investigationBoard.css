@@ -384,10 +384,14 @@
 .board-frequency output {
   width: 25px;
 }
+.board-production {
+  container-type: inline-size;
+  container-name: production-panel;
+}
 .board-production-columns {
   display: grid;
-  grid-template-columns: minmax(0, 2.4fr) minmax(90px, 1fr);
-  gap: 10px;
+  grid-template-columns: minmax(0, 2.4fr) minmax(120px, 1fr);
+  gap: 8px;
   flex: 1;
   min-height: 0;
   overflow: auto;
@@ -395,6 +399,7 @@
 .board-production h3 {
   margin: 4px 0;
   font-size: 11px;
+  line-height: 1.25;
   font-weight: 600;
 }
 .board-production h3 span {
@@ -409,6 +414,9 @@
   gap: 3px;
   padding: 3px 0;
   border-bottom: 1px solid #edf1ee;
+}
+.board-downcodes {
+  min-width: 0;
 }
 .board-down-row > button:first-child {
   display: grid;
@@ -756,10 +764,29 @@
   color: #64766e;
 }
 .board-signal-table table {
+  width: 100%;
   min-width: 510px;
+  table-layout: fixed;
 }
 .board-signal-table td {
   white-space: nowrap;
+}
+.board-signal-table th:last-child,
+.board-signal-table td:last-child {
+  width: 64px;
+  min-width: 64px;
+  white-space: nowrap;
+}
+.board-signal-table td:not(:last-child) {
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.board-signal-table td:not(:last-child) button {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .board-signal-table th {
   position: sticky;
@@ -1523,5 +1550,363 @@
   }
   .board-comparison-scope > span {
     margin-left: 0;
+  }
+}
+
+/* Compact engineering workbench chrome and scan-friendly panel surfaces. */
+.board-scope-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  height: auto;
+  min-height: 0;
+  padding: 0 8px;
+  border-bottom: 1px solid #dce5df;
+  background: #fbfcfb;
+}
+
+.board-scope-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 29px;
+  padding: 2px 0;
+}
+
+.board-scope-main > strong {
+  min-width: 0;
+  max-width: 30%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.board-scope-main > span:not(.board-scope-window):not(.board-demo) {
+  flex-shrink: 0;
+}
+
+.board-scope-main label {
+  flex-shrink: 0;
+}
+
+.board-scope-main .board-scope-window {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.board-scope-toolbar .board-comparison-scope {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 26px;
+  padding: 2px 0;
+  border-top: 1px solid #e5ebe7;
+  font-size: 10.5px;
+}
+
+.board-scope-toolbar .board-comparison-scope strong {
+  min-width: 0;
+  max-width: 38%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.board-scope-toolbar .board-comparison-scope label {
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.board-scope-toolbar .board-comparison-scope select {
+  height: 22px;
+  max-width: 260px;
+  font-size: 10.5px;
+}
+
+.board-scope-toolbar .board-comparison-scope > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.board-panel {
+  padding: 7px 9px;
+}
+
+.board-panel > header {
+  min-height: 26px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e1e8e3;
+}
+
+.board-panel h2 {
+  font-size: 12.5px;
+  line-height: 1.25;
+}
+
+.board-panel > header > span,
+.board-panel > header > output {
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.board-panel .icon-button {
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
+}
+
+.board-signal-tools {
+  min-height: 29px;
+  padding: 2px 0;
+}
+
+.board-signal-search,
+.board-signal-tools select {
+  height: 25px;
+  font-size: 10.5px;
+}
+
+.board-signal-table table,
+.board-doc-list table {
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.board-signal-table th,
+.board-doc-list th {
+  padding: 5px 4px;
+  font-size: 10px;
+  background: #f7faf8;
+}
+
+.board-signal-table td,
+.board-doc-list td {
+  padding: 4px;
+  line-height: 1.35;
+}
+
+.board-signal-table td {
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+
+.board-signal-table small {
+  font-size: 9.5px;
+  line-height: 1.25;
+}
+
+.board-signal-table tr.selected {
+  box-shadow: inset 3px 0 #45856b;
+}
+
+.board-wafer-list th,
+.board-wafer-list td {
+  padding: 4px 3px;
+  font-variant-numeric: tabular-nums;
+}
+
+.board-wafer-list th {
+  font-size: 10px;
+}
+
+.board-wafer-list td {
+  font-size: 10.5px;
+}
+
+.board-inform-state {
+  padding: 4px 6px;
+  font-size: 10px;
+}
+
+.board-doc-list a {
+  font-size: 10.5px;
+}
+
+.board-assessment {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.board-assessment > header {
+  min-height: 27px;
+}
+
+.board-analysis-output {
+  line-height: 1.45;
+}
+
+@media (max-width: 600px) {
+  .board-scope-toolbar {
+    padding: 0 6px;
+  }
+
+  .board-scope-main {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 4px 7px;
+    padding: 4px 0;
+  }
+
+  .board-scope-main > strong {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+
+  .board-scope-main .board-demo {
+    margin-left: 0;
+  }
+
+  .board-scope-toolbar .board-comparison-scope {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 4px 7px;
+    padding: 4px 0;
+  }
+
+  .board-scope-toolbar .board-comparison-scope strong {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+
+  .board-scope-toolbar .board-comparison-scope > span {
+    flex: 1 1 100%;
+    margin-left: 0;
+  }
+
+  .board-scope-toolbar .board-comparison-scope select {
+    max-width: min(270px, calc(100vw - 110px));
+  }
+}
+
+/* The compact row keeps its actions available when the parent gives cohort/maps
+   narrow engineering columns. */
+.board-cohort > header,
+.board-single-map > header,
+.board-composite > header {
+  flex-wrap: wrap;
+  gap: 3px;
+  row-gap: 2px;
+}
+
+.board-cohort > header h2,
+.board-single-map > header h2,
+.board-composite > header h2 {
+  min-width: 0;
+  flex: 1 1 52px;
+}
+
+.board-cohort > header output,
+.board-single-map > header > span,
+.board-composite > header > span,
+.board-composite > header > output {
+  font-size: 10px;
+}
+
+.board-cohort > header .icon-button,
+.board-single-map > header .icon-button,
+.board-composite > header .icon-button {
+  width: 20px;
+  min-width: 20px;
+  height: 20px;
+}
+
+.board-cohort > header > input {
+  flex-shrink: 0;
+  margin: 0 1px 0 0;
+}
+
+.board-single-map .board-map-modes,
+.board-composite .board-map-modes {
+  gap: 2px;
+}
+
+.board-single-map .board-map-modes > div,
+.board-composite .board-map-modes > div {
+  min-width: 0;
+  width: 100%;
+}
+
+.board-single-map .board-map-modes button,
+.board-composite .board-map-modes button {
+  min-width: 0;
+  flex: 1 1 0;
+  padding-left: 3px;
+  padding-right: 3px;
+  font-size: 9.5px;
+}
+
+.board-single-map .board-map-label,
+.board-composite .board-map-label {
+  min-height: 18px;
+  font-size: 10px;
+  line-height: 1.25;
+  white-space: normal;
+}
+
+@container production-panel (max-width: 560px) {
+  .board-production-columns {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 4px;
+    overflow: hidden;
+  }
+
+  .board-production-columns > :last-child {
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .board-production-columns > :last-child h3 {
+    margin: 2px 0;
+  }
+
+  .board-production .board-downcodes {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: thin;
+  }
+
+  .board-production .board-down-row {
+    flex: 0 0 210px;
+    min-width: 170px;
+    padding: 2px 4px;
+    border: 1px solid #edf1ee;
+  }
+
+  .board-production .board-down-row > button:first-child {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+  }
+
+  .board-production .board-down-row > button:first-child span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+@media (min-width: 1101px) and (max-height: 850px) {
+  .board-trend:not(.board-panel-expanded) .board-baseline-stats > span {
+    flex-direction: row;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0 4px;
+  }
+
+  .board-trend:not(.board-panel-expanded) .board-baseline-stats b {
+    font-size: 10px;
+  }
+
+  .board-trend:not(.board-panel-expanded) .board-equipment-stats {
+    padding: 1px 0;
   }
 }

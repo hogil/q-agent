@@ -23,11 +23,10 @@ import {
   fitLayout,
   layoutVersion,
   layoutStorageKey,
-  legacyLayoutStorageKey,
-  migrateLayout,
   minimumFractions,
   minColumns,
   minRows,
+  minWorkspace,
   moveBoundary,
   panelRows,
   parseLayout,
@@ -72,6 +71,7 @@ type Drag = {
   y: number;
   row: number;
   columnBoundary: number;
+  workspaceBoundary: boolean;
   rowBoundary: number;
   layout: BoardLayout;
   width: number;
@@ -109,6 +109,10 @@ export default function ResizableBoard({
       '--board-rows',
       layout.rows.map((n) => `minmax(0, ${n}fr)`).join(' '),
     );
+    style.setProperty(
+      '--board-workspace',
+      layout.workspace.map((n) => `minmax(0, ${n}fr)`).join(' '),
+    );
     layout.columns.forEach((sizes, i) =>
       style.setProperty(
         `--board-columns-${i}`,
@@ -130,15 +134,8 @@ export default function ResizableBoard({
   }
   useEffect(() => {
     try {
-      const saved = parseLayout(localStorage.getItem(layoutStorageKey));
-      if (saved) preferred.current = saved;
-      else {
-        const migrated = migrateLayout(
-          localStorage.getItem(legacyLayoutStorageKey),
-        );
-        preferred.current = migrated || defaultLayout();
-        if (migrated) persist(migrated);
-      }
+      preferred.current =
+        parseLayout(localStorage.getItem(layoutStorageKey)) || defaultLayout();
     } catch {
       storageCallback.current(true);
     }
@@ -171,22 +168,36 @@ export default function ResizableBoard({
 
   function adjust(start: Drag, dx: number, dy: number) {
     const columns = start.layout.columns.map((row) => [...row]);
-    const columnPixels = start.width - columns[start.row].length + 1;
+    const rowWidth =
+      start.row === 0
+        ? start.width
+        : (start.width - 1) * start.layout.workspace[0];
+    const columnPixels = rowWidth - columns[start.row].length + 1;
     columns[start.row] = moveBoundary(
       columns[start.row],
       start.columnBoundary,
       dx / columnPixels,
       minimumFractions(minColumns[start.row], columnPixels),
     );
-    return {
-      rows: moveBoundary(
-        start.layout.rows,
-        start.rowBoundary,
-        dy / (start.height - 2),
-        minimumFractions(minRows, start.height - 2),
-      ),
-      columns,
-    };
+    return fitLayout(
+      {
+        workspace: moveBoundary(
+          start.layout.workspace,
+          start.workspaceBoundary ? 0 : -1,
+          dx / (start.width - 1),
+          minimumFractions(minWorkspace, start.width - 1),
+        ),
+        rows: moveBoundary(
+          start.layout.rows,
+          start.rowBoundary,
+          dy / (start.height - 2),
+          minimumFractions(minRows, start.height - 2),
+        ),
+        columns,
+      },
+      start.width,
+      start.height,
+    );
   }
   function stop(cancel = false) {
     const start = drag.current;
@@ -264,11 +275,7 @@ export default function ResizableBoard({
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
       const currentFocus = document.activeElement;
-      if (
-        event.shiftKey
-          ? currentFocus === first
-          : currentFocus === last
-      ) {
+      if (event.shiftKey ? currentFocus === first : currentFocus === last) {
         event.preventDefault();
         (event.shiftKey ? last : first).focus({ preventScroll: true });
       }
@@ -394,9 +401,21 @@ export default function ResizableBoard({
     column: number,
   ) =>
     corners.map((corner) => {
+      const assessment = panel.props['data-panel'] === 'assessment';
       const xb = corner.endsWith('e') ? column : column - 1;
-      const yb = corner.startsWith('s') ? row : row - 1;
-      const x = xb >= 0 && xb < panelRows[row].length - 1;
+      const workspaceBoundary = assessment
+        ? corner.endsWith('w')
+        : row > 0 && xb === panelRows[row].length - 1;
+      const yb = assessment
+        ? corner.startsWith('n')
+          ? 0
+          : -1
+        : corner.startsWith('s')
+          ? row
+          : row - 1;
+      const columnBoundary =
+        !assessment && xb >= 0 && xb < panelRows[row].length - 1 ? xb : -1;
+      const x = workspaceBoundary || columnBoundary !== -1;
       const y = yb >= 0 && yb < panelRows.length - 1;
       if (!x && !y) return null;
       const label = `${panel.props['aria-label'] || panel.props['data-panel']} ${cornerNames[corner]} 크기 조절`;
@@ -412,7 +431,8 @@ export default function ResizableBoard({
         x: 0,
         y: 0,
         row,
-        columnBoundary: x ? xb : -1,
+        columnBoundary,
+        workspaceBoundary,
         rowBoundary: y ? yb : -1,
         layout: current.current,
         width: grid.current!.clientWidth,
@@ -496,6 +516,27 @@ export default function ResizableBoard({
         </button>
       );
     });
+  const renderPanel = (id: string, row: number, column: number) => {
+    const panel = panels.get(id);
+    if (!panel) return null;
+    const expanded = expandedPanel === id;
+    const content = panelChildren(panel, expanded);
+    return cloneElement(
+      panel,
+      {
+        key: id,
+        className:
+          `${panel.props.className || ''}${expanded ? ' board-panel-expanded' : ''}`.trim(),
+        role: expanded ? 'dialog' : panel.props.role,
+        'aria-modal': expanded ? true : undefined,
+        'aria-hidden': expandedPanel !== null && !expanded,
+        inert: expandedPanel !== null && !expanded,
+      },
+      content.children,
+      content.rootControl,
+      handles(panel, row, column),
+    );
+  };
   return (
     <div
       ref={grid}
@@ -503,28 +544,10 @@ export default function ResizableBoard({
     >
       {panelRows.map((row, rowIndex) => (
         <div className={`board-layout-row row-${rowIndex}`} key={rowIndex}>
-          {row.map((id, column) => {
-            const panel = panels.get(id);
-            if (!panel) return null;
-            const expanded = expandedPanel === id;
-            const content = panelChildren(panel, expanded);
-            return cloneElement(
-              panel,
-              {
-                key: id,
-                className: `${panel.props.className || ''}${expanded ? ' board-panel-expanded' : ''}`.trim(),
-                role: expanded ? 'dialog' : panel.props.role,
-                'aria-modal': expanded ? true : undefined,
-                'aria-hidden': expandedPanel !== null && !expanded,
-                inert: expandedPanel !== null && !expanded,
-              },
-              content.children,
-              content.rootControl,
-              handles(panel, rowIndex, column),
-            );
-          })}
+          {row.map((id, column) => renderPanel(id, rowIndex, column))}
         </div>
       ))}
+      {renderPanel('assessment', 1, -1)}
       {expandedPanel && (
         <button
           type="button"

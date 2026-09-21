@@ -265,3 +265,32 @@ details[open] > summary > .board-details-chevron {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Keep the answer readable in the tall assessment panel without widening it. */
+.board-analysis-output > .board-analysis-answer {
+  font-size: 13px;
+  line-height: 1.5;
+  max-width: 100%;
+}
+
+.board-analysis-output
+  > p:not(.board-analysis-answer):not(.board-analysis-failure) {
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.board-analysis-status {
+  font-size: 10.5px;
+  line-height: 1.35;
+}
+
+.board-analysis-chat-log article {
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+@media (max-width: 600px) {
+  .board-analysis-output > .board-analysis-answer {
+    font-size: 12px;
+  }
+}
