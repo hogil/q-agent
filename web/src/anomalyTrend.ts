@@ -4,6 +4,7 @@ import {
   type AnomalyPattern,
   type EngineeringData,
   type Signal,
+  seededNormalNoise,
 } from './engineeringData.ts';
 import {
   changeTiming,
@@ -45,45 +46,81 @@ function usesEquipmentAxis(signal: Signal) {
   return !signal.legendAxis || signal.legendAxis === 'eqp_id';
 }
 
+function standardDeviation(values: number[]) {
+  if (values.length < 2) return 0;
+  const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+  return Math.sqrt(
+    values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length,
+  );
+}
+
+function clamp(value: number, minimum: number, maximum: number) {
+  return Math.min(maximum, Math.max(minimum, value));
+}
+
+function inSignalWindow(signal: Signal, index: number) {
+  return index >= signal.startIndex && index <= signal.endIndex;
+}
+
 function targetPatternValue(
   data: EngineeringData,
   signal: Signal,
   index: number,
   sample: number,
-  baseline: number,
   spread: number,
 ) {
   const pattern = anomalyPattern(signal);
-  const phase = index + sample * 0.37 + 1;
-  const noise = Math.sin(phase * 13.7 + sample * 7.3) * spread;
-  const postOnset = index >= signal.onsetIndex;
+  const incidentSeed = data.trend[0]?.timestamp ?? '';
+  const noise =
+    seededNormalNoise(
+      `${incidentSeed}:${signal.id}:target:${index}:${sample}`,
+    ) * spread * 0.8;
+  const active = inSignalWindow(signal, index);
+  const progress = clamp(
+    (index - signal.startIndex) /
+      Math.max(1, signal.endIndex - signal.startIndex),
+    0,
+    1,
+  );
+  const normal = data.trend[index][signal.metric] + noise;
   if (pattern === 'drift') {
-    return data.trend[index][signal.metric] + noise * 0.8;
+    const direction = signal.metric === 'availability' ? -1 : 1;
+    return normal + (active ? direction * progress * spread * 0.3 : 0);
   }
   if (pattern === 'abrupt_level_shift') {
-    return baseline + (postOnset ? spread * 7.5 : 0) + noise * 0.45;
+    return normal + (active ? spread * 0.3 : 0);
   }
   if (pattern === 'spike') {
-    const spike = postOnset && (index - signal.onsetIndex) % 4 === 1;
-    return baseline + noise * 0.8 + (spike ? spread * (sample === 2 ? 9 : 6) : 0);
+    const spike = active && sample === 2 && (index - signal.startIndex) % 5 === 2;
+    return normal + (spike ? spread * 2.8 : 0);
   }
   if (pattern === 'variance_burst') {
-    return baseline + noise * (postOnset ? 4.3 : 0.8);
+    const burstNoise =
+      seededNormalNoise(`${signal.id}:variance:${index}:${sample}`) *
+      spread *
+      (active ? 1.25 : 0.8);
+    return data.trend[index][signal.metric] + burstNoise;
   }
-  return (
-    baseline +
-    (postOnset
-      ? Math.sin((index - signal.onsetIndex) * Math.PI * 0.5) * spread * 4.3
-      : 0) +
-    noise * 0.8
-  );
+  return normal +
+    (active
+      ? Math.sin((index - signal.startIndex) * Math.PI * 0.5) * spread * 0.75
+      : 0);
 }
 
 export function makeTrendFleet(data: EngineeringData, signal: Signal) {
   if (data.trendFleets) return data.trendFleets[signal.id] || [];
   const before = data.trend.slice(0, Math.max(1, signal.onsetIndex));
-  const baseline = median(before.map((row) => row[signal.metric]));
-  const spread = signal.metric === 'temperature' ? 0.22 : 0.16;
+  const measuredSpread = standardDeviation(
+    before.map((row) => row[signal.metric]),
+  );
+  const spread = Math.max(
+    measuredSpread,
+    signal.metric === 'temperature'
+      ? 0.045
+      : signal.metric === 'queue'
+        ? 0.025
+        : 0.055,
+  );
   const members = [
     signalMember(signal),
     ...Array.from({ length: 4 }, (_, i) => `SYN-REF-${i + 1}`),
@@ -94,25 +131,27 @@ export function makeTrendFleet(data: EngineeringData, signal: Signal) {
     points: data.trend.flatMap((row, index) =>
       Array.from({ length: 6 }, (_, sample) => {
         const offset = (sample - 2.5) / 8;
-          const noise = Math.sin(
-            (index + 1) * 13.7 + sample * 7.3 + memberIndex * 2.1,
-          );
-          return [
-            Date.parse(row.timestamp) + offset * HOUR,
-            memberIndex === 0
-              ? signal.pattern
-                ? targetPatternValue(
-                    data,
-                    signal,
-                    index,
-                    sample,
-                    baseline,
-                    spread,
-                  )
-                : row[signal.metric] + (sample === 2 ? 0 : noise * spread * 0.8)
-              : baseline +
-                noise * spread +
-              Math.cos(index * 1.3 + memberIndex) * spread * 0.5,
+        const noise =
+          seededNormalNoise(
+            `${data.trend[0]?.timestamp ?? ''}:${signal.id}:member:${member}:normal:${index}:${sample}`,
+          ) *
+          spread *
+          0.8;
+        return [
+          Date.parse(row.timestamp) + offset * HOUR,
+          memberIndex === 0
+            ? signal.pattern
+              ? targetPatternValue(
+                  data,
+                  signal,
+                  index,
+                  sample,
+                  spread,
+                )
+              : row[signal.metric] + (sample === 2 ? 0 : noise)
+            : row[signal.metric] +
+              noise +
+              (memberIndex - 2) * spread * 0.18,
         ];
       }),
     ),

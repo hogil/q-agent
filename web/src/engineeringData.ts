@@ -188,6 +188,23 @@ function unit(input: string) {
   return hash(input) / 0xffffffff;
 }
 
+function avalanche(value: number) {
+  let mixed = (value + 0x9e3779b9) >>> 0;
+  mixed = Math.imul(mixed ^ (mixed >>> 16), 0x85ebca6b) >>> 0;
+  mixed = Math.imul(mixed ^ (mixed >>> 13), 0xc2b2ae35) >>> 0;
+  return (mixed ^ (mixed >>> 16)) >>> 0;
+}
+
+export function seededNormalNoise(input: string) {
+  const first = Math.max(
+    avalanche(hash(`${input}:box-muller-u1`)) / 0x100000000,
+    Number.EPSILON,
+  );
+  const second =
+    avalanche(hash(`${input}:box-muller-u2`)) / 0x100000000;
+  return Math.sqrt(-2 * Math.log(first)) * Math.cos(2 * Math.PI * second);
+}
+
 function parseTime(value: string) {
   if (typeof value !== 'string' || value.trim() === '') return null;
   const timestamp = Date.parse(value);
@@ -266,19 +283,18 @@ export function makeEngineeringData(workspace: Workspace): EngineeringData {
 
   const trend = Array.from({ length: 24 }, (_, index) => {
     const progress = index / 23;
-    const observed = index >= 5 && index <= 21;
     const temperature =
-      65 +
-      unit(`${source}:temperature:${index}`) * 0.8 +
-      (observed ? Math.max(0, progress - 0.2) * 4.1 : 0);
+      65.05 +
+      progress * 0.05 +
+      seededNormalNoise(`${source}:normal:temperature:${index}`) * 0.04;
     const queue =
       1.5 +
-      unit(`${source}:queue:${index}`) * 0.5 +
-      (observed ? Math.max(0, index - 5) * 0.24 : 0);
+      progress * 0.02 +
+      seededNormalNoise(`${source}:normal:queue:${index}`) * 0.025;
     const availability = clamp(
       99.4 -
-        unit(`${source}:availability:${index}`) * 0.4 -
-        (observed ? Math.max(0, index - 13) * 0.6 : 0),
+        progress * 0.08 +
+        seededNormalNoise(`${source}:normal:availability:${index}`) * 0.055,
       87,
       100,
     );
@@ -293,8 +309,8 @@ export function makeEngineeringData(workspace: Workspace): EngineeringData {
   const signals: Signal[] = [
     {
       id: 'synthetic-signal-heater-drift',
-      title: '공정 온도 상승',
-      severity: 'high',
+      title: '공정 온도 완만한 Drift',
+      severity: 'medium',
       metric: 'temperature',
       device: 'SYN-DEV-01',
       equipment: 'SYN-EQP-01',
@@ -305,12 +321,13 @@ export function makeEngineeringData(workspace: Workspace): EngineeringData {
       detectedAt: incidentAt,
       startIndex: 5,
       endIndex: 21,
-      description: 'SYN-EQP-01 · SYN-ETCH-10 · 합성 온도 Trace',
+      description: 'SYN-EQP-01 · SYN-ETCH-10 · 합성 완만한 온도 이동 · 정상 범위와 일부 중첩',
       onsetIndex: 5,
+      pattern: 'drift',
     },
     {
       id: 'synthetic-signal-queue-rise',
-      title: 'Queue time 증가',
+      title: 'Queue time 완만한 증가',
       severity: 'medium',
       metric: 'queue',
       device: 'SYN-DEV-01',
@@ -318,34 +335,38 @@ export function makeEngineeringData(workspace: Workspace): EngineeringData {
       step: STEP,
       item: 'SYN-QUEUE',
       legendAxis: 'eqp_id',
+      highlightedMember: 'SYN-EQP-02',
       recipe: 'SYN-RCP-B',
       detectedAt: incidentAt,
       startIndex: 8,
       endIndex: 19,
-      description: 'SYN-EQP-02 · SYN-ETCH-10 · 합성 대기시간',
-      onsetIndex: 6,
+      description: 'SYN-EQP-02 · SYN-ETCH-10 · 합성 완만한 대기시간 이동 · 정상 범위와 일부 중첩',
+      onsetIndex: 8,
+      pattern: 'drift',
     },
     {
       id: 'synthetic-signal-equipment-down',
-      title: '설비 가동률 저하',
-      severity: 'high',
+      title: '설비 가동률 소폭 변동',
+      severity: 'medium',
       metric: 'availability',
       device: 'SYN-DEV-01',
       equipment: 'SYN-EQP-02',
       step: STEP,
       item: 'SYN-AVAIL',
       legendAxis: 'eqp_id',
+      highlightedMember: 'SYN-EQP-02',
       recipe: 'SYN-RCP-B',
       detectedAt: incidentAt,
       startIndex: 14,
       endIndex: 17,
-      description: 'SYN-EQP-02 · 합성 설비 가동률',
+      description: 'SYN-EQP-02 · 합성 소폭 가동률 변동 · 원인 판정 보류',
       onsetIndex: 14,
+      pattern: 'drift',
     },
     {
       id: 'synthetic-signal-level-shift',
-      title: '공정 온도 Level shift',
-      severity: 'high',
+      title: '공정 온도 평균값 소폭 이동',
+      severity: 'medium',
       metric: 'temperature',
       device: 'SYN-DEV-01',
       equipment: 'SYN-EQP-01',
@@ -356,14 +377,14 @@ export function makeEngineeringData(workspace: Workspace): EngineeringData {
       detectedAt: incidentAt,
       startIndex: 8,
       endIndex: 17,
-      description: 'SYN-EQP-01 · SYN-ETCH-10 · 합성 급격한 평균값 변화',
+      description: 'SYN-EQP-01 · SYN-ETCH-10 · 합성 평균값 소폭 이동 · 급격한 변화 아님',
       onsetIndex: 8,
       pattern: 'abrupt_level_shift',
     },
     {
       id: 'synthetic-signal-spike',
-      title: 'Queue spike 반복',
-      severity: 'high',
+      title: 'Queue 국소 소형 Spike',
+      severity: 'medium',
       metric: 'queue',
       device: 'SYN-DEV-01',
       equipment: 'SYN-EQP-02',
@@ -374,13 +395,13 @@ export function makeEngineeringData(workspace: Workspace): EngineeringData {
       detectedAt: incidentAt,
       startIndex: 7,
       endIndex: 20,
-      description: 'SYN-EQP-02 · SYN-ETCH-10 · 합성 국소 Spike 패턴',
+      description: 'SYN-EQP-02 · SYN-ETCH-10 · 합성 간헐적 소형 Spike · 정상 변동과 중첩',
       onsetIndex: 7,
       pattern: 'spike',
     },
     {
       id: 'synthetic-signal-variance-burst',
-      title: '설비 가동률 분산 급증',
+      title: '설비 가동률 분산 소폭 증가',
       severity: 'medium',
       metric: 'availability',
       device: 'SYN-DEV-01',
@@ -392,13 +413,13 @@ export function makeEngineeringData(workspace: Workspace): EngineeringData {
       detectedAt: incidentAt,
       startIndex: 9,
       endIndex: 19,
-      description: 'SYN-EQP-02 · SYN-ETCH-10 · 합성 분산 급증 패턴',
+      description: 'SYN-EQP-02 · SYN-ETCH-10 · 합성 분산 소폭 증가 · 추가 확인 필요',
       onsetIndex: 9,
       pattern: 'variance_burst',
     },
     {
       id: 'synthetic-signal-periodic',
-      title: '공정 온도 주기성 변동',
+      title: '공정 온도 완만한 주기 변동',
       severity: 'medium',
       metric: 'temperature',
       device: 'SYN-DEV-01',
@@ -410,7 +431,7 @@ export function makeEngineeringData(workspace: Workspace): EngineeringData {
       detectedAt: incidentAt,
       startIndex: 6,
       endIndex: 21,
-      description: 'SYN-EQP-01 · SYN-ETCH-10 · 합성 주기성 변동 패턴',
+      description: 'SYN-EQP-01 · SYN-ETCH-10 · 합성 완만한 주기 변동 · 정상 범위와 중첩',
       onsetIndex: 6,
       pattern: 'periodic_pattern',
     },

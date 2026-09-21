@@ -42,8 +42,8 @@ test('creates deterministic, incident-scoped synthetic engineering data', () => 
   assert.equal(first.signals.length, 7);
   assert.deepEqual(first.signals[0], {
     id: 'synthetic-signal-heater-drift',
-    title: '공정 온도 상승',
-    severity: 'high',
+    title: '공정 온도 완만한 Drift',
+    severity: 'medium',
     metric: 'temperature',
     device: 'SYN-DEV-01',
     equipment: 'SYN-EQP-01',
@@ -54,8 +54,9 @@ test('creates deterministic, incident-scoped synthetic engineering data', () => 
     detectedAt: '2026-01-15T12:00:00.000Z',
     startIndex: 5,
     endIndex: 21,
-    description: 'SYN-EQP-01 · SYN-ETCH-10 · 합성 온도 Trace',
+    description: 'SYN-EQP-01 · SYN-ETCH-10 · 합성 완만한 온도 이동 · 정상 범위와 일부 중첩',
     onsetIndex: 5,
+    pattern: 'drift',
   });
   assert.equal(first.fab.length, 2);
   for (const row of first.fab) {
@@ -70,7 +71,7 @@ test('creates deterministic, incident-scoped synthetic engineering data', () => 
     ['SYN-LOT-01/W01', 'SYN-LOT-02/W02'],
   );
   assert.equal(
-    first.fab.every((row) => row.value >= 65 && row.value <= 69),
+    first.fab.every((row) => Number.isFinite(row.value) && row.value >= 64.5 && row.value <= 69),
     true,
   );
   assert.deepEqual(

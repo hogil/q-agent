@@ -10,6 +10,7 @@ import {
   trendLegendGroups,
   trendSelectionFromTime,
 } from '../src/anomalyTrend.ts';
+import { makeEngineeringData } from '../src/engineeringData.ts';
 import { makeEquipmentTrace } from '../src/equipmentComparison.ts';
 import { defaultSelection, changeTiming } from '../src/engineeringAnalysis.ts';
 
@@ -72,6 +73,30 @@ const selection = {
   recipe: 'RCP-A',
   maxLagDays: 14,
 };
+
+function trendSoftnessMetrics(before, after) {
+  const mean = (values) => values.reduce((sum, value) => sum + value, 0) / values.length;
+  const variance = (values, average) =>
+    values.reduce((sum, value) => sum + (value - average) ** 2, 0) / values.length;
+  const beforeMean = mean(before);
+  const afterMean = mean(after);
+  const beforeVariance = variance(before, beforeMean);
+  const afterVariance = variance(after, afterMean);
+  const pooledStandardDeviation = Math.sqrt((beforeVariance + afterVariance) / 2);
+  const sortedBefore = [...before].sort((left, right) => left - right);
+  const quantile = (probability) =>
+    sortedBefore[Math.floor((sortedBefore.length - 1) * probability)];
+  const lower = quantile(0.05);
+  const upper = quantile(0.95);
+  return {
+    standardizedEffect: pooledStandardDeviation
+      ? Math.abs(afterMean - beforeMean) / pooledStandardDeviation
+      : 0,
+    normalOverlap:
+      after.filter((value) => value >= lower && value <= upper).length / after.length,
+    varianceRatio: beforeVariance ? afterVariance / beforeVariance : 1,
+  };
+}
 
 const comparisonData = {
   ...data,
@@ -228,6 +253,36 @@ test('renders each synthetic anomaly pattern as a distinct finite target trace',
   for (let left = 0; left < traces.length; left += 1) {
     for (let right = left + 1; right < traces.length; right += 1) {
       assert.notDeepEqual(traces[left], traces[right]);
+    }
+  }
+});
+
+test('keeps fallback anomaly traces soft with overlapping normal distributions', () => {
+  const generated = makeEngineeringData({
+    incident: { occurred_at: '2026-01-15T12:00:00.000Z' },
+    lots: [],
+    wafers: [],
+    meetings: [],
+    synthetic: true,
+    as_of: '2026-01-20',
+  });
+  for (const signal of generated.signals) {
+    const fleet = makeTrendFleet(generated, signal);
+    const target = fleet.find((row) => row.highlighted);
+    assert.ok(target);
+    assert.equal(fleet.filter((row) => !row.highlighted).length, 4);
+    const values = target.points.map(([, value]) => value);
+    const split = signal.onsetIndex * 6;
+    const metrics = trendSoftnessMetrics(values.slice(0, split), values.slice(split));
+    if (signal.pattern === 'spike') {
+      assert.ok(metrics.standardizedEffect <= 3.5, `${signal.id} effect ${metrics.standardizedEffect}`);
+      assert.ok(metrics.normalOverlap >= 0.2, `${signal.id} overlap ${metrics.normalOverlap}`);
+    } else {
+      assert.ok(metrics.standardizedEffect <= 1.5, `${signal.id} effect ${metrics.standardizedEffect}`);
+      assert.ok(metrics.normalOverlap >= 0.45, `${signal.id} overlap ${metrics.normalOverlap}`);
+    }
+    if (signal.pattern === 'variance_burst') {
+      assert.ok(metrics.varianceRatio >= 1.0 && metrics.varianceRatio <= 2.0);
     }
   }
 });
