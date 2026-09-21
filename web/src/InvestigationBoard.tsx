@@ -381,10 +381,6 @@ export default function InvestigationBoard({
   const current = maps.find(
     (row) => focused && pairKey(row) === pairKey(focused),
   );
-  const selectedDie =
-    die && composite.dies.find((row) => row.x === die[0] && row.y === die[1]);
-  const regionDies = selectDieRegion(current?.dies || [], region);
-  const regionFlags = regionDies.filter((row) => row.bin >= 3).length;
   const regionByWafer = new Map(
     maps.map((map) => {
       const dies = selectDieRegion(map.dies, region);
@@ -399,15 +395,6 @@ export default function InvestigationBoard({
   );
   const flaggedRegionWafers = maps.filter(
     (map) => (regionByWafer.get(pairKey(map))?.flags || 0) > 0,
-  );
-  const compositeRegion = selectDieRegion(composite.dies, region);
-  const regionObservations = compositeRegion.reduce(
-    (sum, row) => sum + row.observed,
-    0,
-  );
-  const compositeFlags = compositeRegion.reduce(
-    (sum, row) => sum + row.flags,
-    0,
   );
   const mapBrush = {
     toolbox: [],
@@ -431,7 +418,7 @@ export default function InvestigationBoard({
   const mapOption = (combined: boolean) => ({
     animation: false,
     brush: mapBrush,
-    grid: { left: '5%', right: '5%', top: '5%', bottom: '5%' },
+    grid: { left: 1, right: 1, top: 1, bottom: 1 },
     xAxis: { type: 'value', min: -18, max: 18, show: false },
     yAxis: { type: 'value', min: -18, max: 18, show: false },
     tooltip: {
@@ -1088,6 +1075,7 @@ export default function InvestigationBoard({
                   <Chart
                     option={singleMapOption}
                     mapNavigation
+                    areaSelection={region}
                     className="board-map-canvas"
                     label="선택 Wafer 개별 Map"
                     onSelect={(p) => selectDie([p.value[0], p.value[1]])}
@@ -1097,30 +1085,6 @@ export default function InvestigationBoard({
                   <p className="board-empty">Map 없음</p>
                 )}
               </div>
-              <div
-                className="board-image-findings"
-                aria-label="Wafer Map 분석 내용"
-                aria-live="polite"
-              >
-                <p>
-                  {region ? '선택 영역' : '전체 Map'} · Flag {regionFlags}/
-                  {regionDies.length} (
-                  {regionDies.length
-                    ? ((regionFlags / regionDies.length) * 100).toFixed(1) + '%'
-                    : 'N/A'}
-                  )
-                </p>
-                <p>
-                  Bin 3 {regionDies.filter((row) => row.bin === 3).length} · Bin
-                  4 {regionDies.filter((row) => row.bin === 4).length}
-                </p>
-                <small>합성 계산 · 원인 판정 미연결</small>
-              </div>
-              <footer>
-                <i style={{ background: bins[3] }} />
-                Bin 3 <i style={{ background: bins[4] }} />
-                Bin 4 · Flag ≥ 3
-              </footer>
             </>
           ) : focused && mapMode === 'overlay' ? (
             <BoardOverlay
@@ -1166,29 +1130,8 @@ export default function InvestigationBoard({
           {mapModeControls('전체 Map 종류')}
           {mapMode === 'bin' ? (
             <>
-              <div className="board-map-label">
-                동일 Die 좌표 · Flag / 관측 수
-              </div>
-              <div className="board-map-stage">
-                {composite.waferCount ? (
-                  <Chart
-                    option={compositeMapOption}
-                    mapNavigation
-                    className="board-map-canvas"
-                    label={`선택 ${composite.waferCount}개 Wafer 합성 Map`}
-                    onSelect={(p) => selectDie([p.value[0], p.value[1]])}
-                    onArea={selectRegion}
-                  />
-                ) : (
-                  <p className="board-empty">합성 대상 없음</p>
-                )}
-              </div>
-              <div className="board-frequency">
-                <span>0</span>
-                {[0, 12, 37, 62, 100].map((n) => (
-                  <i key={n} style={{ background: frequencyColor(n) }} />
-                ))}
-                <span>100%</span>
+              <label className="board-frequency">
+                Flag ≥
                 <input
                   type="range"
                   aria-label="합성 Map 최소 Flag 빈도"
@@ -1200,28 +1143,22 @@ export default function InvestigationBoard({
                   onChange={(event) => setThreshold(+event.target.value)}
                 />
                 <output>{threshold}%</output>
+              </label>
+              <div className="board-map-stage">
+                {composite.waferCount ? (
+                  <Chart
+                    option={compositeMapOption}
+                    mapNavigation
+                    areaSelection={region}
+                    className="board-map-canvas"
+                    label={`선택 ${composite.waferCount}개 Wafer 합성 Map`}
+                    onSelect={(p) => selectDie([p.value[0], p.value[1]])}
+                    onArea={selectRegion}
+                  />
+                ) : (
+                  <p className="board-empty">합성 대상 없음</p>
+                )}
               </div>
-              <div
-                className="board-image-findings"
-                aria-label="합성 Map 분석 내용"
-                aria-live="polite"
-              >
-                <p>
-                  {region ? '선택 영역' : '전체 Map'} · {compositeRegion.length}{' '}
-                  좌표
-                </p>
-                <p>
-                  Flag {compositeFlags}/{regionObservations} 관측 · 2장 이상
-                  반복 {compositeRegion.filter((row) => row.flags >= 2).length}{' '}
-                  좌표
-                </p>
-                <small>합성 계산 · 미관측은 분모 제외</small>
-              </div>
-              <footer aria-live="polite">
-                {selectedDie
-                  ? `Die (${selectedDie.x},${selectedDie.y}) · ${selectedDie.flags}/${selectedDie.observed} (${selectedDie.percent.toFixed(0)}%)`
-                  : `${composite.dies.filter((row) => row.flags > 0).length} Flag 좌표 · 정렬 미검증`}
-              </footer>
             </>
           ) : !selectedMaps.length ? (
             <p className="board-empty">선택한 Wafer 없음</p>

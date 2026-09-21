@@ -1,7 +1,7 @@
 export const panelRows = [
-  ['signals', 'trend', 'correlation'],
+  ['signals', 'trend', 'distribution'],
   ['single-map', 'composite', 'images'],
-  ['distribution', 'documents', 'production'],
+  ['correlation', 'documents', 'production'],
 ] as const;
 
 export type BoardLayout = {

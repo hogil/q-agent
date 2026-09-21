@@ -116,19 +116,11 @@ export default function BoardOverlay({
       view.key === 'raw' ? raw : model?.[view.key] || [];
     const selected = selectDieRegion(points, area);
     const selectedSet = new Set(selected);
-    const rms = selected.length
-      ? Math.sqrt(
-          selected.reduce((sum, p) => sum + p.dx ** 2 + p.dy ** 2, 0) /
-            selected.length,
-        )
-      : null;
     return {
       ...view,
-      n: selected.length,
-      rms,
       option: {
         animation: false,
-        grid: { left: 6, right: 6, top: 6, bottom: 32 },
+        grid: { left: 1, right: 1, top: 1, bottom: 1 },
         xAxis: { type: 'value', min: -radius, max: radius, show: false },
         yAxis: { type: 'value', min: -radius, max: radius, show: false },
         brush: {
@@ -171,14 +163,6 @@ export default function BoardOverlay({
             showSymbol: false,
             lineStyle: { color: '#94aaa4', width: 1 },
           },
-          {
-            type: 'custom',
-            z: 2,
-            zlevel: 0,
-            silent: true,
-            renderItem: vectorRenderer(view.color, gain),
-            data: [[-radius * 0.3, -radius * 0.91, 1, 0, 0, 1]],
-          },
         ],
       },
     };
@@ -220,6 +204,18 @@ export default function BoardOverlay({
             </button>
           ))}
         </div>
+        <label className="overlay-vector-controls" title="Overlay 벡터 배율">
+          <input
+            type="range"
+            min="0.5"
+            max="4"
+            step="0.25"
+            aria-label="Overlay 벡터 배율"
+            value={vectorScale}
+            onChange={(e) => onVectorScale(+e.target.value)}
+          />
+          <output>×{vectorScale}</output>
+        </label>
         <button
           className="icon-button"
           title="Overlay Raw Fit Res 다운로드"
@@ -251,56 +247,14 @@ export default function BoardOverlay({
           <ArrowDownToLine size={12} />
         </button>
       </div>
-      <div className="overlay-vector-body">
-        <aside className="overlay-vector-side" aria-label="Overlay RMS와 배율">
-          <dl aria-live="polite">
-            <dt>RMS</dt>
-            <dd style={{ color: view.color }}>
-              {chart.rms?.toFixed(3) ?? '-'}
-              <small>nm</small>
-            </dd>
-          </dl>
-          <div className="overlay-vector-controls">
-            <label>
-              Vector
-              <input
-                type="range"
-                min="0.5"
-                max="4"
-                step="0.25"
-                aria-label="Overlay 벡터 배율"
-                value={vectorScale}
-                onChange={(e) => onVectorScale(+e.target.value)}
-              />
-            </label>
-            <output>×{vectorScale}</output>
-          </div>
-        </aside>
-        <div className="overlay-vector-stage">
-          <Chart
-            option={chart.option}
-            mapNavigation
-            label={`Overlay ${view.label} ${aggregate ? '전체' : '개별'} 벡터 Map`}
-            className="overlay-vector-chart"
-            onArea={setArea}
-          />
-        </div>
-        <aside className="overlay-vector-side" aria-label="Overlay 표본과 출처">
-          <dl aria-live="polite">
-            <dt>n</dt>
-            <dd>{chart.n}</dd>
-          </dl>
-          <span title="기준 화살표 1 nm">1 nm</span>
-          <div
-            className="overlay-vector-source"
-            title={`${wafers.map((row) => `${row.lotId}/${row.waferId}`).join(', ')} · 6-param linear · Res = Raw − Fit · 실제 보정 모델 미연결`}
-          >
-            <span>합성</span>
-            <span>{aggregate ? '보간 평균' : '측정 예시'}</span>
-            <span>{aggregate ? '정렬 가정' : '모델 미연결'}</span>
-            {!model && <strong>Fit 불가</strong>}
-          </div>
-        </aside>
+      <div className="overlay-vector-stage">
+        <Chart
+          option={chart.option}
+          mapNavigation
+          label={`Overlay ${view.label} ${aggregate ? '전체' : '개별'} 벡터 Map`}
+          className="overlay-vector-chart"
+          onArea={setArea}
+        />
       </div>
     </section>
   );

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowDownToLine, X } from 'lucide-react';
+import { ArrowDownToLine } from 'lucide-react';
 import type { EChartsCoreOption } from 'echarts/core';
 import type { CustomSeriesRenderItem } from 'echarts';
 import { Chart } from './charts';
@@ -9,10 +9,8 @@ import {
   makeMetrologyFixture,
   compositeMetrologyMaps,
   metricColor,
-  metricStats,
   METRIC_CONFIG,
   interpolateWaferGrid,
-  selectMeasuredRegion,
   waferOutline,
   type MetrologyMetric,
 } from './metrologyMap';
@@ -82,13 +80,7 @@ export default function BoardMetrology({
   );
   const grid = field.grid;
   const measured = aggregate ? [] : fixture?.points || [];
-  const statsPoints = aggregate ? grid : measured;
   const outline = useMemo(() => waferOutline(radius), [radius]);
-  const stats = useMemo(() => metricStats(statsPoints), [statsPoints]);
-  const areaStats = useMemo(
-    () => metricStats(selectMeasuredRegion(statsPoints, areaSelection)),
-    [areaSelection, statsPoints],
-  );
   const renderCell: CustomSeriesRenderItem = (_params, api) => {
     const center = api.coord([api.value(0), api.value(1)]);
     const next = api.coord([
@@ -124,7 +116,7 @@ export default function BoardMetrology({
           borderWidth: 1,
         },
       },
-      grid: { left: '5%', right: '5%', top: '5%', bottom: '5%' },
+      grid: { left: 1, right: 1, top: 1, bottom: 1 },
       xAxis: { type: 'value', min: -radius, max: radius, show: false },
       yAxis: { type: 'value', min: -radius, max: radius, show: false },
       tooltip: {
@@ -236,71 +228,16 @@ export default function BoardMetrology({
           </button>
         )}
       </header>
-      <div className="metrology-map-source" title={fixture?.sourceLabel}>
-        합성 측정 ·{' '}
-        {geometry ? `${geometry.radius_mm * 2} mm` : 'geometry 미설정'}
-      </div>
       <div className="metrology-map-stage">
         <Chart
           option={option}
           mapNavigation
+          areaSelection={areaSelection}
           label={`${scale.label} ${aggregate ? 'composite mean' : 'individual'} wafer map`}
           className="metrology-map-chart"
           onArea={(region) => setAreaSelection(region)}
         />
       </div>
-      <div className={`metrology-map-scale ${scale.kind}`} aria-hidden="true">
-        <span>{scale.min}</span>
-        <i />
-        <span>{scale.max}</span>
-      </div>
-      <div className="metrology-map-legend" aria-label="Point legend">
-        {!aggregate && (
-          <span>
-            <i className="measured" /> measured
-          </span>
-        )}
-        <span>
-          <i className="estimated" />{' '}
-          {aggregate ? 'wafer mean · linear estimate' : 'linear estimate'}
-        </span>
-      </div>
-      <div className="metrology-map-stats">
-        <span>
-          min <b>{formatValue(stats.min, metric)}</b>
-        </span>
-        <span>
-          median <b>{formatValue(stats.median, metric)}</b>
-        </span>
-        <span>
-          max <b>{formatValue(stats.max, metric)}</b>
-        </span>
-        <span>
-          {aggregate ? 'grid n' : 'n'} <b>{stats.n}</b>
-        </span>
-      </div>
-      {areaSelection && (
-        <div className="metrology-map-area-stats">
-          <span>
-            Area {aggregate ? 'grid n' : 'n'} {areaStats.n} | median{' '}
-            {formatValue(areaStats.median, metric)} nm
-          </span>
-          <button
-            type="button"
-            className="metrology-map-clear"
-            title="Clear brush"
-            aria-label="Clear brush"
-            onClick={() => setAreaSelection(null)}
-          >
-            <X size={10} />
-          </button>
-        </div>
-      )}
-      <footer className="metrology-map-footer">
-        {aggregate
-          ? '좌표 정렬 가정 · 미관측 제외 · 합성 데이터'
-          : '합성 측정 · Agent Tool 미연결'}
-      </footer>
     </section>
   );
 }

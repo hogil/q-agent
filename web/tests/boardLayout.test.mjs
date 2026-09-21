@@ -48,9 +48,9 @@ test('new spatial layout has separate persistence and rejects incomplete or old 
 
 test('investigation order gives every panel one place and a two-row analysis area', () => {
   assert.deepEqual(panelRows, [
-    ['signals', 'trend', 'correlation'],
+    ['signals', 'trend', 'distribution'],
     ['single-map', 'composite', 'images'],
-    ['distribution', 'documents', 'production'],
+    ['correlation', 'documents', 'production'],
   ]);
   assert.equal(new Set([...panelRows.flat(), 'assessment']).size, 10);
   const layout = defaultLayout();

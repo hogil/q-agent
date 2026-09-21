@@ -355,7 +355,7 @@
   min-height: 0;
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-end;
   container-type: size;
 }
 .board-panel .board-map-canvas {
@@ -369,10 +369,6 @@
   font-size: 9px;
   flex-shrink: 0;
   height: 15px;
-}
-.board-frequency i {
-  width: 11px;
-  height: 6px;
 }
 .board-frequency input {
   width: 40px;
@@ -803,22 +799,6 @@
 }
 .board-trend > header > span {
   white-space: normal;
-}
-.board-image-findings {
-  flex-shrink: 0;
-  border-top: 1px solid #dfe7e3;
-  padding: 4px 0 0;
-  font-size: 10px;
-  line-height: 1.4;
-  color: #465d66;
-  overflow-wrap: anywhere;
-}
-.board-image-findings p {
-  margin: 0;
-}
-.board-image-findings small {
-  font-size: 9px;
-  color: #7a737e;
 }
 .board-signal-table table,
 .board-doc-list table {
@@ -1860,10 +1840,14 @@
   }
 }
 
-/* The compact row keeps its actions available when the parent gives cohort/maps
-   narrow engineering columns. */
+.board-panel.board-single-map,
+.board-panel.board-composite {
+  padding: 0;
+}
+
 .board-single-map > header,
 .board-composite > header {
+  padding: 4px 18px 4px 6px;
   flex-wrap: wrap;
   gap: 3px;
   row-gap: 2px;
@@ -1891,6 +1875,7 @@
 .board-single-map .board-map-modes,
 .board-composite .board-map-modes {
   gap: 2px;
+  padding: 0 4px;
 }
 
 .board-single-map .board-map-modes > div,
@@ -1910,10 +1895,38 @@
 
 .board-single-map .board-map-label,
 .board-composite .board-map-label {
+  padding: 0 4px;
   min-height: 18px;
   font-size: 10px;
   line-height: 1.25;
   white-space: normal;
+}
+
+.board-composite .board-frequency {
+  padding: 0 4px;
+}
+
+.board-single-map .board-map-stage,
+.board-composite .board-map-stage,
+.board-single-map .metrology-map-stage,
+.board-composite .metrology-map-stage,
+.board-single-map .overlay-vector-stage,
+.board-composite .overlay-vector-stage {
+  position: relative;
+}
+
+.board-single-map .map-chart-shell,
+.board-composite .map-chart-shell {
+  position: static;
+}
+
+.board-single-map .map-navigation,
+.board-composite .map-navigation {
+  left: 2px;
+  bottom: 18px;
+  transform: none;
+  display: grid;
+  grid-template-columns: repeat(2, auto);
 }
 
 @container production-panel (max-width: 560px) {
