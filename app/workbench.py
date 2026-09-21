@@ -48,7 +48,7 @@ ANALYSIS_SOURCES = (
     "inform", "meetings", "changes",
 )
 ANALYSIS_CONTEXT_FIELDS = {"incident_number", "item", "step", "equipment", "from", "to", "wafers"}
-ANALYSIS_OPTIONAL_FIELDS = {"recipe", "trend_selection", "sem_wafers", "map_view"}
+ANALYSIS_OPTIONAL_FIELDS = {"recipe", "trend_selection", "sem_wafers", "map_view", "map_comparison"}
 ANALYSIS_TEXT_FIELDS = ("item", "step", "equipment")
 ANALYSIS_TEXT_LIMIT = 256
 ANALYSIS_TIME_LIMIT = 64
@@ -681,7 +681,8 @@ class Workbench:
                         }
         available = {"incident", "meetings"}
         engineering_sources = set(sources) & {"trend", "correlation", "production", "inform", "changes"}
-        engineering = (EngineeringTools(self.raw_data, self._incident_map(), context, sources)
+        engineering_context = {key: value for key, value in context.items() if key != "map_comparison"}
+        engineering = (EngineeringTools(self.raw_data, self._incident_map(), engineering_context, sources)
                        if self.raw_data and engineering_sources else None)
         if engineering:
             available.update(engineering_sources)
@@ -873,6 +874,23 @@ class Workbench:
         if any((item["lot_id"], item["wafer_id"]) not in registered for item in normalized_wafers):
             raise WorkbenchError("context wafer tuple is outside the registered incident scope")
         normalized["wafers"] = normalized_wafers
+        if "map_comparison" in value:
+            groups = value["map_comparison"]
+            if not isinstance(groups, dict) or set(groups) != {"a", "b"}:
+                raise WorkbenchError("invalid context map_comparison")
+            for pairs in groups.values():
+                if not isinstance(pairs, list) or len(pairs) > ANALYSIS_MAX_WAFERS:
+                    raise WorkbenchError("invalid context map_comparison size")
+                seen = set()
+                for pair in pairs:
+                    if (not isinstance(pair, dict) or set(pair) != {"lot_id", "wafer_id"}
+                            or any(not isinstance(item, str) for item in pair.values())):
+                        raise WorkbenchError("invalid context map_comparison pair")
+                    key = (pair["lot_id"], pair["wafer_id"])
+                    if key not in registered or key in seen:
+                        raise WorkbenchError("context map_comparison must contain distinct registered wafers")
+                    seen.add(key)
+            normalized["map_comparison"] = copy.deepcopy(groups)
         if "sem_wafers" in value:
             pairs = value["sem_wafers"]
             if not isinstance(pairs, list) or len(pairs) > 2:
@@ -895,12 +913,14 @@ class Workbench:
         trend_text = json.dumps(context.get("trend_selection"), separators=(",", ":"))
         sem_text = json.dumps(context.get("sem_wafers", []), separators=(",", ":"))
         map_text = json.dumps(context.get("map_view"), separators=(",", ":"))
+        comparison_text = json.dumps(context.get("map_comparison"), separators=(",", ":"))
         return (f"sources={','.join(sources)}; incident={context['incident_number']}; "
                 f"item={context.get('item') or 'none'}; step={context.get('step') or 'none'}; "
                 f"equipment={context['equipment'] if context['equipment'] else 'all'}; "
                 f"recipe={context.get('recipe') or 'all'}; "
                 f"date={context['from']}..{context['to']}; wafers={wafer_text}; "
-                f"trend_selection={trend_text}; sem_wafers={sem_text}; map_view={map_text} "
+                f"trend_selection={trend_text}; sem_wafers={sem_text}; map_view={map_text}; "
+                f"map_comparison={comparison_text} "
                 "(UI condition only; region X=Unix ms, Y=item value)")
 
     def _analysis_answer(self, data, sources, context):

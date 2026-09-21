@@ -110,6 +110,27 @@ test('cleared analysis selection cannot retain hidden XY bounds', () => {
   );
 });
 
+test('map comparison preserves sides and ignores only within-side ordering', () => {
+  const base = {
+    incident_number: 'SYN-2026-01', item: 'CD', step: 'ETCH', equipment: '',
+    from: '2026-01-01', to: '2026-01-02', wafers: [],
+    map_comparison: {
+      a: [{ lot_id: 'L1', wafer_id: 'W1' }, { lot_id: 'L2', wafer_id: 'W1' }],
+      b: [{ lot_id: 'L3', wafer_id: 'W2' }],
+    },
+  };
+  assert.equal(sameAnalysisContext(base, {
+    ...base, map_comparison: { ...base.map_comparison, a: [...base.map_comparison.a].reverse() },
+  }), true);
+  assert.equal(sameAnalysisContext(base, {
+    ...base, map_comparison: { a: base.map_comparison.b, b: base.map_comparison.a },
+  }), false);
+  assert.equal(sameAnalysisContext(base, {
+    ...base, map_comparison: { ...base.map_comparison, b: [] },
+  }), false);
+  assert.equal(sameAnalysisContext(base, { ...base, map_comparison: undefined }), false);
+});
+
 const data = {
   signals: [
     {

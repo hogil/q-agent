@@ -110,7 +110,8 @@ class WorkbenchLLMTests(unittest.TestCase):
 
     def test_engineering_sources_are_read_by_tool_not_promoted_ui_context(self):
         self.app.raw_data = load_workbench_data({"raw_file": str(ROOT / "data/workbench/raw.example.json")}, ROOT)
-        context = {**self.context, "step": "SYN-ETCH-10", "equipment": "SYN-EQP-01"}
+        context = {**self.context, "step": "SYN-ETCH-10", "equipment": "SYN-EQP-01",
+                   "map_comparison": {"a": self.context["wafers"], "b": []}}
 
         def fake_run(settings, question, **kwargs):
             query = kwargs["engineering_query"]
@@ -118,6 +119,8 @@ class WorkbenchLLMTests(unittest.TestCase):
             self.assertIn("production", result["sections"])
             self.assertNotIn("sem", result["sections"])
             self.assertNotIn("production", kwargs["context_data"]["unavailable_sources"])
+            self.assertEqual(kwargs["context_data"]["ui_context_unverified"]["map_comparison"],
+                             context["map_comparison"])
             events = self._agent_result()["events"] + [
                 {"event": "tool_result", "source": "get_engineering_snapshot", "result": result}]
             return self._agent_result(events=events)

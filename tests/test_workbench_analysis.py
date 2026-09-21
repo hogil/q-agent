@@ -182,6 +182,11 @@ class WorkbenchAnalysisHTTPTests(unittest.TestCase):
             {"sem_wafers": [{"lot_id": "missing", "wafer_id": "W1"}]},
             {"sem_wafers": [{"lot_id": [], "wafer_id": "W1"}]},
             {"map_view": {"kind": "overlay", "overlay": "invented"}},
+            {"map_comparison": {"a": [], "b": [{"lot_id": "missing", "wafer_id": "W1"}]}},
+            {"map_comparison": {"a": [], "b": [{"lot_id": [], "wafer_id": "W1"}]}},
+            {"map_comparison": {"a": []}},
+            {"map_comparison": {"a": [], "b": [], "extra": []}},
+            {"map_comparison": {"a": None, "b": []}},
             {"recipe": 123},
         ):
             with self.subTest(patch=patch_values):
@@ -189,6 +194,28 @@ class WorkbenchAnalysisHTTPTests(unittest.TestCase):
                     "content": "invalid", "sources": ["sem"], "context": {**self.context(), **patch_values},
                 })
                 self.assertEqual(status, 400)
+
+    def test_map_comparison_roundtrip_independent_groups_and_empty_selection(self):
+        room_id = self.room()
+        workspace = self.request("GET", "/api/workspace?incident=SYN-2026-01")[1]
+        pair = {key: workspace["wafers"][0][key] for key in ("lot_id", "wafer_id")}
+        groups = {"a": [pair], "b": []}
+        status, result = self.request("POST", f"/api/rooms/{room_id}/analysis", {
+            "content": "map groups", "sources": ["maps"],
+            "context": {**self.context(), "map_comparison": groups},
+        })
+        self.assertEqual(status, 200)
+        self.assertEqual(result["analysis"]["context"]["map_comparison"], groups)
+        self.assertIn("map_comparison=", result["messages"][0]["content"])
+        status, result = self.request("POST", f"/api/rooms/{room_id}/analysis", {"content": "continue"})
+        self.assertEqual(status, 200)
+        self.assertEqual(result["analysis"]["context"]["map_comparison"], groups)
+        for groups in ({"a": [pair, pair], "b": []}, {"a": [], "b": [pair, pair]}):
+            status, _ = self.request("POST", f"/api/rooms/{room_id}/analysis", {
+                "content": "duplicate", "sources": ["maps"],
+                "context": {**self.context(), "map_comparison": groups},
+            })
+            self.assertEqual(status, 400)
 
     def test_followup_reuses_scope_and_stale_scope_is_rejected(self):
         room_id = self.room()

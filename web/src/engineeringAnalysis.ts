@@ -32,6 +32,10 @@ export type AnalysisContext = {
   to: string;
   wafers: { lot_id: string; wafer_id: string }[];
   sem_wafers?: { lot_id: string; wafer_id: string }[];
+  map_comparison?: {
+    a: { lot_id: string; wafer_id: string }[];
+    b: { lot_id: string; wafer_id: string }[];
+  };
   map_view?: {
     kind: 'cd' | 'thk' | 'overlay' | 'bin';
     overlay: 'raw' | 'fit' | 'residual';
@@ -56,6 +60,12 @@ export function analysisTrendSelection(
 }
 
 export function sameAnalysisContext(a: AnalysisContext, b: AnalysisContext) {
+  const mapKey = (value: AnalysisContext['map_comparison']) =>
+    value
+      ? JSON.stringify((['a', 'b'] as const).map((side) =>
+          value[side].map((row) => JSON.stringify([row.lot_id, row.wafer_id])).sort(),
+        ))
+      : null;
   const trendKey = (value: AnalysisContext['trend_selection']) =>
     value
       ? JSON.stringify([
@@ -77,6 +87,7 @@ export function sameAnalysisContext(a: AnalysisContext, b: AnalysisContext) {
       JSON.stringify((b.sem_wafers ?? []).map((w) => [w.lot_id, w.wafer_id])) &&
     a.map_view?.kind === b.map_view?.kind &&
     a.map_view?.overlay === b.map_view?.overlay &&
+    mapKey(a.map_comparison) === mapKey(b.map_comparison) &&
     JSON.stringify(a.wafers.map((w) => [w.lot_id, w.wafer_id]).sort()) ===
       JSON.stringify(b.wafers.map((w) => [w.lot_id, w.wafer_id]).sort())
   );

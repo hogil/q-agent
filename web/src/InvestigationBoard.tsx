@@ -60,6 +60,7 @@ import DetectionFlow from './DetectionFlow';
 import ResizableBoard from './ResizableBoard';
 import MetrologyMap from './BoardMetrology';
 import BoardOverlay, { type OverlayView } from './BoardOverlay';
+import MapWaferSelection from './MapWaferSelection';
 import { SourcePreview } from './ReviewView';
 import {
   makeInformNotes,
@@ -189,6 +190,10 @@ export default function InvestigationBoard({
     () => selectTrendFabRows(data, signal.id),
     [data, signal.id],
   );
+  const mapCandidates = useMemo(
+    () => selectFabRows(data, { ...selection, equipment: '', recipe: '' }),
+    [data, selection],
+  );
   const [waferPickerOpen, setWaferPickerOpen] = useState(false);
   const waferDialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -246,6 +251,21 @@ export default function InvestigationBoard({
     keys: allKeys,
   }));
   const checked = checkedState.scope === scope ? checkedState.keys : allKeys;
+  const mapScope = JSON.stringify([signal.id, mapCandidates.map(pairKey)]);
+  const mapKeys = useMemo(() => new Set(mapCandidates.map(pairKey)), [mapCandidates]);
+  const [mapSelections, setMapSelections] = useState(() => ({
+    scope: mapScope,
+    A: mapKeys,
+    B: mapKeys,
+  }));
+  const primaryKeys = mapSelections.scope === mapScope ? mapSelections.A : mapKeys;
+  const comparisonKeys = mapSelections.scope === mapScope ? mapSelections.B : mapKeys;
+  const setMapKeys = (side: 'A' | 'B', keys: Set<string>) =>
+    setMapSelections((previous) => ({
+      ...(previous.scope === mapScope ? previous : { A: mapKeys, B: mapKeys }),
+      scope: mapScope,
+      [side]: keys,
+    }));
   const setChecked = (
     update: Set<string> | ((previous: Set<string>) => Set<string>),
   ) =>
@@ -350,24 +370,21 @@ export default function InvestigationBoard({
   );
   const maps = useMemo(
     () =>
-      candidates.map((row) => ({
+      mapCandidates.map((row) => ({
         lotId: row.lotId,
         waferId: row.waferId,
         gridId,
         dies: waferData(waferSeed(incident, row.lotId, row.waferId)),
       })),
-    [incident, candidates],
+    [incident, mapCandidates],
   );
   const selectedMaps = useMemo(
-    () => maps.filter((row) => checked.has(pairKey(row))),
-    [maps, checked],
+    () => maps.filter((row) => primaryKeys.has(pairKey(row))),
+    [maps, primaryKeys],
   );
-  const focusedMetrologyWafers = useMemo(
-    () => (focused ? [{ lotId: focused.lotId, waferId: focused.waferId }] : []),
-    [focused?.lotId, focused?.waferId],
-  );
-  const selectedMapKey = JSON.stringify(
-    selectedMaps.map((row) => [row.lotId, row.waferId]),
+  const comparisonMaps = useMemo(
+    () => maps.filter((row) => comparisonKeys.has(pairKey(row))),
+    [maps, comparisonKeys],
   );
   const mapModeControls = (label: string) => (
     <div className="board-map-modes">
@@ -392,10 +409,11 @@ export default function InvestigationBoard({
   const flaggedDieWafers = dieEvidence.filter((row) => row.flag === true);
   const composite = useMemo(
     () => compositeWaferMaps(selectedMaps),
-    [maps, checked],
+    [selectedMaps],
   );
-  const current = maps.find(
-    (row) => focused && pairKey(row) === pairKey(focused),
+  const comparisonComposite = useMemo(
+    () => compositeWaferMaps(comparisonMaps),
+    [comparisonMaps],
   );
   const regionByWafer = new Map(
     maps.map((map) => {
@@ -431,7 +449,10 @@ export default function InvestigationBoard({
     brushStyle: { borderColor: '#477eaa', color: 'rgba(71,126,170,0.12)' },
     outOfBrush: { colorAlpha: 0.35 },
   };
-  const mapOption = (combined: boolean) => ({
+  const mapOption = (
+    targets: typeof selectedMaps,
+    combinedMap: typeof composite,
+  ) => ({
     animation: false,
     brush: mapBrush,
     grid: { left: 1, right: 1, top: 1, bottom: 1 },
@@ -442,7 +463,7 @@ export default function InvestigationBoard({
       confine: true,
       formatter: (p: { value: number[] }) =>
         `${waferCoordinateText(p.value[0], p.value[1], workspace.wafer_geometry)}\n` +
-        (combined
+        (targets.length > 1
           ? `Flag ${p.value[2]} / ${p.value[3]} (${p.value[4].toFixed(1)}%) · 합성`
           : `Bin ${p.value[2]} · 합성`),
     },
@@ -487,8 +508,8 @@ export default function InvestigationBoard({
               data: [{ coord: die }],
             }
           : undefined,
-        data: combined
-          ? composite.dies.map((row) => ({
+        data: targets.length > 1
+          ? combinedMap.dies.map((row) => ({
               value: [row.x, row.y, row.flags, row.observed, row.percent],
               itemStyle: {
                 color:
@@ -497,7 +518,7 @@ export default function InvestigationBoard({
                     : frequencyColor(row.percent),
               },
             }))
-          : (current?.dies || []).map((row) => ({
+          : (targets[0]?.dies || []).map((row) => ({
               value: [row.x, row.y, row.bin],
               itemStyle: { color: bins[row.bin] },
             })),
@@ -505,29 +526,33 @@ export default function InvestigationBoard({
     ],
   });
   // List filtering must not reset the map renderer or its active brush.
-  const singleMapOption = useMemo(
-    () => mapOption(false),
-    [current, die, region, workspace.wafer_geometry],
+  const primaryMapOption = useMemo(
+    () => mapOption(selectedMaps, composite),
+    [selectedMaps, composite, die, region, threshold, workspace.wafer_geometry],
   );
-  const compositeMapOption = useMemo(
-    () => mapOption(true),
-    [composite, die, region, threshold, workspace.wafer_geometry],
+  const comparisonMapOption = useMemo(
+    () => mapOption(comparisonMaps, comparisonComposite),
+    [comparisonMaps, comparisonComposite, die, region, threshold, workspace.wafer_geometry],
   );
 
-  const exportComposite = () =>
+  const exportComposite = (
+    label: string,
+    targets: typeof selectedMaps,
+    combinedMap: typeof composite,
+  ) =>
     download(
-      `${incident}-composite-map.json`,
+      `${incident}-map-${label}.json`,
       JSON.stringify(
         {
           synthetic: true,
           incident,
           selection,
           gridId,
-          selected: selectedMaps.map(({ lotId, waferId }) => ({
+          selected: targets.map(({ lotId, waferId }) => ({
             lotId,
             waferId,
           })),
-          scope: candidates.map(({ lotId, waferId, timestamp }) => ({
+          scope: mapCandidates.map(({ lotId, waferId, timestamp }) => ({
             lotId,
             waferId,
             timestamp,
@@ -539,7 +564,7 @@ export default function InvestigationBoard({
           selectedRegion: region,
           coordinateObservations: dieEvidence,
           displayThresholdPercent: threshold,
-          ...composite,
+          ...combinedMap,
         },
         null,
         2,
@@ -557,6 +582,10 @@ export default function InvestigationBoard({
     trend_selection: analysisTrendSelection(selection),
     sem_wafers: semWafers,
     map_view: { kind: mapMode, overlay: overlayView },
+    map_comparison: {
+      a: selectedMaps.map((row) => ({ lot_id: row.lotId, wafer_id: row.waferId })),
+      b: comparisonMaps.map((row) => ({ lot_id: row.lotId, wafer_id: row.waferId })),
+    },
     wafers: candidates
       .filter((row) => checked.has(pairKey(row)))
       .map((row) => ({ lot_id: row.lotId, wafer_id: row.waferId })),
@@ -608,6 +637,107 @@ export default function InvestigationBoard({
     } catch {
       setCopyStatus(`${label} 복사 실패`);
     }
+  };
+  const mapPanel = (side: 'A' | 'B') => {
+    const primary = side === 'A';
+    const targets = primary ? selectedMaps : comparisonMaps;
+    const combined = primary ? composite : comparisonComposite;
+    const keys = primary ? primaryKeys : comparisonKeys;
+    const key = JSON.stringify(targets.map(pairKey));
+    return (
+      <section
+        className={`board-panel ${primary ? 'board-single-map' : 'board-composite'}`}
+        data-panel={primary ? 'single-map' : 'composite'}
+        aria-label={`Map ${side} 비교`}
+      >
+        <header>
+          <h2>Map {side}</h2>
+          <output aria-live="polite" title={targets.map((row) => `${row.lotId} / ${row.waferId}`).join(', ')}>
+            {targets.length > 1 ? (mapMode === 'bin' ? 'Flag' : 'Avg') : 'Wafer'}{' '}
+            {targets.length}/{maps.length}
+          </output>
+          {mapMode === 'bin' && (
+            <>
+              <button
+                className="icon-button"
+                title={`Map ${side} 데이터 다운로드`}
+                disabled={!targets.length}
+                onClick={() => exportComposite(side, targets, combined)}
+              >
+                <ArrowDownToLine size={14} />
+              </button>
+              <button
+                className="icon-button"
+                title="Map 영역·Die 선택 해제"
+                disabled={!region && !die}
+                onClick={() => selectDie(null)}
+              >
+                <X size={14} />
+              </button>
+            </>
+          )}
+        </header>
+        <MapWaferSelection
+          label={`Map ${side}`}
+          rows={mapCandidates}
+          axis={signal.legendAxis}
+          checked={keys}
+          onChange={(next) => setMapKeys(side, next)}
+        />
+        {mapModeControls(`Map ${side} 종류`)}
+        {!targets.length ? (
+          <p className="board-empty">선택한 Wafer 없음</p>
+        ) : mapMode === 'bin' ? (
+          <>
+            {targets.length > 1 && (
+              <label className="board-frequency">
+                Flag ≥
+                <input
+                  type="range"
+                  aria-label={`Map ${side} 최소 Flag 빈도`}
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={threshold}
+                  onChange={(event) => setThreshold(+event.target.value)}
+                />
+                <output>{threshold}%</output>
+              </label>
+            )}
+            <div className="board-map-stage">
+              <Chart
+                option={primary ? primaryMapOption : comparisonMapOption}
+                mapNavigation
+                areaSelection={region}
+                className="board-map-canvas"
+                label={`Map ${side} · ${targets.length} Wafers`}
+                onSelect={(p) => selectDie([p.value[0], p.value[1]])}
+                onArea={selectRegion}
+              />
+            </div>
+          </>
+        ) : mapMode === 'overlay' ? (
+          <BoardOverlay
+            key={key}
+            wafers={targets}
+            aggregate={targets.length > 1}
+            geometry={workspace.wafer_geometry}
+            vectorScale={vectorScale}
+            onVectorScale={setVectorScale}
+            view={overlayView}
+            onView={setOverlayView}
+          />
+        ) : (
+          <MetrologyMap
+            key={`${mapMode}:${key}`}
+            wafers={targets}
+            aggregate={targets.length > 1}
+            metric={mapMode}
+            geometry={workspace.wafer_geometry}
+          />
+        )}
+      </section>
+    );
   };
   return (
     <div className="investigation-board">
@@ -1052,189 +1182,8 @@ export default function InvestigationBoard({
             compact
           />
         </section>
-        <section
-          className="board-panel board-single-map"
-          data-panel="single-map"
-          aria-label="개별 Wafer Map"
-        >
-          <header>
-            <h2>개별 Map</h2>
-            <select
-              className="board-map-wafer-select"
-              aria-label="개별 Map Wafer 선택"
-              title={
-                focused
-                  ? `${focused.lotId} / ${focused.waferId}`
-                  : '선택 Wafer 없음'
-              }
-              value={focused ? pairKey(focused) : ''}
-              disabled={!candidates.length}
-              onChange={(event) => {
-                const row = candidates.find(
-                  (item) => pairKey(item) === event.target.value,
-                );
-                if (row) onFocus(row);
-              }}
-            >
-              {!candidates.length && <option value="">Wafer 없음</option>}
-              {candidates.map((row) => (
-                <option key={pairKey(row)} value={pairKey(row)}>
-                  {row.lotId} / {row.waferId}
-                </option>
-              ))}
-            </select>
-            {mapMode === 'bin' && (
-              <button
-                className="icon-button"
-                title="Map 영역·Die 선택 해제"
-                disabled={!region && !die}
-                onClick={() => selectDie(null)}
-              >
-                <X size={14} />
-              </button>
-            )}
-          </header>
-          {mapModeControls('개별 Map 종류')}
-          {mapMode === 'bin' ? (
-            <>
-              <div className="board-map-label">
-                {focused
-                  ? `${focused.lotId} / ${focused.waferId}`
-                  : '선택 Wafer 없음'}
-              </div>
-              <div className="board-map-stage">
-                {focused ? (
-                  <Chart
-                    option={singleMapOption}
-                    mapNavigation
-                    areaSelection={region}
-                    className="board-map-canvas"
-                    label="선택 Wafer 개별 Map"
-                    onSelect={(p) => selectDie([p.value[0], p.value[1]])}
-                    onArea={selectRegion}
-                  />
-                ) : (
-                  <p className="board-empty">Map 없음</p>
-                )}
-              </div>
-            </>
-          ) : focused && mapMode === 'overlay' ? (
-            <BoardOverlay
-              key={`${focused.lotId}:${focused.waferId}`}
-              wafers={focusedMetrologyWafers}
-              geometry={workspace.wafer_geometry}
-              vectorScale={vectorScale}
-              onVectorScale={setVectorScale}
-              view={overlayView}
-              onView={setOverlayView}
-            />
-          ) : focused ? (
-            <MetrologyMap
-              key={`${focused.lotId}:${focused.waferId}:${mapMode}`}
-              wafers={focusedMetrologyWafers}
-              metric={mapMode === 'thk' ? 'thk' : 'cd'}
-              geometry={workspace.wafer_geometry}
-            />
-          ) : (
-            <p className="board-empty">선택 Wafer 없음</p>
-          )}
-        </section>
-        <section
-          className="board-panel board-composite"
-          data-panel="composite"
-          aria-label="선택 Wafer 합성 Map"
-        >
-          <header>
-            <h2>전체 Map</h2>
-            <span>합성</span>
-            <output
-              aria-live="polite"
-              title={
-                mapMode === 'bin'
-                  ? '좌표별 Flag 빈도'
-                  : '선택 Wafer의 공통 좌표 평균 · 누락 제외'
-              }
-            >
-              {mapMode === 'bin' ? 'Wafer' : 'Avg'} {checked.size}/
-              {candidates.length}
-            </output>
-            <button
-              className="icon-button"
-              title="합성 Map Wafer 선택"
-              aria-label="합성 Map Wafer 선택"
-              aria-haspopup="dialog"
-              onClick={() => setWaferPickerOpen(true)}
-            >
-              <ListFilter size={13} />
-            </button>
-            {selectAllWafers('합성 Map Wafer 전체 선택')}
-            {mapMode === 'bin' && (
-              <button
-                className="icon-button"
-                title="합성 Map 데이터 다운로드"
-                disabled={!composite.waferCount}
-                onClick={exportComposite}
-              >
-                <ArrowDownToLine size={14} />
-              </button>
-            )}
-          </header>
-          {mapModeControls('전체 Map 종류')}
-          {mapMode === 'bin' ? (
-            <>
-              <label className="board-frequency">
-                Flag ≥
-                <input
-                  type="range"
-                  aria-label="합성 Map 최소 Flag 빈도"
-                  title="최소 Flag 빈도"
-                  min={0}
-                  max={100}
-                  step={5}
-                  value={threshold}
-                  onChange={(event) => setThreshold(+event.target.value)}
-                />
-                <output>{threshold}%</output>
-              </label>
-              <div className="board-map-stage">
-                {composite.waferCount ? (
-                  <Chart
-                    option={compositeMapOption}
-                    mapNavigation
-                    areaSelection={region}
-                    className="board-map-canvas"
-                    label={`선택 ${composite.waferCount}개 Wafer 합성 Map`}
-                    onSelect={(p) => selectDie([p.value[0], p.value[1]])}
-                    onArea={selectRegion}
-                  />
-                ) : (
-                  <p className="board-empty">합성 대상 없음</p>
-                )}
-              </div>
-            </>
-          ) : !selectedMaps.length ? (
-            <p className="board-empty">선택한 Wafer 없음</p>
-          ) : mapMode === 'overlay' ? (
-            <BoardOverlay
-              key={selectedMapKey}
-              wafers={selectedMaps}
-              aggregate
-              geometry={workspace.wafer_geometry}
-              vectorScale={vectorScale}
-              onVectorScale={setVectorScale}
-              view={overlayView}
-              onView={setOverlayView}
-            />
-          ) : (
-            <MetrologyMap
-              key={`${mapMode}:${selectedMapKey}`}
-              wafers={selectedMaps}
-              aggregate
-              metric={mapMode}
-              geometry={workspace.wafer_geometry}
-            />
-          )}
-        </section>
+        {mapPanel('A')}
+        {mapPanel('B')}
         <section
           className="board-panel board-distribution"
           data-panel="distribution"
@@ -1654,7 +1603,7 @@ export default function InvestigationBoard({
                     <td>
                       <input
                         type="checkbox"
-                        aria-label={`${row.lotId} / ${row.waferId} 합성 포함`}
+                        aria-label={`${row.lotId} / ${row.waferId} 분석 포함`}
                         checked={checked.has(pairKey(row))}
                         onChange={(event) =>
                           setChecked((previous) => {
@@ -1670,12 +1619,13 @@ export default function InvestigationBoard({
                     <td>
                       <button
                         className="board-wafer-focus"
-                        title={`${row.lotId} / ${row.waferId} 개별 Map`}
+                        title={`${row.lotId} / ${row.waferId} Map A`}
                         aria-pressed={
-                          !!focused && pairKey(focused) === pairKey(row)
+                          primaryKeys.size === 1 && primaryKeys.has(pairKey(row))
                         }
                         onClick={() => {
                           onFocus(row);
+                          setMapKeys('A', new Set([pairKey(row)]));
                           setWaferPickerOpen(false);
                         }}
                       >

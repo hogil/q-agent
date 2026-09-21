@@ -181,7 +181,7 @@ export default function BoardOverlay({
   return (
     <section
       className="overlay-vector-map"
-      aria-label={`${aggregate ? '전체' : '개별'} Overlay Raw Fit Res`}
+      aria-label={`${aggregate ? '평균' : '단일 Wafer'} Overlay Raw Fit Res`}
     >
       <div className="overlay-vector-heading">
         <div
@@ -251,7 +251,7 @@ export default function BoardOverlay({
         <Chart
           option={chart.option}
           mapNavigation
-          label={`Overlay ${view.label} ${aggregate ? '전체' : '개별'} 벡터 Map`}
+          label={`Overlay ${view.label} ${aggregate ? '평균' : '단일 Wafer'} 벡터 Map`}
           className="overlay-vector-chart"
           onArea={setArea}
         />
