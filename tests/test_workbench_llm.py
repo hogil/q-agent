@@ -101,7 +101,7 @@ class WorkbenchLLMTests(unittest.TestCase):
         self.assertEqual(captured["kwargs"]["selected"], [self.incident_id])
         self.assertEqual(captured["kwargs"]["request_scope"], "incident")
         self.assertEqual(captured["kwargs"]["as_of"], "2026-03-31")
-        self.assertEqual(captured["question"], "선택 사고의 원인을 확인해줘")
+        self.assertEqual(captured["question"], "선택 사고번호: SYN-2026-01\n선택 사고의 원인을 확인해줘")
         self.assertEqual(captured["kwargs"]["context_data"]["selected_incident"], "SYN-2026-01")
         self.assertEqual(captured["kwargs"]["context_data"]["requested_sources"], ["incident", "trend"])
         self.assertFalse(captured["settings"].data["meetings"]["enabled"])
@@ -140,6 +140,14 @@ class WorkbenchLLMTests(unittest.TestCase):
         self.assertIn("current incident note", history_text)
         self.assertNotIn("other incident note", history_text)
         self.assertEqual(captured["context"]["selected_incident"], "SYN-2026-01")
+
+    def test_selected_context_does_not_silently_truncate_long_questions(self):
+        with patch.object(workbench_module, "run_agent") as run:
+            with self.assertRaisesRegex(workbench_module.WorkbenchError, "content plus selected incident context"):
+                self.app.analysis(self.room_id, {
+                    "content": "x" * 12000, "sources": ["incident"], "context": self.context,
+                })
+        run.assert_not_called()
 
     def test_real_runtime_trace_and_status_are_persisted(self):
         with patch.object(workbench_module, "run_agent", return_value=self._agent_result()):

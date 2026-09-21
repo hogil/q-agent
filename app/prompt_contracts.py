@@ -16,7 +16,8 @@ def structure(value, schema, path='$'):
     types=schema.get('type');types=types if isinstance(types,list) else [types] if types else []
     kinds={'object':dict,'array':list,'string':str,'integer':int,'number':(int,float),'boolean':bool,'null':type(None)}
     if types and not any(type(value) in (kinds[t] if isinstance(kinds[t],tuple) else (kinds[t],)) for t in types):
-        raise ValueError('TYPE: '+path)
+        actual=next((name for name,kind in kinds.items() if type(value) in (kind if isinstance(kind,tuple) else (kind,))),type(value).__name__)
+        raise ValueError('TYPE: '+path+'; expected '+ '|'.join(types)+'; got '+actual)
     if 'enum' in schema and value not in schema['enum']:raise ValueError('ENUM: '+path)
     if 'minimum' in schema and value<schema['minimum']:raise ValueError('MINIMUM: '+path)
     if isinstance(value,dict):

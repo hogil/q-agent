@@ -121,6 +121,37 @@ class AgentContracts(unittest.TestCase):
         self.assertEqual(client.calls[2][2]['last_error'], 'ROUTER_FUNCTION_CALL_REQUIRED')
         self.assertEqual(client.calls[2][2]['evidence_ids'], ['e1'])
 
+    def test_structured_plan_rejects_null_argument_then_recovers_without_tool_messages(self):
+        invalid = ('router', plan(tool='find_incidents',
+            arguments={'incident_number': 'SYN-2026-01', 'city': None}, search_mode='sql_exact'))
+
+        class StructuredClient(ScriptedClient):
+            def call(self, role, system_prompt, payload, history):
+                output, _ = super().call(role, system_prompt, payload, history)
+                if role == 'router':
+                    history[-1] = {'role': 'assistant', 'content': json.dumps(output)}
+                return output, None
+
+        client = StructuredClient([invalid, self.lookup(), *self.finish_steps()])
+        with patch.object(agent, 'RoleClient', return_value=client):
+            result = agent.run(self.settings, 'synthetic contract question', 'tester', as_of='2026-03-31')
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertEqual(result['tool_calls'], 1)
+        self.assertIn('$.plan[0].arguments.city; expected string; got null', client.calls[1][2]['last_error'])
+        self.assertEqual(client.calls[2][2]['evidence_ids'], ['e1'])
+        self.assertEqual([m['role'] for m in client.histories[1]], ['assistant', 'user'])
+        self.assertTrue(all(m['role'] != 'tool' and 'tool_calls' not in m
+                            for history in client.histories for m in history))
+
+    def test_invalid_city_never_queries_database(self):
+        invalid = ('router', plan(tool='find_incidents',
+            arguments={'city': ['SYNTH-CITY']}, search_mode='sql_filter'))
+        with patch.object(agent, 'open_incident_tools', side_effect=AssertionError('DB must not open')):
+            result, _ = self.run_script([invalid] * 3)
+        self.assertEqual(result['status'], 'unavailable')
+        self.assertEqual(result['tool_calls'], 0)
+        self.assertIn('expected string; got array', result['limitations'][0])
+
     def test_independent_never_opens_incident_db(self):
         steps = [('router', plan('route', 'independent')),
                  ('router', plan(stage='independent', tool='search_meeting_minutes', arguments={'query': '교정'})),

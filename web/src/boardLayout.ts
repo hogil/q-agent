@@ -5,12 +5,18 @@ export const panelRows = [
 ] as const;
 
 export type BoardLayout = { rows: number[]; columns: number[][] };
-export const layoutStorageKey = 'qagent:board-layout:v1';
+export const layoutVersion = 2;
+export const layoutStorageKey = `qagent:board-layout:v${layoutVersion}`;
+export const legacyLayoutStorageKey = 'qagent:board-layout:v1';
+
+const legacyDefaultRows = [0.4125, 0.3375, 0.25];
+const legacyMapColumns = [2 / 12, 2 / 12, 2 / 12, 3 / 12, 3 / 12];
+
 export const defaultLayout = (): BoardLayout => ({
-  rows: [0.4125, 0.3375, 0.25],
+  rows: [0.38, 0.29, 0.33],
   columns: [
     [5 / 12, 4 / 12, 3 / 12],
-    [2 / 12, 2 / 12, 2 / 12, 3 / 12, 3 / 12],
+    [2.5 / 12, 2 / 12, 1.5 / 12, 3 / 12, 3 / 12],
     [4 / 12, 3 / 12, 5 / 12],
   ],
 });
@@ -21,7 +27,10 @@ export const minColumns = [
   [260, 250, 360],
 ];
 
-export function parseLayout(raw: string | null): BoardLayout | null {
+function parseVersionedLayout(
+  raw: string | null,
+  version: number,
+): BoardLayout | null {
   try {
     const value = JSON.parse(raw || 'null');
     const valid = (sizes: unknown, count: number): sizes is number[] =>
@@ -32,7 +41,7 @@ export function parseLayout(raw: string | null): BoardLayout | null {
       ) &&
       Math.abs(sizes.reduce((a, b) => a + b, 0) - 1) < 0.0001;
     if (
-      value?.version !== 1 ||
+      value?.version !== version ||
       !valid(value.rows, 3) ||
       !Array.isArray(value.columns) ||
       value.columns.length !== 3 ||
@@ -45,6 +54,41 @@ export function parseLayout(raw: string | null): BoardLayout | null {
   } catch {
     return null;
   }
+}
+
+export function parseLayout(raw: string | null): BoardLayout | null {
+  return parseVersionedLayout(raw, layoutVersion);
+}
+
+function sameSizes(a: number[], b: number[]) {
+  return a.every((value, index) => Math.abs(value - b[index]) < 0.0001);
+}
+
+// Preserve custom dimensions except the two panels explicitly being resized.
+export function migrateLayout(raw: string | null): BoardLayout | null {
+  const legacy = parseVersionedLayout(raw, 1);
+  if (!legacy) return null;
+  const next = defaultLayout();
+  const rows = sameSizes(legacy.rows, legacyDefaultRows)
+    ? next.rows
+    : legacy.rows[2] < next.rows[2]
+      ? [
+          ...legacy.rows
+            .slice(0, 2)
+            .map((n) => (n * (1 - next.rows[2])) / (1 - legacy.rows[2])),
+          next.rows[2],
+        ]
+      : legacy.rows;
+  const columns = legacy.columns.map((row) => [...row]);
+  const reclaimed = Math.max(0, columns[1][2] - next.columns[1][2]);
+  columns[1][2] -= reclaimed;
+  columns[1][0] += reclaimed;
+  if (sameSizes(legacy.columns[1], legacyMapColumns))
+    columns[1] = next.columns[1];
+  return {
+    rows,
+    columns,
+  };
 }
 
 export function minimumFractions(minimums: number[], pixels: number) {

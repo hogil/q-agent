@@ -60,6 +60,9 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                 'registry_file': settings.data['paths']['registry_file']}
 
     def observe(call_id, result):
+        if call_id is None:
+            history.append({'role': 'user', 'content': json.dumps({'plan_result': result}, ensure_ascii=False, separators=(',', ':'))})
+            return
         history.append({'role': 'tool', 'tool_call_id': call_id,
                         'content': json.dumps(result, ensure_ascii=False, separators=(',', ':'))})
 
@@ -199,7 +202,7 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                         # Validate the single action before opening the DB or invoking a Tool.
                         step = output['plan'][0]
                         name, arguments = step['tool'], step['arguments']
-                        structure(arguments, catalog[name]['parameters'])
+                        structure(arguments, catalog[name]['parameters'], '$.plan[0].arguments')
                         if any(key in arguments for key in ('actor', 'scope_id', 'incident_ids', 'as_of')):
                             raise ValueError('CALLER_IDENTITY_ARGUMENT_FORBIDDEN')
                         bound = {'actor': actor, **arguments}
@@ -213,7 +216,8 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                                   else getattr(ImageTools if name in image_methods else IncidentTools, name))
                         inspect.signature(method).bind(None, **bound)
                         if name == 'find_incidents' and output['filters'] != arguments.get('filters', {}):
-                            raise ValueError('FILTER_PLAN_MISMATCH')
+                            raise ValueError('FILTER_PLAN_MISMATCH: copy arguments.filters to top-level filters; '
+                                             'use {} when arguments.filters is omitted. Keep query conditions in arguments.')
                         needed = 'images' if name in image_methods else {'match_incident_values': 'terminology', 'list_incident_lots': 'lots', 'list_incident_wafers': 'wafers', 'search_meeting_minutes': 'meetings'}.get(name)
                         if needed and needed not in topics:
                             for role in ('router', 'judge', 'answer'):
@@ -269,8 +273,8 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                     if isinstance(exc, ToolError) and 'SCOPE_EXPIRED' in error:
                         invalidate_scope(keep_pending=True)
                     event('validation_or_tool_error', error=error)
-                    # Only a pending Router function call needs a tool response.
-                    if call_id is not None and history and history[-1]['role'] == 'assistant':
+                    # A pending plan receives a receipt in its original transport.
+                    if history and history[-1]['role'] == 'assistant':
                         observe(call_id, {'error': error})
                     if errors > limits['max_retries'] or state['judge'] is not None and state['judge']['return_to'] == 'answer':
                         return finish('unavailable', limitations=[error])

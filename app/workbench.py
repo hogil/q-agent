@@ -644,7 +644,10 @@ class Workbench:
         config = merge(self.settings.data, {"meetings": {"enabled": "meetings" in sources
                        and self.settings.data["meetings"]["enabled"]},
                        "image_tools": {name: {"enabled": False} for name in self.settings.data["image_tools"]}})
-        result = run_agent(Settings(config, self.settings.source_files), content, actor=self.actor,
+        question = f"선택 사고번호: {context['incident_number']}\n{content}"
+        if len(question) > 12000:
+            raise WorkbenchError("content plus selected incident context must not exceed 12000 characters")
+        result = run_agent(Settings(config, self.settings.source_files), question, actor=self.actor,
                            selected=[incident["incident_id"]], request_scope="incident", as_of=self.cutoff,
                            context_data=payload, emit=lambda event: self._analysis_event(room_id, event))
         events = result.get("events", [])

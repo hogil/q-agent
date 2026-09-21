@@ -28,6 +28,7 @@
 | Answer | 최종 답변과 조회 범위·한계 표시 |
 
 전체 흐름을 구현한 코드는 [app/agent.py](app/agent.py)입니다.
+`models.text.structured_outputs: true`이면 Router도 JSON Schema로 계획을 제출합니다. `false`이면 네이티브 `submit_plan` 함수 호출을 사용합니다. 두 방식 모두 같은 Tool 인자·사고 범위 검증을 거치며, 일반 텍스트를 실행 계획으로 추측하지 않습니다. 로컬 Qwen의 함수 호출 누락에 대응하며 [Ollama Structured Outputs](https://docs.ollama.com/capabilities/structured-outputs)를 사용합니다.
 회의록만 묻는 독립 질문은 Router가 independent로 분류해 사고 DB를 열지 않습니다.
 나머지 Python 파일은 설정 로딩·모델 통신·조회·검사를 맡는 내부 모듈입니다.
 

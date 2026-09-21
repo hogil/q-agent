@@ -69,7 +69,7 @@ class RoleClientTests(unittest.TestCase):
             self.assertEqual(sum(message['role'] == 'user' for message in messages), 1)
             self.assertEqual(messages[-1]['role'], 'user')
         self.assertEqual(json.loads(self.create.call_args_list[1].kwargs['messages'][-1]['content']),
-                         {'step': 2})
+                         {'step': 2, 'response_contract': {'transport': 'function_call', 'name': 'submit_plan'}})
         self.assertEqual(json.loads(self.create.call_args_list[2].kwargs['messages'][-1]['content']),
                          {'step': 3})
         self.assertEqual([message['role'] for message in self.create.call_args_list[1].kwargs['messages']],
@@ -124,6 +124,54 @@ class RoleClientTests(unittest.TestCase):
         self.assertEqual(options['tool_choice']['function']['name'], 'submit_plan')
         self.assertFalse(options['parallel_tool_calls'])
         self.assertNotIn('response_format', options)
+
+    def test_structured_router_uses_typed_plans_without_fake_function_calls(self):
+        self.settings.data['models']['text']['structured_outputs'] = True
+        output = {'decision': 'ready_for_judge', 'plan': []}
+        self.create.return_value = completion(content=json.dumps(output), tool_call=False)
+        history = [{'role': 'assistant', 'content': 'stale'}]
+        payload = {'evidence_ids': ['e1'], 'last_error': 'TYPE: $.plan[0].arguments.city'}
+        result, call_id = self.make_client().call('router', 'router', payload, history)
+        options = self.create.call_args.kwargs
+        self.assertEqual(result, output)
+        self.assertIsNone(call_id)
+        self.assertEqual(json.loads(history[-1]['content']), output)
+        self.assertNotIn('tool_calls', history[-1])
+        self.assertNotIn('tools', options)
+        self.assertNotIn('tool_choice', options)
+        self.assertEqual([m['role'] for m in options['messages']], ['system', 'assistant', 'user'])
+        current = json.loads(options['messages'][-1]['content'])
+        self.assertEqual(current['response_contract']['transport'], 'json_schema')
+        self.assertEqual(current['evidence_ids'], ['e1'])
+        self.assertEqual(current['last_error'], payload['last_error'])
+        self.assertNotIn('response_contract', payload)
+        schema = options['response_format']['json_schema']['schema']
+        self.assertEqual(list(schema['properties'])[:4], ['decision', 'stage', 'search_mode', 'plan'])
+        variants = schema['properties']['plan']['items']['anyOf']
+        find = next(v for v in variants if v['properties']['tool']['enum'] == ['find_incidents'])
+        self.assertEqual(find['properties']['arguments']['properties']['city']['type'], 'string')
+        self.assertFalse(find['properties']['arguments']['additionalProperties'])
+
+    def test_structured_router_rejects_prose_or_unexpected_tool_calls(self):
+        self.settings.data['models']['text']['structured_outputs'] = True
+        for response in (completion(content='not a plan', tool_call=False), completion(content='{}')):
+            self.create.return_value = response
+            with self.assertRaisesRegex(LLMError, 'MODEL_RESPONSE_INVALID'):
+                self.make_client().call('router', 'router', {}, [])
+
+    def test_structured_router_context_budget_includes_expanded_tool_schemas(self):
+        self.settings.data['models']['text']['structured_outputs'] = True
+        self.create.return_value = completion(content='{}', tool_call=False)
+        client = self.make_client()
+        client.call('router', 'router', {}, [])
+        size = len(json.dumps(self.create.call_args.kwargs, ensure_ascii=False))
+        self.settings.data['runtime']['max_context_characters'] = size
+        client.call('router', 'router', {}, [])
+        self.settings.data['runtime']['max_context_characters'] = size - 1
+        self.create.reset_mock()
+        with self.assertRaisesRegex(LLMError, 'MODEL_CONTEXT_LIMIT'):
+            client.call('router', 'router', {}, [])
+        self.create.assert_not_called()
 
     def test_configured_structured_outputs_preserve_schema_and_current_evidence_ids(self):
         self.settings.data['models']['text']['structured_outputs'] = True
@@ -196,7 +244,8 @@ class RoleClientTests(unittest.TestCase):
         returned, _ = self.make_client().call('router', 'system', value, history)
         compact = json.dumps(value, ensure_ascii=False, separators=(',', ':'))
         self.assertEqual(returned, value)
-        self.assertEqual(self.create.call_args.kwargs['messages'][-1]['content'], compact)
+        self.assertEqual(json.loads(self.create.call_args.kwargs['messages'][-1]['content']),
+                         {**value, 'response_contract': {'transport': 'function_call', 'name': 'submit_plan'}})
         self.assertEqual(history[-1]['tool_calls'][0]['function']['arguments'], compact)
 
     def test_context_bound_includes_tool_schema(self):

@@ -212,6 +212,23 @@
   padding-top: 4px;
   padding-bottom: 4px;
 }
+.board-assessment > .board-source-checks {
+  gap: 2px 6px;
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
+.board-assessment > .board-analysis-controls {
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+.board-assessment > .board-analysis-output {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.board-assessment > .board-chat-compose {
+  margin-top: 3px;
+}
 .board-trend-body {
   flex: 1;
   min-height: 0;

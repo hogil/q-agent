@@ -21,7 +21,10 @@ import {
 import {
   defaultLayout,
   fitLayout,
+  layoutVersion,
   layoutStorageKey,
+  legacyLayoutStorageKey,
+  migrateLayout,
   minimumFractions,
   minColumns,
   minRows,
@@ -118,7 +121,7 @@ export default function ResizableBoard({
     try {
       localStorage.setItem(
         layoutStorageKey,
-        JSON.stringify({ version: 1, ...layout }),
+        JSON.stringify({ version: layoutVersion, ...layout }),
       );
       storageCallback.current(false);
     } catch {
@@ -127,8 +130,15 @@ export default function ResizableBoard({
   }
   useEffect(() => {
     try {
-      preferred.current =
-        parseLayout(localStorage.getItem(layoutStorageKey)) || defaultLayout();
+      const saved = parseLayout(localStorage.getItem(layoutStorageKey));
+      if (saved) preferred.current = saved;
+      else {
+        const migrated = migrateLayout(
+          localStorage.getItem(legacyLayoutStorageKey),
+        );
+        preferred.current = migrated || defaultLayout();
+        if (migrated) persist(migrated);
+      }
     } catch {
       storageCallback.current(true);
     }

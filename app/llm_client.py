@@ -1,4 +1,5 @@
 """OpenAI-compatible Chat Completions transport for configured role models."""
+import copy
 import json
 import os
 
@@ -23,6 +24,11 @@ class RoleClient:
     def call(self, role, system_prompt, payload, history):
         profile = self.settings.model_profile(role)
         model = profile['deployment']
+        structured_router = role == 'router' and model['structured_outputs']
+        if role == 'router':
+            payload = {**payload, 'response_contract': {
+                'transport': 'json_schema' if structured_router else 'function_call',
+                'name': 'submit_plan'}}
         messages = [{'role': 'system', 'content': system_prompt}, *history,
                     {'role': 'user', 'content': json.dumps(payload, ensure_ascii=False, separators=(',', ':'))}]
         options = dict(model=model['served_model'], messages=messages, temperature=profile['temperature'],
@@ -30,9 +36,27 @@ class RoleClient:
         if role == 'router':
             paths = self.settings.data['paths']
             schema = read_role_reference('router', 'output.schema.json', paths['skills_root'], paths['registry_file'])
-            options.update(tools=[{'type': 'function', 'function': {'name': 'submit_plan',
-                           'description': schema['description'], 'parameters': schema}}],
-                           tool_choice={'type': 'function', 'function': {'name': 'submit_plan'}}, parallel_tool_calls=False)
+            if structured_router:
+                catalog = read_role_reference('router', 'tools.json', paths['skills_root'], paths['registry_file'])
+                step = schema['properties']['plan']['items']
+                variants = []
+                for name, spec in catalog.items():
+                    variant = copy.deepcopy(step)
+                    variant['properties']['tool']['enum'] = [name]
+                    variant['properties']['arguments'] = spec['parameters']
+                    variants.append(variant)
+                schema['properties']['plan']['items'] = {'anyOf': variants}
+                # Generate the plan before its duplicated filter summary.
+                props = schema['properties']
+                first = ('decision', 'stage', 'search_mode', 'plan')
+                schema['properties'] = {**{k: props[k] for k in first},
+                                        **{k: v for k, v in props.items() if k not in first}}
+                options['response_format'] = {'type': 'json_schema', 'json_schema': {
+                    'name': 'router_output', 'strict': True, 'schema': schema}}
+            else:
+                options.update(tools=[{'type': 'function', 'function': {'name': 'submit_plan',
+                               'description': schema['description'], 'parameters': schema}}],
+                               tool_choice={'type': 'function', 'function': {'name': 'submit_plan'}}, parallel_tool_calls=False)
         else:
             options['response_format'] = {'type': 'json_object'}
             if model['structured_outputs']:
@@ -56,7 +80,7 @@ class RoleClient:
             message = choice.message
             if choice.finish_reason in ('length', 'content_filter') or message.refusal:
                 raise LLMError('MODEL_OUTPUT_INCOMPLETE_OR_REFUSED')
-            if role == 'router':
+            if role == 'router' and not structured_router:
                 calls = message.tool_calls or []
                 if len(calls) != 1 or calls[0].type != 'function' or calls[0].function.name != 'submit_plan':
                     raise LLMError('ROUTER_FUNCTION_CALL_REQUIRED')
@@ -65,7 +89,12 @@ class RoleClient:
                     'tool_calls': [{'id': calls[0].id, 'type': 'function', 'function': {
                         'name': 'submit_plan', 'arguments': json.dumps(value, ensure_ascii=False, separators=(',', ':'))}}]})
                 return value, calls[0].id
-            return json.loads(message.content or ''), None
+            if structured_router and message.tool_calls:
+                raise LLMError('MODEL_RESPONSE_INVALID')
+            value = json.loads(message.content or '')
+            if structured_router:
+                history.append({'role': 'assistant', 'content': json.dumps(value, ensure_ascii=False, separators=(',', ':'))})
+            return value, None
         except OpenAIError as exc:
             raise LLMError('MODEL_REQUEST_FAILED: ' + type(exc).__name__) from None
         except (ValueError, IndexError, AttributeError, KeyError):
