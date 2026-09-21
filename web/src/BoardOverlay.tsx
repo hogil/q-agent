@@ -128,7 +128,7 @@ export default function BoardOverlay({
       rms,
       option: {
         animation: false,
-        grid: { left: '11%', right: '11%', top: '5%', bottom: '17%' },
+        grid: { left: 6, right: 6, top: 6, bottom: 32 },
         xAxis: { type: 'value', min: -radius, max: radius, show: false },
         yAxis: { type: 'value', min: -radius, max: radius, show: false },
         brush: {
@@ -251,47 +251,57 @@ export default function BoardOverlay({
           <ArrowDownToLine size={12} />
         </button>
       </div>
-      <div className="overlay-vector-controls">
-        <label>
-          Vector{' '}
-          <input
-            type="range"
-            min="0.5"
-            max="4"
-            step="0.25"
-            aria-label="Overlay 벡터 배율"
-            value={vectorScale}
-            onChange={(e) => onVectorScale(+e.target.value)}
+      <div className="overlay-vector-body">
+        <aside className="overlay-vector-side" aria-label="Overlay RMS와 배율">
+          <dl aria-live="polite">
+            <dt>RMS</dt>
+            <dd style={{ color: view.color }}>
+              {chart.rms?.toFixed(3) ?? '-'}
+              <small>nm</small>
+            </dd>
+          </dl>
+          <div className="overlay-vector-controls">
+            <label>
+              Vector
+              <input
+                type="range"
+                min="0.5"
+                max="4"
+                step="0.25"
+                aria-label="Overlay 벡터 배율"
+                value={vectorScale}
+                onChange={(e) => onVectorScale(+e.target.value)}
+              />
+            </label>
+            <output>×{vectorScale}</output>
+          </div>
+        </aside>
+        <div className="overlay-vector-stage">
+          <Chart
+            option={chart.option}
+            mapNavigation
+            label={`Overlay ${view.label} ${aggregate ? '전체' : '개별'} 벡터 Map`}
+            className="overlay-vector-chart"
+            onArea={setArea}
           />
-        </label>
-        <output>×{vectorScale}</output>
-        <span title="기준 화살표 1 nm">1 nm</span>
+        </div>
+        <aside className="overlay-vector-side" aria-label="Overlay 표본과 출처">
+          <dl aria-live="polite">
+            <dt>n</dt>
+            <dd>{chart.n}</dd>
+          </dl>
+          <span title="기준 화살표 1 nm">1 nm</span>
+          <div
+            className="overlay-vector-source"
+            title={`${wafers.map((row) => `${row.lotId}/${row.waferId}`).join(', ')} · 6-param linear · Res = Raw − Fit · 실제 보정 모델 미연결`}
+          >
+            <span>합성</span>
+            <span>{aggregate ? '보간 평균' : '측정 예시'}</span>
+            <span>{aggregate ? '정렬 가정' : '모델 미연결'}</span>
+            {!model && <strong>Fit 불가</strong>}
+          </div>
+        </aside>
       </div>
-      <div className="overlay-vector-stage">
-        <Chart
-          option={chart.option}
-          mapNavigation
-          label={`Overlay ${view.label} ${aggregate ? '전체' : '개별'} 벡터 Map`}
-          className="overlay-vector-chart"
-          onArea={setArea}
-        />
-      </div>
-      <div className="overlay-vector-stat" aria-live="polite">
-        <strong style={{ color: view.color }}>{view.label}</strong>
-        <span>
-          RMS <b>{chart.rms?.toFixed(3) ?? '-'}</b> nm
-        </span>
-        <span>n {chart.n}</span>
-      </div>
-      <footer
-        title={`${wafers.map((row) => `${row.lotId}/${row.waferId}`).join(', ')} · 6-param linear · Res = Raw − Fit · 실제 보정 모델 미연결`}
-      >
-        {!model
-          ? 'Fit 불가 · 측정점/좌표 확인'
-          : aggregate
-            ? '합성 · 보간 벡터 평균 · 정렬 가정'
-            : '합성 측정 · 보정 모델 미연결'}
-      </footer>
     </section>
   );
 }

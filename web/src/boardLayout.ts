@@ -9,16 +9,19 @@ export type BoardLayout = {
   columns: number[][];
   workspace: number[];
 };
-export const layoutVersion = 4;
+export const layoutVersion = 5;
 export const layoutStorageKey = `qagent:board-layout:v${layoutVersion}`;
-export const previousLayoutStorageKey = 'qagent:board-layout:v3';
+export const previousLayoutStorageKeys = [
+  'qagent:board-layout:v4',
+  'qagent:board-layout:v3',
+];
 
 export const defaultLayout = (): BoardLayout => ({
   rows: [0.4, 0.33, 0.27],
   workspace: [0.7, 0.3],
   columns: [
     [0.41, 0.37, 0.22],
-    [0.195, 0.195, 0.61],
+    [0.3, 0.3, 0.4],
     [0.32, 0.35, 0.33],
   ],
 });
@@ -26,7 +29,7 @@ export const minRows = [260, 230, 190];
 export const minWorkspace = [710, 350];
 export const minColumns = [
   [360, 380, 250],
-  [150, 150, 410],
+  [220, 220, 300],
   [190, 230, 240],
 ];
 
@@ -72,14 +75,14 @@ export function parseLayout(raw: string | null): BoardLayout | null {
 }
 
 export function migrateLayout(raw: string | null): BoardLayout | null {
-  const previous = readLayout(raw, 3, [3, 4, 3]);
+  const previous =
+    readLayout(raw, 4, [3, 3, 3]) || readLayout(raw, 3, [3, 4, 3]);
   if (!previous) return null;
-  const [cohort, single, composite, images] = previous.columns[1];
   return {
     ...previous,
     columns: [
       previous.columns[0],
-      [single, composite, images + cohort],
+      defaultLayout().columns[1],
       previous.columns[2],
     ],
   };

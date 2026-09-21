@@ -224,19 +224,21 @@
 }
 .overlay-vector-controls {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   color: #667a74;
   flex-shrink: 0;
   min-height: 16px;
 }
 .overlay-vector-controls label {
   display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 3px;
 }
 .overlay-vector-controls input {
-  width: 44px;
+  width: 40px;
   min-width: 0;
   height: 12px;
   margin: 0;
@@ -261,33 +263,58 @@
 }
 .overlay-vector-stage {
   display: flex;
-  flex: 1;
   justify-content: center;
   align-items: center;
+  min-width: 0;
   min-height: 0;
   container-type: size;
 }
 .board-panel .overlay-vector-stage .overlay-vector-chart {
-  width: min(100cqw, 100cqh);
-  height: min(100cqw, 100cqh);
+  width: min(100cqw, calc(100cqh - 26px));
+  height: min(calc(100cqw + 26px), 100cqh);
 }
-.overlay-vector-stat {
+.overlay-vector-body {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  flex: 1;
+  min-height: 0;
+  gap: 2px;
+}
+.overlay-vector-side {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 4px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 4px 0;
+  overflow: auto;
   font-size: 9px;
   color: #667a74;
-  white-space: normal;
-  flex-shrink: 0;
+  text-align: center;
 }
-.overlay-vector-map > footer {
+.overlay-vector-side dl {
+  margin: 0;
+}
+.overlay-vector-side dd {
+  margin: 2px 0;
+  color: #385854;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.overlay-vector-side dd small {
+  display: block;
+  color: #667a74;
+  font-size: 9px;
+  font-weight: 400;
+}
+.overlay-vector-source {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   font-size: 9px;
   line-height: 1.4;
   color: #7b817c;
-  padding-top: 3px;
-  flex-shrink: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }

@@ -23,7 +23,7 @@ import {
   fitLayout,
   layoutVersion,
   layoutStorageKey,
-  previousLayoutStorageKey,
+  previousLayoutStorageKeys,
   migrateLayout,
   minimumFractions,
   minColumns,
@@ -139,7 +139,9 @@ export default function ResizableBoard({
       const saved = parseLayout(localStorage.getItem(layoutStorageKey));
       const migrated = saved
         ? null
-        : migrateLayout(localStorage.getItem(previousLayoutStorageKey));
+        : previousLayoutStorageKeys
+            .map((key) => migrateLayout(localStorage.getItem(key)))
+            .find((layout): layout is BoardLayout => layout !== null) || null;
       preferred.current = saved || migrated || defaultLayout();
       if (migrated) persist(migrated);
     } catch {

@@ -6,7 +6,7 @@ import {
   fitSizes,
   layoutVersion,
   layoutStorageKey,
-  previousLayoutStorageKey,
+  previousLayoutStorageKeys,
   migrateLayout,
   minimumFractions,
   minColumns,
@@ -20,7 +20,7 @@ const sum = (values) => values.reduce((a, b) => a + b, 0);
 
 test('new spatial layout has separate persistence and rejects incomplete or old dimensions', () => {
   const original = defaultLayout();
-  assert.equal(layoutStorageKey, 'qagent:board-layout:v4');
+  assert.equal(layoutStorageKey, 'qagent:board-layout:v5');
   assert.deepEqual(
     parseLayout(JSON.stringify({ version: layoutVersion, ...original })),
     original,
@@ -29,7 +29,7 @@ test('new spatial layout has separate persistence and rejects incomplete or old 
     null,
     '{',
     '{}',
-    ...[1, 2, 3].map((version) => JSON.stringify({ version, ...original })),
+    ...[1, 2, 3, 4].map((version) => JSON.stringify({ version, ...original })),
     JSON.stringify({ version: layoutVersion, ...original, rows: [-1, 1, 1] }),
     JSON.stringify({ version: layoutVersion, ...original, workspace: [0.5] }),
     JSON.stringify({
@@ -59,8 +59,36 @@ test('investigation order gives every panel one place and a two-row analysis are
   assert.ok(layout.columns[1][1] < layout.columns[1][2]);
 });
 
-test('migrates v3 wafer-list space into SEM while preserving every other boundary', () => {
-  assert.equal(previousLayoutStorageKey, 'qagent:board-layout:v3');
+test('migrates v4 current layout while preserving every other boundary', () => {
+  assert.deepEqual(previousLayoutStorageKeys, [
+    'qagent:board-layout:v4',
+    'qagent:board-layout:v3',
+  ]);
+  const previous = {
+    ...defaultLayout(),
+    version: 4,
+    rows: [0.42, 0.31, 0.27],
+    columns: [
+      [0.4, 0.38, 0.22],
+      [0.2, 0.3, 0.5],
+      [0.3, 0.4, 0.3],
+    ],
+  };
+  const migrated = migrateLayout(JSON.stringify(previous));
+  assert.deepEqual(migrated.rows, previous.rows);
+  assert.deepEqual(migrated.workspace, previous.workspace);
+  assert.deepEqual(migrated.columns, [
+    previous.columns[0],
+    [0.3, 0.3, 0.4],
+    previous.columns[2],
+  ]);
+  assert.deepEqual(
+    parseLayout(JSON.stringify({ version: 5, ...migrated })),
+    migrated,
+  );
+});
+
+test('migrates v3 wafer-list space while preserving every other boundary', () => {
   const previous = {
     ...defaultLayout(),
     version: 3,
@@ -76,17 +104,21 @@ test('migrates v3 wafer-list space into SEM while preserving every other boundar
   assert.deepEqual(migrated.workspace, previous.workspace);
   assert.deepEqual(migrated.columns, [
     previous.columns[0],
-    [0.18, 0.2, 0.62],
+    [0.3, 0.3, 0.4],
     previous.columns[2],
   ]);
   assert.deepEqual(
-    parseLayout(JSON.stringify({ version: 4, ...migrated })),
+    parseLayout(JSON.stringify({ version: 5, ...migrated })),
     migrated,
   );
   for (const raw of [
     null,
     '{',
     JSON.stringify({ ...previous, version: 2 }),
+    JSON.stringify({
+      ...previous,
+      columns: [previous.columns[0], [0.2, 0.3, 0.5], previous.columns[2]],
+    }),
     JSON.stringify({
       ...previous,
       columns: [
@@ -98,6 +130,20 @@ test('migrates v3 wafer-list space into SEM while preserving every other boundar
     JSON.stringify({ ...previous, columns: defaultLayout().columns }),
   ])
     assert.equal(migrateLayout(raw), null);
+});
+
+test('default middle row makes Map wider and SEM narrower at 1366px', () => {
+  const width = 1366;
+  const workspacePixels = (width - 1) * defaultLayout().workspace[0] - 2;
+  const oldMap = workspacePixels * 0.195;
+  const oldSem = workspacePixels * 0.61;
+  const fitted = fitLayout(defaultLayout(), width, 900);
+  const newMap = workspacePixels * fitted.columns[1][0];
+  const newSem = workspacePixels * fitted.columns[1][2];
+  assert.ok(newMap > oldMap);
+  assert.ok(newSem < oldSem);
+  assert.deepEqual(fitted.columns[1], [0.3, 0.3, 0.4]);
+  assert.deepEqual(minColumns[1], [220, 220, 300]);
 });
 
 test('adjacent row and column resizing preserves extent and untouched neighbors', () => {
