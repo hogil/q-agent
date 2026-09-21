@@ -6,6 +6,7 @@ import { makeTrendFleet } from '../src/anomalyTrend.ts';
 import { makeEquipmentTrace } from '../src/equipmentComparison.ts';
 import { makeEngineeringData } from '../src/engineeringData.ts';
 import { makeInformNotes, semRecord } from '../src/investigationData.ts';
+import { historicalData } from '../src/historicalData.ts';
 
 function fail(message) {
   throw new Error(`workbench export: ${message}`);
@@ -53,6 +54,7 @@ for (const incident of bootstrap.incidents) {
   const engineering = Object.fromEntries(
     ['signals', 'trend', 'fab', 'yields', 'wip', 'downtime', 'changes'].map((key) => [key, data[key]]),
   );
+  if (data.equipmentStates) engineering.equipmentStates = data.equipmentStates;
   const trendFleets = Object.fromEntries(
     engineering.signals.map((signal) => [signal.id, makeTrendFleet(data, signal)]),
   );
@@ -80,6 +82,7 @@ for (const incident of bootstrap.incidents) {
     comparison_traces: comparisonTraces,
     inform_notes: informNotes,
     sem_assets: semAssets,
+    historical_records: historicalData(workspace, data),
   };
 }
 const payload = `${JSON.stringify({ version: 1, synthetic: true, incidents }, null, 2)}\n`;

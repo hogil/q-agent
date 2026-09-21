@@ -52,7 +52,7 @@ def validate_output(role, output, context):
         if decision=='execute':
             if not plan:raise ValueError('EXECUTE_REQUIRES_PLAN')
             if context.get('budget_remaining',0)<len(plan):raise ValueError('TOOL_BUDGET_EXCEEDED')
-            if output['clarification'] is not None or output['needs_skills']:raise ValueError('UNRESOLVED_EXECUTION')
+            if output['clarification'] is not None or output['needs_skills']:raise ValueError('UNRESOLVED_EXECUTION: execute requires clarification=null (not an empty string) and needs_skills=[]; use clarify or load_skills separately')
             if output['stage']=='tools' and not context.get('scope_valid'):raise ValueError('INCIDENT_SCOPE_REQUIRED')
             for i,step in enumerate(plan):
                 tool=context.get('available_tools',{}).get(step['tool'],{})

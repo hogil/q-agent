@@ -8,6 +8,7 @@ from unittest.mock import patch
 import app.workbench as workbench_module
 from app.config_loader import Settings, merge
 from app.workbench import Workbench, WorkbenchError, load_workbench
+from app.workbench_data import load_workbench_data
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -107,6 +108,25 @@ class WorkbenchLLMTests(unittest.TestCase):
         self.assertFalse(captured["settings"].data["meetings"]["enabled"])
         self.assertTrue(all(not item["enabled"] for item in captured["settings"].data["image_tools"].values()))
 
+    def test_engineering_sources_are_read_by_tool_not_promoted_ui_context(self):
+        self.app.raw_data = load_workbench_data({"raw_file": str(ROOT / "data/workbench/raw.example.json")}, ROOT)
+        context = {**self.context, "step": "SYN-ETCH-10", "equipment": "SYN-EQP-01"}
+
+        def fake_run(settings, question, **kwargs):
+            query = kwargs["engineering_query"]
+            result = query(actor=self.app.actor, incident_ids=[self.incident_id], as_of="2026-03-31")
+            self.assertIn("production", result["sections"])
+            self.assertNotIn("sem", result["sections"])
+            self.assertNotIn("production", kwargs["context_data"]["unavailable_sources"])
+            events = self._agent_result()["events"] + [
+                {"event": "tool_result", "source": "get_engineering_snapshot", "result": result}]
+            return self._agent_result(events=events)
+
+        with patch.object(workbench_module, "run_agent", side_effect=fake_run):
+            response = self.app.analysis(self.room_id, {
+                "content": "합성 재공과 상태 확인", "sources": ["incident", "production"], "context": context})
+        self.assertEqual(response["analysis"]["steps"][1]["status"], "completed")
+
     def test_prior_history_is_unverified_and_filtered_to_current_incident(self):
         self.app._append_messages(
             self.room_id,
@@ -140,6 +160,38 @@ class WorkbenchLLMTests(unittest.TestCase):
         self.assertIn("current incident note", history_text)
         self.assertNotIn("other incident note", history_text)
         self.assertEqual(captured["context"]["selected_incident"], "SYN-2026-01")
+
+    def test_checked_image_tools_remain_enabled_and_results_are_reported(self):
+        self.app.settings = Settings(merge(self.app.settings.data, {
+            "image_tools": {name: {"enabled": True, "endpoint": "http://localhost:9876",
+                                   "served_model": "synthetic-baseline"} for name in ("sem", "overlay")},
+        }), self.app.settings.source_files)
+        captured = []
+
+        def fake_run(settings, question, **kwargs):
+            captured.append((settings, kwargs["context_data"]))
+            return self._agent_result(events=[
+                {"event": "tool_result", "source": "find_incidents"},
+                {"event": "tool_result", "source": "compare_sem_images"},
+                {"event": "tool_result", "source": "compare_overlay_maps"},
+            ])
+
+        context = {**self.context, "recipe": "SYN-RCP-B", "sem_wafers": self.context["wafers"],
+                   "map_view": {"kind": "overlay", "overlay": "residual"},
+                   "trend_selection": {"range_selected": False, "value_range": None, "regions": []}}
+        with patch.object(workbench_module, "run_agent", side_effect=fake_run):
+            result = self.app.analysis(self.room_id, {
+                "content": "compare", "sources": ["incident", "sem", "maps"], "context": context,
+            })
+            self.app.analysis(self.room_id, {
+                "content": "database only", "sources": ["incident"], "context": context,
+            })
+        settings, payload = captured[0]
+        self.assertTrue(all(row["enabled"] for row in settings.data["image_tools"].values()))
+        self.assertEqual(payload["unavailable_sources"], [])
+        self.assertEqual(payload["ui_context_unverified"], context)
+        self.assertTrue(all(row["status"] == "completed" for row in result["analysis"]["steps"]))
+        self.assertFalse(any(row["enabled"] for row in captured[1][0].data["image_tools"].values()))
 
     def test_selected_context_does_not_silently_truncate_long_questions(self):
         with patch.object(workbench_module, "run_agent") as run:

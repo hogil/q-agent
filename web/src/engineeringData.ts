@@ -105,6 +105,16 @@ export type DownEvent = {
   description: string;
 };
 
+export type EquipmentState = 'RUN' | 'DOWN' | 'PM' | 'IDLE';
+
+export type EquipmentStateInterval = {
+  equipment: string;
+  start: string;
+  end: string;
+  state: EquipmentState;
+  code: string;
+};
+
 export type EngineeringData = {
   trendFleets?: Record<string, TrendFleet[]>;
   comparisonTraces?: Record<string, Record<string, EquipmentTracePoint[]>>;
@@ -116,6 +126,7 @@ export type EngineeringData = {
   wip: WipRow[];
   downtime: DownEvent[];
   changes: ChangeEvent[];
+  equipmentStates?: EquipmentStateInterval[];
 };
 
 export type ChangeEvent = {

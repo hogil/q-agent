@@ -17,7 +17,9 @@ description: Judge 검토 뒤 확인된 근거로 최종 답변과 제한을 작
 - persona, confidence 같은 새 JSON 필드를 만들지 않는다. 페르소나는 기존 answer/reason/limitations의 표현과 판단에 반영한다.
 
 ## 작성 조건
-모델 이미지 비교는 Tool의 model/model_version, 비교 asset_id/revision, 관측 차이와 limitations를 표시한다. 화면 중첩/Die 통계와 모델 추론을 구분하고, 미연결이면 모델 분석 완료를 주장하지 않는다. 유사도는 확정 원인이나 조치 권한이 아니다. 2026-09-19 로컬 계약 기준이며 운영 SEM/Overlay 검증 미완료.
+get_engineering_snapshot의 수치·문서 관측은 합성 출처와 기간을 명시한다. Trend 변화, 상태 변경, 불량 패턴의 동시 발생은 관측/가설/추가 확인으로 나누며 원인을 단정하지 않는다.
+같은 확인 항목은 반복하지 않는다. 소스별 내용을 지어 채우지 말고 실제 수치·class·과거 참조 ID를 요약한다. asset 목록은 비교 결과가 아니다. 각 claims.evidence_ids는 해당 주장이 들어 있는 Tool 결과를 가리켜야 한다. unknown 완전성의 Lot/Wafer 수는 등록 수이지 전체 영향 수가 아니다.
+모델 이미지 비교는 Tool의 model/model_version, 비교 asset_id/revision, 관측 차이와 limitations를 표시한다. `INCOMPARABLE`, `alignment_verified=false`, `similarity=null`이면 유효한 findings가 있을 때 그 관측만 partial Answer에 포함하고, 물리 정렬/의미 확정/원인 확정으로 표현하지 않는다. 모델 비교 요구는 미충족으로 남긴다. 화면 중첩/Die 통계와 모델 추론을 구분하고, 미연결이면 모델 분석 완료를 주장하지 않는다. 유사도는 확정 원인이나 조치 권한이 아니다. 2026-09-21 로컬 합성 서비스/더미 결과 기준이며 운영 SEM/Overlay 검증 미완료.
 
 0. independent 요청에는 필요한 설명/요약만 답한다. 사고 테이블 미조회는 누락이 아니며 '사고 없음'으로 바꾸지 않는다. 실제로 사용한 제공 자료/일반 문서 근거를 연결하고 사고 ID를 발명하지 않는다.
 1. Judge pass이면 질문에 필요한 결과를 먼저 설명한다. abstain이면 확인된 사실과 확인하지 못한 항목만 설명하고, 유효한 주장과 근거가 있으면 partial, 없으면 unavailable로 반환한다. abstain을 answered로 바꾸지 않는다. need_evidence/revise 또는 Judge 판정 누락이면 호출 순서 오류로 unavailable을 반환한다.
@@ -37,4 +39,4 @@ claims.evidence_ids의 각 문자열은 입력 evidence_ids 목록에서 그대�
 
 2026-09-18 회의록 표현 규칙은 로컬 계약과 합성 사례 기반이며 실제 전문가 검증 미완료다. 선택적 references/examples.md의 사고·수치는 실제 답변 근거가 아니다.
 
-수정 전 관련 실제 원본과 대표 데이터를 확인하고 출처, 기준시점, 변경 근거를 기록한다. 실제 데이터에 접근할 수 없으면 미확인으로 표시하고 설계/더미 초안으로만 관리한다. 더미 검증을 실제 데이터 검증으로 주장하거나 확인 없이 컬럼 의미, 관계, 코드값을 확정하지 않는다. 이 규칙은 원본 데이터 수정이나 온라인 Skill 자기 수정 권한을 부여하지 않는다.
+변경 출처·기준일·근거를 기록한다. 사내 원본이 없으면 더미 초안이며 실제 검증을 주장하지 않는다. 원본 DB·온라인 Skill 수정은 허용하지 않는다.

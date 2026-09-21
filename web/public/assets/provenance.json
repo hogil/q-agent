@@ -6,6 +6,14 @@
     "prompt": "Synthetic SEM-style grayscale semiconductor line-space pattern with a small bridge and particles, top-down, inspectable texture, no text or scale bar. UI demonstration only; not microscopy evidence.",
     "limitations": "No measured magnification, physical scale, real defect classification or incident relationship. Reused as an explicitly synthetic viewer fixture."
   },
+  "synthetic-sem-history.png": {
+    "synthetic": true,
+    "generator": "built-in image_gen",
+    "date": "2026-09-21",
+    "reference": "synthetic-sem.png",
+    "prompt": "Separate square synthetic grayscale SEM reference with slightly slanted parallel bright lines, granular texture, one bridge left of center at one-third height; similar defect family, not a pixel duplicate. No text, annotations or scale bar.",
+    "limitations": "Generated in September 2026 and assigned a fictional 2025 incident date only for synthetic historical retrieval. No real incident, physical alignment or causal evidence."
+  },
   "synthetic-sem-reference.png": {
     "synthetic": true,
     "generator": "built-in image_gen",

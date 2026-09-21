@@ -18,7 +18,97 @@ import {
   signalFabScope,
   selectionTimeWindows,
   pointInSelection,
+  analysisTrendSelection,
+  sameAnalysisContext,
 } from '../src/engineeringAnalysis.ts';
+
+test('analysis scope includes exact XY regions and recipe, not only outer time bounds', () => {
+  const selection = {
+    rangeSelected: true,
+    valueRange: [5, 9],
+    regions: [
+      [
+        [1000, 2000],
+        [5, 6],
+      ],
+      [
+        [3000, 4000],
+        [8, 9],
+      ],
+    ],
+  };
+  const context = {
+    incident_number: 'SYN-2026-01',
+    item: 'TEMP',
+    step: 'ETCH',
+    equipment: 'EQP-A',
+    from: '2026-01-01',
+    to: '2026-01-02',
+    recipe: '',
+    wafers: [
+      { lot_id: 'L1', wafer_id: 'W1' },
+      { lot_id: 'L2', wafer_id: 'W2' },
+    ],
+    trend_selection: analysisTrendSelection(selection),
+  };
+  assert.equal(sameAnalysisContext(context, structuredClone(context)), true);
+  const dates = { ...context, from: '2026-01-07T13:00:00Z', to: '2026-01-08T12:00:00Z' };
+  assert.equal(sameAnalysisContext(dates, {
+    ...dates, from: '2026-01-07T13:00:00.000Z', to: '2026-01-08T21:00:00+09:00',
+  }), true);
+  assert.equal(sameAnalysisContext(dates, { ...dates, from: '2026-01-07T13:00:01Z' }), false);
+  assert.equal(
+    sameAnalysisContext(context, { ...context, recipe: 'RCP-B' }),
+    false,
+  );
+  const changedY = structuredClone(context);
+  changedY.trend_selection.regions[0][1][0] = 5.5;
+  assert.equal(sameAnalysisContext(context, changedY), false);
+  const filledGap = structuredClone(context);
+  filledGap.trend_selection.regions = [
+    [
+      [1000, 4000],
+      [5, 9],
+    ],
+  ];
+  assert.equal(sameAnalysisContext(context, filledGap), false);
+  const reordered = structuredClone(context);
+  reordered.trend_selection.regions.reverse();
+  reordered.wafers.reverse();
+  assert.equal(sameAnalysisContext(context, reordered), true);
+  const legacy = { ...context };
+  delete legacy.trend_selection;
+  assert.equal(sameAnalysisContext(context, legacy), false);
+  const images = {
+    ...context,
+    sem_wafers: context.wafers,
+    map_view: { kind: 'overlay', overlay: 'raw' },
+  };
+  assert.equal(sameAnalysisContext(images, {
+    ...images, sem_wafers: [...images.sem_wafers].reverse(),
+  }), false);
+  assert.equal(sameAnalysisContext(images, {
+    ...images, map_view: { kind: 'overlay', overlay: 'residual' },
+  }), false);
+  selection.regions[0][0][0] = 500;
+  assert.equal(context.trend_selection.regions[0][0][0], 1000);
+});
+
+test('cleared analysis selection cannot retain hidden XY bounds', () => {
+  assert.deepEqual(
+    analysisTrendSelection({
+      rangeSelected: false,
+      valueRange: [5, 9],
+      regions: [
+        [
+          [1, 2],
+          [5, 9],
+        ],
+      ],
+    }),
+    { range_selected: false, value_range: null, regions: [] },
+  );
+});
 
 const data = {
   signals: [

@@ -23,18 +23,19 @@ description: Router와 Tool 조회 다음, Answer 이전에 근거 충분성과 
 5. 원인/조치는 문서 출처/버전/제품/Layer/Recipe/시점 적용 범위를 확인한다. 문서 제안과 현재 승인 조치를 구분하고 이미지 유사성만으로 원인을 확정하지 않는다. 서로 다른 수량은 기준시점과 범위를 확인한다.
 
 ## 판정과 복귀
-이미지 모델 비교 요구는 실제 compare_sem_images/compare_overlay_maps 결과를 확인한다. 같은 Item·Step·계측 조건, 자산 버전, 좌표 정렬, 모델 버전과 제한을 대조한다. 미연결/INCOMPARABLE/정렬 미확인은 통과 근거가 아니며 이미지 유사도를 원인 확정이나 조치 승인으로 바꾸지 않는다. UI 통계만 있는 경우 모델 비교 요구를 satisfied로 표시하지 않는다. 2026-09-19 로컬 호출 계약 기준, 운영 모델 미검증.
+get_engineering_snapshot은 선택 범위를 검증해 읽은 합성 원자료다. count/truncation/limitations와 빈 자료를 확인한다. 시간 상관이나 재공 분포는 원인 확정 또는 사고 영향 범위가 아니다.
+이미지 모델 비교 요구는 실제 compare_sem_images/compare_overlay_maps 결과를 확인한다. 같은 Item·Step·계측 조건, 자산 버전, 좌표 정렬, 모델 버전과 제한을 대조한다. 미연결/INCOMPARABLE/정렬 미확인은 통과 근거가 아니며 이미지 유사도를 원인 확정이나 조치 승인으로 바꾸지 않는다. 단, `INCOMPARABLE` 결과에 유효한 findings/limitations가 있으면 이를 부분 관측으로 coverage에 연결하고, alignment를 다시 확보할 수 없는 상태에서는 같은 비교를 재요청하지 말고 `abstain`으로 Answer에 보낸다. 모델 비교 요구는 충족되지 않은 상태로 남긴다. UI 통계만 있는 경우 모델 비교 요구를 satisfied로 표시하지 않는다. 2026-09-21 로컬 합성 서비스/더미 결과 기준, 운영 모델 미검증.
 
 회의록은 승인 여부와 분석의 확정 여부를 별도로 확인한다. meeting_date/version/chunk_id, as_of, 사고 범위를 대조하고 초기 가설과 후속 확정·보류를 구분한다. DB와 회의록 수량이 충돌하면 범위·시점 차이를 설명할 근거 없이는 하나를 정답으로 고르지 않는다. 최신 DB 사실을 과거 회의 시점의 지식으로 쓰지 않는다. 회의록 검색 실패나 0건은 질문에 필요한 근거가 없다는 뜻이지 사고가 없다는 증거가 아니다.
 pass: 모든 요구사항이 근거로 충족되고 차단 오류가 없음 → return_to=answer.
 need_evidence: 같은 사고에 추가 확보 가능한 근거/페이지가 부족하고 예산이 있음 → return_to=router.
 revise: 사고/필터/범위가 잘못됐거나 만료되어 다시 선택해야 하고 재조회가 가능함 → return_to=router.
-abstain: 근거를 더 얻을 수 없음, Tool 비활성/권한 제한/예산 소진/POLICY_CONFLICT → return_to=answer. 확인된 사실과 한계만 전달한다.
+abstain: 근거를 더 얻을 수 없음, Tool 비활성/권한 제한/예산 소진/INCOMPARABLE 정렬 미확인/POLICY_CONFLICT → return_to=answer. 확인된 사실과 한계만 전달한다. 유효한 이미지 findings가 있으면 partial Answer를 허용하되 모델 비교 요구를 satisfied로 바꾸지 않는다.
 오류가 겹치면 먼저 사고 범위를 바로잡는다. 복구 불가/예산 소진이면 abstain한다. 코드 FAIL을 pass로 뒤집지 않는다. issues에 문제 유형, 근거 ID, 이유와 필요한 다음 확인을 명시한다.
 references/output.schema.json만 반환한다. 완성 답변, 임의 사실, 조치 승인, Tool 직접 실행을 하지 않는다. references/conditions.md의 예시를 따른다.
 
 ## 실제 데이터 확인 후 변경
 
-2026-09-18 회의록 규칙은 로컬 검색 계약과 합성 사례 기반 초안이다. 사내 전문가 검토 미완료. 선택적 references/examples.md는 판단 형식만 보여준다.
+2026-09-18 회의록 규칙은 로컬 검색 계약과 합성 사례 기반 초안이다. 2026-09-21 로컬 합성 SEM/overlay 결과의 INCOMPARABLE·부분 판정 규칙을 추가했다. 사내 전문가 검토 미완료. 선택적 references/examples.md는 판단 형식만 보여준다.
 
 수정 전 관련 실제 원본과 대표 데이터를 확인하고 출처, 기준시점, 변경 근거를 기록한다. 실제 데이터에 접근할 수 없으면 미확인으로 표시하고 설계/더미 초안으로만 관리한다. 더미 검증을 실제 데이터 검증으로 주장하거나 확인 없이 컬럼 의미, 관계, 코드값을 확정하지 않는다. 이 규칙은 원본 데이터 수정이나 온라인 Skill 자기 수정 권한을 부여하지 않는다.

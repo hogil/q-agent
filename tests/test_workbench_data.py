@@ -68,11 +68,62 @@ class WorkbenchDataTests(unittest.TestCase):
         self.assertIsNone(load_workbench_data(None, self.root))
         self.assertIsNone(load_workbench_data({}, self.root))
 
+    def test_shared_historical_records_validate_timestamps_and_values(self):
+        payload = valid_payload()
+        row = {"id": "hist-1", "lotId": "past-lot", "waferId": "W01",
+               "step": "STEP-1", "item": "ITEM-1", "equipment": "EQP-1", "recipe": "RCP-1",
+               "fabAt": "2025-12-01T00:00:00Z", "edsAt": "2025-12-03T00:00:00Z",
+               "temperature": 65, "queue": 2, "availability": 97, "yieldPct": 90,
+               "bin3Pct": 3, "bin4Pct": 2}
+        payload["incidents"]["SYN-1"]["historical_records"] = [row]
+        path = self.write(payload)
+        self.assertEqual(load_workbench_data({"raw_file": path.name}, self.root)["SYN-1"]["historical_records"], [row])
+        row["edsAt"] = "2025-11-01T00:00:00Z"
+        self.write(payload)
+        with self.assertRaisesRegex(ValueError, "EDS must follow Fab"):
+            load_workbench_data({"raw_file": path.name}, self.root)
+
     def test_loads_valid_incident_map(self):
         path = self.write(valid_payload())
         result = load_workbench_data({"raw_file": path.name}, self.root)
         self.assertEqual(set(result), {"SYN-1"})
         self.assertEqual(result["SYN-1"]["engineering"]["signals"][0]["id"], "signal-1")
+
+    def test_image_history_validates_assets_vectors_and_synthetic_provenance(self):
+        payload = valid_payload()
+        row = {"id": "ref-1", "incident_number": "SYN-PAST", "occurred_at": "2025-12-01T00:00:00Z",
+               "item": "ITEM-1", "step": "STEP-1", "modality": "sem", "provenance": "synthetic",
+               "description": "reference", "src": "/assets/past.png"}
+        payload["incidents"]["SYN-1"]["image_history"] = [row]
+        def load():
+            return load_workbench_data({"raw_file": self.write(payload).name}, self.root)
+        self.assertEqual(load()["SYN-1"]["image_history"], [row])
+        row["src"] = "/assets/../secret.png"
+        with self.assertRaisesRegex(ValueError, "local /assets/"):
+            load()
+        row.update(modality="overlay", vectors=[{"x": 0, "y": 0, "dx": 1, "dy": 2}])
+        self.assertEqual(len(load()["SYN-1"]["image_history"]), 1)
+        row["vectors"][0]["dx"] = float("nan")
+        with self.assertRaises(ValueError):
+            load()
+
+    def test_optional_equipment_state_history_is_validated_and_preserved(self):
+        payload = valid_payload()
+        payload["incidents"]["SYN-1"]["engineering"]["equipmentStates"] = [
+            {"equipment": "EQP-1", "start": "2025-12-31T23:00:00+00:00", "end": "2026-01-01T00:00:00+00:00", "state": "PM", "code": "PM-1"},
+            {"equipment": "EQP-1", "start": "2026-01-01T00:00:00+00:00", "end": "2026-01-01T01:00:00+00:00", "state": "RUN", "code": "RUN-1"},
+        ]
+        path = self.write(payload)
+        loaded = load_workbench_data({"raw_file": path.name}, self.root)
+        self.assertEqual(loaded["SYN-1"]["engineering"]["equipmentStates"][0]["state"], "PM")
+
+        invalid = valid_payload()
+        invalid["incidents"]["SYN-1"]["engineering"]["equipmentStates"] = [
+            {"equipment": "EQP-1", "start": "2026-01-01T00:00:00+00:00", "end": "2026-01-01T02:00:00+00:00", "state": "RUN", "code": "RUN-1"},
+            {"equipment": "EQP-1", "start": "2026-01-01T01:00:00+00:00", "end": "2026-01-01T03:00:00+00:00", "state": "DOWN", "code": "DOWN-1"},
+        ]
+        with self.assertRaisesRegex(ValueError, "overlaps"):
+            load_workbench_data({"raw_file": self.write(invalid, "overlap.json").name}, self.root)
 
     def test_missing_or_invalid_source_fails_before_generation(self):
         with self.assertRaisesRegex(ValueError, "missing"):

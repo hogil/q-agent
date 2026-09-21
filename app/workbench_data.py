@@ -18,6 +18,7 @@ _ANOMALY_PATTERNS = {
 }
 _LEGEND_AXES = {"eqp_id", "chamber", "recipe"}
 _STATUSES = {"RUN", "WAIT", "HOLD"}
+_EQUIPMENT_STATES = {"RUN", "DOWN", "PM", "IDLE"}
 
 
 def _fail(message: str) -> None:
@@ -85,9 +86,40 @@ def _validate_trend(rows: list) -> None:
     _unique(timestamps, "engineering.trend timestamps")
 
 
+def _validate_equipment_states(rows: list) -> None:
+    by_equipment: dict[str, list[tuple[datetime, datetime]]] = {}
+    for index, row in enumerate(rows):
+        item = _object(row, f"engineering.equipmentStates[{index}]")
+        for key in ("equipment", "start", "end", "state", "code"):
+            if key not in item:
+                _fail(f"engineering.equipmentStates[{index}].{key} is required")
+        equipment = _string(item["equipment"], f"engineering.equipmentStates[{index}].equipment")
+        start_text = _timestamp(item["start"], f"engineering.equipmentStates[{index}].start")
+        end_text = _timestamp(item["end"], f"engineering.equipmentStates[{index}].end")
+        _string(item["code"], f"engineering.equipmentStates[{index}].code")
+        state = _string(item["state"], f"engineering.equipmentStates[{index}].state")
+        if state not in _EQUIPMENT_STATES:
+            _fail(f"engineering.equipmentStates[{index}].state is unsupported")
+        start_value = datetime.fromisoformat(
+            start_text[:-1] + "+00:00" if start_text.endswith(("Z", "z")) else start_text
+        )
+        end_value = datetime.fromisoformat(
+            end_text[:-1] + "+00:00" if end_text.endswith(("Z", "z")) else end_text
+        )
+        if end_value <= start_value:
+            _fail(f"engineering.equipmentStates[{index}] end must be after start")
+        by_equipment.setdefault(equipment, []).append((start_value, end_value))
+    for equipment, intervals in by_equipment.items():
+        ordered = sorted(intervals)
+        for previous, current in zip(ordered, ordered[1:]):
+            if current[0] < previous[1]:
+                _fail(f"engineering.equipmentStates overlaps for {equipment}")
+
+
 def _validate_engineering(engineering: dict) -> set[str]:
     required = {"signals", "trend", "fab", "yields", "wip", "downtime", "changes"}
-    if set(engineering) != required:
+    optional = {"equipmentStates"}
+    if not required.issubset(engineering) or set(engineering) - required - optional:
         _fail("engineering must contain signals, trend, fab, yields, wip, downtime and changes")
     signals = _array(engineering["signals"], "engineering.signals")
     if not signals:
@@ -192,6 +224,8 @@ def _validate_engineering(engineering: dict) -> set[str]:
             _fail(f"engineering.changes[{index}].kind is unsupported")
         _timestamp(item["timestamp"], f"engineering.changes[{index}].timestamp")
     _unique([row["id"] for row in engineering["changes"]], "engineering change ids")
+    if "equipmentStates" in engineering:
+        _validate_equipment_states(_array(engineering["equipmentStates"], "engineering.equipmentStates"))
     return signal_scopes
 
 
@@ -307,10 +341,43 @@ def _validate_sem_assets(value: object, fab_pairs: set[tuple[str, str]]) -> None
         _fail("SEM asset lot/wafer pairs must be unique")
 
 
+def _validate_image_history(value: object) -> None:
+    rows = _array(value, "image_history")
+    if len(rows) > 100:
+        _fail("image_history exceeds 100 references")
+    ids = []
+    for row in rows:
+        _object(row, "image_history reference")
+        for key in ("id", "incident_number", "item", "step", "provenance", "description"):
+            _string(row.get(key), "image_history." + key)
+        if not row["incident_number"].startswith("SYN-"):
+            _fail("image_history requires synthetic incident references")
+        _timestamp(row.get("occurred_at"), "image_history.occurred_at")
+        if row.get("modality") == "sem":
+            source = _string(row.get("src"), "image_history.src")
+            parsed = urlsplit(source)
+            if (parsed.scheme or parsed.netloc or not source.startswith("/assets/")
+                    or ".." in source.split("/") or "\\" in source or "//" in source[1:]):
+                _fail("image_history.src must be a local /assets/ path")
+        elif row.get("modality") == "overlay":
+            points = _array(row.get("vectors"), "image_history.vectors")
+            if not 1 <= len(points) <= 4096:
+                _fail("image_history.vectors requires 1..4096 points")
+            for point in points:
+                _object(point, "image_history vector")
+                for key in ("x", "y", "dx", "dy"):
+                    _finite(point.get(key), "image_history.vector." + key)
+            _unique([(point["x"], point["y"]) for point in points], "image_history coordinates")
+        else:
+            _fail("image_history.modality must be sem or overlay")
+        ids.append(row["id"])
+    _unique(ids, "image_history reference ids")
+
+
 def _validate_incident(incident_number: str, record: object) -> dict:
     item = _object(record, f"incidents.{incident_number}")
     required = {"engineering", "trend_fleets", "comparison_traces", "inform_notes", "sem_assets"}
-    if set(item) != required:
+    if not required.issubset(item) or set(item) - required - {"historical_records", "image_history"}:
         _fail(f"incidents.{incident_number} must contain engineering, trend_fleets, comparison_traces, inform_notes and sem_assets")
     engineering = _object(item["engineering"], f"incidents.{incident_number}.engineering")
     signal_scopes = _validate_engineering(engineering)
@@ -319,6 +386,25 @@ def _validate_incident(incident_number: str, record: object) -> dict:
     _validate_inform_notes(item["inform_notes"], signal_scopes)
     fab_pairs = {(row["lotId"], row["waferId"]) for row in engineering["fab"]}
     _validate_sem_assets(item["sem_assets"], fab_pairs)
+    if "image_history" in item:
+        _validate_image_history(item["image_history"])
+    if "historical_records" in item:
+        ids = []
+        for row in _array(item["historical_records"], "historical_records"):
+            _object(row, "historical record")
+            for field in ("id", "lotId", "waferId", "step", "item", "equipment", "recipe"):
+                _string(row.get(field), "historical_records." + field)
+            for field in ("temperature", "queue", "availability", "yieldPct", "bin3Pct", "bin4Pct"):
+                _finite(row.get(field), "historical_records." + field)
+            for field in ("availability", "yieldPct", "bin3Pct", "bin4Pct"):
+                if not 0 <= row[field] <= 100:
+                    _fail("historical_records percentage must be within 0..100")
+            times = [datetime.fromisoformat(_timestamp(row.get(field), field).replace("Z", "+00:00"))
+                     for field in ("fabAt", "edsAt")]
+            if times[0] > times[1]:
+                _fail("historical_records EDS must follow Fab")
+            ids.append(row["id"])
+        _unique(ids, "historical record ids")
     return item
 
 

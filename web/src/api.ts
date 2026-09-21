@@ -49,6 +49,18 @@ export type Meeting = {
   source_ref: string;
   status: string;
 };
+export type SemHistoryImage = {
+  id: string;
+  incident_number: string;
+  occurred_at: string;
+  item: string;
+  step: string;
+  modality: 'sem' | 'overlay';
+  provenance: string;
+  description: string;
+  src?: string;
+  vectors?: { x: number; y: number; dx: number; dy: number }[];
+};
 export type WaferGeometry = {
   radius_mm: number;
   coordinate_radius: number;
@@ -71,6 +83,8 @@ export type Workspace = {
     comparison_traces: Record<string, Record<string, EquipmentTracePoint[]>>;
     inform_notes: InformNote[];
     sem_assets: SemAsset[];
+    image_history?: SemHistoryImage[];
+    historical_records?: import('./historicalData').HistoricalRecord[];
   };
 };
 export type Bootstrap = {

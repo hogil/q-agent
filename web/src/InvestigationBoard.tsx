@@ -27,6 +27,7 @@ import {
 import type { ViewProps } from './Views';
 import {
   pairKey,
+  analysisTrendSelection,
   selectFabRows,
   selectTrendFabRows,
   engineeringReference,
@@ -51,6 +52,7 @@ import {
   waferCoordinateText,
 } from './waferMaps';
 import HistoricalCorrelation from './HistoricalCorrelation';
+import { EquipmentStateTimeline } from './EquipmentStateTimeline';
 import BoardSem from './BoardSem';
 import { availableEquipment, compareEquipment } from './equipmentComparison';
 import BoardAnalysis from './BoardAnalysis';
@@ -209,6 +211,9 @@ export default function InvestigationBoard({
   );
   const [productionNotice, setProductionNotice] = useState('');
   const [copyStatus, setCopyStatus] = useState('');
+  const [semWafers, setSemWafers] = useState<
+    { lot_id: string; wafer_id: string }[]
+  >([]);
   const [preview, setPreview] = useState<Attachment | null>(null);
   const previewDialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -219,12 +224,6 @@ export default function InvestigationBoard({
       row.step === signal.step &&
       (!selection.equipment || row.equipment === selection.equipment) &&
       (!selection.recipe || row.recipe === selection.recipe),
-  );
-  const downtime = data.downtime.filter(
-    (row) =>
-      (!selection.equipment || row.equipment === selection.equipment) &&
-      row.start <= to &&
-      row.end >= from,
   );
   const related = incidents.filter((row) => row.incident_number !== incident);
   const informEquipment =
@@ -552,8 +551,12 @@ export default function InvestigationBoard({
     item: signal.item,
     step: signal.step,
     equipment: selection.equipment,
+    recipe: selection.recipe,
     from,
     to,
+    trend_selection: analysisTrendSelection(selection),
+    sem_wafers: semWafers,
+    map_view: { kind: mapMode, overlay: overlayView },
     wafers: candidates
       .filter((row) => checked.has(pairKey(row)))
       .map((row) => ({ lot_id: row.lotId, wafer_id: row.waferId })),
@@ -593,19 +596,6 @@ export default function InvestigationBoard({
         {selected ? <Check size={13} /> : <Pin size={13} />}
       </button>
     );
-  };
-  const focusWindow = (start: string, end: string) => {
-    const fromTime = Date.parse(start),
-      toTime = Date.parse(end);
-    const first = data.trend.findIndex(
-      (row) => Date.parse(row.timestamp) >= fromTime,
-    );
-    const last = data.trend.reduce(
-      (index, row, i) => (Date.parse(row.timestamp) <= toTime ? i : index),
-      -1,
-    );
-    if (first >= 0 && last >= first)
-      change({ start: first, end: last, valueRange: undefined });
   };
   const number = (value: number | null) =>
     value === null ? '-' : value.toFixed(2);
@@ -1285,6 +1275,8 @@ export default function InvestigationBoard({
           aria-label="SEM 이미지 비교"
         >
           <BoardSem
+            onComparisonChange={setSemWafers}
+            currentItem={signal.item}
             workspace={workspace}
             focused={focused}
             compare={peer}
@@ -1297,15 +1289,12 @@ export default function InvestigationBoard({
           aria-label="생산 재공과 다운코드"
         >
           <header>
-            <h2>생산 · 재공 · 다운코드</h2>
+            <h2>재공 · 설비 상태</h2>
             <span>MES / FDC 미연결</span>
             {expand('생산 상세', 'production')}
           </header>
           <div className="board-production-columns">
             <div className="board-wip">
-              <h3>
-                WIP <span>{wip.length} Lots · 스냅샷</span>
-              </h3>
               {!!wip.length && (
                 <Chart
                   className="board-wip-chart"
@@ -1332,34 +1321,15 @@ export default function InvestigationBoard({
               {!wip.length && <p className="board-empty">일치 재공 없음</p>}
             </div>
             <div>
-              <h3>
-                설비 다운 <span>{downtime.length}건 · 구간 내</span>
-              </h3>
-              <div className="board-downcodes">
-                {downtime.map((row) => (
-                  <div key={row.id} className="board-down-row">
-                    <button
-                      title={`${row.equipment} · ${row.description} · ${time(row.start)}~${time(row.end)}`}
-                      onClick={() => focusWindow(row.start, row.end)}
-                    >
-                      <time>{row.start.slice(11, 16)}</time>
-                      <b>{row.code}</b>
-                      <span>{row.category}</span>
-                    </button>
-                    {pin(
-                      {
-                        kind: 'data',
-                        id: `engineering:down:${row.id}`,
-                        label: `${row.code} ${time(row.start)} · 합성`,
-                      },
-                      '다운코드',
-                    )}
-                  </div>
-                ))}
-              </div>
-              {!downtime.length && (
-                <p className="board-empty">겹치는 다운코드 없음</p>
-              )}
+              <EquipmentStateTimeline
+                equipment={selection.equipment || focused?.equipment || ''}
+                equipmentStates={data.equipmentStates}
+                equipmentOptions={[
+                  ...new Set(data.fab.map((row) => row.equipment)),
+                ]}
+                anchorAt={signal.detectedAt}
+                onEquipmentChange={(equipment) => change({ equipment })}
+              />
             </div>
           </div>
           <footer>
@@ -1370,8 +1340,8 @@ export default function InvestigationBoard({
             )}
             <span className="wip-legend run">RUN</span> ·{' '}
             <span className="wip-legend wait">WAIT</span> ·{' '}
-            <span className="wip-legend hold">HOLD</span> · Fab 0.0 → End · 재공
-            구간 확대 · 합성
+            <span className="wip-legend hold">HOLD</span> · {wip.length} Lots ·
+            합성
           </footer>
         </section>
         <section

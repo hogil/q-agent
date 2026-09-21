@@ -89,6 +89,9 @@ test('WIP uses product rows, numeric layer positions and clips route to occupied
   const data = makeEngineeringData(workspace);
   const option = wipLayerOption(data.wip);
   assert.deepEqual(option.yAxis.data, ['P1', 'P2']);
+  assert.equal(option.yAxis.position, 'right');
+  assert.equal(option.yAxis.axisLabel.interval, 0);
+  assert.ok(option.grid.right > option.grid.left);
   assert.equal(option.xAxis.type, 'value');
   assert.ok(option.xAxis.min > 0 && option.xAxis.max < 40);
   for (const row of data.wip) {

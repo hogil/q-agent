@@ -32,6 +32,7 @@ from meeting_tools import MeetingTools  # noqa: E402
 from runtime_factory import open_incident_tools  # noqa: E402
 from detection_workflow import DetectionWorkflow  # noqa: E402
 from workbench_data import load_workbench_data  # noqa: E402
+from engineering_tools import EngineeringTools  # noqa: E402
 
 
 MAX_BODY = 64 * 1024
@@ -47,6 +48,7 @@ ANALYSIS_SOURCES = (
     "inform", "meetings", "changes",
 )
 ANALYSIS_CONTEXT_FIELDS = {"incident_number", "item", "step", "equipment", "from", "to", "wafers"}
+ANALYSIS_OPTIONAL_FIELDS = {"recipe", "trend_selection", "sem_wafers", "map_view"}
 ANALYSIS_TEXT_FIELDS = ("item", "step", "equipment")
 ANALYSIS_TEXT_LIMIT = 256
 ANALYSIS_TIME_LIMIT = 64
@@ -131,10 +133,18 @@ def _validate_wafer_geometry(raw):
 def load_workbench(path: str | Path, *, raw_file=None, agent_overlay=None) -> dict:
     config_path = Path(path).expanduser().resolve()
     raw = read_config(config_path)
-    if set(raw) - {"agent_overlay", "sources", "server", "wafer_geometry"} != {"config_version", "demo", "chat", "cutoff", "static_root"}:
+    if set(raw) - {"agent_overlay", "sources", "server", "wafer_geometry", "demo_image_tools", "demo_image_model_dir"} != {"config_version", "demo", "chat", "cutoff", "static_root"}:
         raise WorkbenchError("workbench config keys are invalid")
     if raw["config_version"] != 1:
         raise WorkbenchError("unsupported workbench config version")
+    demo_image_tools = raw.get("demo_image_tools", False)
+    if type(demo_image_tools) is not bool:
+        raise WorkbenchError("demo_image_tools must be a boolean")
+    if demo_image_tools and (not isinstance(raw.get("demo_image_model_dir"), str)
+                             or not raw["demo_image_model_dir"].strip()):
+        raise WorkbenchError("demo_image_model_dir is required for synthetic image models")
+    demo_image_model_dir = (_path(raw.get("demo_image_model_dir"), config_path.parent)
+                            if demo_image_tools else None)
     wafer_geometry = (_validate_wafer_geometry(raw["wafer_geometry"])
                       if "wafer_geometry" in raw else None)
     server = raw.get("server", {"port": 8787})
@@ -146,6 +156,8 @@ def load_workbench(path: str | Path, *, raw_file=None, agent_overlay=None) -> di
         raw_data = load_workbench_data(sources, config_path.parent)
     except ValueError as exc:
         raise WorkbenchError(str(exc)) from None
+    if demo_image_tools and raw_data is None:
+        raise WorkbenchError("demo_image_tools requires configured synthetic raw data")
     demo = raw["demo"]
     chat = raw["chat"]
     if not isinstance(demo, dict) or set(demo) != {"base_config", "overlay"}:
@@ -167,8 +179,8 @@ def load_workbench(path: str | Path, *, raw_file=None, agent_overlay=None) -> di
         if overlay_path:
             agent_path = _path(overlay_path, config_path.parent)
             agent_config = read_config(agent_path)
-            if set(agent_config) - {"models", "roles", "runtime"}:
-                raise WorkbenchError("agent_overlay may only configure models, roles and runtime")
+            if set(agent_config) - {"models", "roles", "runtime", "image_tools"}:
+                raise WorkbenchError("agent_overlay may only configure models, roles, runtime and image_tools")
             merged = merge(settings.data, agent_config)
             check_shape(merged, SPEC)
             validate_values(merged)
@@ -204,7 +216,8 @@ def load_workbench(path: str | Path, *, raw_file=None, agent_overlay=None) -> di
     return {"settings": settings, "cutoff": cutoff, "static_root": static_root,
             "chat_db": chat_db, "history_limit": chat["history_limit"],
             "raw_data": raw_data, "port": server["port"],
-            "release": registry.get("release", "unknown"), "wafer_geometry": wafer_geometry}
+            "release": registry.get("release", "unknown"), "wafer_geometry": wafer_geometry,
+            "demo_image_tools": demo_image_tools, "demo_image_model_dir": demo_image_model_dir}
 
 
 def _summary(row: dict | None) -> dict | None:
@@ -228,6 +241,12 @@ class Workbench:
         self.running_rooms = set()
         self.analysis_runs = {}
         self.llm_connected = False
+        self.image_connections = set()
+        self.demo_images = None
+        if config.get("demo_image_tools"):
+            from demo_images import DemoImageService
+            self.demo_images = DemoImageService(self.raw_data, self.static_root, self._incident_map(),
+                                               config["demo_image_model_dir"])
         self.chat_db.parent.mkdir(parents=True, exist_ok=True)
         self._init_chat_db()
         self.monitor = DetectionWorkflow(self.chat_db, self._analyze_detection)
@@ -373,9 +392,22 @@ class Workbench:
     def monitoring(self):
         value = self.monitor.snapshot()
         value["image_tools"] = {name: {"configured": cfg["enabled"], "model": cfg["served_model"],
-                                        "connection_verified": False}
+                                        "connection_verified": name in self.image_connections,
+                                        "synthetic_model": bool(self.demo_images) and cfg["served_model"] == self.demo_images.model_ids[name]}
                                 for name, cfg in self.settings.data["image_tools"].items()}
         return value
+
+    def demo_image_request(self, action, body):
+        if self.demo_images is None:
+            raise WorkbenchError("synthetic image service is disabled")
+        try:
+            result = getattr(self.demo_images, action)(body)
+        except ValueError as exc:
+            raise WorkbenchError(str(exc)) from None
+        if action == "compare":
+            with self.lock:
+                self.image_connections.add(body["modality"])
+        return result
 
     def replay_detection(self, body):
         if not isinstance(body, dict) or set(body) != {"context", "comparison"}:
@@ -522,6 +554,13 @@ class Workbench:
         if event.get("event") == "llm_output":
             output = event.get("output", {})
             item["status"] = output.get("decision", output.get("verdict", output.get("status", "completed")))
+            if event.get("role") == "router":
+                item["plan"] = copy.deepcopy(output.get("plan", []))
+                item["needs_skills"] = output.get("needs_skills", [])
+                item["clarification"] = output.get("clarification")
+            elif event.get("role") == "judge":
+                item["coverage"] = copy.deepcopy(output.get("coverage", []))
+                item["issues"] = copy.deepcopy(output.get("issues", []))
         with self.lock:
             run = self.analysis_runs.get(room_id)
             if run and run["status"] == "running":
@@ -637,19 +676,39 @@ class Workbench:
                    for message in self.room(room_id)["messages"][-8:]
                    if any(ref.get("incident_number") == context["incident_number"]
                           for ref in message["attachments"])]
+        image_config = {name: {"enabled": self.settings.data["image_tools"][name]["enabled"] and source in sources}
+                        for name, source in (("sem", "sem"), ("overlay", "maps"))
+                        }
+        available = {"incident", "meetings"}
+        engineering_sources = set(sources) & {"trend", "correlation", "production", "inform", "changes"}
+        engineering = (EngineeringTools(self.raw_data, self._incident_map(), context, sources)
+                       if self.raw_data and engineering_sources else None)
+        if engineering:
+            available.update(engineering_sources)
+        available.update(source for name, source in (("sem", "sem"), ("overlay", "maps"))
+                         if image_config[name]["enabled"])
         payload = {"synthetic_data": True,
                    "selected_incident": context["incident_number"], "ui_context_unverified": context,
                    "requested_sources": sources, "previous_messages_unverified": history,
-                   "unavailable_sources": [source for source in sources if source not in ("incident", "meetings")]}
+                   "unavailable_sources": [source for source in sources if source not in available]}
         config = merge(self.settings.data, {"meetings": {"enabled": "meetings" in sources
                        and self.settings.data["meetings"]["enabled"]},
-                       "image_tools": {name: {"enabled": False} for name in self.settings.data["image_tools"]}})
+                       "image_tools": image_config})
         question = f"선택 사고번호: {context['incident_number']}\n{content}"
         if len(question) > 12000:
             raise WorkbenchError("content plus selected incident context must not exceed 12000 characters")
+        requested_tools = ["find_incidents"]
+        if engineering:
+            requested_tools.append("get_engineering_snapshot")
+        if config["meetings"]["enabled"]:
+            requested_tools.append("search_meeting_minutes")
+        requested_tools.extend(tool for name, tool in (("sem", "compare_sem_images"), ("overlay", "compare_overlay_maps"))
+                               if image_config[name]["enabled"])
         result = run_agent(Settings(config, self.settings.source_files), question, actor=self.actor,
                            selected=[incident["incident_id"]], request_scope="incident", as_of=self.cutoff,
-                           context_data=payload, emit=lambda event: self._analysis_event(room_id, event))
+                           requested_tools=requested_tools,
+                           context_data=payload, engineering_query=engineering.query if engineering else None,
+                           emit=lambda event: self._analysis_event(room_id, event))
         events = result.get("events", [])
         self.llm_connected = any(event["event"] == "llm_output" for event in events)
         if result["status"] not in ("answered", "partial") or not result.get("answer"):
@@ -657,8 +716,16 @@ class Workbench:
             raise WorkbenchError("LLM analysis did not complete: " + result["status"] +
                                  (" / " + errors[-1] if errors else ""))
         tool_names = {event["source"] for event in events if event["event"] == "tool_result"}
+        with self.lock:
+            self.image_connections.update(name for name, tool in (
+                ("sem", "compare_sem_images"), ("overlay", "compare_overlay_maps")) if tool in tool_names)
         retrieved = {"incident": "find_incidents" in tool_names,
-                     "meetings": "search_meeting_minutes" in tool_names}
+                     "meetings": "search_meeting_minutes" in tool_names,
+                     "sem": "compare_sem_images" in tool_names,
+                     "maps": "compare_overlay_maps" in tool_names}
+        for event in events:
+            if event.get("event") == "tool_result" and event.get("source") == "get_engineering_snapshot":
+                retrieved.update({source: True for source in event["result"].get("sections", {})})
         steps = [{"source": source, "status": "completed" if retrieved.get(source) else "unavailable",
                   "detail": "Agent tool queried synthetic data" if retrieved.get(source)
                   else "Not queried; UI fixtures are not model evidence"} for source in sources]
@@ -730,7 +797,8 @@ class Workbench:
         return ["incident", *[item for item in value if item != "incident"]]
 
     def _validate_analysis_context(self, value, incident_number):
-        if not isinstance(value, dict) or set(value) != ANALYSIS_CONTEXT_FIELDS:
+        if (not isinstance(value, dict) or not ANALYSIS_CONTEXT_FIELDS.issubset(value)
+                or set(value) - ANALYSIS_CONTEXT_FIELDS - ANALYSIS_OPTIONAL_FIELDS):
             raise WorkbenchError("analysis context requires incident_number, item, step, equipment, from, to, and wafers")
         normalized = {}
         supplied_incident = value["incident_number"]
@@ -751,6 +819,38 @@ class Workbench:
         normalized["to"] = value["to"]
         if from_time > to_time:
             raise WorkbenchError("context from must be on or before context to")
+        if "recipe" in value:
+            if not isinstance(value["recipe"], str) or len(value["recipe"]) > ANALYSIS_TEXT_LIMIT:
+                raise WorkbenchError("context recipe must be a string up to 256 characters")
+            normalized["recipe"] = value["recipe"]
+        if "trend_selection" in value:
+            trend = value["trend_selection"]
+            if (not isinstance(trend, dict) or set(trend) != {"range_selected", "value_range", "regions"}
+                    or type(trend["range_selected"]) is not bool):
+                raise WorkbenchError("invalid context trend_selection")
+
+            def valid_bounds(bounds):
+                return (isinstance(bounds, list) and len(bounds) == 2
+                        and all(type(item) in (int, float) and math.isfinite(item) for item in bounds)
+                        and bounds[0] <= bounds[1])
+
+            regions = trend["regions"]
+            if (trend["value_range"] is not None and not valid_bounds(trend["value_range"])):
+                raise WorkbenchError("invalid context trend_selection value_range")
+            if (not isinstance(regions, list) or len(regions) > 16
+                    or any(not isinstance(region, list) or len(region) != 2
+                           or not all(valid_bounds(axis) for axis in region) for region in regions)):
+                raise WorkbenchError("invalid context trend_selection regions")
+            if not trend["range_selected"] and (regions or trend["value_range"] is not None):
+                raise WorkbenchError("inactive context trend_selection must have no bounds")
+            normalized["trend_selection"] = copy.deepcopy(trend)
+        if "map_view" in value:
+            view = value["map_view"]
+            if (not isinstance(view, dict) or set(view) != {"kind", "overlay"}
+                    or view["kind"] not in ("cd", "thk", "overlay", "bin")
+                    or view["overlay"] not in ("raw", "fit", "residual")):
+                raise WorkbenchError("invalid context map_view")
+            normalized["map_view"] = dict(view)
         wafers = value["wafers"]
         if not isinstance(wafers, list) or len(wafers) > ANALYSIS_MAX_WAFERS:
             raise WorkbenchError(f"context wafers must be an array of at most {ANALYSIS_MAX_WAFERS} items")
@@ -773,15 +873,35 @@ class Workbench:
         if any((item["lot_id"], item["wafer_id"]) not in registered for item in normalized_wafers):
             raise WorkbenchError("context wafer tuple is outside the registered incident scope")
         normalized["wafers"] = normalized_wafers
+        if "sem_wafers" in value:
+            pairs = value["sem_wafers"]
+            if not isinstance(pairs, list) or len(pairs) > 2:
+                raise WorkbenchError("context sem_wafers must contain at most two wafer pairs")
+            seen = set()
+            for pair in pairs:
+                if (not isinstance(pair, dict) or set(pair) != {"lot_id", "wafer_id"}
+                        or any(not isinstance(item, str) for item in pair.values())):
+                    raise WorkbenchError("invalid context sem_wafers pair")
+                key = (pair["lot_id"], pair["wafer_id"])
+                if key not in registered or key in seen:
+                    raise WorkbenchError("context sem_wafers must be distinct registered wafers")
+                seen.add(key)
+            normalized["sem_wafers"] = copy.deepcopy(pairs)
         return normalized
 
     @staticmethod
     def _analysis_scope_text(sources, context):
         wafer_text = ", ".join(f"{item['lot_id']}/{item['wafer_id']}" for item in context["wafers"]) or "none"
+        trend_text = json.dumps(context.get("trend_selection"), separators=(",", ":"))
+        sem_text = json.dumps(context.get("sem_wafers", []), separators=(",", ":"))
+        map_text = json.dumps(context.get("map_view"), separators=(",", ":"))
         return (f"sources={','.join(sources)}; incident={context['incident_number']}; "
                 f"item={context.get('item') or 'none'}; step={context.get('step') or 'none'}; "
                 f"equipment={context['equipment'] if context['equipment'] else 'all'}; "
-                f"date={context['from']}..{context['to']}; wafers={wafer_text}")
+                f"recipe={context.get('recipe') or 'all'}; "
+                f"date={context['from']}..{context['to']}; wafers={wafer_text}; "
+                f"trend_selection={trend_text}; sem_wafers={sem_text}; map_view={map_text} "
+                "(UI condition only; region X=Unix ms, Y=item value)")
 
     def _analysis_answer(self, data, sources, context):
         incident, lots, wafers, meetings = data["incident"], data["lots"], data["wafers"], data["meetings"]
@@ -974,6 +1094,9 @@ class Handler(BaseHTTPRequestHandler):
         return parts
 
     def _api(self, method, parts):
+        if (len(parts) == 3 and parts[:2] == ["api", "demo-images"]
+                and parts[2] in ("assets", "compare") and method == "POST"):
+            return self.app.demo_image_request(parts[2], self._read())
         if parts == ["api", "bootstrap"] and method == "GET": return self.app.bootstrap()
         if parts == ["api", "monitoring"] and method == "GET": return self.app.monitoring()
         if parts == ["api", "monitoring", "replay"] and method == "POST": return self.app.replay_detection(self._read())

@@ -54,6 +54,8 @@ export function historicalData(
   workspace: Workspace,
   data: EngineeringData,
 ): HistoricalRecord[] {
+  if (workspace.raw?.historical_records)
+    return workspace.raw.historical_records;
   const anchor = incidentTime(workspace);
   const signals = data.signals.filter(
     (signal, index, all) =>

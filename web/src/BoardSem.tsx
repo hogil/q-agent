@@ -3,6 +3,7 @@ import {
   ArrowLeftRight,
   ChevronDown,
   Check,
+  History,
   ImageOff,
   Link2,
   Minus,
@@ -155,11 +156,15 @@ export default function BoardSem({
   focused,
   compare,
   options,
+  onComparisonChange,
+  currentItem,
 }: {
   workspace: Workspace;
   focused?: FabRow;
   compare?: FabRow;
   options: FabRow[];
+  onComparisonChange?: (wafers: { lot_id: string; wafer_id: string }[]) => void;
+  currentItem: string;
 }) {
   const rows = useMemo(() => {
     const byKey = new Map<string, FabRow>();
@@ -204,6 +209,14 @@ export default function BoardSem({
     bOptions[0];
   const bKey = bRow ? pairKey(bRow) : '';
 
+  useEffect(() => {
+    onComparisonChange?.(
+      [aRow, bRow].flatMap((row) =>
+        row ? [{ lot_id: row.lotId, wafer_id: row.waferId }] : [],
+      ),
+    );
+  }, [aKey, bKey, onComparisonChange]);
+
   // Consume changed parent keys and discard stale scope keys before rendering panes.
   if (
     selection.focusedKey !== focusedKey ||
@@ -217,6 +230,10 @@ export default function BoardSem({
   const [sync, setSync] = useState(true);
   const [activeOwner, setActiveOwner] = useState<Owner>('A');
   const [failedSrc, setFailedSrc] = useState<Set<string>>(() => new Set());
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [selectedHistoryId, setSelectedHistoryId] = useState('');
+  const historyDialog = useRef<HTMLDialogElement>(null);
+  const historyTrigger = useRef<HTMLButtonElement>(null);
   const drag = useRef<{
     owner: Owner;
     x: number;
@@ -228,6 +245,44 @@ export default function BoardSem({
     setViews(emptyViews());
     drag.current = null;
   }, [aKey, bKey]);
+
+  const historyCandidates = useMemo(() => {
+    const currentTime = aRow ? Date.parse(aRow.timestamp) : Number.NaN;
+    const step = aRow?.step;
+    return (workspace.raw?.image_history ?? [])
+      .filter((image) => {
+        const occurredAt = Date.parse(image.occurred_at);
+        return (
+          image.modality === 'sem' &&
+          !!image.src &&
+          !!step &&
+          image.step === step &&
+          Number.isFinite(currentTime) &&
+          Number.isFinite(occurredAt) &&
+          occurredAt < currentTime &&
+          image.item === currentItem
+        );
+      })
+      .sort(
+        (left, right) =>
+          Date.parse(right.occurred_at) - Date.parse(left.occurred_at),
+      );
+  }, [currentItem, aRow, workspace.raw?.image_history]);
+
+  const selectedHistory =
+    historyCandidates.find((image) => image.id === selectedHistoryId) ||
+    historyCandidates[0];
+
+  useEffect(() => {
+    if (!historyOpen) return;
+    historyDialog.current?.showModal();
+    setSelectedHistoryId((current) =>
+      historyCandidates.some((image) => image.id === current)
+        ? current
+        : historyCandidates[0]?.id || '',
+    );
+    return () => historyTrigger.current?.focus({ preventScroll: true });
+  }, [historyOpen, historyCandidates]);
 
   const updateView = (owner: Owner, next: Partial<ViewState>) => {
     setViews((current) => {
@@ -447,6 +502,16 @@ export default function BoardSem({
           >
             <ArrowLeftRight size={14} />
           </button>
+          <button
+            ref={historyTrigger}
+            className="icon-button"
+            title="과거 합성 SEM 보기"
+            aria-label="과거 합성 SEM 보기"
+            disabled={!historyCandidates.length || !aRow}
+            onClick={() => setHistoryOpen(true)}
+          >
+            <History size={14} />
+          </button>
         </div>
       </header>
       <div className="sem-panes">
@@ -454,12 +519,111 @@ export default function BoardSem({
         {pane('B', bRow)}
       </div>
       <footer className="sem-viewer-footer">
-        <span>합성 SEM · 실측 아님 · 이미지 모델 미연결</span>
+        <span>합성 SEM · 실측 아님 · 정렬 미검증</span>
         <span>
           전체 {rows.length} Wafers · SEM 등록{' '}
           {rows.filter((row) => records.has(pairKey(row))).length}
         </span>
       </footer>
+      {historyOpen && (
+        <dialog
+          ref={historyDialog}
+          className="analysis-dialog sem-history-dialog"
+          aria-label="과거 합성 SEM 비교"
+          onCancel={() => setHistoryOpen(false)}
+          onClose={() => setHistoryOpen(false)}
+          onKeyDown={(event) => {
+            if (event.key !== 'Escape') return;
+            event.preventDefault();
+            event.stopPropagation();
+            setHistoryOpen(false);
+          }}
+        >
+          <header>
+            <div>
+              <h2>과거 합성 SEM 참고</h2>
+            </div>
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="과거 합성 SEM 닫기"
+              onClick={() => setHistoryOpen(false)}
+            >
+              <X size={16} />
+            </button>
+          </header>
+          {selectedHistory ? (
+            <>
+              <div className="sem-history-images">
+                <figure>
+                  <figcaption>현재 A</figcaption>
+                  <div className="sem-history-image">
+                    {aRow && records.get(aKey)?.src ? (
+                      <img src={records.get(aKey)?.src} alt="현재 A SEM" />
+                    ) : (
+                      <span>현재 A SEM 없음</span>
+                    )}
+                  </div>
+                </figure>
+                <figure>
+                  <figcaption>과거 참고 · 합성 과거 사고</figcaption>
+                  <div className="sem-history-image">
+                    <img
+                      src={selectedHistory.src}
+                      alt={`${selectedHistory.incident_number} 과거 합성 SEM`}
+                    />
+                  </div>
+                </figure>
+              </div>
+              <div
+                className="sem-history-candidates"
+                role="listbox"
+                aria-label="과거 SEM 참고 이미지"
+              >
+                {historyCandidates.map((image) => (
+                  <button
+                    key={image.id}
+                    type="button"
+                    role="option"
+                    aria-selected={image.id === selectedHistory.id}
+                    onClick={() => setSelectedHistoryId(image.id)}
+                  >
+                    <strong>{image.incident_number}</strong>
+                    <span>{shortTime(image.occurred_at)}</span>
+                    <small>{image.description}</small>
+                  </button>
+                ))}
+              </div>
+              <dl className="sem-history-meta">
+                <div>
+                  <dt>사고번호</dt>
+                  <dd>{selectedHistory.incident_number}</dd>
+                </div>
+                <div>
+                  <dt>발생일</dt>
+                  <dd>{shortTime(selectedHistory.occurred_at)}</dd>
+                </div>
+                <div>
+                  <dt>설명</dt>
+                  <dd>{selectedHistory.description}</dd>
+                </div>
+                <div>
+                  <dt>출처</dt>
+                  <dd>{selectedHistory.provenance}</dd>
+                </div>
+              </dl>
+              <p className="sem-history-notice">
+                합성 과거 사고 참고 이미지이며, 생산 유사도 또는 원인 판정을
+                의미하지 않습니다.
+              </p>
+            </>
+          ) : (
+            <p className="sem-history-empty">
+              현재 step과 시각 조건에 맞는 과거 SEM 참고 이미지가 없습니다.
+            </p>
+          )}
+        </dialog>
+      )}
     </div>
   );
 }

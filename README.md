@@ -41,7 +41,7 @@ Python 3.11+에서 `python -m pip install -r requirements.txt`를 실행합니�
 
 전체 설계·합성 실행·golden 개선 절차는 [현재 설계](docs/current/PROJECT_DESIGN.md)에 정리했습니다.
 
-현재 연결된 Tool은 SQLite 사고·Lot·Wafer와 회의록 검색입니다.
+현재 연결된 Tool은 사고·Lot·Wafer·회의록 검색, Workbench 합성 원자료 조회, 설정된 SEM/Overlay 비교입니다.
 도시·부서·세대 등의 값이 어느 컬럼에 속하는지 DB 값 후보 조회로 확인할 수 있습니다.
 회의록은 로컬 FTS5 데모와 사내 Hybrid RAG HTTP 연결을 구분합니다. 사내 서비스는 미검증입니다.
 golden 기반 검증과 개선 제안은 오프라인이며, 원본 Skill을 자동 수정하지 않습니다.
@@ -50,6 +50,21 @@ golden 기반 검증과 개선 제안은 오프라인이며, 원본 Skill을 자
 ## 분석 UI
 
 분석 작업실에는 선택 자료 분석과 후속 질문 입력란이 있으며, 같은 대화방의 전체 채팅도 별도 화면에서 볼 수 있습니다.
+
+### 합성 이미지 모델 데모
+
+`python D:/project/q-agent/app/train_demo_images.py --model-root D:/project/q-agent/var/models/demo-images --train-per-class 60 --holdout-per-class 30`으로 CPU 데모 분류기를 학습합니다. SEM은 합성 bitmap의 baseline/bridge/gap, Overlay는 합성 vector의 nominal/translation/radial을 구분합니다. 학습·확인 데이터는 별도 seed로 만들며 화면의 SEM 이미지를 학습에 사용하지 않습니다. 데이터·가중치·측정 결과는 지정한 폴더에 저장하며 Git에 올리지 않습니다. 합성 데이터 점수는 실제 공정 정확도가 아닙니다.
+
+Workbench 설정에서 `demo_image_tools: true`와 `demo_image_model_dir`을 지정하면 로컬 `/api/demo-images/assets`, `/api/demo-images/compare`가 저장된 모델을 사용합니다. Agent overlay의 `image_tools.sem`/`overlay`는 이 서버의 `/api/demo-images` endpoint와 각각 `sem-demo-v1`, `overlay-demo-v1`을 사용합니다. `api_key_env`에는 환경변수 이름을 지정합니다. 로컬 데모 서버는 loopback에서만 동작하며 이 설정이 운영 인증을 구현하는 것은 아닙니다. 모델을 재학습하면 서버를 재시작합니다. 모델 파일 누락·오류는 고정 답변으로 대체하지 않습니다.
+
+SEM 픽셀·Overlay 벡터에서 계산한 값과 분류 결과가 Tool 근거로 전달됩니다. 물리적 정렬·실제 불량 해석이 미검증인 경우 비교 상태는 `INCOMPARABLE`이며, LLM은 가능한 설명과 제한을 함께 답해야 합니다. 생산 조치 권한은 추가하지 않습니다.
+
+합성 Map은 W01 방사형 이상, W03 평행 이동 이상, W02 정상 비교군을 포함합니다. 화면과 서버는 같은 44개 좌표·값을 사용합니다. 이는 미리 구성한 합성 시나리오이며 실제 사고 이미지 검색 성능의 증거가 아닙니다.
+
+`get_engineering_snapshot`은 사고 DB 범위 확인 후 선택한 Trend·과거 Fab/EDS·재공/설비 상태·Inform·변경 이력을 `sources.raw_file`에서 읽습니다. 선택 조건은 필터일 뿐 근거가 아니며, 반환된 데이터와 계산값만 Judge/Answer에 전달합니다. 같은 조회 반복은 제한하고, 확인 불가능한 물리 정렬은 부분 답변의 한계로 남깁니다.
+통계는 필터에 맞는 전체 표본으로 계산하고 LLM에 전달하는 원자료 행·점은 제한합니다. `count`/`truncated`로 생략을 표시하며 원본 파일을 변경하지 않습니다. 로컬 Qwen 16K에서 전체 자료 입력이 잘리는 현상을 확인했으므로 전체 패널 분석은 32K 설정으로 검증합니다. 배포 모델의 실제 문맥 한도와 서버 truncation 로그를 확인해야 합니다.
+
+### 화면 구성
 
 - 기본 화면은 브라우저 폭을 모두 사용하는 통합 분석 격자입니다. 상단은 이상감지 Item 표 → Trend → Box plot, 중단은 개별 Map → 전체 Map → SEM, 하단은 Fab/EDS Corr → Inform/회의록 → 생산/재공입니다. 분석·채팅은 오른쪽에서 중·하단 두 행 높이를 사용합니다. 조사 필터·비교 조건·Lot/Wafer 표는 Trend의 `Wafer` 버튼으로 엽니다. 메뉴와 분석 계획은 겹쳐 여는 패널이며, 작은 화면은 세로 배치로 전환합니다.
 - 데스크톱은 패널 모서리 드래그로 폭·높이를 조절합니다. 인접 패널끼리 공간을 배분하며 분석 패널의 너비 조절은 상단 배치를 바꾸지 않습니다. 방향키 조절, Esc 취소, 상단 잠금·기본 배치 복원을 지원합니다. 크기는 이 브라우저의 `qagent:board-layout:v5`에 저장합니다. v3/v4 배치는 중단만 개별 Map 30%·전체 Map 30%·SEM 40%로 갱신하며 나머지 크기는 유지합니다. 모바일에서는 자동 배치를 사용합니다.
@@ -61,11 +76,13 @@ golden 기반 검증과 개선 제안은 오프라인이며, 원본 Skill을 자
 - 변동 시작점과 Recipe/전산 변경 시각은 합성 메타데이터입니다. 시간상 선후 관계를 보여줄 뿐 원인을 판정하지 않습니다. Map과 SEM의 실제 측정·좌표 정렬도 검증하지 않았습니다.
 - Trend는 `D:\project\anomaly-detection\src\data\image_renderer.py`의 표시 방식을 참고한 합성 scatter입니다. Fleet, 선택 설비의 정상/이상 구간, 기준선과 변동 시작점을 표시합니다. 원본 실험 데이터는 복사하지 않았습니다.
 - Trend의 XY 드래그는 선택을 교체하며 Ctrl/Meta 드래그는 영역을 추가합니다(최대 16개). 마우스를 놓으면 박스는 사라지고 선택 점만 강조됩니다. 떨어진 영역 사이의 빈 구간은 포함하지 않습니다. Trend/Box plot은 같은 Legend 색을 사용합니다. Lot/Wafer 표는 개별 행 또는 체크된 목록을 탭 구분으로 복사합니다.
+- 분석 요청은 Recipe, 정확한 XY 영역, SEM A/B, Map 종류와 Raw/Fit/Res를 저장합니다. 조건이 달라지면 이전 답변을 구분하고 재분석 후 추가 질문을 받습니다. 이 선택 정보 자체는 Tool 근거가 아니며, Raw Trend 점과 Wafer의 1:1 매칭을 보증하지 않습니다.
 - 현재 Wafer는 Fab 단계로 EDS 결과를 생성하지 않습니다. Fab/EDS Corr는 같은 Item·Step의 과거 완료 이력에 설비·Recipe 조건을 적용하고, 현재 선택 시작 시각 이후 완료된 기록을 제외합니다. X는 Fab 온도/Queue/가동률 값, Y는 Yield/Bin 3/Bin 4 값인 산점도입니다. Pearson r은 `simple-statistics`로 계산하며 3쌍 미만 또는 변동이 없으면 N/A입니다. 회귀 차수는 1차(기본)·2차·3차 중 선택하며 `ml-matrix` QR 최소제곱으로 현재 표시 표본만 적합합니다. X를 정규화하고 관측 X 범위 안에서만 회귀선을 그립니다. 차수+1개 이상의 서로 다른 X가 없거나 수치 계산이 불안정하면 선을 생략합니다. R²는 현재 표본의 적합도이며 일정한 Y에서는 N/A입니다. 회귀·상관관계를 원인이나 미래 예측 정확도로 해석하지 않습니다.
 - 조사 조건은 방·사고별로 저장하되 화면을 처음 열 때 Trend 구간·Legend·Wafer 선택은 해제하고 전체 표본을 표시합니다. 명시적으로 고정한 근거를 열 때만 해당 구간을 복원합니다. Trend 빈 공간 클릭 또는 Esc는 구간·Legend 강조와 선택 확대를 해제하며, Ctrl/Meta 클릭과 드래그 직후에는 선택을 유지합니다. 합성 대상 체크는 현재 화면 상태이며 범위 변경 시 초기화됩니다. 예전 Fab/EDS 근거 참조는 조건만 복원하고, 새 과거 비교가 이전 계산 결과의 재현은 아니라는 안내를 표시합니다.
 - Production은 합성 재공 스냅샷(RUN/WAIT/HOLD, Queue, Recipe)과 다운코드를 제공합니다. 다운타임 KPI는 선택 구간과 겹치는 시간의 합계이며, 표의 Duration은 각 이벤트 전체 시간입니다. Assessment는 계산 결과·회의록·미연결 근거를 보여주는 로컬 요약으로, 실제 Judge/Answer 실행 결과가 아닙니다.
+- 설비 상태는 선택 EQP의 기본 7일 타임라인입니다. RUN(하늘색), DOWN(빨강), PM(노랑), IDLE(연두)을 표시하고 기록이 없는 구간은 UNKNOWN으로 남깁니다. 이동·확대/축소·UTC 기간 입력을 지원합니다. Raw 파일의 `engineering.equipmentStates`를 읽으며 실제 MES 연결은 아닙니다.
 - 통합 재공 차트는 Y축 제품, X축 Layer입니다. 제품별 Fab 0.0~End 선 위에 Lot 위치를 표시하고, 현재 재공이 있는 구간으로 축을 제한합니다. 중단 SEM은 같은 Step·Trend 전체 시간 범위의 Fab Wafer에서 A/B를 선택하며, Map 체크·조사 필터로 후보를 숨기지 않습니다. 동기 확대·이동, 교환, 전체 화면 비교를 지원합니다. 등록된 합성 이미지 두 장만 표시하며 미등록 Wafer도 선택하되 이미지를 생성하지 않습니다. 현재 Raw Trend 점에는 Lot/Wafer ID가 없어 점별 SEM 1:1 연결은 아직 아닙니다.
-- 개별/전체 Map은 CD(기본)·THK·Overlay·Bin 선택을 공유합니다. CD/THK는 nm 단위 측정점과 Delaunay 삼각형 내부 선형 보간값을 구분하며, 측정 범위 밖은 채우지 않습니다. 전체 Map은 선택 Wafer를 공통 좌표로 보간한 뒤 좌표별 평균을 계산하며 미관측 Wafer는 분모에서 제외합니다. 색상 범위는 개별/전체 간 고정합니다. 개별 통계는 측정점, 전체 통계는 평균 Map의 grid 기준입니다. 현재 측정점은 `D:\project\q-agent\web\src\metrologyMap.ts`의 합성 fixture이며 Raw 파일·측정 시스템·Agent Tool 연결은 아직 없습니다. Bin은 선택 기능으로 남기며 현재 Fab의 CD/THK/Overlay와 EDS 결과를 동일 시점 데이터로 취급하지 않습니다.
+- 개별/전체 Map은 CD(기본)·THK·Overlay·Bin 선택을 공유합니다. CD/THK는 nm 단위 측정점과 Delaunay 삼각형 내부 선형 보간값을 구분하며, 측정 범위 밖은 채우지 않습니다. 전체 Map은 선택 Wafer를 공통 좌표로 보간한 뒤 좌표별 평균을 계산하며 미관측 Wafer는 분모에서 제외합니다. 색상 범위는 개별/전체 간 고정합니다. 개별 통계는 측정점, 전체 통계는 평균 Map의 grid 기준입니다. 현재 측정점은 `D:\project\q-agent\web\src\metrologyMap.ts`의 합성 fixture입니다. Overlay Tool은 같은 합성 벡터를 읽으며 CD/THK 분석 Tool과 실제 측정 시스템은 미연결입니다. Bin은 선택 기능으로 남기며 현재 Fab의 CD/THK/Overlay와 EDS 결과를 동일 시점 데이터로 취급하지 않습니다.
 - CD·THK·Overlay·Bin은 하단 통계·범례·설명과 좌우 통계 영역 없이 맵을 표시합니다. 원형 비율을 유지하며 남은 영역을 최대한 사용하고 패널 하단에 맞춥니다. 개별 Map 헤더에서 Wafer를 고르고, 전체 Map 헤더에서 Wafer 체크 목록·전체 선택을 조절합니다. Trend의 Lot/Wafer 목록과 같은 선택을 공유하며 선택이 없으면 Map을 비웁니다. Avg는 선택 Wafer의 좌표별 평균이고 Bin은 평균 대신 Flag 빈도입니다. 좌표·측정값은 Hover로 확인하고, 배율·필터는 상단에서 조절합니다.
 - SEM A/B 선택 목록은 Lot/Wafer만 표시하고 부분 텍스트 검색을 지원합니다. 공백으로 나눈 검색어는 모두 일치해야 하며 설비·시간은 검색하지 않습니다. 검색만으로 이미지를 바꾸지 않고 행 선택 또는 단일 결과에서 Enter로 확정합니다. 미등록 Wafer에는 다른 SEM 이미지를 대신 표시하지 않습니다.
 - Overlay는 Raw/Fit/Res 중 선택한 하나만 측정점별 벡터 화살표로 표시합니다. 선택은 개별/전체 Map에 함께 적용하며 전환해도 확대 위치·선택 영역을 유지합니다. Fit은 `dx=a0+a1*x+a2*y`, `dy=b0+b1*x+b2*y`의 6계수 선형 최소제곱 모델이며 Res는 Raw−Fit입니다. 계산은 [ml-matrix QR](https://mljs.github.io/matrix/classes/QrDecomposition.html)을 사용합니다. 화살표 배율을 공유하며 단위는 nm입니다. 전체 Overlay의 Raw는 측정 원본이 아닌 보간 벡터의 Wafer 평균입니다. 실제 장비 보정 모델이나 조치 결과를 뜻하지 않습니다.
@@ -94,8 +111,8 @@ python app/workbench.py --port 8787
 준비한 질문·선택 근거·검토 메모는 대화방과 사고별로 이 브라우저의 localStorage에 저장합니다. 다른 브라우저와 동기화되지 않으며 브라우저 데이터 삭제 시 사라집니다. 문서 원문은 저장하지 않고 조회 시 가져옵니다. 개인정보가 포함된 메모를 공용 PC에 남기지 마세요.
 
 **연결 범위:** 사고·Lot·Wafer·회의록은 합성 DB를 실제 조회합니다. Trend/Map은 합성 데이터, SEM은 AI 생성 이미지입니다.
-Eng’r Inform·생산 시스템·이미지/Trend 모델은 미연결입니다. 기본 채팅은 결정적 DB 조회 데모입니다. LLM 모드는 같은 방·사고의 최근 8개 메시지를 각각 600자까지 참고 입력으로 전달하며, 이전 답변을 Tool 근거로 사용하지 않습니다. 무제한 대화 메모리는 아닙니다.
-감지 항목·Trend·현재 Fab·재공·다운코드·변경 이력·Inform·SEM 연결은 설정의 `sources.raw_file`에서 읽습니다. 과거 완료 Fab/EDS와 Map은 아직 `D:\project\q-agent\web\src\historicalData.ts`, `D:\project\q-agent\web\src\waferMaps.ts`의 합성 데이터입니다. 등록 Lot/Wafer ID를 재사용해도 실제 생산 상태나 영향 범위가 검증된 것은 아닙니다. 실제 연결에는 서버 측 권한 검증, 원본 Adapter, 단위·시간대·재작업 매칭, Agent Tool 계약이 필요합니다.
+실제 Eng’r Inform·MES·FDC·감지 모델은 미연결이며 합성 자료만 조회합니다. 선택적으로 로컬 이미지 데모 분류기를 실행할 수 있습니다. 기본 채팅은 결정적 DB 조회 데모입니다. LLM 모드는 같은 방·사고의 최근 8개 메시지를 각각 600자까지 참고 입력으로 전달하며, 이전 답변을 Tool 근거로 사용하지 않습니다. 무제한 대화 메모리는 아닙니다.
+감지 항목·Trend·현재 Fab·재공·설비 상태·변경 이력·Inform·SEM 연결과 과거 완료 Fab/EDS(`historical_records`)는 설정의 `sources.raw_file`에서 읽습니다. Map은 여전히 코드로 생성하는 합성 측정값입니다. 등록 Lot/Wafer ID를 재사용해도 실제 생산 상태나 영향 범위가 검증된 것은 아닙니다. 실제 연결에는 서버 측 권한 검증, 원본 Adapter, 단위·시간대·재작업 매칭이 필요합니다.
 서버는 localhost 전용 단일 사용자 데모입니다. 사내 원격 서비스로 공개하지 마세요.
 
 ### Raw 데이터와 환경 설정
@@ -129,7 +146,7 @@ LLM을 켜려면 `QAGENT_LLM_OVERLAY=/srv/q-agent/config/llm.local.yaml`과 설�
 
 ### 로컬 LLM 연결
 
-`D:\project\q-agent\config\workbench.local.yaml`에 기본 workbench 설정과 `agent_overlay: llm.local.yaml`을 지정합니다. `D:\project\q-agent\config\llm.local.yaml`은 `models`, `roles`, `runtime`만 재정의하며 DB 경로 변경은 거부합니다. 두 로컬 파일은 Git에서 제외됩니다.
+`D:\project\q-agent\config\workbench.local.yaml`에 기본 workbench 설정과 `agent_overlay: llm.local.yaml`을 지정합니다. `D:\project\q-agent\config\llm.local.yaml`은 `models`, `roles`, `runtime`, `image_tools`만 재정의하며 DB 경로 변경은 거부합니다. 두 로컬 파일은 Git에서 제외됩니다. SEM/Map 자료가 체크되어 있고 해당 서비스 설정이 활성화되어야 이미지 Tool을 호출할 수 있습니다. 체크를 해제하면 호출도 비활성화됩니다.
 
 ```yaml
 models:
@@ -138,6 +155,11 @@ models:
     base_url: http://127.0.0.1:11434/v1
     served_model: YOUR_INSTALLED_TOOL_CALLING_MODEL
     api_key_env: QAGENT_LLM_API_KEY
+    structured_outputs: true
+    timeout_seconds: 300
+roles:
+  router:
+    max_output_tokens: 2400
 ```
 
 ```powershell
@@ -145,4 +167,8 @@ $env:QAGENT_LLM_API_KEY = 'ollama' # Only for local Ollama; not a real credentia
 python D:/project/q-agent/app/workbench.py --config D:/project/q-agent/config/workbench.local.yaml --port 8787
 ```
 
-OpenAI-compatible endpoint, native `submit_plan` function calling, Judge/Answer JSON 응답이 필요합니다. 긴 Skill 입력이 서버 컨텍스트에서 잘리지 않도록 모델 설정을 확인하세요. 설정됨·실제 응답 확인·검증된 최종 답변은 별개이며, 합성 DB 모델 실행을 사내 데이터 품질 검증으로 해석하지 않습니다.
+OpenAI-compatible endpoint에서 native `submit_plan` function calling 또는 `structured_outputs: true`의 JSON Schema 응답을 지원해야 합니다. Judge/Answer도 역할별 JSON 계약을 검증합니다. 긴 Skill·Tool 입력이 서버 컨텍스트에서 잘리지 않도록 모델 설정을 확인하세요. 로컬 Qwen 통합 실행에는 같은 가중치의 32K 컨텍스트 모델과 `runtime.prompt_examples: false`를 사용했습니다. 모델명은 로컬 overlay에서 지정합니다. 설정됨·실제 응답 확인·검증된 최종 답변은 별개이며, 합성 DB 모델 실행을 사내 데이터 품질 검증으로 해석하지 않습니다.
+
+Workbench는 체크한 자료의 조회 상태를 관리합니다. 활성 Tool의 최초 조회를 마치기 전에 Judge로 건너뛰거나, 완료한 동일 비교를 반복하지 않습니다. 이미지 비교는 실제 목록에서 받은 ID만 사용합니다. `INCOMPARABLE`을 통과 판정으로 바꾸지 않으며, 재검토 예산이 끝나면 확인된 내용과 한계를 담은 부분 답변으로 종료합니다. 이 실행 제약은 모델의 분석 정확도를 보증하지 않습니다.
+
+합성 `SYN-TEMP` 사례의 `image_history`는 과거 사고를 가정한 SEM bridge/정상 비교군과 Overlay radial/translation 참조를 담습니다. SEM History 버튼에서 별도 이미지를 볼 수 있고 이미지 Tool은 같은 Item·Step·modality, 현재 촬영 이전 참조의 표준화 feature RMSE를 계산해 가까운 순서로 반환합니다. 현재 이미지의 복제본이나 원인 정답을 검색하지 않습니다. 작은 descriptor 거리도 원인 확률·물리 정렬 검증은 아니며 참조를 현재 영향 Wafer에 합치지 않습니다. 사고 날짜는 가상이며 운영 사고 DB의 이미지 검색·ACL은 아직 연결하지 않았습니다.

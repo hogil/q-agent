@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { download, type Attachment, type Workspace } from './api';
 import { ProductionView } from './Sources';
+import { EquipmentStateTimeline } from './EquipmentStateTimeline';
 import type { EngineeringData } from './engineeringData';
 import type { Tab } from './Views';
 import './operations.css';
@@ -430,6 +431,14 @@ export function OperationsView({
             </section>
           ) : (
             <section className="operations-section">
+              <EquipmentStateTimeline
+                equipment={equipment || equipmentOptions[0] || ''}
+                equipmentStates={data.equipmentStates}
+                equipmentOptions={equipmentOptions}
+                anchorAt={window?.to}
+                onEquipmentChange={selectEquipment}
+                compact={false}
+              />
               <div className="section-title">
                 <div>
                   <h3>Equipment downtime codes</h3>

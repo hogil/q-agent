@@ -7,7 +7,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'app'))
@@ -38,6 +38,23 @@ def answer(payload):
     return {'status': 'answered', 'answer': 'Synthetic contract response, not model quality evidence.',
             'claims': [{'claim_id': 'c1', 'text': 'Synthetic response.', 'evidence_ids': payload['evidence_ids']}],
             'limitations': []}
+
+
+def partial_answer(payload):
+    return {'status': 'partial', 'answer': 'Synthetic comparison findings are available, but physical alignment was not verified.',
+            'claims': [{'claim_id': 'c1', 'text': 'The model returned an incomparable result with recorded findings.',
+                        'evidence_ids': payload['evidence_ids']}],
+            'limitations': ['alignment_verified=false; similarity is unavailable; findings are not semantic certainty.']}
+
+
+def abstain(payload):
+    return {'verdict': 'abstain', 'return_to': 'answer',
+            'coverage': [{'requirement': payload['question'], 'status': 'unavailable',
+                          'evidence_ids': payload['evidence_ids']}],
+            'issues': [{'type': 'alignment_unavailable',
+                        'reason': 'Synthetic comparison did not verify physical alignment.',
+                        'next_action': 'Report findings with the alignment limitation; do not repeat the same comparison.',
+                        'evidence_ids': payload['evidence_ids']}]}
 
 
 class ScriptedClient:
@@ -101,6 +118,52 @@ class AgentContracts(unittest.TestCase):
         self.assertIn('syn-chunk-002', [x['chunk_id'] for x in result['evidence'][-1]['result']['items']])
         self.assertEqual(result['request_scope'], 'incident')
 
+    def test_engineering_snapshot_requires_scope_and_is_tool_evidence(self):
+        query = Mock(return_value={'status': 'OK', 'synthetic': True,
+                                   'sections': {'trend': {'count': 4}}})
+        result, client = self.run_script([
+            self.lookup(), ('router', plan(stage='tools', tool='get_engineering_snapshot')),
+            *self.finish_steps()], engineering_query=query)
+        self.assertEqual(result['status'], 'answered', result)
+        query.assert_called_once()
+        self.assertEqual(query.call_args.kwargs['actor'], 'tester')
+        self.assertEqual(query.call_args.kwargs['as_of'], '2026-03-31')
+        self.assertTrue(query.call_args.kwargs['incident_ids'])
+        self.assertEqual(result['evidence'][-1]['source'], 'get_engineering_snapshot')
+        self.assertEqual(client.calls[-1][2]['evidence'][-1]['result']['sections']['trend']['count'], 4)
+
+    def test_execute_skill_preflight_keeps_tool_validation(self):
+        lookup = self.lookup()[1]
+        lookup['needs_skills'] = ['incident_search']
+        result, _ = self.run_script([('router', lookup), *self.finish_steps()])
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertTrue(any(event['event'] == 'skills_loaded' for event in result['events']))
+        lookup['plan'][0]['arguments']['city'] = None
+        self.settings.data['runtime']['max_retries'] = 0
+        result, _ = self.run_script([('router', lookup)])
+        self.assertEqual(result['tool_calls'], 0)
+        self.assertIn('TYPE:', result['limitations'][0])
+
+    def test_execute_skill_preflight_cannot_load_incident_topic_for_independent_request(self):
+        output = plan(stage='independent', tool='search_meeting_minutes', arguments={'query': 'SYN'})
+        output['needs_skills'] = ['lots']
+        self.settings.data['runtime']['max_retries'] = 0
+        result, _ = self.run_script([('router', output)], request_scope='independent')
+        self.assertEqual(result['tool_calls'], 0)
+        self.assertIn('INDEPENDENT_TOOL_TOPICS_NOT_SUPPORTED', result['limitations'])
+
+    def test_engineering_snapshot_cannot_run_before_incident_or_without_provider(self):
+        self.settings.data['runtime']['max_retries'] = 0
+        query = Mock()
+        result, _ = self.run_script([
+            ('router', plan(stage='tools', tool='get_engineering_snapshot'))], engineering_query=query)
+        self.assertEqual(result['status'], 'unavailable')
+        query.assert_not_called()
+        result, _ = self.run_script([
+            self.lookup(), ('router', plan(stage='tools', tool='get_engineering_snapshot'))])
+        self.assertEqual(result['status'], 'unavailable')
+        self.assertIn('TOOL_UNAVAILABLE', result['limitations'])
+
     def test_ui_context_stays_separate_from_requirements_and_evidence(self):
         context = {'previous_messages_unverified': [{'role': 'assistant', 'content': 'unverified'}],
                    'selected_incident': 'SYN-2026-01', 'unavailable_sources': ['sem']}
@@ -120,6 +183,46 @@ class AgentContracts(unittest.TestCase):
         self.assertEqual(result['llm_calls'], 5)
         self.assertEqual(client.calls[2][2]['last_error'], 'ROUTER_FUNCTION_CALL_REQUIRED')
         self.assertEqual(client.calls[2][2]['evidence_ids'], ['e1'])
+
+    def test_duplicate_completed_incident_search_goes_to_judge_and_answer(self):
+        result, client = self.run_script([self.lookup(), self.lookup(), ('judge', judge), ('answer', answer)])
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertEqual(result['tool_calls'], 1)
+        self.assertEqual([role for role, _, _ in client.calls], ['router', 'router', 'judge', 'answer'])
+        self.assertTrue(any(event['event'] == 'duplicate_tool_guard' for event in result['events']))
+        self.assertTrue(client.calls[1][2]['incident_evidence_complete'])
+        self.assertIn('find_incidents', client.calls[1][2]['available_tools'])
+
+    def test_judge_can_request_a_different_incident_query_after_completed_search(self):
+        first = self.lookup()
+        second = self.lookup()
+        second[1]['plan'][0]['arguments']['fields'] = ['confirmed_cause']
+        steps = [first, ('router', plan('ready_for_judge', 'incident')),
+                 ('judge', lambda payload: judge(payload, 'need_evidence')),
+                 second, ('router', plan('ready_for_judge', 'incident')),
+                 ('judge', judge), ('answer', answer)]
+        result, client = self.run_script(steps)
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertEqual(result['tool_calls'], 2)
+        self.assertEqual(client.calls[4][2]['evidence_ids'], ['e2'])
+
+    def test_analysis_lookup_requests_recorded_cause_and_action_fields(self):
+        lookup = plan(tool='find_incidents', arguments={'incident_number': 'SYN-2026-01'},
+                      search_mode='sql_exact')
+        lookup['intents'] = ['analysis', 'action']
+        steps = [
+            ('router', lookup),
+            ('router', plan('ready_for_judge', 'incident')),
+            ('judge', judge),
+            ('answer', answer),
+        ]
+        result, _ = self.run_script(steps)
+        self.assertEqual(result['status'], 'answered', result)
+        row = result['evidence'][0]['result']['data'][0]
+        self.assertIsNone(row['confirmed_cause'])
+        self.assertEqual(row['corrective_action'], 'SYNTHETIC_ACTION_ONLY')
+        self.assertIn('confirmed_cause', result['evidence'][0]['arguments']['fields'])
+        self.assertIn('corrective_action', result['evidence'][0]['arguments']['fields'])
 
     def test_structured_plan_rejects_null_argument_then_recovers_without_tool_messages(self):
         invalid = ('router', plan(tool='find_incidents',
@@ -266,13 +369,59 @@ class AgentContracts(unittest.TestCase):
                     for name, spec in catalog.items()}
         expected['match_incident_values']['enabled'] = False
         expected['search_meeting_minutes']['enabled'] = False
+        expected['get_engineering_snapshot']['enabled'] = False
         expected['list_comparison_assets']['enabled'] = False
         expected['compare_sem_images']['enabled'] = False
         expected['compare_overlay_maps']['enabled'] = False
+        expected['compare_sem_images']['asset_ids_by_item'] = {}
+        expected['compare_overlay_maps']['asset_ids_by_item'] = {}
         for role, prompt, payload in client.calls:
-            self.assertEqual(payload['available_tools'], expected)
+            ready = copy.deepcopy(expected)
+            if not payload['scope_valid']:
+                for spec in ready.values():
+                    if spec['stage'] == 'tools':
+                        spec['enabled'] = False
+            ready['list_incident_wafers']['enabled'] = False
+            self.assertEqual(payload['available_tools'], ready)
             if role == 'router':
                 self.assertIn(json.dumps(catalog, ensure_ascii=False, separators=(',', ':')), prompt)
+
+    def test_requested_sources_are_collected_before_judge_without_repeating_completed_tools(self):
+        steps = [self.lookup(), ('router', plan('ready_for_judge', 'tools')),
+                 ('router', plan(stage='tools', tool='search_meeting_minutes', arguments={'query': 'SYN'})),
+                 *self.finish_steps()]
+        result, client = self.run_script(steps, requested_tools=['find_incidents', 'search_meeting_minutes'])
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertEqual(client.calls[1][2]['pending_requested_tools'], ['search_meeting_minutes'])
+        self.assertFalse(client.calls[1][2]['available_tools']['find_incidents']['enabled'])
+        self.assertFalse(client.calls[1][2]['available_tools']['match_incident_values']['enabled'])
+        self.assertEqual(client.calls[3][2]['pending_requested_tools'], [])
+        self.assertFalse(client.calls[3][2]['available_tools']['search_meeting_minutes']['enabled'])
+        self.assertTrue(any(event['event'] == 'requested_sources_pending' for event in result['events']))
+
+    def test_exhausted_selection_goes_to_judge_without_an_impossible_router_plan(self):
+        self.settings.data['meetings']['enabled'] = False
+        names = ['find_incidents', 'list_incident_lots', 'list_incident_wafers']
+        steps = [self.lookup(), ('router', plan(stage='tools', tool=names[1])),
+                 ('router', plan(stage='tools', tool=names[2])), ('judge', judge), ('answer', answer)]
+        result, client = self.run_script(steps, requested_tools=names)
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertEqual([role for role, _, _ in client.calls], ['router', 'router', 'router', 'judge', 'answer'])
+
+    def test_explicit_complete_lot_filter_finishes_wafer_lookup_not_impact_validation(self):
+        for lots, complete in ((['SYN-LOT-01-01', 'SYN-LOT-01-02', 'SYN-LOT-01-03'], True),
+                               (['SYN-LOT-01-01'], False)):
+            with self.subTest(lots=lots):
+                steps = [self.lookup(), ('router', plan(stage='tools', tool='list_incident_lots')),
+                         ('router', plan(stage='tools', tool='list_incident_wafers',
+                                         arguments={'lot_ids': lots, 'page_size': 100})),
+                         *self.finish_steps()]
+                result, client = self.run_script(steps)
+                self.assertEqual(result['status'], 'answered')
+                self.assertEqual(client.calls[3][2]['wafer_lookup_complete'], complete)
+                self.assertEqual(client.calls[3][2]['available_tools']['list_incident_wafers']['enabled'],
+                                 not complete)
+                self.assertEqual(result['evidence'][-1]['result']['status'], 'PARTIAL')
 
     def test_independent_payload_preserves_runtime_stage(self):
         step = ('router', {**plan('blocked', 'independent'), 'limitations': ['not available']})
@@ -510,8 +659,15 @@ class AgentContracts(unittest.TestCase):
                                  ['router', 'router', 'router', 'router', 'router', 'judge', 'answer'])
                 self.assertEqual([item['source'] for item in result['evidence']],
                                  ['find_incidents', 'list_incident_lots', 'list_comparison_assets', compare_name])
-                self.assertTrue(all(client.calls[0][2]['available_tools'][name]['enabled']
-                                    for name in ('list_comparison_assets', 'compare_sem_images', 'compare_overlay_maps')))
+                for name in ('list_comparison_assets', 'compare_sem_images', 'compare_overlay_maps'):
+                    self.assertFalse(client.calls[0][2]['available_tools'][name]['enabled'])
+                    self.assertEqual(client.calls[2][2]['available_tools'][name]['enabled'],
+                                     name == 'list_comparison_assets')
+                    self.assertEqual(client.calls[3][2]['available_tools'][name]['enabled'],
+                                     name in ('list_comparison_assets', compare_name))
+                self.assertEqual(client.calls[3][2]['available_tools'][compare_name]['asset_ids_by_item'],
+                                 {'SYNTH-ITEM': asset_ids})
+                self.assertFalse(client.calls[2][2]['available_tools']['list_incident_lots']['enabled'])
                 self.assertTrue(any('images' in payload['loaded_topics']
                                     for role, _, payload in client.calls if role == 'router'))
                 list_mock.assert_called_once()
@@ -520,6 +676,87 @@ class AgentContracts(unittest.TestCase):
                 self.assertEqual(compare_mock.call_args.kwargs['as_of'], '2026-03-31')
                 self.assertIn('tester', compare_mock.call_args.args)
                 self.assertIn(result['scope_id'], compare_mock.call_args.args)
+
+    def test_incomparable_image_result_reaches_partial_answer_without_repeat(self):
+        self.enable_image_tools()
+        asset_ids = ['sem-asset-1', 'sem-asset-2']
+
+        def list_assets(*args, **kwargs):
+            return {'status': 'OK', 'provenance': {'version': 'sem-assets-v1'},
+                    'assets': [{'asset_id': asset_id, 'modality': 'sem'} for asset_id in asset_ids]}
+
+        def incomparable(*args, **kwargs):
+            return {'request_id': 'sem-request-1', 'model': 'test-sem-model', 'model_version': 'sem-v1',
+                    'item': 'SYNTH-ITEM', 'modality': 'sem', 'asset_ids': asset_ids,
+                    'asset_revisions': ['r1', 'r2'], 'status': 'INCOMPARABLE',
+                    'alignment_verified': False, 'similarity': None,
+                    'findings': ['Synthetic class findings were produced.'],
+                    'limitations': ['Physical alignment was not verified.'], 'artifact_ids': [],
+                    'provenance': {'status': 'INCOMPARABLE', 'score_type': 'model_similarity',
+                                   'model_score': None, 'validated_asset_metadata': []}}
+
+        steps = [self.lookup(),
+                 ('router', plan(stage='tools', tool='list_incident_lots')),
+                 ('router', plan(stage='tools', tool='list_comparison_assets',
+                                 arguments={'item': 'SYNTH-ITEM', 'modality': 'sem'})),
+                 ('router', plan(stage='tools', tool='compare_sem_images',
+                                 arguments={'item': 'SYNTH-ITEM', 'asset_ids': asset_ids})),
+                 ('router', plan(stage='tools', tool='compare_sem_images',
+                                 arguments={'item': 'SYNTH-ITEM', 'asset_ids': asset_ids})),
+                 ('judge', abstain), ('answer', partial_answer)]
+        with patch.object(agent.ImageTools, 'list_comparison_assets', autospec=True,
+                          side_effect=list_assets) as list_mock, \
+             patch.object(agent.ImageTools, 'compare_sem_images', autospec=True,
+                          side_effect=incomparable) as compare_mock:
+            result, client = self.run_script(steps)
+
+        self.assertEqual(result['status'], 'partial', result)
+        self.assertEqual(result['judge']['verdict'], 'abstain')
+        self.assertEqual(compare_mock.call_count, 1)
+        self.assertIn('compare_sem_images', client.calls[4][2]['available_tools'])
+        self.assertTrue(any(event['event'] == 'duplicate_tool_guard' for event in result['events']))
+        list_mock.assert_called_once()
+
+    def test_judge_can_request_different_image_pair_after_completed_comparison(self):
+        self.enable_image_tools()
+        first_pair = ['sem-asset-1', 'sem-asset-2']
+        second_pair = ['sem-asset-2', 'sem-asset-3']
+
+        def list_assets(*args, **kwargs):
+            return {'status': 'OK', 'provenance': {'version': 'sem-assets-v1'},
+                    'assets': [{'asset_id': asset_id, 'modality': 'sem'}
+                               for asset_id in ('sem-asset-1', 'sem-asset-2', 'sem-asset-3')]}
+
+        def compare(*args, **kwargs):
+            return {'request_id': 'sem-request', 'model': 'test-sem-model', 'model_version': 'sem-v1',
+                    'item': 'SYNTH-ITEM', 'modality': 'sem', 'asset_ids': kwargs['asset_ids'],
+                    'asset_revisions': ['r1', 'r2'], 'status': 'INCOMPARABLE',
+                    'alignment_verified': False, 'similarity': None, 'findings': ['synthetic finding'],
+                    'limitations': ['alignment unavailable'], 'artifact_ids': [],
+                    'provenance': {'status': 'INCOMPARABLE', 'score_type': 'model_similarity',
+                                   'model_score': None, 'validated_asset_metadata': []}}
+
+        steps = [self.lookup(),
+                 ('router', plan(stage='tools', tool='list_incident_lots')),
+                 ('router', plan(stage='tools', tool='list_comparison_assets',
+                                 arguments={'item': 'SYNTH-ITEM', 'modality': 'sem'})),
+                 ('router', plan(stage='tools', tool='compare_sem_images',
+                                 arguments={'item': 'SYNTH-ITEM', 'asset_ids': first_pair})),
+                 ('router', plan('ready_for_judge', 'tools')),
+                 ('judge', lambda payload: judge(payload, 'need_evidence')),
+                 ('router', plan(stage='tools', tool='compare_sem_images',
+                                 arguments={'item': 'SYNTH-ITEM', 'asset_ids': second_pair})),
+                 ('router', plan('ready_for_judge', 'tools')), ('judge', judge), ('answer', answer)]
+        with patch.object(agent.ImageTools, 'list_comparison_assets', autospec=True,
+                          side_effect=list_assets), \
+             patch.object(agent.ImageTools, 'compare_sem_images', autospec=True,
+                          side_effect=compare) as compare_mock:
+            result, _ = self.run_script(steps)
+
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertEqual(compare_mock.call_count, 2)
+        self.assertEqual([item['result']['asset_ids'] for item in result['evidence']
+                          if item['source'] == 'compare_sem_images'], [first_pair, second_pair])
 
     def test_disabled_image_comparison_is_never_invoked(self):
         self.enable_image_tools(sem=False, overlay=True)

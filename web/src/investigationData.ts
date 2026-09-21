@@ -133,7 +133,7 @@ export function wipLayerOption(rows: WipRow[]) {
   const colors = { RUN: '#448c74', WAIT: '#528cbb', HOLD: '#c18134' };
   return {
     animation: false,
-    grid: { left: 110, right: 12, top: 10, bottom: 28 },
+    grid: { left: 12, right: 104, top: 4, bottom: 25 },
     tooltip: {
       trigger: 'item',
       renderMode: 'richText',
@@ -156,10 +156,9 @@ export function wipLayerOption(rows: WipRow[]) {
     },
     yAxis: {
       type: 'category',
+      position: 'right',
       data: products,
-      name: '제품',
-      nameTextStyle: { fontSize: 9 },
-      axisLabel: { fontSize: 9, width: 100, overflow: 'truncate' },
+      axisLabel: { fontSize: 10, width: 96, overflow: 'truncate', interval: 0 },
       axisTick: { show: false },
       axisLine: { show: false },
     },

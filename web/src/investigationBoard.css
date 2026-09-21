@@ -1955,6 +1955,32 @@
 }
 
 @container production-panel (max-width: 560px) {
+  .board-production .equipment-state-timeline.is-compact {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 4px;
+  }
+
+  .board-production .equipment-state-timeline__header {
+    display: contents;
+  }
+
+  .board-production .equipment-state-timeline__header > :first-child,
+  .board-production .equipment-state-timeline__header-actions > button,
+  .board-production .equipment-state-timeline__equipment-label > span {
+    display: none;
+  }
+
+  .board-production .equipment-state-timeline__toolbar {
+    justify-content: flex-end;
+  }
+
+  .board-production .equipment-state-timeline__plot,
+  .board-production .equipment-state-timeline__dates,
+  .board-production .equipment-state-timeline__legend {
+    grid-column: 1 / -1;
+  }
+
   .board-production-columns {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr) auto;

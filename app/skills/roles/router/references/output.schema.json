@@ -1,5 +1,5 @@
 {
-  "description": "Submit the complete routing object (decision, stage, search_mode, intents, filters, plan, needs_skills, clarification, limitations). Follow response_contract.transport: function_call uses submit_plan; json_schema returns this object directly. Business tools are NOT callable functions: place their names only in plan[].tool. Omit unrequested optional arguments; never use null placeholders. For an incident-number lookup, set top-level filters to {}, search_mode to sql_exact, put incident_number in plan[0].arguments, and omit arguments.filters when there are no extra conditions.",
+  "description": "Return a complete routing object using response_contract.transport. Business tools belong in plan[].tool; execute exactly one Tool with clarification=null and needs_skills=[]. Omit unused arguments. Incident numbers use arguments.incident_number, filters={}, search_mode=sql_exact.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -65,15 +65,17 @@
       }
     },
     "needs_skills": {
+      "description": "Use [] for execute. Use load_skills with plan=[] to request missing topics.",
       "type": "array",
       "items": {
         "type": "string"
       }
     },
     "clarification": {
+      "description": "Use null for execute, never an empty string. Only clarify carries a question.",
       "type": [
-        "string",
-        "null"
+        "null",
+        "string"
       ]
     },
     "decision": {

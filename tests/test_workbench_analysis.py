@@ -138,6 +138,58 @@ class WorkbenchAnalysisHTTPTests(unittest.TestCase):
                 self.assertEqual(status, 400)
                 self.assertIn(marker, response["error"])
 
+    def test_exact_trend_scope_roundtrips_into_followup_and_progress(self):
+        room_id = self.room()
+        trend = {"range_selected": True, "value_range": [65, 69],
+                 "regions": [[[1767830400000, 1767834000000], [65, 66]],
+                             [[1767852000000, 1767855600000], [68, 69]]]}
+        context = {**self.context(), "recipe": "SYN-RCP-B", "trend_selection": trend}
+        status, result = self.request("POST", f"/api/rooms/{room_id}/analysis", {
+            "content": "compare selected regions", "sources": ["trend"], "context": context,
+        })
+        self.assertEqual(status, 200)
+        self.assertEqual(result["analysis"]["context"], context)
+        self.assertIn("recipe=SYN-RCP-B", result["messages"][0]["content"])
+        self.assertIn("UI condition only", result["messages"][0]["content"])
+        self.assertEqual(self.request("GET", f"/api/rooms/{room_id}/analysis/progress")[1]["run"]["context"], context)
+        status, result = self.request("POST", f"/api/rooms/{room_id}/analysis", {"content": "continue"})
+        self.assertEqual(status, 200)
+        self.assertEqual(result["analysis"]["context"], context)
+        self.assertEqual(result["analysis"]["steps"][1]["status"], "unavailable")
+
+    def test_invalid_trend_scope_is_rejected_before_running(self):
+        room_id = self.room()
+        base = {"range_selected": True, "value_range": [1, 2], "regions": []}
+        cases = [None, {**base, "extra": 1}, {**base, "range_selected": 1},
+                 {**base, "value_range": [2, 1]}, {**base, "value_range": [True, 2]},
+                 {**base, "value_range": [1, float("inf")]},
+                 {**base, "regions": [[[1, 2], [1, 2]]] * 17},
+                 {**base, "regions": [[[2, 1], [1, 2]]]},
+                 {**base, "range_selected": False}, {**base, "regions": [[1, 2]]}]
+        for trend in cases:
+            with self.subTest(trend=trend):
+                status, result = self.request("POST", f"/api/rooms/{room_id}/analysis", {
+                    "content": "invalid", "sources": ["trend"],
+                    "context": {**self.context(), "trend_selection": trend},
+                })
+                self.assertEqual(status, 400)
+                self.assertIn("trend_selection", result["error"])
+        self.assertEqual(self.db_count("SELECT COUNT(*) FROM messages WHERE room_id=?", (room_id,)), 0)
+
+    def test_comparison_scope_rejects_unregistered_pairs_and_unknown_views(self):
+        room_id = self.room()
+        for patch_values in (
+            {"sem_wafers": [{"lot_id": "missing", "wafer_id": "W1"}]},
+            {"sem_wafers": [{"lot_id": [], "wafer_id": "W1"}]},
+            {"map_view": {"kind": "overlay", "overlay": "invented"}},
+            {"recipe": 123},
+        ):
+            with self.subTest(patch=patch_values):
+                status, _ = self.request("POST", f"/api/rooms/{room_id}/analysis", {
+                    "content": "invalid", "sources": ["sem"], "context": {**self.context(), **patch_values},
+                })
+                self.assertEqual(status, 400)
+
     def test_followup_reuses_scope_and_stale_scope_is_rejected(self):
         room_id = self.room()
         initial = {"content": "첫 분석", "sources": ["meetings", "maps"], "context": self.context()}

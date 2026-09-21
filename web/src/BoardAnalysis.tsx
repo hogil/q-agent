@@ -20,6 +20,10 @@ import {
   type RoomSummary,
 } from './api';
 import './boardAnalysis.css';
+import {
+  sameAnalysisContext as sameContext,
+  type AnalysisContext,
+} from './engineeringAnalysis';
 
 const sourceOptions = [
   ['incident', '사고 DB'],
@@ -32,15 +36,6 @@ const sourceOptions = [
   ['meetings', '회의록'],
   ['changes', '변경 이력'],
 ] as const;
-export type AnalysisContext = {
-  incident_number: string;
-  item: string;
-  step: string;
-  equipment: string;
-  from: string;
-  to: string;
-  wafers: { lot_id: string; wafer_id: string }[];
-};
 type Analysis = {
   mode: 'demo' | 'llm';
   llm_connected: boolean;
@@ -80,14 +75,6 @@ type Response = {
   room: RoomSummary;
   analysis: Analysis;
 };
-
-const sameContext = (a: AnalysisContext, b: AnalysisContext) =>
-  ['incident_number', 'item', 'step', 'equipment', 'from', 'to'].every(
-    (key) =>
-      a[key as keyof AnalysisContext] === b[key as keyof AnalysisContext],
-  ) &&
-  JSON.stringify(a.wafers.map((w) => [w.lot_id, w.wafer_id]).sort()) ===
-    JSON.stringify(b.wafers.map((w) => [w.lot_id, w.wafer_id]).sort());
 
 const sameSources = (a: string[], b: string[]) =>
   [...a].sort().join('|') === [...b].sort().join('|');
@@ -351,6 +338,17 @@ export default function BoardAnalysis({
               content:
                 `현재 선택된 이상 항목 ${request.requestContext.item}을 분석해줘. ` +
                 `범위: ${request.requestContext.step} / ${request.requestContext.equipment || '전체 설비'}. ` +
+                `선택 자료: ${sourceOptions
+                  .filter(([id]) => request.requestSources.includes(id))
+                  .map(([, label]) => label)
+                  .join(', ')}. ` +
+                (request.requestSources.includes('sem')
+                  ? '선택 SEM A/B를 이미지 Tool로 비교해줘. '
+                  : '') +
+                (request.requestSources.includes('maps') &&
+                request.requestContext.map_view?.kind === 'overlay'
+                  ? '선택 Wafer의 Overlay도 비교 Tool로 확인해줘. '
+                  : '') +
                 '선택 자료를 조회하고 근거, 원인 후보, 다음 확인 항목을 구분해 답해줘.',
               sources: request.requestSources,
               context: request.requestContext,

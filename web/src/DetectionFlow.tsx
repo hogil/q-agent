@@ -9,7 +9,7 @@ import {
   X,
 } from 'lucide-react';
 import { api } from './api';
-import type { AnalysisContext } from './BoardAnalysis';
+import type { AnalysisContext } from './engineeringAnalysis';
 
 type Pair = { lot_id: string; wafer_id: string };
 type Event = {
@@ -29,7 +29,11 @@ type Status = {
   events: Event[];
   image_tools: Record<
     'sem' | 'overlay',
-    { configured: boolean; connection_verified: false }
+    {
+      configured: boolean;
+      connection_verified: boolean;
+      synthetic_model?: boolean;
+    }
   >;
 };
 const states: Record<string, string> = {
@@ -120,13 +124,21 @@ export default function DetectionFlow({
         <span>
           SEM{' '}
           {status?.image_tools.sem.configured
-            ? '설정됨 · 연결 미검증'
+            ? status.image_tools.sem.synthetic_model
+              ? '합성 학습 모델'
+              : status.image_tools.sem.connection_verified
+                ? '연결 확인'
+                : '설정됨 · 연결 미검증'
             : '미연결'}
         </span>
         <span>
           Overlay{' '}
           {status?.image_tools.overlay.configured
-            ? '설정됨 · 연결 미검증'
+            ? status.image_tools.overlay.synthetic_model
+              ? '합성 학습 모델'
+              : status.image_tools.overlay.connection_verified
+                ? '연결 확인'
+                : '설정됨 · 연결 미검증'
             : '미연결'}
         </span>
         <span className="detection-current" aria-live="polite">

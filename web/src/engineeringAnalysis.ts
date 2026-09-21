@@ -22,6 +22,66 @@ export type InvestigationSelection = {
 
 export type TrendSelectionRegion = [[number, number], [number, number]];
 
+export type AnalysisContext = {
+  incident_number: string;
+  item: string;
+  step: string;
+  equipment: string;
+  recipe?: string;
+  from: string;
+  to: string;
+  wafers: { lot_id: string; wafer_id: string }[];
+  sem_wafers?: { lot_id: string; wafer_id: string }[];
+  map_view?: {
+    kind: 'cd' | 'thk' | 'overlay' | 'bin';
+    overlay: 'raw' | 'fit' | 'residual';
+  };
+  trend_selection?: {
+    range_selected: boolean;
+    value_range: [number, number] | null;
+    regions: TrendSelectionRegion[];
+  };
+};
+
+export function analysisTrendSelection(
+  selection: InvestigationSelection,
+): NonNullable<AnalysisContext['trend_selection']> {
+  const active = selection.rangeSelected !== false;
+  return {
+    range_selected: active,
+    value_range:
+      active && selection.valueRange ? [...selection.valueRange] : null,
+    regions: active ? selection.regions.map(([x, y]) => [[...x], [...y]]) : [],
+  };
+}
+
+export function sameAnalysisContext(a: AnalysisContext, b: AnalysisContext) {
+  const trendKey = (value: AnalysisContext['trend_selection']) =>
+    value
+      ? JSON.stringify([
+          value.range_selected,
+          value.value_range,
+          value.regions.map((region) => JSON.stringify(region)).sort(),
+        ])
+      : null;
+  return (
+    (
+      ['incident_number', 'item', 'step', 'equipment'] as const
+    ).every((key) => a[key] === b[key]) &&
+    (['from', 'to'] as const).every((key) =>
+      a[key] === b[key] || Date.parse(a[key]) === Date.parse(b[key]),
+    ) &&
+    (a.recipe ?? '') === (b.recipe ?? '') &&
+    trendKey(a.trend_selection) === trendKey(b.trend_selection) &&
+    JSON.stringify((a.sem_wafers ?? []).map((w) => [w.lot_id, w.wafer_id])) ===
+      JSON.stringify((b.sem_wafers ?? []).map((w) => [w.lot_id, w.wafer_id])) &&
+    a.map_view?.kind === b.map_view?.kind &&
+    a.map_view?.overlay === b.map_view?.overlay &&
+    JSON.stringify(a.wafers.map((w) => [w.lot_id, w.wafer_id]).sort()) ===
+      JSON.stringify(b.wafers.map((w) => [w.lot_id, w.wafer_id]).sort())
+  );
+}
+
 export const MAX_TREND_REGIONS = 16;
 
 function isTrendSelectionRegion(value: unknown): value is TrendSelectionRegion {

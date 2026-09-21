@@ -84,6 +84,21 @@ test('uses deterministic distinct seeds for full lot and wafer tuples', () => {
   assert.equal(first.unit, 'nm');
 });
 
+test('incident wafers share coordinates with visible radial and translation anomalies', () => {
+  const fixtures = ['W01', 'W02', 'W03'].map((wafer) =>
+    makeMetrologyFixture('SYN-LOT-09-01', wafer, 'overlay-magnitude'),
+  );
+  for (const fixture of fixtures) {
+    assert.deepEqual(fixture.points.map(({ x, y }) => [x, y]),
+      fixtures[0].points.map(({ x, y }) => [x, y]));
+  }
+  assert.ok(fixtures[0].points.some(({ value }) => value > 3));
+  assert.ok(fixtures[2].points.some(({ value }) => value > 3));
+  assert.ok(fixtures[1].points.every(({ value }) => value < 3));
+  assert.ok(makeMetrologyFixture('SYN-LOT-09-01', 'W01', 'cd').points.some(({ value }) => value > 110));
+  assert.ok(makeMetrologyFixture('SYN-LOT-09-01', 'W03', 'thk').points.some(({ value }) => value < 480));
+});
+
 test('provides a deterministic THK field distinct from CD on the same fixture', () => {
   const cd = makeMetrologyFixture('LOT-A', 'W01', 'cd');
   const thk = makeMetrologyFixture('LOT-A', 'W01', 'thk');

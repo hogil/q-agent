@@ -35,6 +35,21 @@ const workspace = {
 
 const data = makeEngineeringData(workspace);
 
+test('historicalData reads configured shared records, including an explicitly empty set', () => {
+  const records = historicalData(workspace, data).slice(0, 2);
+  assert.equal(
+    historicalData(
+      { ...workspace, raw: { historical_records: records } },
+      data,
+    ),
+    records,
+  );
+  assert.deepEqual(
+    historicalData({ ...workspace, raw: { historical_records: [] } }, data),
+    [],
+  );
+});
+
 test('historicalData is deterministic, sufficiently sized, and uses separate IDs', () => {
   const first = historicalData(workspace, data);
   const second = historicalData(workspace, data);

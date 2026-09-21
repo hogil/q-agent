@@ -79,13 +79,17 @@ function hashTuple(values: readonly string[]): number {
   return hash >>> 0;
 }
 
-function unitNoise(seed: number, index: number): number {
-  const value = Math.sin(seed * 0.000001 + index * 12.9898) * 43758.5453;
-  return value - Math.floor(value);
-}
-
 export function metrologySeed(lotId: string, waferId: string): number {
   return hashTuple([lotId, waferId]);
+}
+
+// Versioned synthetic scenario, also checked against app/demo_images.py.
+export const METROLOGY_FIXTURE_VERSION = 'synthetic-common-grid-v2';
+export function syntheticAnomaly(lotId: string, waferId: string) {
+  if (!/^SYN-LOT-\d+-\d+$/.test(lotId)) return 'nominal';
+  if (waferId === 'W01') return 'radial';
+  if (waferId === 'W03') return 'translation';
+  return 'nominal';
 }
 
 type SyntheticField = {
@@ -138,13 +142,25 @@ export function syntheticMeasurements(
   metric: MetrologyMetric,
 ): MeasurementPoint[] {
   const seed = metrologySeed(lotId, waferId);
-  return SAMPLE_LOCATIONS.map((location, index) => {
-    const x = location.x + (unitNoise(seed, index * 2) - 0.5) * 0.55;
-    const y = location.y + (unitNoise(seed, index * 2 + 1) - 0.5) * 0.55;
+  const anomaly = syntheticAnomaly(lotId, waferId);
+  return SAMPLE_LOCATIONS.map(({ x, y }) => {
+    const field = syntheticFieldValue(x, y, seed);
+    if (anomaly === 'radial') {
+      field.overlayX += 0.22 * x;
+      field.overlayY += 0.22 * y;
+      const edge = (Math.hypot(x, y) / METROLOGY_RADIUS) ** 4;
+      field.cd += 16 * edge;
+      field.thk += 42 * edge;
+    } else if (anomaly === 'translation') {
+      field.overlayX += 2.4;
+      field.overlayY -= 1.8;
+      field.cd += 10;
+      field.thk -= 28;
+    }
     return {
       x,
       y,
-      value: metricValue(syntheticFieldValue(x, y, seed), metric),
+      value: metricValue(field, metric),
     };
   });
 }

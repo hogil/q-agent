@@ -37,15 +37,41 @@ class RoleClient:
             paths = self.settings.data['paths']
             schema = read_role_reference('router', 'output.schema.json', paths['skills_root'], paths['registry_file'])
             if structured_router:
+                schema['properties']['plan']['maxItems'] = 1
                 catalog = read_role_reference('router', 'tools.json', paths['skills_root'], paths['registry_file'])
+                advertised = payload.get('available_tools')
+                if payload.get('pending_requested_tools') and isinstance(advertised, dict) and any(
+                        spec.get('enabled') for spec in advertised.values()):
+                    schema['properties']['decision']['enum'] = [decision for decision in
+                        schema['properties']['decision']['enum'] if decision != 'ready_for_judge']
+                if isinstance(advertised, dict):
+                    enabled = {name for name, spec in advertised.items()
+                               if isinstance(spec, dict) and spec.get('enabled') is True}
+                    catalog = {name: spec for name, spec in catalog.items() if name in enabled}
                 step = schema['properties']['plan']['items']
-                variants = []
-                for name, spec in catalog.items():
-                    variant = copy.deepcopy(step)
-                    variant['properties']['tool']['enum'] = [name]
-                    variant['properties']['arguments'] = spec['parameters']
-                    variants.append(variant)
-                schema['properties']['plan']['items'] = {'anyOf': variants}
+                if catalog:
+                    variants = []
+                    for name, spec in catalog.items():
+                        assets = (advertised or {}).get(name, {}).get('asset_ids_by_item')
+                        for item, ids in (assets.items() if assets is not None else [(None, None)]):
+                            variant = copy.deepcopy(step)
+                            variant['properties']['tool']['enum'] = [name]
+                            variant['properties']['arguments'] = copy.deepcopy(spec['parameters'])
+                            if name == 'list_comparison_assets' and advertised and 'modalities' in advertised[name]:
+                                variant['properties']['arguments']['properties']['modality']['enum'] = advertised[name]['modalities']
+                            if item is not None:
+                                args = variant['properties']['arguments']['properties']
+                                args['item']['enum'] = [item]
+                                args['asset_ids']['items']['enum'] = ids
+                                args['asset_ids'].update(minItems=2, maxItems=2)
+                            variants.append(variant)
+                    schema['properties']['plan']['items'] = {'anyOf': variants}
+                else:
+                    # Empty plans remain valid for route/clarify/blocked/load_skills;
+                    # no Tool item can be emitted until the catalog is repopulated.
+                    empty = copy.deepcopy(step)
+                    empty['properties']['tool']['enum'] = []
+                    schema['properties']['plan']['items'] = empty
                 # Generate the plan before its duplicated filter summary.
                 props = schema['properties']
                 first = ('decision', 'stage', 'search_mode', 'plan')
@@ -65,8 +91,24 @@ class RoleClient:
                 rows = schema['properties']['coverage' if role == 'judge' else 'claims']['items']['properties']
                 if payload.get('evidence_ids'):
                     rows['evidence_ids']['items']['enum'] = list(payload['evidence_ids'])
+                    if role == 'judge':
+                        schema['properties']['issues']['items']['properties']['evidence_ids']['items']['enum'] = list(payload['evidence_ids'])
                 if role == 'judge' and payload.get('requirements'):
                     rows['requirement']['enum'] = list(payload['requirements'])
+                    count = len(payload['requirements'])
+                    schema['properties']['coverage'].update(minItems=count, maxItems=count)
+                if role == 'judge':
+                    verdicts = schema['properties']['verdict']['enum']
+                    if payload.get('incomparable_evidence_ids') or payload.get('pending_requested_tools'):
+                        verdicts = [value for value in verdicts if value != 'pass']
+                    no_retrieval = ('available_tools' in payload and not any(
+                        spec.get('enabled') for spec in payload['available_tools'].values()))
+                    if payload.get('review_rounds_remaining') == 0 or no_retrieval:
+                        verdicts = [value for value in verdicts if value in ('pass', 'abstain')]
+                        schema['properties']['return_to']['enum'] = ['answer']
+                    schema['properties']['verdict']['enum'] = verdicts
+                if role == 'answer' and (payload.get('judge') or {}).get('verdict') == 'abstain':
+                    schema['properties']['status']['enum'] = ['partial', 'unavailable']
                 options['response_format'] = {'type': 'json_schema', 'json_schema': {
                     'name': role + '_output', 'strict': True, 'schema': schema}}
         # Count the complete request, including function schemas; this is not a token budget.

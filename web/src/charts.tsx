@@ -17,6 +17,7 @@ import {
   BrushComponent,
   LegendComponent,
 } from 'echarts/components';
+import type { TooltipComponentOption } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import {
   waferData,
@@ -25,6 +26,11 @@ import {
   type DieRegion,
 } from './waferMaps';
 import type { WaferGeometry } from './api';
+import {
+  adaptiveMapTooltipPosition,
+  escapeMapTooltipText,
+  MAP_TOOLTIP_EXTRA_CSS,
+} from './mapTooltip';
 import './mapNavigation.css';
 export { waferData, type Die } from './waferMaps';
 
@@ -43,6 +49,54 @@ echarts.use([
   LegendComponent,
   CanvasRenderer,
 ]);
+
+function withAdaptiveMapTooltip(
+  option: echarts.EChartsCoreOption,
+  chartElement: HTMLElement,
+): echarts.EChartsCoreOption {
+  const tooltip = option.tooltip as
+    | TooltipComponentOption
+    | TooltipComponentOption[]
+    | undefined;
+  if (!tooltip || Array.isArray(tooltip) || typeof tooltip !== 'object')
+    return option;
+  const formatter = tooltip.formatter;
+  return {
+    ...option,
+    tooltip: {
+      ...tooltip,
+      renderMode: 'html',
+      appendTo: (container: HTMLElement) => container.closest('dialog') || document.body,
+      className: 'map-hover-tooltip',
+      confine: false,
+      enterable: false,
+      transitionDuration: 0,
+      padding: [6, 8],
+      borderColor: '#b9c6c1',
+      textStyle: { ...tooltip.textStyle, fontSize: 10, lineHeight: 16 },
+      formatter: typeof formatter === 'function'
+        ? (...args: Parameters<typeof formatter>) => escapeMapTooltipText(String(formatter(...args)))
+        : formatter,
+      position: (...[point, params, dom, rect, size]: Parameters<typeof adaptiveMapTooltipPosition>) => {
+        const chartBox = chartElement.getBoundingClientRect();
+        const dialogBox = chartElement.closest('dialog')?.getBoundingClientRect();
+        const left = Math.max(8, dialogBox?.left ?? 0);
+        const top = Math.max(8, dialogBox?.top ?? 0);
+        const right = Math.min(window.innerWidth - 8, dialogBox?.right ?? window.innerWidth);
+        const bottom = Math.min(window.innerHeight - 8, dialogBox?.bottom ?? window.innerHeight);
+        const position = adaptiveMapTooltipPosition(
+          [chartBox.left + point[0] - left, chartBox.top + point[1] - top],
+          params, dom, rect,
+          { contentSize: size.contentSize, viewSize: [right - left, bottom - top] },
+        );
+        return [position[0] + left - chartBox.left, position[1] + top - chartBox.top];
+      },
+      extraCssText: [tooltip.extraCssText, MAP_TOOLTIP_EXTRA_CSS]
+        .filter(Boolean)
+        .join(';'),
+    },
+  };
+}
 
 type ChartProps = {
   option: echarts.EChartsCoreOption;
@@ -218,7 +272,8 @@ export function Chart({
       : undefined;
     chart.setOption(
       {
-        ...option,
+        ...(mapNavigation || (option.tooltip as TooltipComponentOption)?.position === adaptiveMapTooltipPosition
+          ? withAdaptiveMapTooltip(option, chart.getDom()) : option),
         ...(mapNavigation
           ? {
               dataZoom: navigation().map((item, i) => ({
@@ -551,6 +606,8 @@ export function WaferChart({
       tooltip: {
         renderMode: 'richText',
         confine: true,
+        position: adaptiveMapTooltipPosition,
+        extraCssText: MAP_TOOLTIP_EXTRA_CSS,
         formatter: (p: any) =>
           `${waferCoordinateText(p.value[0], p.value[1], geometry)}\n${p.value[2] >= 3 ? 'Edge flag' : 'Reference'} · 합성`,
         textStyle: { fontSize: 12 },
@@ -608,6 +665,10 @@ export function OverlayChart({
       xAxis: { type: 'value', min: -18, max: 18, show: false },
       yAxis: { type: 'value', min: -18, max: 18, show: false },
       tooltip: {
+        renderMode: 'richText',
+        confine: true,
+        position: adaptiveMapTooltipPosition,
+        extraCssText: MAP_TOOLTIP_EXTRA_CSS,
         formatter: (p: any) =>
           `${p.seriesName} · Die (${p.value[0]}, ${p.value[1]})`,
       },

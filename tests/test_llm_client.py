@@ -12,6 +12,7 @@ sys.path.insert(0, str(ROOT / 'app'))
 from config_loader import DEFAULT_CONFIG, Settings, load_config
 import llm_client
 from llm_client import LLMError, RoleClient
+from skill_loader import read_role_reference
 
 
 def completion(*, arguments='{}', content=None, finish_reason='tool_calls',
@@ -152,6 +153,57 @@ class RoleClientTests(unittest.TestCase):
         self.assertEqual(find['properties']['arguments']['properties']['city']['type'], 'string')
         self.assertFalse(find['properties']['arguments']['additionalProperties'])
 
+    def test_structured_router_omits_completed_tools_from_plan_schema(self):
+        self.settings.data['models']['text']['structured_outputs'] = True
+        output = {'decision': 'ready_for_judge', 'plan': []}
+        self.create.return_value = completion(content=json.dumps(output), tool_call=False)
+        catalog = read_role_reference('router', 'tools.json',
+                                      self.settings.data['paths']['skills_root'],
+                                      self.settings.data['paths']['registry_file'])
+        available = {name: {key: value for key, value in spec.items() if key != 'parameters'}
+                     for name, spec in catalog.items() if name != 'find_incidents'}
+
+        self.make_client().call('router', 'router', {'available_tools': available}, [])
+        variants = self.create.call_args.kwargs['response_format']['json_schema']['schema']
+        names = {variant['properties']['tool']['enum'][0]
+                 for variant in variants['properties']['plan']['items']['anyOf']}
+        self.assertNotIn('find_incidents', names)
+
+    def test_structured_router_with_no_available_tools_has_zero_plan_schema(self):
+        self.settings.data['models']['text']['structured_outputs'] = True
+        self.create.return_value = completion(
+            content=json.dumps({'decision': 'load_skills', 'plan': [], 'needs_skills': ['meetings']}),
+            tool_call=False)
+
+        self.make_client().call('router', 'router', {'available_tools': {}}, [])
+        plan_schema = self.create.call_args.kwargs['response_format']['json_schema']['schema']
+        items = plan_schema['properties']['plan']['items']
+        self.assertEqual(items['properties']['tool']['enum'], [])
+
+    def test_pending_requested_source_cannot_be_skipped_by_structured_router(self):
+        self.settings.data['models']['text']['structured_outputs'] = True
+        self.create.return_value = completion(content='{}', tool_call=False)
+        self.make_client().call('router', 'router', {
+            'pending_requested_tools': ['compare_sem_images'],
+            'available_tools': {'list_comparison_assets': {'enabled': True, 'modalities': ['sem']}},
+        }, [])
+        schema = self.create.call_args.kwargs['response_format']['json_schema']['schema']
+        self.assertNotIn('ready_for_judge', schema['properties']['decision']['enum'])
+        self.assertEqual(schema['properties']['plan']['items']['anyOf'][0]['properties']['arguments']
+                         ['properties']['modality']['enum'], ['sem'])
+
+    def test_structured_image_plan_only_accepts_discovered_ids_for_each_item(self):
+        self.settings.data['models']['text']['structured_outputs'] = True
+        self.create.return_value = completion(content='{}', tool_call=False)
+        available = {'compare_sem_images': {'enabled': True, 'asset_ids_by_item': {
+            'item-a': ['a1', 'a2'], 'item-b': ['b1', 'b2']}}}
+        self.make_client().call('router', 'router', {'available_tools': available}, [])
+        variants = self.create.call_args.kwargs['response_format']['json_schema']['schema']
+        arguments = [v['properties']['arguments']['properties']
+                     for v in variants['properties']['plan']['items']['anyOf']]
+        self.assertEqual([(a['item']['enum'], a['asset_ids']['items']['enum']) for a in arguments],
+                         [(['item-a'], ['a1', 'a2']), (['item-b'], ['b1', 'b2'])])
+
     def test_structured_router_rejects_prose_or_unexpected_tool_calls(self):
         self.settings.data['models']['text']['structured_outputs'] = True
         for response in (completion(content='not a plan', tool_call=False), completion(content='{}')):
@@ -186,6 +238,10 @@ class RoleClientTests(unittest.TestCase):
         rows = self.create.call_args.kwargs['response_format']['json_schema']['schema']['properties']['coverage']['items']['properties']
         self.assertEqual(rows['requirement']['enum'], ['current question'])
         self.assertEqual(rows['evidence_ids']['items']['enum'], ['e2'])
+        properties = self.create.call_args.kwargs['response_format']['json_schema']['schema']['properties']
+        self.assertEqual(properties['coverage']['minItems'], 1)
+        self.assertEqual(properties['coverage']['maxItems'], 1)
+        self.assertEqual(properties['issues']['items']['properties']['evidence_ids']['items']['enum'], ['e2'])
 
     def test_disabled_or_non_api_model_fails_at_initialization(self):
         for enabled, mode in ((False, 'api'), (True, 'local')):
@@ -194,6 +250,27 @@ class RoleClientTests(unittest.TestCase):
                 data['models']['text'].update(enabled=enabled, mode=mode)
                 with self.assertRaisesRegex(LLMError, 'ROLE_REQUIRES_ENABLED_API_MODEL: router'):
                     RoleClient(Settings(data, ()))
+
+    def test_judge_cannot_pass_incomparable_evidence_or_exceed_review_budget(self):
+        self.settings.data['models']['text']['structured_outputs'] = True
+        self.create.return_value = completion(content='{}', tool_call=False)
+        self.make_client().call('judge', 'judge', {
+            'incomparable_evidence_ids': ['e6'], 'review_rounds_remaining': 0,
+            'evidence_ids': ['e6'], 'requirements': ['compare selected images'],
+        }, [])
+        schema = self.create.call_args.kwargs['response_format']['json_schema']['schema']
+        self.assertEqual(schema['properties']['verdict']['enum'], ['abstain'])
+        self.assertEqual(schema['properties']['return_to']['enum'], ['answer'])
+        self.make_client().call('answer', 'answer', {'judge': {'verdict': 'abstain'}}, [])
+        schema = self.create.call_args.kwargs['response_format']['json_schema']['schema']
+        self.assertEqual(schema['properties']['status']['enum'], ['partial', 'unavailable'])
+        self.make_client().call('judge', 'judge', {
+            'incomparable_evidence_ids': ['e6'], 'review_rounds_remaining': 2,
+            'available_tools': {'compare_sem_images': {'enabled': False}},
+        }, [])
+        schema = self.create.call_args.kwargs['response_format']['json_schema']['schema']
+        self.assertEqual(schema['properties']['verdict']['enum'], ['abstain'])
+        self.assertEqual(schema['properties']['return_to']['enum'], ['answer'])
 
     def test_missing_api_key_fails_at_initialization(self):
         with patch.dict('os.environ', {}, clear=True):

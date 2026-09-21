@@ -16,6 +16,10 @@
       }
     }
   },
+  "get_engineering_snapshot": {
+    "enabled": true, "stage": "tools",
+    "parameters": {"type": "object", "additionalProperties": false, "properties": {}}
+  },
   "search_meeting_minutes": {
     "enabled": true, "stage": "tools",
     "parameters": {
