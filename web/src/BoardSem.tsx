@@ -32,29 +32,65 @@ export default function BoardSem({
   workspace,
   focused,
   compare,
-  selected,
   options,
 }: {
   workspace: Workspace;
   focused?: FabRow;
   compare?: FabRow;
-  selected: FabRow[];
-  options?: FabRow[];
+  options: FabRow[];
 }) {
   const rows = useMemo(() => {
     const byKey = new Map<string, FabRow>();
-    [...(options || []), ...selected, focused, compare].forEach((row) => {
-      if (row && !byKey.has(pairKey(row))) byKey.set(pairKey(row), row);
+    options.forEach((row) => {
+      if (!byKey.has(pairKey(row))) byKey.set(pairKey(row), row);
     });
-    return [...byKey.values()].filter((row) =>
-      Boolean(semRecord(workspace, row.lotId, row.waferId)),
-    );
-  }, [compare, focused, options, selected, workspace]);
-  const fallbackA = focused || rows[0];
-  const fallbackB =
-    compare || rows.find((row) => pairKey(row) !== pairKey(fallbackA));
-  const [aKey, setAKey] = useState(fallbackA ? pairKey(fallbackA) : '');
-  const [bKey, setBKey] = useState(fallbackB ? pairKey(fallbackB) : '');
+    return [...byKey.values()];
+  }, [options]);
+  const records = useMemo(
+    () =>
+      new Map(
+        rows.flatMap((row) => {
+          const record = semRecord(workspace, row.lotId, row.waferId);
+          return record ? [[pairKey(row), record] as const] : [];
+        }),
+      ),
+    [rows, workspace],
+  );
+  const focusedKey = focused ? pairKey(focused) : '';
+  const compareKey = compare ? pairKey(compare) : '';
+  const [selection, setSelection] = useState({
+    focusedKey,
+    compareKey,
+    aKey: focusedKey,
+    bKey: compareKey,
+  });
+  const rowFor = (key: string) => rows.find((row) => pairKey(row) === key);
+  const requestedA =
+    focusedKey !== selection.focusedKey && rowFor(focusedKey)
+      ? focusedKey
+      : selection.aKey;
+  const requestedB =
+    compareKey !== selection.compareKey && rowFor(compareKey)
+      ? compareKey
+      : selection.bKey;
+  const aRow = rowFor(requestedA) || rowFor(focusedKey) || rows[0];
+  const aKey = aRow ? pairKey(aRow) : '';
+  const bOptions = rows.filter((row) => pairKey(row) !== aKey);
+  const bRow =
+    bOptions.find((row) => pairKey(row) === requestedB) ||
+    bOptions.find((row) => pairKey(row) === compareKey) ||
+    bOptions[0];
+  const bKey = bRow ? pairKey(bRow) : '';
+
+  // Consume changed parent keys and discard stale scope keys before rendering panes.
+  if (
+    selection.focusedKey !== focusedKey ||
+    selection.compareKey !== compareKey ||
+    selection.aKey !== aKey ||
+    selection.bKey !== bKey
+  ) {
+    setSelection({ focusedKey, compareKey, aKey, bKey });
+  }
   const [views, setViews] = useState<ViewByOwner>(emptyViews);
   const [sync, setSync] = useState(true);
   const [activeOwner, setActiveOwner] = useState<Owner>('A');
@@ -67,19 +103,9 @@ export default function BoardSem({
   } | null>(null);
 
   useEffect(() => {
-    if (focused) setAKey(pairKey(focused));
-  }, [focused]);
-  useEffect(() => {
-    if (compare) setBKey(pairKey(compare));
-  }, [compare]);
-  useEffect(() => {
     setViews(emptyViews());
+    drag.current = null;
   }, [aKey, bKey]);
-
-  const rowFor = (key: string) => rows.find((row) => pairKey(row) === key);
-  const aRow = rowFor(aKey) || fallbackA;
-  const bRow = rowFor(bKey) || fallbackB;
-  const bOptions = rows.filter((row) => pairKey(row) !== pairKey(aRow));
 
   const updateView = (owner: Owner, next: Partial<ViewState>) => {
     setViews((current) => {
@@ -131,13 +157,16 @@ export default function BoardSem({
   const selectA = (key: string) => {
     const row = rowFor(key);
     if (!row) return;
-    if (key === bKey) setBKey(aKey);
-    setAKey(key);
+    setSelection((current) => ({
+      ...current,
+      aKey: key,
+      bKey: key === bKey ? aKey : bKey,
+    }));
   };
   const selectB = (key: string) => {
     const row = rowFor(key);
     if (!row || key === aKey) return;
-    setBKey(key);
+    setSelection((current) => ({ ...current, aKey, bKey: key }));
   };
 
   const selectControl = (owner: Owner, row: FabRow | undefined) => (
@@ -158,21 +187,17 @@ export default function BoardSem({
             : selectB(event.target.value)
         }
       >
-        {!row && <option value="">선택 없음</option>}
-        {row &&
-          !(owner === 'A' ? rows : bOptions).some(
-            (item) => pairKey(item) === pairKey(row),
-          ) && (
-            <option value={pairKey(row)} disabled>
-              {row.lotId} / {row.waferId} · SEM 없음
-            </option>
-          )}
+        {!row && (
+          <option value="">
+            {rows.length ? '비교 대상 없음' : '범위 내 Wafer 없음'}
+          </option>
+        )}
         {(owner === 'A' ? rows : bOptions).map((item) => {
-          const record = semRecord(workspace, item.lotId, item.waferId);
+          const record = records.get(pairKey(item));
           return (
             <option key={pairKey(item)} value={pairKey(item)}>
               {item.lotId} / {item.waferId} · {item.equipment} ·{' '}
-              {shortTime(item.timestamp)} · {record ? 'SEM 등록' : 'SEM 없음'}
+              {shortTime(item.timestamp)} · {record ? 'SEM 등록' : 'SEM 미등록'}
             </option>
           );
         })}
@@ -181,10 +206,10 @@ export default function BoardSem({
   );
 
   const pane = (owner: Owner, row: FabRow | undefined) => {
-    const record = row && semRecord(workspace, row.lotId, row.waferId);
+    const record = row && records.get(pairKey(row));
     const view = views[owner];
     const detail = row
-      ? `${row.equipment} · ${shortTime(row.timestamp)} · ${record?.description || '원본 미연결'}`
+      ? `${row.equipment} · ${shortTime(row.timestamp)} · ${record?.description || 'SEM 미등록'}`
       : '선택 없음';
     return (
       <figure
@@ -243,8 +268,12 @@ export default function BoardSem({
               <ImageOff size={18} />
               <span>
                 {row
-                  ? 'SEM 이미지를 불러올 수 없습니다'
-                  : 'A/B 대상을 선택하세요'}
+                  ? record
+                    ? 'SEM 이미지를 불러올 수 없습니다'
+                    : 'SEM 미등록'
+                  : rows.length
+                    ? '비교 대상 Wafer 없음'
+                    : '범위 내 Wafer 없음'}
               </span>
               <small>다른 Lot/Wafer를 선택해 비교하세요</small>
             </div>
@@ -313,10 +342,11 @@ export default function BoardSem({
             disabled={!aRow || !bRow}
             onClick={() => {
               if (!aRow || !bRow) return;
-              const nextA = bRow;
-              const nextB = aRow;
-              setAKey(pairKey(nextA));
-              setBKey(pairKey(nextB));
+              setSelection((current) => ({
+                ...current,
+                aKey: bKey,
+                bKey: aKey,
+              }));
             }}
           >
             <ArrowLeftRight size={14} />
@@ -329,7 +359,10 @@ export default function BoardSem({
       </div>
       <footer className="sem-viewer-footer">
         <span>합성 SEM · 실측 아님 · 이미지 모델 미연결</span>
-        <span>{rows.length}개 후보</span>
+        <span>
+          전체 {rows.length} Wafers · SEM 등록{' '}
+          {rows.filter((row) => records.has(pairKey(row))).length}
+        </span>
       </footer>
     </div>
   );

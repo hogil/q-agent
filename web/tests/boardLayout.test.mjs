@@ -6,6 +6,8 @@ import {
   fitSizes,
   layoutVersion,
   layoutStorageKey,
+  previousLayoutStorageKey,
+  migrateLayout,
   minimumFractions,
   minColumns,
   minWorkspace,
@@ -18,7 +20,7 @@ const sum = (values) => values.reduce((a, b) => a + b, 0);
 
 test('new spatial layout has separate persistence and rejects incomplete or old dimensions', () => {
   const original = defaultLayout();
-  assert.equal(layoutStorageKey, 'qagent:board-layout:v3');
+  assert.equal(layoutStorageKey, 'qagent:board-layout:v4');
   assert.deepEqual(
     parseLayout(JSON.stringify({ version: layoutVersion, ...original })),
     original,
@@ -27,7 +29,7 @@ test('new spatial layout has separate persistence and rejects incomplete or old 
     null,
     '{',
     '{}',
-    ...[1, 2].map((version) => JSON.stringify({ version, ...original })),
+    ...[1, 2, 3].map((version) => JSON.stringify({ version, ...original })),
     JSON.stringify({ version: layoutVersion, ...original, rows: [-1, 1, 1] }),
     JSON.stringify({ version: layoutVersion, ...original, workspace: [0.5] }),
     JSON.stringify({
@@ -47,14 +49,55 @@ test('new spatial layout has separate persistence and rejects incomplete or old 
 test('investigation order gives every panel one place and a two-row analysis area', () => {
   assert.deepEqual(panelRows, [
     ['signals', 'trend', 'correlation'],
-    ['cohort', 'single-map', 'composite', 'images'],
+    ['single-map', 'composite', 'images'],
     ['distribution', 'documents', 'production'],
   ]);
-  assert.equal(new Set([...panelRows.flat(), 'assessment']).size, 11);
+  assert.equal(new Set([...panelRows.flat(), 'assessment']).size, 10);
   const layout = defaultLayout();
   assert.ok(layout.rows[1] + layout.rows[2] >= 0.6);
   assert.ok(layout.columns[0][1] > layout.columns[0][2]);
-  assert.ok(layout.columns[1][2] < layout.columns[1][3]);
+  assert.ok(layout.columns[1][1] < layout.columns[1][2]);
+});
+
+test('migrates v3 wafer-list space into SEM while preserving every other boundary', () => {
+  assert.equal(previousLayoutStorageKey, 'qagent:board-layout:v3');
+  const previous = {
+    ...defaultLayout(),
+    version: 3,
+    rows: [0.42, 0.31, 0.27],
+    columns: [
+      [0.4, 0.38, 0.22],
+      [0.2, 0.18, 0.2, 0.42],
+      [0.3, 0.4, 0.3],
+    ],
+  };
+  const migrated = migrateLayout(JSON.stringify(previous));
+  assert.deepEqual(migrated.rows, previous.rows);
+  assert.deepEqual(migrated.workspace, previous.workspace);
+  assert.deepEqual(migrated.columns, [
+    previous.columns[0],
+    [0.18, 0.2, 0.62],
+    previous.columns[2],
+  ]);
+  assert.deepEqual(
+    parseLayout(JSON.stringify({ version: 4, ...migrated })),
+    migrated,
+  );
+  for (const raw of [
+    null,
+    '{',
+    JSON.stringify({ ...previous, version: 2 }),
+    JSON.stringify({
+      ...previous,
+      columns: [
+        previous.columns[0],
+        [-0.1, 0.18, 0.2, 0.72],
+        previous.columns[2],
+      ],
+    }),
+    JSON.stringify({ ...previous, columns: defaultLayout().columns }),
+  ])
+    assert.equal(migrateLayout(raw), null);
 });
 
 test('adjacent row and column resizing preserves extent and untouched neighbors', () => {

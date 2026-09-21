@@ -1,6 +1,6 @@
 export const panelRows = [
   ['signals', 'trend', 'correlation'],
-  ['cohort', 'single-map', 'composite', 'images'],
+  ['single-map', 'composite', 'images'],
   ['distribution', 'documents', 'production'],
 ] as const;
 
@@ -9,15 +9,16 @@ export type BoardLayout = {
   columns: number[][];
   workspace: number[];
 };
-export const layoutVersion = 3;
+export const layoutVersion = 4;
 export const layoutStorageKey = `qagent:board-layout:v${layoutVersion}`;
+export const previousLayoutStorageKey = 'qagent:board-layout:v3';
 
 export const defaultLayout = (): BoardLayout => ({
   rows: [0.4, 0.33, 0.27],
   workspace: [0.7, 0.3],
   columns: [
     [0.41, 0.37, 0.22],
-    [0.21, 0.195, 0.195, 0.4],
+    [0.195, 0.195, 0.61],
     [0.32, 0.35, 0.33],
   ],
 });
@@ -25,11 +26,15 @@ export const minRows = [260, 230, 190];
 export const minWorkspace = [710, 350];
 export const minColumns = [
   [360, 380, 250],
-  [150, 150, 150, 260],
+  [150, 150, 410],
   [190, 230, 240],
 ];
 
-export function parseLayout(raw: string | null): BoardLayout | null {
+function readLayout(
+  raw: string | null,
+  version: number,
+  columns: number[],
+): BoardLayout | null {
   try {
     const value = JSON.parse(raw || 'null');
     const valid = (sizes: unknown, count: number): sizes is number[] =>
@@ -40,14 +45,12 @@ export function parseLayout(raw: string | null): BoardLayout | null {
       ) &&
       Math.abs(sizes.reduce((a, b) => a + b, 0) - 1) < 0.0001;
     if (
-      value?.version !== layoutVersion ||
+      value?.version !== version ||
       !valid(value.rows, 3) ||
       !valid(value.workspace, 2) ||
       !Array.isArray(value.columns) ||
       value.columns.length !== 3 ||
-      !value.columns.every((row: unknown, i: number) =>
-        valid(row, panelRows[i].length),
-      )
+      !value.columns.every((row: unknown, i: number) => valid(row, columns[i]))
     )
       return null;
     return {
@@ -58,6 +61,28 @@ export function parseLayout(raw: string | null): BoardLayout | null {
   } catch {
     return null;
   }
+}
+
+export function parseLayout(raw: string | null): BoardLayout | null {
+  return readLayout(
+    raw,
+    layoutVersion,
+    panelRows.map((row) => row.length),
+  );
+}
+
+export function migrateLayout(raw: string | null): BoardLayout | null {
+  const previous = readLayout(raw, 3, [3, 4, 3]);
+  if (!previous) return null;
+  const [cohort, single, composite, images] = previous.columns[1];
+  return {
+    ...previous,
+    columns: [
+      previous.columns[0],
+      [single, composite, images + cohort],
+      previous.columns[2],
+    ],
+  };
 }
 
 export function minimumFractions(minimums: number[], pixels: number) {

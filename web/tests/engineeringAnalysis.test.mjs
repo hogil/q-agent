@@ -11,6 +11,7 @@ import {
   parsePairKey,
   pairKey,
   selectFabRows,
+  selectTrendFabRows,
   summarizeSignalWindow,
   changeTiming,
   signalFabScope,
@@ -369,6 +370,123 @@ test('returns an empty cohort when the selected signal is missing or unknown', (
   const { signalId, ...missingSignal } = selection;
   assert.deepEqual(selectFabRows(scoped, missingSignal), []);
   assert.deepEqual(selectFabRows({ ...scoped, signals: [] }, selection), []);
+});
+
+const trendFabData = {
+  signals: [{ id: 'signal-1', step: 'ETCH', equipment: 'E1', recipe: 'R1' }],
+  trend: [
+    { timestamp: 'not-a-timestamp' },
+    { timestamp: '2026-01-01T04:00:00Z' },
+    { timestamp: '2026-01-01T11:00:00+09:00' },
+    { timestamp: '2026-01-01T03:00:00Z' },
+    { timestamp: null },
+  ],
+  fab: [
+    {
+      lotId: 'L1',
+      waferId: 'W1',
+      timestamp: '2026-01-01T02:00:00Z',
+      step: 'ETCH',
+      equipment: 'E1',
+      recipe: 'R1',
+    },
+    {
+      lotId: 'L2',
+      waferId: 'W1',
+      timestamp: '2026-01-01T03:00:00Z',
+      step: 'ETCH',
+      equipment: 'E2',
+      recipe: 'R2',
+    },
+    {
+      lotId: 'L1',
+      waferId: 'W2',
+      timestamp: '2026-01-01T04:00:00Z',
+      step: 'ETCH',
+      equipment: 'E3',
+      recipe: 'R3',
+    },
+  ],
+};
+
+test('full Trend Fab scope uses valid min/max inclusively across equipment and recipes', () => {
+  const snapshot = structuredClone(trendFabData);
+  assert.deepEqual(
+    selectTrendFabRows(trendFabData, 'signal-1'),
+    trendFabData.fab,
+  );
+  assert.deepEqual(
+    selectFabRows(trendFabData, {
+      signalId: 'signal-1',
+      start: 1,
+      end: 1,
+      rangeSelected: true,
+      regions: [],
+      equipment: 'E1',
+      recipe: 'R1',
+      maxLagDays: 0,
+    }),
+    [],
+  );
+  assert.deepEqual(selectTrendFabRows(trendFabData, 'signal-1'), snapshot.fab);
+  assert.deepEqual(trendFabData, snapshot);
+});
+
+test('full Trend Fab scope rejects invalid, out-of-range and other-Step rows before pair dedup', () => {
+  const first = trendFabData.fab[0];
+  const latestDuplicate = { ...first, timestamp: '2026-01-01T03:30:00Z' };
+  const scoped = {
+    ...trendFabData,
+    fab: [
+      ...trendFabData.fab,
+      latestDuplicate,
+      { ...first, timestamp: '2026-01-01T01:59:59.999Z' },
+      { ...first, timestamp: '2026-01-01T04:00:00.001Z' },
+      { ...first, step: 'CLEAN' },
+      ...['bad-time', '', null, undefined, 0, NaN].map((timestamp) => ({
+        ...first,
+        timestamp,
+      })),
+    ],
+  };
+  assert.deepEqual(selectTrendFabRows(scoped, 'signal-1'), [
+    latestDuplicate,
+    trendFabData.fab[1],
+    trendFabData.fab[2],
+  ]);
+});
+
+test('full Trend Fab scope is empty without valid Trend times or a known signal', () => {
+  for (const trend of [
+    [],
+    [{ timestamp: 'bad-time' }],
+    [{ timestamp: null }, {}, { timestamp: 0 }],
+  ]) {
+    assert.deepEqual(
+      selectTrendFabRows({ ...trendFabData, trend }, 'signal-1'),
+      [],
+    );
+  }
+  for (const signalId of ['unknown', '', undefined, null]) {
+    assert.deepEqual(selectTrendFabRows(trendFabData, signalId), []);
+  }
+  assert.deepEqual(
+    selectTrendFabRows({ ...trendFabData, signals: [] }, 'signal-1'),
+    [],
+  );
+});
+
+test('a single valid Trend timestamp matches only its exact inclusive instant', () => {
+  const scoped = {
+    ...trendFabData,
+    trend: [
+      { timestamp: 'bad-time' },
+      { timestamp: '2026-01-01T12:00:00+09:00' },
+    ],
+  };
+  assert.deepEqual(selectTrendFabRows(scoped, 'signal-1'), [
+    trendFabData.fab[1],
+  ]);
 });
 
 test('Pearson reports positive and inverse associations, not a causal verdict', () => {

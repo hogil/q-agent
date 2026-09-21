@@ -4,6 +4,7 @@ import {
   signalMember,
   type ChangeEvent,
   type EngineeringData,
+  type FabRow,
   type Signal,
 } from './engineeringData.ts';
 
@@ -102,7 +103,8 @@ export function selectFabRows(
   if (!signal || (selection.rangeSelected !== false && !windows.length))
     return [];
   const rows = data.fab.filter((row) => {
-    const timestamp = Date.parse(row.timestamp);
+    const timestamp =
+      typeof row.timestamp === 'string' ? Date.parse(row.timestamp) : NaN;
     return (
       row.step === signal.step &&
       (selection.rangeSelected === false ||
@@ -115,6 +117,30 @@ export function selectFabRows(
     );
   });
   return [...new Map(rows.map((row) => [pairKey(row), row])).values()];
+}
+
+export function selectTrendFabRows(
+  data: EngineeringData,
+  signalId: string,
+): FabRow[] {
+  const times = data.trend.flatMap((row, index) => {
+    const timestamp =
+      typeof row.timestamp === 'string' ? Date.parse(row.timestamp) : NaN;
+    return Number.isFinite(timestamp) ? [{ timestamp, index }] : [];
+  });
+  if (!times.length) return [];
+  const first = times.reduce((a, b) => (a.timestamp <= b.timestamp ? a : b));
+  const last = times.reduce((a, b) => (a.timestamp >= b.timestamp ? a : b));
+  return selectFabRows(data, {
+    signalId,
+    start: first.index,
+    end: last.index,
+    rangeSelected: true,
+    regions: [],
+    equipment: '',
+    recipe: '',
+    maxLagDays: 0,
+  });
 }
 
 export function parsePairKey(value: unknown, data: EngineeringData): string {

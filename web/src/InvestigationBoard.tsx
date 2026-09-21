@@ -28,6 +28,7 @@ import type { ViewProps } from './Views';
 import {
   pairKey,
   selectFabRows,
+  selectTrendFabRows,
   engineeringReference,
   changeTiming,
   signalFabScope,
@@ -182,6 +183,23 @@ export default function InvestigationBoard({
     () => selectFabRows(data, selection),
     [data, selection],
   );
+  const trendWafers = useMemo(
+    () => selectTrendFabRows(data, signal.id),
+    [data, signal.id],
+  );
+  const [waferPickerOpen, setWaferPickerOpen] = useState(false);
+  const waferDialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (!waferPickerOpen) return;
+    const previous = document.activeElement;
+    const dialog = waferDialog.current;
+    dialog?.showModal();
+    return () => {
+      dialog?.close();
+      if (previous instanceof HTMLElement && previous.isConnected)
+        previous.focus({ preventScroll: true });
+    };
+  }, [waferPickerOpen]);
   const from = data.trend[selection.start].timestamp;
   const to = data.trend[selection.end].timestamp;
   const events = changeTiming(data, signal, selection);
@@ -599,143 +617,52 @@ export default function InvestigationBoard({
   };
   return (
     <div className="investigation-board">
-      <div className="board-scope board-scope-toolbar">
-        <div className="board-scope-main">
-          <strong>{signal.title}</strong>
-          <span>{signal.step}</span>
-          <label>
-            후속 설비
-            <select
-              aria-label="조사 설비"
-              value={selection.equipment}
-              onChange={(event) => change({ equipment: event.target.value })}
-            >
-              <option value="">전체</option>
-              {[...new Set(data.fab.map((row) => row.equipment))].map(
-                (value) => (
-                  <option key={value}>{value}</option>
-                ),
-              )}
-            </select>
-          </label>
-          <label>
-            Recipe
-            <select
-              aria-label="조사 Recipe"
-              value={selection.recipe}
-              onChange={(event) => change({ recipe: event.target.value })}
-            >
-              <option value="">전체</option>
-              {[...new Set(data.fab.map((row) => row.recipe))].map((value) => (
-                <option key={value}>{value}</option>
-              ))}
-            </select>
-          </label>
-          <span className="board-scope-window">
-            {time(from)} ~ {time(to)} UTC
-          </span>
-          <span className="board-demo">SYNTHETIC · 실측 미연결</span>
-          <div className="board-layout-actions">
-            <button
-              className="icon-button"
-              aria-label="패널 크기 잠금"
-              title="패널 크기 잠금"
-              aria-pressed={layoutLocked}
-              onClick={() => setLayoutLocked((value) => !value)}
-            >
-              {layoutLocked ? (
-                <LockKeyhole size={14} />
-              ) : (
-                <UnlockKeyhole size={14} />
-              )}
-            </button>
-            <button
-              className="icon-button"
-              aria-label="기본 패널 배치 복원"
-              title={
-                layoutStorageError
-                  ? '배치 저장 실패 · 기본 배치 복원'
-                  : '기본 패널 배치 복원'
-              }
-              onClick={() => setLayoutReset((value) => value + 1)}
-            >
-              <PanelsTopLeft
-                size={14}
-                className={layoutStorageError ? 'layout-storage-error' : ''}
-              />
-            </button>
-            {layoutStorageError && (
-              <span className="sr-only" role="status">
-                브라우저 배치 저장 실패
-              </span>
+      <div className="board-status-bar">
+        <DetectionFlow
+          context={analysisContext}
+          a={
+            focused
+              ? { lot_id: focused.lotId, wafer_id: focused.waferId }
+              : undefined
+          }
+          b={peer ? { lot_id: peer.lotId, wafer_id: peer.waferId } : undefined}
+        />
+        <div className="board-layout-actions">
+          <button
+            className="icon-button"
+            aria-label="패널 크기 잠금"
+            title="패널 크기 잠금"
+            aria-pressed={layoutLocked}
+            onClick={() => setLayoutLocked((value) => !value)}
+          >
+            {layoutLocked ? (
+              <LockKeyhole size={14} />
+            ) : (
+              <UnlockKeyhole size={14} />
             )}
-          </div>
-        </div>
-        <div className="board-comparison-scope">
-          <strong>
-            A{' '}
-            {focused
-              ? `${focused.lotId} / ${focused.waferId} · ${focused.equipment}`
-              : 'Wafer 없음'}
-            {focused && !checked.has(pairKey(focused)) && (
-              <span className="board-focus-excluded"> · A 분석 제외</span>
-            )}
-          </strong>
-          <label>
-            설비 B
-            <select
-              aria-label="비교 설비 B"
-              value={peerEquipment}
-              onChange={(event) =>
-                setPeerState({ scope, equipment: event.target.value, key: '' })
-              }
-            >
-              {equipmentOptions.map((value) => (
-                <option key={value}>{value}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Wafer B
-            <select
-              aria-label="비교 Wafer B"
-              value={peer ? pairKey(peer) : ''}
-              disabled={!peerCandidates.length}
-              onChange={(event) =>
-                setPeerState({
-                  scope,
-                  equipment: peerEquipment,
-                  key: event.target.value,
-                })
-              }
-            >
-              {!peerCandidates.length && (
-                <option value="">
-                  해당 Step · 구간 · Recipe에 비교 Wafer 없음
-                </option>
-              )}
-              {peerCandidates.map((row) => (
-                <option value={pairKey(row)} key={pairKey(row)}>
-                  {row.lotId} / {row.waferId} · {row.timestamp.slice(11, 16)}
-                  {semRecord(workspace, row.lotId, row.waferId)
-                    ? ' · SEM 등록'
-                    : ' · SEM 없음'}
-                </option>
-              ))}
-            </select>
-          </label>
-          <span>{signal.item} · 같은 Step / 구간 · 화면 비교</span>
+          </button>
+          <button
+            className="icon-button"
+            aria-label="기본 패널 배치 복원"
+            title={
+              layoutStorageError
+                ? '배치 저장 실패 · 기본 배치 복원'
+                : '기본 패널 배치 복원'
+            }
+            onClick={() => setLayoutReset((value) => value + 1)}
+          >
+            <PanelsTopLeft
+              size={14}
+              className={layoutStorageError ? 'layout-storage-error' : ''}
+            />
+          </button>
+          {layoutStorageError && (
+            <span className="sr-only" role="status">
+              브라우저 배치 저장 실패
+            </span>
+          )}
         </div>
       </div>
-      <DetectionFlow
-        context={analysisContext}
-        a={
-          focused
-            ? { lot_id: focused.lotId, wafer_id: focused.waferId }
-            : undefined
-        }
-        b={peer ? { lot_id: peer.lotId, wafer_id: peer.waferId } : undefined}
-      />
       <ResizableBoard
         locked={layoutLocked}
         resetKey={layoutReset}
@@ -915,6 +842,16 @@ export default function InvestigationBoard({
         >
           <header>
             <h2>{signal.item} Trend</h2>
+            <button
+              className="board-wafer-trigger"
+              title="구간 Lot/Wafer 선택 · 복사 · Map · SEM 비교"
+              aria-label="Lot/Wafer 선택 목록 열기"
+              aria-haspopup="dialog"
+              onClick={() => setWaferPickerOpen(true)}
+            >
+              <ListFilter size={13} />
+              Wafer {checked.size}/{candidates.length}
+            </button>
             <span>시작 {time(data.trend[signal.onsetIndex].timestamp)}</span>
             {pin(
               {
@@ -1120,206 +1057,6 @@ export default function InvestigationBoard({
             selection={selection}
             compact
           />
-        </section>
-        <section
-          className="board-panel board-cohort"
-          data-panel="cohort"
-          aria-label="선택 구간 Wafer 목록"
-        >
-          <header>
-            <h2>Lot / Wafer</h2>
-            <output aria-live="polite">
-              {checked.size} / {candidates.length}
-            </output>
-            <button
-              className="icon-button"
-              title="체크된 Lot/Wafer 전체 복사"
-              aria-label="체크된 Lot/Wafer 전체 복사"
-              disabled={!checked.size}
-              onClick={() =>
-                void copyWaferTuples(
-                  candidates.filter((row) => checked.has(pairKey(row))),
-                  '체크된 Lot/Wafer',
-                )
-              }
-            >
-              {copyStatus === '체크된 Lot/Wafer 복사 완료' ? (
-                <Check size={13} />
-              ) : (
-                <Copy size={13} />
-              )}
-            </button>
-            <input
-              type="checkbox"
-              aria-label="Wafer 전체 선택"
-              checked={
-                !!candidates.length && checked.size === candidates.length
-              }
-              ref={(node) => {
-                if (node)
-                  node.indeterminate =
-                    checked.size > 0 && checked.size < candidates.length;
-              }}
-              disabled={!candidates.length}
-              onChange={(event) =>
-                setChecked(
-                  new Set(event.target.checked ? candidates.map(pairKey) : []),
-                )
-              }
-            />
-          </header>
-          {(die || region) && (
-            <div className="board-die-scope" aria-live="polite">
-              <span>
-                {die
-                  ? `Die (${die[0]},${die[1]}) · 구간 Flag ${flaggedDieWafers.length}/${dieEvidence.filter((row) => row.bin !== null).length}`
-                  : `선택 영역 · Flag Wafer ${flaggedRegionWafers.length}/${maps.length}`}
-              </span>
-              <button
-                className="icon-button"
-                title={
-                  region
-                    ? '선택 영역의 Flag Wafer만 분석에 포함'
-                    : '해당 Die의 Flag Wafer만 분석에 포함'
-                }
-                disabled={
-                  !(region ? flaggedRegionWafers : flaggedDieWafers).length
-                }
-                onClick={() =>
-                  setChecked(
-                    new Set(
-                      (region ? flaggedRegionWafers : flaggedDieWafers).map(
-                        pairKey,
-                      ),
-                    ),
-                  )
-                }
-              >
-                <ListFilter size={13} />
-              </button>
-              <button
-                className="icon-button"
-                title="Wafer 목록의 Map 선택 해제"
-                onClick={() => selectDie(null)}
-              >
-                <X size={13} />
-              </button>
-            </div>
-          )}
-          <div className="board-wafer-list">
-            <table>
-              <thead>
-                <tr>
-                  <th aria-label="선택" />
-                  <th>Lot</th>
-                  <th>Wafer</th>
-                  <th aria-label="복사 및 비교" />
-                </tr>
-              </thead>
-              <tbody>
-                {candidates.map((row) => (
-                  <tr
-                    key={pairKey(row)}
-                    className={
-                      focused && pairKey(focused) === pairKey(row)
-                        ? 'selected'
-                        : ''
-                    }
-                  >
-                    <td>
-                      <input
-                        type="checkbox"
-                        aria-label={`${row.lotId} / ${row.waferId} 합성 포함`}
-                        checked={checked.has(pairKey(row))}
-                        onChange={(event) =>
-                          setChecked((previous) => {
-                            const next = new Set(previous);
-                            if (event.target.checked) next.add(pairKey(row));
-                            else next.delete(pairKey(row));
-                            return next;
-                          })
-                        }
-                      />
-                    </td>
-                    <td>{row.lotId}</td>
-                    <td>
-                      <button
-                        className="board-wafer-focus"
-                        title={`${row.lotId} / ${row.waferId} 개별 Map`}
-                        aria-pressed={
-                          !!focused && pairKey(focused) === pairKey(row)
-                        }
-                        onClick={() => onFocus(row)}
-                      >
-                        {row.waferId}
-                      </button>
-                    </td>
-                    <td className="board-wafer-actions">
-                      <button
-                        className="icon-button"
-                        title={`${row.lotId}/${row.waferId} Lot/Wafer 복사`}
-                        aria-label={`${row.lotId}/${row.waferId} Lot/Wafer 복사`}
-                        onClick={() =>
-                          void copyWaferTuples(
-                            [row],
-                            `${row.lotId}/${row.waferId}`,
-                          )
-                        }
-                      >
-                        {copyStatus ===
-                        `${row.lotId}/${row.waferId} 복사 완료` ? (
-                          <Check size={13} />
-                        ) : (
-                          <Copy size={13} />
-                        )}
-                      </button>
-                      <button
-                        className="icon-button board-peer-pick"
-                        title={`${row.lotId}/${row.waferId} · ${row.equipment} · ${row.timestamp} · 비교 B 지정`}
-                        disabled={
-                          !!focused && pairKey(focused) === pairKey(row)
-                        }
-                        aria-pressed={!!peer && pairKey(peer) === pairKey(row)}
-                        onClick={() =>
-                          setPeerState({
-                            scope,
-                            equipment: row.equipment,
-                            key: pairKey(row),
-                          })
-                        }
-                      >
-                        <Columns2 size={13} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {copyStatus && (
-            <span className="board-copy-status" role="status">
-              {copyStatus}
-            </span>
-          )}
-          {!candidates.length && (
-            <p className="board-empty">해당 구간 Wafer 없음</p>
-          )}
-          <footer>
-            현재 Fab · EDS 대기
-            <br />
-            {!fabScope.exact && (
-              <>
-                <span
-                  className="board-scope-warning"
-                  title={fabScope.limitation || ''}
-                >
-                  {signalAxisLabel(signal)}→Fab 매핑 미연결 · Step 범위
-                </span>
-                <br />
-              </>
-            )}
-            등록 범위 ≠ 사고 영향 범위
-          </footer>
         </section>
         <section
           className="board-panel board-single-map"
@@ -1552,8 +1289,7 @@ export default function InvestigationBoard({
             workspace={workspace}
             focused={focused}
             compare={peer}
-            selected={candidates.filter((row) => checked.has(pairKey(row)))}
-            options={[...candidates, ...peerCandidates]}
+            options={trendWafers}
           />
         </section>
         <section
@@ -1742,6 +1478,333 @@ export default function InvestigationBoard({
           )}
         </section>
       </ResizableBoard>
+      {waferPickerOpen && (
+        <dialog
+          ref={waferDialog}
+          className="analysis-dialog board-wafer-dialog"
+          aria-label="선택 구간 Wafer 목록"
+          onCancel={() => setWaferPickerOpen(false)}
+          onClose={() => setWaferPickerOpen(false)}
+        >
+          <header>
+            <h2>구간 Lot / Wafer</h2>
+            <output aria-live="polite">
+              {checked.size} / {candidates.length}
+            </output>
+            <button
+              className="icon-button"
+              title="체크된 Lot/Wafer 전체 복사"
+              aria-label="체크된 Lot/Wafer 전체 복사"
+              disabled={!checked.size}
+              onClick={() =>
+                void copyWaferTuples(
+                  candidates.filter((row) => checked.has(pairKey(row))),
+                  '체크된 Lot/Wafer',
+                )
+              }
+            >
+              {copyStatus === '체크된 Lot/Wafer 복사 완료' ? (
+                <Check size={13} />
+              ) : (
+                <Copy size={13} />
+              )}
+            </button>
+            <input
+              type="checkbox"
+              aria-label="Wafer 전체 선택"
+              checked={
+                !!candidates.length && checked.size === candidates.length
+              }
+              ref={(node) => {
+                if (node)
+                  node.indeterminate =
+                    checked.size > 0 && checked.size < candidates.length;
+              }}
+              disabled={!candidates.length}
+              onChange={(event) =>
+                setChecked(
+                  new Set(event.target.checked ? candidates.map(pairKey) : []),
+                )
+              }
+            />
+            <button
+              className="icon-button"
+              title="Wafer 목록 닫기"
+              aria-label="Wafer 목록 닫기"
+              onClick={() => setWaferPickerOpen(false)}
+            >
+              <X size={16} />
+            </button>
+          </header>
+          <div className="board-scope board-scope-toolbar">
+            <div className="board-scope-main">
+              <strong>{signal.title}</strong>
+              <span>{signal.step}</span>
+              <label>
+                후속 설비
+                <select
+                  aria-label="조사 설비"
+                  value={selection.equipment}
+                  onChange={(event) =>
+                    change({ equipment: event.target.value })
+                  }
+                >
+                  <option value="">전체</option>
+                  {[...new Set(data.fab.map((row) => row.equipment))].map(
+                    (value) => (
+                      <option key={value}>{value}</option>
+                    ),
+                  )}
+                </select>
+              </label>
+              <label>
+                Recipe
+                <select
+                  aria-label="조사 Recipe"
+                  value={selection.recipe}
+                  onChange={(event) => change({ recipe: event.target.value })}
+                >
+                  <option value="">전체</option>
+                  {[...new Set(data.fab.map((row) => row.recipe))].map(
+                    (value) => (
+                      <option key={value}>{value}</option>
+                    ),
+                  )}
+                </select>
+              </label>
+              <span className="board-scope-window">
+                {time(from)} ~ {time(to)} UTC
+              </span>
+              <span className="board-demo">SYNTHETIC · 실측 미연결</span>
+            </div>
+            <div className="board-comparison-scope">
+              <strong>
+                A{' '}
+                {focused
+                  ? `${focused.lotId} / ${focused.waferId} · ${focused.equipment}`
+                  : 'Wafer 없음'}
+                {focused && !checked.has(pairKey(focused)) && (
+                  <span className="board-focus-excluded"> · A 분석 제외</span>
+                )}
+              </strong>
+              <label>
+                설비 B
+                <select
+                  aria-label="비교 설비 B"
+                  value={peerEquipment}
+                  onChange={(event) =>
+                    setPeerState({
+                      scope,
+                      equipment: event.target.value,
+                      key: '',
+                    })
+                  }
+                >
+                  {equipmentOptions.map((value) => (
+                    <option key={value}>{value}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Wafer B
+                <select
+                  aria-label="비교 Wafer B"
+                  value={peer ? pairKey(peer) : ''}
+                  disabled={!peerCandidates.length}
+                  onChange={(event) =>
+                    setPeerState({
+                      scope,
+                      equipment: peerEquipment,
+                      key: event.target.value,
+                    })
+                  }
+                >
+                  {!peerCandidates.length && (
+                    <option value="">
+                      해당 Step · 구간 · Recipe에 비교 Wafer 없음
+                    </option>
+                  )}
+                  {peerCandidates.map((row) => (
+                    <option value={pairKey(row)} key={pairKey(row)}>
+                      {row.lotId} / {row.waferId} ·{' '}
+                      {row.timestamp.slice(11, 16)}
+                      {semRecord(workspace, row.lotId, row.waferId)
+                        ? ' · SEM 등록'
+                        : ' · SEM 없음'}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <span>{signal.item} · 같은 Step / 구간 · 화면 비교</span>
+            </div>
+          </div>
+          {(die || region) && (
+            <div className="board-die-scope" aria-live="polite">
+              <span>
+                {die
+                  ? `Die (${die[0]},${die[1]}) · 구간 Flag ${flaggedDieWafers.length}/${dieEvidence.filter((row) => row.bin !== null).length}`
+                  : `선택 영역 · Flag Wafer ${flaggedRegionWafers.length}/${maps.length}`}
+              </span>
+              <button
+                className="icon-button"
+                title={
+                  region
+                    ? '선택 영역의 Flag Wafer만 분석에 포함'
+                    : '해당 Die의 Flag Wafer만 분석에 포함'
+                }
+                disabled={
+                  !(region ? flaggedRegionWafers : flaggedDieWafers).length
+                }
+                onClick={() =>
+                  setChecked(
+                    new Set(
+                      (region ? flaggedRegionWafers : flaggedDieWafers).map(
+                        pairKey,
+                      ),
+                    ),
+                  )
+                }
+              >
+                <ListFilter size={13} />
+              </button>
+              <button
+                className="icon-button"
+                title="Wafer 목록의 Map 선택 해제"
+                onClick={() => selectDie(null)}
+              >
+                <X size={13} />
+              </button>
+            </div>
+          )}
+          <div className="board-wafer-list">
+            <table>
+              <thead>
+                <tr>
+                  <th aria-label="선택" />
+                  <th>Lot</th>
+                  <th>Wafer</th>
+                  <th>EQP</th>
+                  <th>시간 · UTC</th>
+                  <th>SEM</th>
+                  <th aria-label="복사 및 비교" />
+                </tr>
+              </thead>
+              <tbody>
+                {candidates.map((row) => (
+                  <tr
+                    key={pairKey(row)}
+                    className={
+                      focused && pairKey(focused) === pairKey(row)
+                        ? 'selected'
+                        : ''
+                    }
+                  >
+                    <td>
+                      <input
+                        type="checkbox"
+                        aria-label={`${row.lotId} / ${row.waferId} 합성 포함`}
+                        checked={checked.has(pairKey(row))}
+                        onChange={(event) =>
+                          setChecked((previous) => {
+                            const next = new Set(previous);
+                            if (event.target.checked) next.add(pairKey(row));
+                            else next.delete(pairKey(row));
+                            return next;
+                          })
+                        }
+                      />
+                    </td>
+                    <td>{row.lotId}</td>
+                    <td>
+                      <button
+                        className="board-wafer-focus"
+                        title={`${row.lotId} / ${row.waferId} 개별 Map`}
+                        aria-pressed={
+                          !!focused && pairKey(focused) === pairKey(row)
+                        }
+                        onClick={() => {
+                          onFocus(row);
+                          setWaferPickerOpen(false);
+                        }}
+                      >
+                        {row.waferId}
+                      </button>
+                    </td>
+                    <td>{row.equipment}</td>
+                    <td>{time(row.timestamp)}</td>
+                    <td>
+                      {semRecord(workspace, row.lotId, row.waferId)
+                        ? '등록'
+                        : '없음'}
+                    </td>
+                    <td className="board-wafer-actions">
+                      <button
+                        className="icon-button"
+                        title={`${row.lotId}/${row.waferId} Lot/Wafer 복사`}
+                        aria-label={`${row.lotId}/${row.waferId} Lot/Wafer 복사`}
+                        onClick={() =>
+                          void copyWaferTuples(
+                            [row],
+                            `${row.lotId}/${row.waferId}`,
+                          )
+                        }
+                      >
+                        {copyStatus ===
+                        `${row.lotId}/${row.waferId} 복사 완료` ? (
+                          <Check size={13} />
+                        ) : (
+                          <Copy size={13} />
+                        )}
+                      </button>
+                      <button
+                        className="icon-button board-peer-pick"
+                        title={`${row.lotId}/${row.waferId} · ${row.equipment} · ${row.timestamp} · 비교 B 지정`}
+                        disabled={
+                          !!focused && pairKey(focused) === pairKey(row)
+                        }
+                        aria-pressed={!!peer && pairKey(peer) === pairKey(row)}
+                        onClick={() =>
+                          setPeerState({
+                            scope,
+                            equipment: row.equipment,
+                            key: pairKey(row),
+                          })
+                        }
+                      >
+                        <Columns2 size={13} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {copyStatus && (
+            <span className="board-copy-status" role="status">
+              {copyStatus}
+            </span>
+          )}
+          {!candidates.length && (
+            <p className="board-empty">해당 구간 Wafer 없음</p>
+          )}
+          <footer>
+            현재 Fab · EDS 대기
+            <br />
+            {!fabScope.exact && (
+              <>
+                <span
+                  className="board-scope-warning"
+                  title={fabScope.limitation || ''}
+                >
+                  {signalAxisLabel(signal)}→Fab 매핑 미연결 · Step 범위
+                </span>
+                <br />
+              </>
+            )}
+            등록 범위 ≠ 사고 영향 범위
+          </footer>
+        </dialog>
+      )}
       {preview && (
         <dialog
           className="analysis-dialog board-reference-dialog"
