@@ -30,6 +30,8 @@ import {
 } from './anomalyTrend';
 import {
   makeEngineeringData,
+  signalAxisLabel,
+  signalMember,
   type EngineeringData,
   type Signal,
 } from './engineeringData';
@@ -39,8 +41,11 @@ import {
   selectFabRows,
   parseEngineeringReference,
   parseSelection,
+  restoreSelection,
+  signalScopeKey,
   parsePairKey,
   pairKey,
+  signalFabScope,
   MAX_TREND_REGIONS,
   type InvestigationSelection,
   type TrendSelectionRegion,
@@ -157,6 +162,9 @@ function EngineeringTrend({
           step: signal.step,
           item: signal.item,
           legendAxis: signal.legendAxis,
+          axisLabel: signalAxisLabel(signal),
+          highlightedMember: signalMember(signal),
+          fabScope: signalFabScope(data, signal),
           from: rangeSelection ? new Date(from).toISOString() : null,
           to: rangeSelection ? new Date(to).toISOString() : null,
           valueRange: rangeSelection ? (selection.valueRange ?? null) : null,
@@ -583,8 +591,10 @@ export default function EngineeringWorkspace({
   const [selection, setSelection] = useState<InvestigationSelection>(() => {
     try {
       return (
-        parseSelection(JSON.parse(localStorage.getItem(key) || 'null'), data) ||
-        defaultSelection(data)
+        restoreSelection(
+          JSON.parse(localStorage.getItem(key) || 'null'),
+          data,
+        ) || defaultSelection(data)
       );
     } catch {
       return defaultSelection(data);
@@ -605,13 +615,19 @@ export default function EngineeringWorkspace({
     try {
       localStorage.setItem(
         key,
-        JSON.stringify({ ...selection, selectedPairKey }),
+        JSON.stringify({
+          ...selection,
+          selectedPairKey,
+          signalScope: signalScopeKey(
+            data.signals.find((row) => row.id === selection.signalId)!,
+          ),
+        }),
       );
       setSaved(true);
     } catch {
       setSaved(false);
     }
-  }, [key, selection, selectedPairKey]);
+  }, [key, selection, selectedPairKey, data]);
   useEffect(() => {
     const restored = parseEngineeringReference(reference, data);
     if (restored) {
@@ -625,12 +641,20 @@ export default function EngineeringWorkspace({
         (row) => reference === `engineering:wip:${row.lotId}`,
       );
       if (down) {
+        const currentSignal = data.signals.find(
+          (row) => row.id === selection.signalId,
+        );
+        const equipment =
+          currentSignal &&
+          (!currentSignal.legendAxis || currentSignal.legendAxis === 'eqp_id')
+            ? down.equipment
+            : '';
         const end = data.trend.findIndex(
           (point) => point.timestamp >= down.end,
         );
         setSelection((current) => ({
           ...current,
-          equipment: down.equipment,
+          equipment,
           start: Math.max(
             0,
             data.trend.filter((point) => point.timestamp <= down.start).length -
@@ -642,10 +666,17 @@ export default function EngineeringWorkspace({
           regions: [],
         }));
       } else if (wip) {
+        const currentSignal = data.signals.find(
+          (row) => row.id === selection.signalId,
+        );
         setSelection((current) => ({
           ...current,
-          equipment: wip.equipment,
-          recipe: wip.recipe,
+          equipment:
+            currentSignal &&
+            (!currentSignal.legendAxis || currentSignal.legendAxis === 'eqp_id')
+              ? wip.equipment
+              : '',
+          recipe: currentSignal?.legendAxis === 'recipe' ? wip.recipe : '',
         }));
       }
     }
@@ -683,9 +714,7 @@ export default function EngineeringWorkspace({
   );
   const choose = (s: Signal) => {
     setSelection({
-      ...defaultSelection(data),
-      signalId: s.id,
-      equipment: s.equipment,
+      ...defaultSelection(data, s.id),
     });
     setSelectedPairKey('');
     props.navigate('trend');
@@ -769,7 +798,6 @@ export default function EngineeringWorkspace({
                   rangeSelected: true,
                   valueRange: undefined,
                   regions: [],
-                  equipment: signal.equipment,
                 })
               }
             >

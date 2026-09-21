@@ -95,3 +95,19 @@ test('reports empty and unknown comparison inputs as invalid', () => {
   assert.equal(compareEquipment(data, signal, 'EQP-A', 'UNKNOWN', 0, 3).reason, 'invalid-equipment');
   assert.deepEqual(makeEquipmentTrace(data, signal, 'UNKNOWN'), []);
 });
+
+test('does not expose equipment peers for recipe-axis signals', () => {
+  const recipeSignal = {
+    ...signal,
+    id: 'recipe-signal',
+    legendAxis: 'recipe',
+    highlightedMember: 'RCP-A',
+  };
+  const recipeData = { ...data, signals: [recipeSignal] };
+  assert.deepEqual(availableEquipment(recipeData, recipeSignal), []);
+  assert.deepEqual(makeEquipmentTrace(recipeData, recipeSignal, 'EQP-B'), []);
+  assert.equal(
+    compareEquipment(recipeData, recipeSignal, 'EQP-A', 'EQP-B', 0, 3).reason,
+    'invalid-equipment',
+  );
+});

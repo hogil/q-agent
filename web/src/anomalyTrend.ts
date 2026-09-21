@@ -1,9 +1,10 @@
 import { median, quantileSorted } from 'simple-statistics';
-import type {
-  AnomalyPattern,
-  EngineeringData,
-  Signal,
-} from './engineeringData';
+import {
+  signalMember,
+  type AnomalyPattern,
+  type EngineeringData,
+  type Signal,
+} from './engineeringData.ts';
 import {
   changeTiming,
   pointInSelection,
@@ -38,6 +39,10 @@ export type TrendBoxSummary = TrendLegendGroup & {
 
 export function anomalyPattern(signal: Signal): AnomalyPattern {
   return signal.pattern ?? 'drift';
+}
+
+function usesEquipmentAxis(signal: Signal) {
+  return !signal.legendAxis || signal.legendAxis === 'eqp_id';
 }
 
 function targetPatternValue(
@@ -80,9 +85,9 @@ export function makeTrendFleet(data: EngineeringData, signal: Signal) {
   const baseline = median(before.map((row) => row[signal.metric]));
   const spread = signal.metric === 'temperature' ? 0.22 : 0.16;
   const members = [
-    signal.equipment,
+    signalMember(signal),
     ...Array.from({ length: 4 }, (_, i) => `SYN-REF-${i + 1}`),
-  ];
+  ].filter(Boolean);
   return members.map((member, memberIndex) => ({
     member,
     highlighted: memberIndex === 0,
@@ -250,7 +255,11 @@ export function trendLegendGroups(
       })),
   ];
 
-  if (comparisonEquipment && comparisonEquipment !== signal.equipment) {
+  if (
+    usesEquipmentAxis(signal) &&
+    comparisonEquipment &&
+    comparisonEquipment !== signal.equipment
+  ) {
     const peer = makeEquipmentTrace(data, signal, comparisonEquipment);
     if (peer.length) {
       groups.push({
@@ -495,7 +504,7 @@ export function anomalyTrendOption(
   const references = fleet.filter((row) => !row.highlighted);
   const target = fleet.find((row) => row.highlighted);
   const peer =
-    comparisonEquipment !== signal.equipment
+    usesEquipmentAxis(signal) && comparisonEquipment !== signal.equipment
       ? makeEquipmentTrace(data, signal, comparisonEquipment)
       : [];
   if (!target || !references.length) return { animation: false, series: [] };
@@ -509,8 +518,9 @@ export function anomalyTrendOption(
   const low = Math.min(...values),
     high = Math.max(...values);
   const margin = Math.max((high - low) * 0.15, 0.05);
-  const normal = `${signal.equipment} · N`;
-  const abnormal = `${signal.equipment} · A`;
+  const targetMember = signalMember(signal) || target.member;
+  const normal = `${targetMember} · N`;
+  const abnormal = `${targetMember} · A`;
   const option = {
     animation: false,
     textStyle: {
@@ -721,7 +731,7 @@ export function anomalyTrendOption(
         data: pointData(
           series.data,
           series.name === normal || series.name === abnormal
-            ? signal.equipment
+            ? targetMember
             : series.name === `${comparisonEquipment} · B`
               ? comparisonEquipment
               : series.name,

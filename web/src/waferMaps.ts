@@ -1,5 +1,54 @@
+import type { WaferGeometry } from './api';
+
 export type Die = { x: number; y: number; bin: number };
 export type DieRegion = [[number, number], [number, number]];
+
+export function waferCoordinates(
+  x: number,
+  y: number,
+  geometry: WaferGeometry | undefined,
+  space: 'chip' | 'normalized' = 'chip',
+) {
+  if (!geometry) return null;
+  const mmPerUnit = geometry.radius_mm / geometry.coordinate_radius;
+  const xMm =
+    space === 'chip'
+      ? x * geometry.chip_pitch_x_mm + geometry.chip_origin_x_mm
+      : x * mmPerUnit;
+  const yMm =
+    space === 'chip'
+      ? y * geometry.chip_pitch_y_mm + geometry.chip_origin_y_mm
+      : y * mmPerUnit;
+  return {
+    xMm,
+    yMm,
+    radiusMm: Math.hypot(xMm, yMm),
+    chipX:
+      space === 'chip'
+        ? x
+        : Math.floor(
+            (xMm - geometry.chip_origin_x_mm) / geometry.chip_pitch_x_mm + 0.5,
+          ),
+    chipY:
+      space === 'chip'
+        ? y
+        : Math.floor(
+            (yMm - geometry.chip_origin_y_mm) / geometry.chip_pitch_y_mm + 0.5,
+          ),
+  };
+}
+
+export function waferCoordinateText(
+  x: number,
+  y: number,
+  geometry: WaferGeometry | undefined,
+  space: 'chip' | 'normalized' = 'chip',
+): string {
+  const point = waferCoordinates(x, y, geometry, space);
+  if (!point)
+    return `${space === 'chip' ? 'Chip' : 'XY'} (${x.toFixed(space === 'chip' ? 0 : 1)}, ${y.toFixed(space === 'chip' ? 0 : 1)})\nX / Y / R mm: geometry 미설정`;
+  return `X ${point.xMm.toFixed(2)} mm · Y ${point.yMm.toFixed(2)} mm\nR ${point.radiusMm.toFixed(2)} mm / ${geometry!.radius_mm} mm\nChip (${point.chipX}, ${point.chipY})${space === 'normalized' ? ' · pitch 기준' : ''}\n합성 geometry`;
+}
 
 export function selectDieRegion<T extends { x: number; y: number }>(
   dies: T[],

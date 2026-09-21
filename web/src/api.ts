@@ -49,6 +49,14 @@ export type Meeting = {
   source_ref: string;
   status: string;
 };
+export type WaferGeometry = {
+  radius_mm: number;
+  coordinate_radius: number;
+  chip_pitch_x_mm: number;
+  chip_pitch_y_mm: number;
+  chip_origin_x_mm: number;
+  chip_origin_y_mm: number;
+};
 export type Workspace = {
   incident: Incident;
   lots: Lot[];
@@ -56,6 +64,7 @@ export type Workspace = {
   meetings: Meeting[];
   synthetic: true;
   as_of: string;
+  wafer_geometry?: WaferGeometry;
   raw?: {
     engineering: EngineeringData;
     trend_fleets: Record<string, TrendFleet[]>;

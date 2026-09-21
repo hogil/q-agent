@@ -11,6 +11,8 @@ export type AnomalyPattern =
   | 'variance_burst'
   | 'periodic_pattern';
 
+export type LegendAxis = 'eqp_id' | 'chamber' | 'recipe';
+
 export type Signal = {
   id: string;
   title: string;
@@ -20,7 +22,8 @@ export type Signal = {
   equipment: string;
   step: string;
   item: string;
-  legendAxis: 'eqp_id';
+  legendAxis: LegendAxis;
+  highlightedMember?: string;
   recipe: string;
   detectedAt: string;
   startIndex: number;
@@ -29,6 +32,30 @@ export type Signal = {
   onsetIndex: number;
   pattern?: AnomalyPattern;
 };
+
+export function signalMember(
+  signal: Pick<Signal, 'legendAxis' | 'equipment' | 'highlightedMember'>,
+): string {
+  if (typeof signal.highlightedMember === 'string' && signal.highlightedMember.trim()) {
+    return signal.highlightedMember;
+  }
+  return !signal.legendAxis || signal.legendAxis === 'eqp_id'
+    ? signal.equipment
+    : '';
+}
+
+export function signalAxisLabel(
+  signal: Pick<Signal, 'legendAxis'>,
+): string {
+  const axis = signal.legendAxis || 'eqp_id';
+  return (
+    {
+      eqp_id: 'Equipment',
+      chamber: 'Chamber',
+      recipe: 'Recipe',
+    } as Record<string, string>
+  )[axis] ?? axis;
+}
 
 export type TrendPoint = {
   timestamp: string;

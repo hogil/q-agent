@@ -4,6 +4,8 @@ import {
   correlationSummary,
   defaultSelection,
   parseSelection,
+  restoreSelection,
+  signalScopeKey,
   engineeringReference,
   parseEngineeringReference,
   parsePairKey,
@@ -11,6 +13,7 @@ import {
   selectFabRows,
   summarizeSignalWindow,
   changeTiming,
+  signalFabScope,
 } from '../src/engineeringAnalysis.ts';
 
 const data = {
@@ -26,6 +29,43 @@ const data = {
   trend: Array.from({ length: 24 }, () => ({})),
   fab: [{ recipe: 'SYN-RCP-A' }],
 };
+
+test('restores filters only when the saved detection axis still matches', () => {
+  const saved = {
+    ...defaultSelection(data),
+    start: 2,
+    end: 8,
+    rangeSelected: true,
+  };
+  assert.deepEqual(restoreSelection(saved, data), saved);
+  const recipeData = {
+    ...data,
+    signals: [
+      {
+        ...data.signals[0],
+        legendAxis: 'recipe',
+        highlightedMember: 'SYN-RCP-A',
+      },
+    ],
+  };
+  assert.deepEqual(
+    restoreSelection(saved, recipeData),
+    defaultSelection(recipeData),
+  );
+  const current = {
+    ...saved,
+    signalScope: signalScopeKey(recipeData.signals[0]),
+  };
+  assert.deepEqual(restoreSelection(current, recipeData), saved);
+  assert.deepEqual(
+    restoreSelection(
+      { ...current, signalScope: '["recipe","OLD"]' },
+      recipeData,
+    ),
+    defaultSelection(recipeData),
+  );
+  assert.equal(restoreSelection(null, data), null);
+});
 
 const signalWindowData = {
   signals: [
@@ -554,6 +594,55 @@ test('initial and cleared selections have no active time filter', () => {
     parseEngineeringReference(engineeringReference('trend', legacy), data),
     legacy,
   );
+});
+
+test('defaults filters by recipe member and reports unmapped chamber scope', () => {
+  const recipeSignal = {
+    ...data.signals[0],
+    legendAxis: 'recipe',
+    highlightedMember: 'SYN-RCP-A',
+  };
+  const recipeData = {
+    ...data,
+    signals: [recipeSignal],
+    fab: [{ step: 'ETCH', recipe: 'SYN-RCP-A' }],
+  };
+  assert.deepEqual(
+    {
+      equipment: defaultSelection(recipeData).equipment,
+      recipe: defaultSelection(recipeData).recipe,
+    },
+    { equipment: '', recipe: 'SYN-RCP-A' },
+  );
+  assert.deepEqual(signalFabScope(recipeData, recipeSignal), {
+    axis: 'recipe',
+    member: 'SYN-RCP-A',
+    exact: true,
+    limitation: null,
+  });
+
+  const chamberSignal = {
+    ...data.signals[0],
+    legendAxis: 'chamber',
+    highlightedMember: 'CH-A',
+  };
+  const chamberData = { ...data, signals: [chamberSignal] };
+  assert.deepEqual(signalFabScope(chamberData, chamberSignal), {
+    axis: 'chamber',
+    member: 'CH-A',
+    exact: false,
+    limitation: 'Chamber member is not mapped to Fab metadata',
+  });
+  assert.deepEqual(defaultSelection(chamberData), {
+    signalId: 'signal-1',
+    start: 0,
+    end: 23,
+    rangeSelected: false,
+    regions: [],
+    equipment: '',
+    recipe: '',
+    maxLagDays: 14,
+  });
 });
 test('source references preserve a validated analysis snapshot without trusting arbitrary JSON', () => {
   const selection = { ...defaultSelection(data), recipe: 'SYN-RCP-A' };

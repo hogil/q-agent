@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { makeEngineeringData, matchFabYield } from '../src/engineeringData.ts';
+import {
+  makeEngineeringData,
+  matchFabYield,
+  signalAxisLabel,
+  signalMember,
+} from '../src/engineeringData.ts';
 
 const workspace = {
   incident: {
@@ -156,6 +161,26 @@ test('keeps synthetic signal chart metadata explicit and separate from highlight
       },
     ],
   );
+});
+
+test('resolves the detection member independently from related equipment metadata', () => {
+  const legacy = { legendAxis: 'eqp_id', equipment: 'EQP-1' };
+  const recipe = {
+    legendAxis: 'recipe',
+    equipment: 'EQP-2',
+    highlightedMember: 'RCP-A',
+  };
+  const chamber = {
+    legendAxis: 'chamber',
+    equipment: 'EQP-3',
+    highlightedMember: 'CH-A',
+  };
+  assert.equal(signalMember(legacy), 'EQP-1');
+  assert.equal(signalMember(recipe), 'RCP-A');
+  assert.equal(signalMember(chamber), 'CH-A');
+  assert.equal(signalAxisLabel(legacy), 'Equipment');
+  assert.equal(signalAxisLabel(recipe), 'Recipe');
+  assert.equal(signalAxisLabel(chamber), 'Chamber');
 });
 
 test('does not fabricate wafer IDs and keeps WIP scoped to registered lots', () => {

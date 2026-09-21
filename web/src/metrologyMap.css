@@ -1,0 +1,204 @@
+.metrology-map {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  color: #304b4a;
+  font-size: 9px;
+}
+
+.metrology-map-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+  min-height: 15px;
+  flex-shrink: 0;
+}
+
+.metrology-map-header span,
+.metrology-map-source {
+  display: block;
+  overflow: hidden;
+  color: #748681;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.metrology-map-header strong {
+  color: #53736b;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.metrology-map-source {
+  max-width: 100%;
+  margin: 2px 0 0;
+  color: #8d715a;
+  line-height: 1.05;
+  white-space: normal;
+}
+
+.board-panel .metrology-map-stage .metrology-map-chart {
+  width: min(100cqw, 100cqh);
+  height: min(100cqw, 100cqh);
+  max-width: 100%;
+  max-height: 100%;
+  margin: 0;
+}
+
+.metrology-map-stage {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  container-type: size;
+}
+
+.metrology-map-scale {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px;
+  color: #788986;
+  font-size: 9px;
+  line-height: 1;
+}
+
+.metrology-map-scale i {
+  display: block;
+  height: 5px;
+  border: 1px solid #d8e3df;
+  background: linear-gradient(
+    90deg,
+    #2f5f9b 0%,
+    #2e8b8b 25%,
+    #65b78a 50%,
+    #d6c35c 75%,
+    #f1d36b 100%
+  );
+}
+
+.metrology-map-scale.diverging i {
+  background: linear-gradient(
+    90deg,
+    #3268a8 0%,
+    #8db9d5 25%,
+    #fffdf8 50%,
+    #e8a39a 75%,
+    #b33f4d 100%
+  );
+}
+
+.metrology-map-legend {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  margin-top: 4px;
+  color: #758581;
+  font-size: 9px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.metrology-map-legend span {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.metrology-map-legend i {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border: 1px solid #53736b;
+}
+
+.metrology-map-legend i.measured {
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+.metrology-map-legend i.estimated {
+  background: #9bc8b7;
+}
+
+.metrology-map-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 3px;
+  margin-top: 5px;
+  color: #758581;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.metrology-map-stats span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.metrology-map-stats b {
+  display: block;
+  margin-top: 2px;
+  color: #385854;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.metrology-map-area-stats {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  overflow: hidden;
+  color: #537c6e;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.metrology-map-area-stats span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.metrology-map-clear {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid #d6e1dc;
+  border-radius: 3px;
+  color: #6f817c;
+}
+
+.metrology-map-clear:hover {
+  background: #edf3f0;
+  color: #345f56;
+}
+
+.metrology-map-footer {
+  margin-top: 4px;
+  overflow: hidden;
+  color: #8a7770;
+  font-size: 9px;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

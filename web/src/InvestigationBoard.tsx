@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import type { CustomSeriesRenderItem } from 'echarts';
 import {
   AlertTriangle,
   ArrowDownToLine,
@@ -12,6 +13,9 @@ import {
   Copy,
   Search,
   ListRestart,
+  LockKeyhole,
+  UnlockKeyhole,
+  PanelsTopLeft,
 } from 'lucide-react';
 import { download, type Attachment, type Incident } from './api';
 import { Chart } from './charts';
@@ -26,9 +30,16 @@ import {
   selectFabRows,
   engineeringReference,
   changeTiming,
+  signalFabScope,
   type InvestigationSelection,
 } from './engineeringAnalysis';
-import type { EngineeringData, FabRow, Signal } from './engineeringData';
+import {
+  signalMember,
+  signalAxisLabel,
+  type EngineeringData,
+  type FabRow,
+  type Signal,
+} from './engineeringData';
 import {
   compositeWaferMaps,
   inspectWaferDie,
@@ -36,12 +47,16 @@ import {
   type DieRegion,
   waferData,
   waferSeed,
+  waferCoordinateText,
 } from './waferMaps';
 import HistoricalCorrelation from './HistoricalCorrelation';
 import BoardSem from './BoardSem';
 import { availableEquipment, compareEquipment } from './equipmentComparison';
 import BoardAnalysis from './BoardAnalysis';
 import DetectionFlow from './DetectionFlow';
+import ResizableBoard from './ResizableBoard';
+import MetrologyMap from './BoardMetrology';
+import type { MetrologyMetric } from './metrologyMap';
 import { SourcePreview } from './ReviewView';
 import {
   makeInformNotes,
@@ -106,6 +121,13 @@ export default function InvestigationBoard({
 }) {
   const incident = workspace.incident.incident_number;
   const signal = data.signals.find((row) => row.id === selection.signalId)!;
+  const fabScope = signalFabScope(data, signal);
+  const [layoutLocked, setLayoutLocked] = useState(false);
+  const [layoutReset, setLayoutReset] = useState(0);
+  const [layoutStorageError, setLayoutStorageError] = useState(false);
+  const [mapMode, setMapMode] = useState<'bin' | 'cd' | 'overlay'>('bin');
+  const [overlayMetric, setOverlayMetric] =
+    useState<MetrologyMetric>('overlay-magnitude');
   const [signalQuery, setSignalQuery] = useState('');
   const [priority, setPriority] = useState('all');
   const [signalOrder, setSignalOrder] = useState('source');
@@ -121,6 +143,8 @@ export default function InvestigationBoard({
         row.device,
         row.step,
         row.item,
+        signalMember(row),
+        signalAxisLabel(row),
         row.equipment,
         row.recipe,
         row.title,
@@ -183,11 +207,13 @@ export default function InvestigationBoard({
       row.end >= from,
   );
   const related = incidents.filter((row) => row.incident_number !== incident);
-  const informNotes = selectInformNotes(
-    makeInformNotes(data),
-    signal.step,
-    signal.equipment,
-  );
+  const informEquipment =
+    signal.legendAxis === 'eqp_id' ? signalMember(signal) : selection.equipment;
+  const informNotes = informEquipment
+    ? selectInformNotes(makeInformNotes(data), signal.step, informEquipment)
+    : makeInformNotes(data)
+        .filter((note) => note.step === signal.step)
+        .sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
   const scope = JSON.stringify([
     selection.signalId,
     selection.start,
@@ -234,7 +260,20 @@ export default function InvestigationBoard({
   }, [scope]);
   const focused =
     candidates.find((row) => pairKey(row) === focusedKey) || candidates[0];
-  const equipmentOptions = availableEquipment(data, signal);
+  const equipmentOptions =
+    signal.legendAxis === 'eqp_id'
+      ? availableEquipment(data, signal)
+      : [
+          ...new Set(
+            data.fab
+              .filter((row) => row.step === signal.step)
+              .map((row) => row.equipment),
+          ),
+        ];
+  const comparisonPrimary =
+    signal.legendAxis === 'eqp_id'
+      ? signalMember(signal)
+      : focused?.equipment || '';
   const [peerState, setPeerState] = useState({
     scope: '',
     equipment: '',
@@ -243,8 +282,9 @@ export default function InvestigationBoard({
   const peerEquipment =
     peerState.scope === scope
       ? peerState.equipment
-      : equipmentOptions.find((value) => value !== signal.equipment) ||
-        signal.equipment;
+      : equipmentOptions.find((value) => value !== comparisonPrimary) ||
+        equipmentOptions[0] ||
+        '';
   const peerCandidates = selectFabRows(data, {
     ...selection,
     equipment: peerEquipment,
@@ -347,16 +387,40 @@ export default function InvestigationBoard({
     yAxis: { type: 'value', min: -18, max: 18, show: false },
     tooltip: {
       renderMode: 'richText',
+      confine: true,
       formatter: (p: { value: number[] }) =>
-        combined
-          ? `Die (${p.value[0]}, ${p.value[1]})\nFlag ${p.value[2]} / ${p.value[3]} (${p.value[4].toFixed(1)}%) · 합성`
-          : `Die (${p.value[0]}, ${p.value[1]})\nBin ${p.value[2]} · 합성`,
+        `${waferCoordinateText(p.value[0], p.value[1], workspace.wafer_geometry)}\n` +
+        (combined
+          ? `Flag ${p.value[2]} / ${p.value[3]} (${p.value[4].toFixed(1)}%) · 합성`
+          : `Bin ${p.value[2]} · 합성`),
     },
     series: [
       {
-        type: 'scatter',
-        symbol: 'rect',
-        symbolSize: 5,
+        type: 'custom',
+        z: 1,
+        zlevel: 0,
+        clip: true,
+        encode: { x: 0, y: 1 },
+        renderItem: ((_params, api) => {
+          const point = api.coord([api.value(0), api.value(1)]);
+          const next = api.coord([
+            Number(api.value(0)) + 1,
+            Number(api.value(1)) + 1,
+          ]);
+          const width = Math.max(1, Math.abs(next[0] - point[0]) * 0.86);
+          const height = Math.max(1, Math.abs(next[1] - point[1]) * 0.86);
+          return {
+            type: 'rect',
+            z2: 0,
+            shape: {
+              x: point[0] - width / 2,
+              y: point[1] - height / 2,
+              width,
+              height,
+            },
+            style: { fill: api.visual('color') as string },
+          };
+        }) as CustomSeriesRenderItem,
         markPoint: die
           ? {
               silent: true,
@@ -391,11 +455,11 @@ export default function InvestigationBoard({
   // List filtering must not reset the map renderer or its active brush.
   const singleMapOption = useMemo(
     () => mapOption(false),
-    [current, die, region],
+    [current, die, region, workspace.wafer_geometry],
   );
   const compositeMapOption = useMemo(
     () => mapOption(true),
-    [composite, die, region, threshold],
+    [composite, die, region, threshold, workspace.wafer_geometry],
   );
 
   const exportComposite = () =>
@@ -537,6 +601,41 @@ export default function InvestigationBoard({
           {time(from)} ~ {time(to)} UTC
         </span>
         <span className="board-demo">SYNTHETIC · 실측 미연결</span>
+        <div className="board-layout-actions">
+          <button
+            className="icon-button"
+            aria-label="패널 크기 잠금"
+            title="패널 크기 잠금"
+            aria-pressed={layoutLocked}
+            onClick={() => setLayoutLocked((value) => !value)}
+          >
+            {layoutLocked ? (
+              <LockKeyhole size={14} />
+            ) : (
+              <UnlockKeyhole size={14} />
+            )}
+          </button>
+          <button
+            className="icon-button"
+            aria-label="기본 패널 배치 복원"
+            title={
+              layoutStorageError
+                ? '배치 저장 실패 · 기본 배치 복원'
+                : '기본 패널 배치 복원'
+            }
+            onClick={() => setLayoutReset((value) => value + 1)}
+          >
+            <PanelsTopLeft
+              size={14}
+              className={layoutStorageError ? 'layout-storage-error' : ''}
+            />
+          </button>
+          {layoutStorageError && (
+            <span className="sr-only" role="status">
+              브라우저 배치 저장 실패
+            </span>
+          )}
+        </div>
       </div>
       <div className="board-comparison-scope">
         <strong>
@@ -602,8 +701,13 @@ export default function InvestigationBoard({
         }
         b={peer ? { lot_id: peer.lotId, wafer_id: peer.waferId } : undefined}
       />
-      <div className="board-grid">
+      <ResizableBoard
+        locked={layoutLocked}
+        resetKey={layoutReset}
+        onStorageError={setLayoutStorageError}
+      >
         <section
+          data-panel="signals"
           className="board-panel board-signals"
           aria-label="이상감지 선택 목록"
         >
@@ -619,7 +723,7 @@ export default function InvestigationBoard({
               <Search size={13} aria-hidden="true" />
               <input
                 aria-label="이상 목록 검색"
-                placeholder="Device · Step · Item · EQP"
+                placeholder="Device · Step · Item · Group"
                 value={signalQuery}
                 onChange={(event) => setSignalQuery(event.target.value)}
               />
@@ -731,10 +835,8 @@ export default function InvestigationBoard({
                       </button>
                     </td>
                     <td>
-                      {row.equipment}
-                      <small>
-                        {row.legendAxis} · {row.recipe}
-                      </small>
+                      {signalMember(row)}
+                      <small>{signalAxisLabel(row)}</small>
                     </td>
                     <td>{time(row.detectedAt)}</td>
                     <td>
@@ -758,7 +860,8 @@ export default function InvestigationBoard({
             </table>
           </div>
           <footer>
-            <strong>{signal.item}</strong> · {signal.equipment}
+            <strong>{signal.item}</strong> · {signalAxisLabel(signal)}:{' '}
+            {signalMember(signal)}
             {!selectedVisible && (
               <span className="board-filter-hidden">
                 {' '}
@@ -772,6 +875,7 @@ export default function InvestigationBoard({
         </section>
         <section
           className="board-panel board-trend"
+          data-panel="trend"
           aria-label="선택 이상감지 Trend"
         >
           <header>
@@ -809,7 +913,7 @@ export default function InvestigationBoard({
             aria-live="polite"
           >
             <span
-              title={`대상 설비 Raw · 감지 전 ${windowSummary.baseline.from || '-'} ~ ${windowSummary.baseline.to || '-'} · 정상 검증 아님`}
+              title={`${signalAxisLabel(signal)} ${signalMember(signal)} Raw · 감지 전 ${windowSummary.baseline.from || '-'} ~ ${windowSummary.baseline.to || '-'} · 정상 검증 아님`}
             >
               <small>감지 전 · n={windowSummary.baseline.n}</small>
               <b>
@@ -818,7 +922,7 @@ export default function InvestigationBoard({
               </b>
             </span>
             <span
-              title={`대상 설비 Raw · 범위 ${number(windowSummary.selected.min)} ~ ${number(windowSummary.selected.max)}`}
+              title={`${signalAxisLabel(signal)} ${signalMember(signal)} Raw · 범위 ${number(windowSummary.selected.min)} ~ ${number(windowSummary.selected.max)}`}
             >
               <small>
                 {selection.rangeSelected === false ? '전체' : '선택'} · n=
@@ -840,7 +944,7 @@ export default function InvestigationBoard({
               </b>
             </span>
             <span
-              title={`대상 설비 Raw의 Q3 − Q1 · 감지 전 IQR ${number(windowSummary.baseline.iqr)} · 최소 3개 표본`}
+              title={`감지 대상 Raw의 Q3 − Q1 · 감지 전 IQR ${number(windowSummary.baseline.iqr)} · 최소 3개 표본`}
             >
               <small>
                 {selection.rangeSelected === false ? '전체' : '선택'} IQR
@@ -854,9 +958,18 @@ export default function InvestigationBoard({
           <div
             className="board-equipment-stats"
             aria-live="polite"
-            title={`시간 집계 중앙값 · Signal A ${signal.equipment} · B ${peerEquipment} · 합성 자료`}
+            title={
+              signal.legendAxis === 'eqp_id'
+                ? `시간 집계 중앙값 · Signal A ${signal.equipment} · B ${peerEquipment} · 합성 자료`
+                : `감지 비교축: ${signalAxisLabel(signal)} · 설비 원인 확정 아님`
+            }
           >
-            {equipmentComparison.valid ? (
+            {signal.legendAxis !== 'eqp_id' ? (
+              <span>
+                {signalAxisLabel(signal)} · {signalMember(signal)} · 그룹별 Raw
+                비교
+              </span>
+            ) : equipmentComparison.valid ? (
               <>
                 <b>
                   시간 집계 A/B {equipmentComparison.medianA?.toFixed(2)} /{' '}
@@ -963,6 +1076,7 @@ export default function InvestigationBoard({
         </section>
         <section
           className="board-panel board-correlation"
+          data-panel="correlation"
           aria-label="과거 완료 이력 상관분석"
         >
           <HistoricalCorrelation
@@ -974,6 +1088,7 @@ export default function InvestigationBoard({
         </section>
         <section
           className="board-panel board-cohort"
+          data-panel="cohort"
           aria-label="선택 구간 Wafer 목록"
         >
           <header>
@@ -1157,11 +1272,23 @@ export default function InvestigationBoard({
           <footer>
             현재 Fab · EDS 대기
             <br />
+            {!fabScope.exact && (
+              <>
+                <span
+                  className="board-scope-warning"
+                  title={fabScope.limitation || ''}
+                >
+                  {signalAxisLabel(signal)}→Fab 매핑 미연결 · Step 범위
+                </span>
+                <br />
+              </>
+            )}
             등록 범위 ≠ 사고 영향 범위
           </footer>
         </section>
         <section
           className="board-panel board-single-map"
+          data-panel="single-map"
           aria-label="개별 Wafer Map"
         >
           <header>
@@ -1170,58 +1297,99 @@ export default function InvestigationBoard({
             <button
               className="icon-button"
               title="Map 영역·Die 선택 해제"
-              disabled={!region && !die}
+              disabled={mapMode !== 'bin' || (!region && !die)}
               onClick={() => selectDie(null)}
             >
               <X size={14} />
             </button>
-            {expand('개별 Map 상세', 'map', 'wafer')}
           </header>
-          <div className="board-map-label">
-            {focused
-              ? `${focused.lotId} / ${focused.waferId}`
-              : '선택 Wafer 없음'}
-          </div>
-          <div className="board-map-stage">
-            {focused ? (
-              <Chart
-                option={singleMapOption}
-                className="board-map-canvas"
-                label="선택 Wafer 개별 Map"
-                onSelect={(p) => selectDie([p.value[0], p.value[1]])}
-                onArea={selectRegion}
-              />
-            ) : (
-              <p className="board-empty">Map 없음</p>
+          <div className="board-map-modes">
+            <div role="group" aria-label="개별 Map 종류">
+              {(['bin', 'cd', 'overlay'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  aria-pressed={mapMode === mode}
+                  onClick={() => setMapMode(mode)}
+                >
+                  {mode === 'bin' ? 'Bin' : mode === 'cd' ? 'CD' : 'Overlay'}
+                </button>
+              ))}
+            </div>
+            {mapMode === 'overlay' && (
+              <select
+                aria-label="Overlay 측정값"
+                value={overlayMetric}
+                onChange={(event) =>
+                  setOverlayMetric(event.target.value as MetrologyMetric)
+                }
+              >
+                <option value="overlay-magnitude">|Δ|</option>
+                <option value="overlay-x">ΔX</option>
+                <option value="overlay-y">ΔY</option>
+              </select>
             )}
           </div>
-          <div
-            className="board-image-findings"
-            aria-label="Wafer Map 분석 내용"
-            aria-live="polite"
-          >
-            <p>
-              {region ? '선택 영역' : '전체 Map'} · Flag {regionFlags}/
-              {regionDies.length} (
-              {regionDies.length
-                ? ((regionFlags / regionDies.length) * 100).toFixed(1) + '%'
-                : 'N/A'}
-              )
-            </p>
-            <p>
-              Bin 3 {regionDies.filter((row) => row.bin === 3).length} · Bin 4{' '}
-              {regionDies.filter((row) => row.bin === 4).length}
-            </p>
-            <small>합성 계산 · 원인 판정 미연결</small>
-          </div>
-          <footer>
-            <i style={{ background: bins[3] }} />
-            Bin 3 <i style={{ background: bins[4] }} />
-            Bin 4 · Flag ≥ 3
-          </footer>
+          {mapMode === 'bin' ? (
+            <>
+              <div className="board-map-label">
+                {focused
+                  ? `${focused.lotId} / ${focused.waferId}`
+                  : '선택 Wafer 없음'}
+              </div>
+              <div className="board-map-stage">
+                {focused ? (
+                  <Chart
+                    option={singleMapOption}
+                    mapNavigation
+                    className="board-map-canvas"
+                    label="선택 Wafer 개별 Map"
+                    onSelect={(p) => selectDie([p.value[0], p.value[1]])}
+                    onArea={selectRegion}
+                  />
+                ) : (
+                  <p className="board-empty">Map 없음</p>
+                )}
+              </div>
+              <div
+                className="board-image-findings"
+                aria-label="Wafer Map 분석 내용"
+                aria-live="polite"
+              >
+                <p>
+                  {region ? '선택 영역' : '전체 Map'} · Flag {regionFlags}/
+                  {regionDies.length} (
+                  {regionDies.length
+                    ? ((regionFlags / regionDies.length) * 100).toFixed(1) + '%'
+                    : 'N/A'}
+                  )
+                </p>
+                <p>
+                  Bin 3 {regionDies.filter((row) => row.bin === 3).length} · Bin
+                  4 {regionDies.filter((row) => row.bin === 4).length}
+                </p>
+                <small>합성 계산 · 원인 판정 미연결</small>
+              </div>
+              <footer>
+                <i style={{ background: bins[3] }} />
+                Bin 3 <i style={{ background: bins[4] }} />
+                Bin 4 · Flag ≥ 3
+              </footer>
+            </>
+          ) : focused ? (
+            <MetrologyMap
+              key={`${focused.lotId}:${focused.waferId}:${mapMode}:${overlayMetric}`}
+              lotId={focused.lotId}
+              waferId={focused.waferId}
+              metric={mapMode === 'cd' ? 'cd' : overlayMetric}
+              geometry={workspace.wafer_geometry}
+            />
+          ) : (
+            <p className="board-empty">선택 Wafer 없음</p>
+          )}
         </section>
         <section
           className="board-panel board-composite"
+          data-panel="composite"
           aria-label="선택 Wafer 합성 Map"
         >
           <header>
@@ -1242,6 +1410,7 @@ export default function InvestigationBoard({
             {composite.waferCount ? (
               <Chart
                 option={compositeMapOption}
+                mapNavigation
                 className="board-map-canvas"
                 label={`선택 ${composite.waferCount}개 Wafer 합성 Map`}
                 onSelect={(p) => selectDie([p.value[0], p.value[1]])}
@@ -1292,6 +1461,7 @@ export default function InvestigationBoard({
         </section>
         <section
           className="board-panel board-distribution"
+          data-panel="distribution"
           aria-label="Legend별 Box plot"
         >
           <header>
@@ -1325,6 +1495,7 @@ export default function InvestigationBoard({
         </section>
         <section
           className="board-panel board-images"
+          data-panel="images"
           aria-label="SEM 이미지 비교"
         >
           <BoardSem
@@ -1337,6 +1508,7 @@ export default function InvestigationBoard({
         </section>
         <section
           className="board-panel board-production"
+          data-panel="production"
           aria-label="생산 재공과 다운코드"
         >
           <header>
@@ -1419,6 +1591,7 @@ export default function InvestigationBoard({
         </section>
         <section
           className="board-panel board-documents"
+          data-panel="documents"
           aria-label="Inform Note 회의록과 이전 이력"
         >
           <header>
@@ -1426,7 +1599,7 @@ export default function InvestigationBoard({
             <span>합성</span>
           </header>
           <div className="board-inform-state">
-            {signal.step} / {signal.equipment}
+            {signal.step} / {informEquipment || '전체 설비 · Step 범위'}
           </div>
           <div className="board-doc-list">
             <table className="board-inform-table">
@@ -1498,6 +1671,7 @@ export default function InvestigationBoard({
         </section>
         <section
           className="board-panel board-assessment"
+          data-panel="assessment"
           aria-label="설명과 판정"
         >
           <BoardAnalysis
@@ -1517,7 +1691,7 @@ export default function InvestigationBoard({
             </p>
           )}
         </section>
-      </div>
+      </ResizableBoard>
       {preview && (
         <dialog
           className="analysis-dialog board-reference-dialog"

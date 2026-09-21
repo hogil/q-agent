@@ -938,3 +938,22 @@ test('legend focus preserves samples and axes and turning dimming off restores c
     );
   }
 });
+
+test('uses the highlighted recipe member and never mixes an EQP peer into recipe trend output', () => {
+  const recipeSignal = {
+    ...data.signals[0],
+    legendAxis: 'recipe',
+    highlightedMember: 'RCP-A',
+  };
+  const recipeData = { ...data, signals: [recipeSignal] };
+  const option = anomalyTrendOption(
+    recipeData,
+    defaultSelection(recipeData),
+    false,
+    'EQP-2',
+  );
+  assert.ok(option.legend.data.includes('RCP-A · N'));
+  assert.ok(option.legend.data.includes('RCP-A · A'));
+  assert.equal(option.legend.data.includes('EQP-2 · B'), false);
+  assert.equal(option.series.some((series) => series.name === 'EQP-2 · B'), false);
+});

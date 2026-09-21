@@ -76,6 +76,57 @@ class WorkbenchHTTPTests(unittest.TestCase):
         self.assertTrue(workspace["meetings"])
         self.assertTrue(all(item["status"] == "approved" for item in workspace["meetings"]))
         self.assertTrue(all(item["meeting_date"] <= "2026-03-31" for item in workspace["meetings"]))
+        self.assertNotIn("wafer_geometry", workspace)
+
+    def test_wafer_geometry_is_validated_and_propagated(self):
+        geometry = {
+            "radius_mm": 150,
+            "coordinate_radius": 16,
+            "chip_pitch_x_mm": 9.375,
+            "chip_pitch_y_mm": 9.375,
+            "chip_origin_x_mm": 0,
+            "chip_origin_y_mm": 0,
+        }
+        config = self.root / "geometry-workbench.yaml"
+        config.write_text(self.config.read_text(encoding="utf-8") + "wafer_geometry:\n" +
+                          "\n".join(f"  {key}: {value}" for key, value in geometry.items()) + "\n",
+                          encoding="utf-8")
+        loaded = load_workbench(config)
+        self.assertEqual(loaded["wafer_geometry"], geometry)
+        server = create_server(config, 0)
+        try:
+            workspace = server.app.workspace("SYN-2026-01")
+            self.assertEqual(workspace["wafer_geometry"], geometry)
+        finally:
+            server.server_close()
+
+    def test_wafer_geometry_rejects_invalid_shapes_and_values(self):
+        cases = [
+            ("zero", {"radius_mm": 0}),
+            ("nan", {"radius_mm": "NaN"}),
+            ("bool", {"radius_mm": True}),
+            ("missing", {"radius_mm": 150}),
+            ("extra", {"extra": 1}),
+        ]
+        valid = {
+            "radius_mm": 150,
+            "coordinate_radius": 16,
+            "chip_pitch_x_mm": 9.375,
+            "chip_pitch_y_mm": 9.375,
+            "chip_origin_x_mm": 0,
+            "chip_origin_y_mm": 0,
+        }
+        for name, changes in cases:
+            with self.subTest(name=name):
+                geometry = {**valid, **changes}
+                if name == "missing":
+                    geometry.pop("coordinate_radius")
+                config = self.root / f"invalid-{name}.yaml"
+                config.write_text(self.config.read_text(encoding="utf-8") + "wafer_geometry:\n" +
+                                  "\n".join(f"  {key}: {value}" for key, value in geometry.items()) + "\n",
+                                  encoding="utf-8")
+                with self.assertRaises(WorkbenchError):
+                    load_workbench(config)
 
     def test_room_persistence_rename_delete_and_targeted_message(self):
         status, room = self.request("POST", "/api/rooms", {"title": "검증 방", "incident_number": "SYN-2026-03"})

@@ -108,6 +108,33 @@ class WorkbenchDataTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "/assets/"):
             load_workbench_data({"raw_file": self.write(payload).name}, self.root)
 
+    def test_axes_require_matching_highlighted_fleet_and_no_non_equipment_peers(self):
+        payload = valid_payload()
+        signal = payload["incidents"]["SYN-1"]["engineering"]["signals"][0]
+        signal["legendAxis"] = "recipe"
+        signal["highlightedMember"] = "RCP-1"
+        payload["incidents"]["SYN-1"]["trend_fleets"]["signal-1"][0]["member"] = "RCP-1"
+        payload["incidents"]["SYN-1"]["comparison_traces"]["signal-1"] = {}
+        loaded = load_workbench_data({"raw_file": self.write(payload).name}, self.root)
+        self.assertEqual(loaded["SYN-1"]["engineering"]["signals"][0]["legendAxis"], "recipe")
+
+        invalid = valid_payload()
+        invalid_signal = invalid["incidents"]["SYN-1"]["engineering"]["signals"][0]
+        invalid_signal["legendAxis"] = "chamber"
+        invalid_signal["highlightedMember"] = "CH-A"
+        invalid["incidents"]["SYN-1"]["trend_fleets"]["signal-1"][0]["member"] = "EQP-1"
+        with self.assertRaisesRegex(ValueError, "highlighted member"):
+            load_workbench_data({"raw_file": self.write(invalid, "invalid-fleet.json").name}, self.root)
+
+        invalid = valid_payload()
+        invalid_signal = invalid["incidents"]["SYN-1"]["engineering"]["signals"][0]
+        invalid_signal["legendAxis"] = "recipe"
+        invalid_signal["highlightedMember"] = "RCP-1"
+        invalid["incidents"]["SYN-1"]["trend_fleets"]["signal-1"][0]["member"] = "RCP-1"
+        invalid["incidents"]["SYN-1"]["comparison_traces"]["signal-1"] = {"EQP-1": []}
+        with self.assertRaisesRegex(ValueError, "only supported for eqp_id"):
+            load_workbench_data({"raw_file": self.write(invalid, "invalid-peer.json").name}, self.root)
+
     def test_duplicate_timestamps_and_nonfinite_values_are_rejected(self):
         payload = valid_payload()
         payload["incidents"]["SYN-1"]["engineering"]["trend"][1]["timestamp"] = payload["incidents"]["SYN-1"]["engineering"]["trend"][0]["timestamp"]

@@ -375,7 +375,12 @@ export function MapView({ workspace: w, attach, initialWafer }: Props) {
       </div>
       <div className="map-stage">
         <div className="map-axis-label top">Y+</div>
-        <WaferChart seed={seed} filter={filter} onSelect={setDie} />
+        <WaferChart
+          seed={seed}
+          filter={filter}
+          onSelect={setDie}
+          geometry={w.wafer_geometry}
+        />
         <div className="notch" />
         <span className="map-axis-label bottom">NOTCH · 6 O'CLOCK</span>
       </div>

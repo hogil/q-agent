@@ -58,6 +58,8 @@ for (const incident of bootstrap.incidents) {
   );
   const comparisonTraces = Object.fromEntries(
     engineering.signals.map((signal) => {
+      const usesEquipmentAxis = !signal.legendAxis || signal.legendAxis === 'eqp_id';
+      if (!usesEquipmentAxis) return [signal.id, {}];
       const equipment = [...new Set(
         engineering.signals
           .filter((candidate) => candidate.step === signal.step)

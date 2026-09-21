@@ -8,7 +8,41 @@ import {
   selectDieRegion,
   waferData,
   waferSeed,
+  waferCoordinates,
+  waferCoordinateText,
 } from '../src/waferMaps.ts';
+
+test('physical coordinates use configured pitch, origin and radius, never guessed units', () => {
+  const geometry = {
+    radius_mm: 150,
+    coordinate_radius: 16,
+    chip_pitch_x_mm: 8,
+    chip_pitch_y_mm: 10,
+    chip_origin_x_mm: 1,
+    chip_origin_y_mm: -2,
+  };
+  assert.deepEqual(waferCoordinates(2, -1, geometry), {
+    xMm: 17,
+    yMm: -12,
+    radiusMm: Math.hypot(17, -12),
+    chipX: 2,
+    chipY: -1,
+  });
+  const measured = waferCoordinates(8, 0, geometry, 'normalized');
+  assert.deepEqual(measured, {
+    xMm: 75,
+    yMm: 0,
+    radiusMm: 75,
+    chipX: 9,
+    chipY: 0,
+  });
+  assert.equal(waferCoordinates(0, 0, undefined), null);
+  assert.match(waferCoordinateText(1, 2, undefined), /geometry 미설정/);
+  assert.match(
+    waferCoordinateText(2, -1, geometry),
+    /X 17.00 mm · Y -12.00 mm/,
+  );
+});
 
 test('rectangle selection uses coordinates in either drag direction without changing input', () => {
   const dies = [

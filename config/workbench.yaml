@@ -12,3 +12,11 @@ server:
   port: 8787
 sources:
   raw_file: ../data/workbench/raw.example.json
+# Synthetic 300mm wafer assumption for the demo; not verified real data.
+wafer_geometry:
+  radius_mm: 150
+  coordinate_radius: 16
+  chip_pitch_x_mm: 9.375
+  chip_pitch_y_mm: 9.375
+  chip_origin_x_mm: 0
+  chip_origin_y_mm: 0

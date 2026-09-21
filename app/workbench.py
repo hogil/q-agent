@@ -5,6 +5,7 @@ import argparse
 import copy
 import hashlib
 import json
+import math
 import mimetypes
 import re
 import sqlite3
@@ -111,13 +112,31 @@ def _path(value: str, base: Path) -> Path:
     return (target if target.is_absolute() else base / target).resolve()
 
 
+def _validate_wafer_geometry(raw):
+    fields = {
+        "radius_mm", "coordinate_radius", "chip_pitch_x_mm", "chip_pitch_y_mm",
+        "chip_origin_x_mm", "chip_origin_y_mm",
+    }
+    if not isinstance(raw, dict) or set(raw) != fields:
+        raise WorkbenchError("wafer_geometry must contain exactly six fields")
+    positive = {"radius_mm", "coordinate_radius", "chip_pitch_x_mm", "chip_pitch_y_mm"}
+    for field, value in raw.items():
+        if type(value) not in (int, float) or not math.isfinite(value):
+            raise WorkbenchError(f"wafer_geometry.{field} must be a finite number")
+        if field in positive and value <= 0:
+            raise WorkbenchError(f"wafer_geometry.{field} must be greater than zero")
+    return raw
+
+
 def load_workbench(path: str | Path, *, raw_file=None, agent_overlay=None) -> dict:
     config_path = Path(path).expanduser().resolve()
     raw = read_config(config_path)
-    if set(raw) - {"agent_overlay", "sources", "server"} != {"config_version", "demo", "chat", "cutoff", "static_root"}:
+    if set(raw) - {"agent_overlay", "sources", "server", "wafer_geometry"} != {"config_version", "demo", "chat", "cutoff", "static_root"}:
         raise WorkbenchError("workbench config keys are invalid")
     if raw["config_version"] != 1:
         raise WorkbenchError("unsupported workbench config version")
+    wafer_geometry = (_validate_wafer_geometry(raw["wafer_geometry"])
+                      if "wafer_geometry" in raw else None)
     server = raw.get("server", {"port": 8787})
     if (not isinstance(server, dict) or set(server) != {"port"}
             or type(server["port"]) is not int or not 1 <= server["port"] <= 65535):
@@ -185,7 +204,7 @@ def load_workbench(path: str | Path, *, raw_file=None, agent_overlay=None) -> di
     return {"settings": settings, "cutoff": cutoff, "static_root": static_root,
             "chat_db": chat_db, "history_limit": chat["history_limit"],
             "raw_data": raw_data, "port": server["port"],
-            "release": registry.get("release", "unknown")}
+            "release": registry.get("release", "unknown"), "wafer_geometry": wafer_geometry}
 
 
 def _summary(row: dict | None) -> dict | None:
@@ -202,6 +221,7 @@ class Workbench:
         self.chat_db = config["chat_db"]
         self.history_limit = config["history_limit"]
         self.release = config["release"]
+        self.wafer_geometry = config.get("wafer_geometry")
         self.raw_data = config.get("raw_data")
         self.actor = "local-workbench"
         self.lock = threading.RLock()
@@ -323,6 +343,8 @@ class Workbench:
             raise WorkbenchError(str(exc)) from None
         result = {"incident": incident, "lots": lots, "wafers": wafers, "meetings": meetings,
                   "synthetic": True, "as_of": self.cutoff}
+        if self.wafer_geometry is not None:
+            result["wafer_geometry"] = self.wafer_geometry
         if self.raw_data is not None:
             record = self.raw_data.get(incident_number)
             if record is None:

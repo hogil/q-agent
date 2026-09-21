@@ -16,6 +16,7 @@ _ANOMALY_PATTERNS = {
     "variance_burst",
     "periodic_pattern",
 }
+_LEGEND_AXES = {"eqp_id", "chamber", "recipe"}
 _STATUSES = {"RUN", "WAIT", "HOLD"}
 
 
@@ -116,6 +117,12 @@ def _validate_engineering(engineering: dict) -> set[str]:
             _fail(f"engineering.signals[{index}].metric is unsupported")
         for key in ("device", "equipment", "step", "item", "legendAxis", "recipe", "description"):
             _string(item[key], f"engineering.signals[{index}].{key}")
+        if item["legendAxis"] not in _LEGEND_AXES:
+            _fail(f"engineering.signals[{index}].legendAxis is unsupported")
+        if "highlightedMember" in item:
+            _string(item["highlightedMember"], f"engineering.signals[{index}].highlightedMember")
+        elif item["legendAxis"] != "eqp_id":
+            _fail(f"engineering.signals[{index}].highlightedMember is required for non-equipment axes")
         detected = _timestamp(item["detectedAt"], f"engineering.signals[{index}].detectedAt")
         start = _integer(item["startIndex"], f"engineering.signals[{index}].startIndex")
         end = _integer(item["endIndex"], f"engineering.signals[{index}].endIndex")
@@ -188,19 +195,29 @@ def _validate_engineering(engineering: dict) -> set[str]:
     return signal_scopes
 
 
-def _validate_trend_fleets(value: object, signal_ids: set[str]) -> None:
+def _validate_trend_fleets(value: object, signals: list[dict]) -> None:
     fleets = _object(value, "trend_fleets")
+    signal_ids = {row["id"] for row in signals}
     if set(fleets) != signal_ids:
         _fail("trend_fleets keys must exactly match engineering signal ids")
+    signal_by_id = {row["id"]: row for row in signals}
     for signal_id, traces in fleets.items():
-        for trace_index, trace in enumerate(_array(traces, f"trend_fleets.{signal_id}")):
+        trace_rows = _array(traces, f"trend_fleets.{signal_id}")
+        if not trace_rows:
+            _fail(f"trend_fleets.{signal_id} must not be empty")
+        members = []
+        highlighted_members = []
+        for trace_index, trace in enumerate(trace_rows):
             item = _object(trace, f"trend_fleets.{signal_id}[{trace_index}]")
             for key in ("member", "highlighted", "points"):
                 if key not in item:
                     _fail(f"trend_fleets.{signal_id}[{trace_index}].{key} is required")
             _string(item["member"], f"trend_fleets.{signal_id}[{trace_index}].member")
+            members.append(item["member"])
             if not isinstance(item["highlighted"], bool):
                 _fail(f"trend_fleets.{signal_id}[{trace_index}].highlighted must be boolean")
+            if item["highlighted"]:
+                highlighted_members.append(item["member"])
             timestamps = []
             for point_index, point in enumerate(_array(item["points"], f"trend_fleets.{signal_id}[{trace_index}].points")):
                 if not isinstance(point, list) or len(point) != 2:
@@ -208,6 +225,15 @@ def _validate_trend_fleets(value: object, signal_ids: set[str]) -> None:
                 timestamps.append(_finite(point[0], f"trend_fleets.{signal_id}[{trace_index}].points[{point_index}][0]"))
                 _finite(point[1], f"trend_fleets.{signal_id}[{trace_index}].points[{point_index}][1]")
             _unique(timestamps, f"trend_fleets.{signal_id}[{trace_index}] point timestamps")
+        _unique(members, f"trend_fleets.{signal_id} members")
+        if len(highlighted_members) != 1:
+            _fail(f"trend_fleets.{signal_id} must contain exactly one highlighted member")
+        signal = signal_by_id[signal_id]
+        expected_member = signal.get("highlightedMember")
+        if expected_member is None and signal["legendAxis"] == "eqp_id":
+            expected_member = signal["equipment"]
+        if highlighted_members[0] != expected_member:
+            _fail(f"trend_fleets.{signal_id} highlighted member does not match signal metadata")
 
 
 def _validate_comparison_traces(value: object, signals: list[dict]) -> None:
@@ -217,9 +243,14 @@ def _validate_comparison_traces(value: object, signals: list[dict]) -> None:
         _fail("comparison_traces keys must exactly match engineering signal ids")
     equipment_by_step: dict[str, set[str]] = {}
     for signal in signals:
-        equipment_by_step.setdefault(signal["step"], set()).add(signal["equipment"])
+        if signal["legendAxis"] == "eqp_id":
+            equipment_by_step.setdefault(signal["step"], set()).add(signal["equipment"])
     for signal in signals:
         signal_traces = _object(traces[signal["id"]], f"comparison_traces.{signal['id']}")
+        if signal["legendAxis"] != "eqp_id":
+            if signal_traces:
+                _fail(f"comparison_traces.{signal['id']} is only supported for eqp_id signals")
+            continue
         expected_equipment = equipment_by_step[signal["step"]]
         if set(signal_traces) != expected_equipment:
             _fail(f"comparison_traces.{signal['id']} must contain all same-step equipment including primary")
@@ -283,8 +314,7 @@ def _validate_incident(incident_number: str, record: object) -> dict:
         _fail(f"incidents.{incident_number} must contain engineering, trend_fleets, comparison_traces, inform_notes and sem_assets")
     engineering = _object(item["engineering"], f"incidents.{incident_number}.engineering")
     signal_scopes = _validate_engineering(engineering)
-    signal_ids = {row["id"] for row in engineering["signals"]}
-    _validate_trend_fleets(item["trend_fleets"], signal_ids)
+    _validate_trend_fleets(item["trend_fleets"], engineering["signals"])
     _validate_comparison_traces(item["comparison_traces"], engineering["signals"])
     _validate_inform_notes(item["inform_notes"], signal_scopes)
     fab_pairs = {(row["lotId"], row["waferId"]) for row in engineering["fab"]}

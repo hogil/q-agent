@@ -1,5 +1,11 @@
 import { mean, median, sampleCorrelation } from 'simple-statistics';
-import type { ChangeEvent, EngineeringData, Signal } from './engineeringData';
+import {
+  signalAxisLabel,
+  signalMember,
+  type ChangeEvent,
+  type EngineeringData,
+  type Signal,
+} from './engineeringData.ts';
 
 export type InvestigationSelection = {
   signalId: string;
@@ -120,17 +126,61 @@ export function parsePairKey(value: unknown, data: EngineeringData): string {
 
 export function defaultSelection(
   data: EngineeringData,
+  signalId?: string,
 ): InvestigationSelection {
-  const signal = data.signals[0];
+  const signal =
+    data.signals.find((row) => row.id === signalId) || data.signals[0];
+  const equipment =
+    signal && (!signal.legendAxis || signal.legendAxis === 'eqp_id')
+      ? signalMember(signal)
+      : '';
+  const recipe = signal?.legendAxis === 'recipe' ? signalMember(signal) : '';
   return {
     signalId: signal?.id || '',
     start: 0,
     end: Math.max(0, data.trend.length - 1),
     rangeSelected: false,
     regions: [],
-    equipment: signal?.equipment || '',
-    recipe: '',
+    equipment,
+    recipe,
     maxLagDays: 14,
+  };
+}
+
+export type SignalFabScope = {
+  axis: Signal['legendAxis'];
+  member: string;
+  exact: boolean;
+  limitation: string | null;
+};
+
+export function signalFabScope(
+  data: EngineeringData,
+  signal: Signal,
+): SignalFabScope {
+  const axis = signal.legendAxis || 'eqp_id';
+  const member = signalMember(signal);
+  if (axis === 'chamber') {
+    return {
+      axis,
+      member,
+      exact: false,
+      limitation: `${signalAxisLabel(signal)} member is not mapped to Fab metadata`,
+    };
+  }
+  const rows = data.fab.filter((row) =>
+    axis === 'recipe'
+      ? row.step === signal.step && row.recipe === member
+      : row.step === signal.step && row.equipment === member,
+  );
+  return {
+    axis,
+    member,
+    exact: rows.length > 0,
+    limitation:
+      rows.length > 0
+        ? null
+        : `No Fab metadata matches ${signalAxisLabel(signal)} member ${member}`,
   };
 }
 
@@ -188,6 +238,28 @@ export function parseSelection(
     recipe: s.recipe,
     maxLagDays: s.maxLagDays,
   };
+}
+
+export function signalScopeKey(signal: Signal): string {
+  return JSON.stringify([signal.legendAxis || 'eqp_id', signalMember(signal)]);
+}
+
+export function restoreSelection(
+  value: unknown,
+  data: EngineeringData,
+): InvestigationSelection | null {
+  const selection = parseSelection(value, data);
+  if (!selection) return null;
+  const signal = data.signals.find((row) => row.id === selection.signalId)!;
+  const savedScope = (value as { signalScope?: unknown }).signalScope;
+  // Legacy saved selections assumed equipment; do not reuse that filter for a new axis.
+  if (
+    savedScope === signalScopeKey(signal) ||
+    (savedScope === undefined &&
+      (!signal.legendAxis || signal.legendAxis === 'eqp_id'))
+  )
+    return selection;
+  return defaultSelection(data, signal.id);
 }
 
 export function correlationSummary(

@@ -41,6 +41,10 @@ function isMetric(value: unknown): value is Metric {
   return typeof value === 'string' && METRICS.includes(value as Metric);
 }
 
+function usesEquipmentAxis(signal: Signal) {
+  return !signal.legendAxis || signal.legendAxis === 'eqp_id';
+}
+
 function isSignal(signal: Signal): boolean {
   return Boolean(
     signal &&
@@ -96,7 +100,7 @@ export function availableEquipment(
   data: EngineeringData,
   signal: Signal,
 ): string[] {
-  if (!isSignal(signal) || !Array.isArray(data?.fab)) return [];
+  if (!isSignal(signal) || !usesEquipmentAxis(signal) || !Array.isArray(data?.fab)) return [];
   return [
     ...new Set([
       signal.equipment,
@@ -123,6 +127,7 @@ export function makeEquipmentTrace(
   signal: Signal,
   equipment: string,
 ): EquipmentTracePoint[] {
+  if (!usesEquipmentAxis(signal)) return [];
   if (data.comparisonTraces) return data.comparisonTraces[signal.id]?.[equipment] || [];
   if (
     !isSignal(signal) ||

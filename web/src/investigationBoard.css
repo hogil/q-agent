@@ -149,8 +149,6 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  grid-template-rows: minmax(0, 1.65fr) minmax(0, 1.35fr) minmax(0, 1fr);
   gap: 1px;
   background: #dce5df;
   border: 1px solid #dce5df;
@@ -205,43 +203,12 @@
   height: 7px;
   margin: 0 3px;
 }
-.board-signals {
-  grid-area: 1 / 1 / 2 / 6;
-}
-.board-trend {
-  grid-area: 1 / 6 / 2 / 10;
-}
-.board-correlation {
-  grid-area: 2 / 10 / 3 / 13;
-}
-.board-cohort {
-  grid-area: 2 / 1 / 3 / 3;
-}
-.board-single-map {
-  grid-area: 2 / 3 / 3 / 5;
-}
-.board-composite {
-  grid-area: 2 / 5 / 3 / 7;
-}
-.board-distribution {
-  grid-area: 2 / 7 / 3 / 10;
-}
 .board-distribution-chart {
   flex: 1;
   min-height: 0;
   width: 100%;
 }
-.board-images {
-  grid-area: 1 / 10 / 2 / 13;
-}
-.board-production {
-  grid-area: 3 / 1 / 4 / 5;
-}
-.board-documents {
-  grid-area: 3 / 5 / 4 / 8;
-}
 .board-assessment {
-  grid-area: 3 / 8 / 4 / 13;
   padding-top: 4px;
   padding-bottom: 4px;
 }
@@ -936,7 +903,7 @@
   padding: 3px 0;
   margin: 0;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
   gap: 4px 6px;
   flex-shrink: 0;
 }

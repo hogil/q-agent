@@ -1,6 +1,12 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Hand, Scan, ZoomIn, ZoomOut, RotateCcw, X } from 'lucide-react';
 import * as echarts from 'echarts/core';
-import { LineChart, ScatterChart, BoxplotChart } from 'echarts/charts';
+import {
+  LineChart,
+  ScatterChart,
+  BoxplotChart,
+  CustomChart,
+} from 'echarts/charts';
 import {
   GridComponent,
   TooltipComponent,
@@ -12,13 +18,21 @@ import {
   LegendComponent,
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
-import { waferData, type Die, type DieRegion } from './waferMaps';
+import {
+  waferData,
+  waferCoordinateText,
+  type Die,
+  type DieRegion,
+} from './waferMaps';
+import type { WaferGeometry } from './api';
+import './mapNavigation.css';
 export { waferData, type Die } from './waferMaps';
 
 echarts.use([
   LineChart,
   ScatterChart,
   BoxplotChart,
+  CustomChart,
   GridComponent,
   TooltipComponent,
   MarkLineComponent,
@@ -37,6 +51,7 @@ type ChartProps = {
   areaSelection?: DieRegion | null;
   label: string;
   className?: string;
+  mapNavigation?: boolean;
 };
 export function Chart({
   option,
@@ -45,7 +60,11 @@ export function Chart({
   areaSelection,
   label,
   className = '',
+  mapNavigation = false,
 }: ChartProps) {
+  const [mapMode, setMapMode] = useState<'select' | 'pan'>(
+    onArea ? 'select' : 'pan',
+  );
   const element = useRef<HTMLDivElement>(null);
   const instance = useRef<echarts.EChartsType | null>(null);
   const brushModifier = useRef(false);
@@ -53,6 +72,51 @@ export function Chart({
   handler.current = onSelect;
   const areaHandler = useRef(onArea);
   areaHandler.current = onArea;
+  const navigation = () => [
+    {
+      id: 'map-x',
+      type: 'inside',
+      xAxisIndex: 0,
+      filterMode: 'none',
+      minSpan: 5,
+      zoomOnMouseWheel: true,
+      moveOnMouseMove: mapMode === 'pan',
+      moveOnMouseWheel: false,
+    },
+    {
+      id: 'map-y',
+      type: 'inside',
+      yAxisIndex: 0,
+      filterMode: 'none',
+      minSpan: 5,
+      zoomOnMouseWheel: true,
+      moveOnMouseMove: mapMode === 'pan',
+      moveOnMouseWheel: false,
+    },
+  ];
+  function zoom(factor: number) {
+    const chart = instance.current;
+    if (!chart) return;
+    const ranges = chart.getOption().dataZoom as {
+      id: string;
+      start: number;
+      end: number;
+    }[];
+    chart.dispatchAction({
+      type: 'dataZoom',
+      batch: ranges.map((range) => {
+        const span = Math.min(
+          100,
+          Math.max(5, (range.end - range.start) * factor),
+        );
+        const start = Math.max(
+          0,
+          Math.min(100 - span, (range.start + range.end - span) / 2),
+        );
+        return { dataZoomId: range.id, start, end: start + span };
+      }),
+    });
+  }
   useEffect(() => {
     if (!element.current) return;
     const chart = echarts.init(element.current, undefined, {
@@ -95,10 +159,18 @@ export function Chart({
       brushModifier.current = false;
       chart.dispatchAction({ type: 'brush', areas: [] });
     });
-    const observer = new ResizeObserver(() => chart.resize());
+    let resizeFrame = 0;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(resizeFrame);
+      resizeFrame = requestAnimationFrame(() => {
+        if (element.current?.clientWidth && element.current.clientHeight)
+          chart.resize();
+      });
+    });
     observer.observe(element.current);
     return () => {
       observer.disconnect();
+      cancelAnimationFrame(resizeFrame);
       zr.off('mousedown', rememberBrushModifier);
       chart.dispose();
       instance.current = null;
@@ -107,9 +179,23 @@ export function Chart({
   useEffect(() => {
     const chart = instance.current;
     if (!chart) return;
+    const previousZoom = mapNavigation
+      ? (chart.getOption()?.dataZoom as
+          | { start: number; end: number }[]
+          | undefined)
+      : undefined;
     chart.setOption(
       {
         ...option,
+        ...(mapNavigation
+          ? {
+              dataZoom: navigation().map((item, i) => ({
+                ...item,
+                start: previousZoom?.[i]?.start ?? 0,
+                end: previousZoom?.[i]?.end ?? 100,
+              })),
+            }
+          : {}),
         ...(matchMedia('(prefers-reduced-motion: reduce)').matches
           ? { animation: false }
           : {}),
@@ -121,7 +207,7 @@ export function Chart({
         type: 'takeGlobalCursor',
         key: 'brush',
         brushOption: {
-          brushType: 'rect',
+          brushType: mapNavigation && mapMode === 'pan' ? false : 'rect',
           brushMode: 'single',
         },
       });
@@ -139,7 +225,98 @@ export function Chart({
             ]
           : [],
       });
-  }, [option, areaSelection]);
+  }, [option, areaSelection, mapNavigation]);
+  useEffect(() => {
+    if (!mapNavigation || !instance.current) return;
+    instance.current.setOption({ dataZoom: navigation() });
+    if (areaHandler.current)
+      instance.current.dispatchAction({
+        type: 'takeGlobalCursor',
+        key: 'brush',
+        brushOption: {
+          brushType: mapMode === 'select' ? 'rect' : false,
+          brushMode: 'single',
+        },
+      });
+  }, [mapMode, mapNavigation]);
+  if (mapNavigation)
+    return (
+      <div
+        className={`chart map-chart-shell ${className}`}
+        role="group"
+        aria-label={label}
+      >
+        <div
+          ref={element}
+          className="map-chart-surface"
+          role="img"
+          aria-label={label}
+        />
+        <div
+          className="map-navigation"
+          role="toolbar"
+          aria-label={`${label} 도구`}
+        >
+          {onArea && (
+            <button
+              type="button"
+              title="영역 선택"
+              aria-label="영역 선택"
+              aria-pressed={mapMode === 'select'}
+              onClick={() => setMapMode('select')}
+            >
+              <Scan size={13} />
+            </button>
+          )}
+          <button
+            type="button"
+            title="Map 이동"
+            aria-label="Map 이동"
+            aria-pressed={mapMode === 'pan'}
+            onClick={() => setMapMode('pan')}
+          >
+            <Hand size={13} />
+          </button>
+          <button
+            type="button"
+            title="Map 확대"
+            aria-label="Map 확대"
+            onClick={() => zoom(0.7)}
+          >
+            <ZoomIn size={13} />
+          </button>
+          <button
+            type="button"
+            title="Map 축소"
+            aria-label="Map 축소"
+            onClick={() => zoom(1 / 0.7)}
+          >
+            <ZoomOut size={13} />
+          </button>
+          <button
+            type="button"
+            title="Map 전체 보기"
+            aria-label="Map 전체 보기"
+            onClick={() => zoom(100)}
+          >
+            <RotateCcw size={13} />
+          </button>
+          {onArea && (
+            <button
+              type="button"
+              title="Map 영역 선택 해제"
+              aria-label="Map 영역 선택 해제"
+              onClick={() => {
+                areaHandler.current?.(null);
+                instance.current?.dispatchAction({ type: 'brush', areas: [] });
+              }}
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
+      </div>
+    );
   return (
     <div
       ref={element}
@@ -290,11 +467,13 @@ export function WaferChart({
   compact = false,
   filter = 'all',
   onSelect,
+  geometry,
 }: {
   seed: number;
   compact?: boolean;
   filter?: string;
   onSelect?: (die: Die) => void;
+  geometry?: WaferGeometry;
 }) {
   const option = useMemo(() => {
     const dice = waferData(seed);
@@ -304,8 +483,10 @@ export function WaferChart({
       xAxis: { type: 'value', min: -18, max: 18, show: false },
       yAxis: { type: 'value', min: -18, max: 18, show: false },
       tooltip: {
+        renderMode: 'richText',
+        confine: true,
         formatter: (p: any) =>
-          `Die (${p.value[0]}, ${p.value[1]})<br/>${p.value[2] >= 3 ? 'Edge flag' : 'Reference'} · 합성`,
+          `${waferCoordinateText(p.value[0], p.value[1], geometry)}\n${p.value[2] >= 3 ? 'Edge flag' : 'Reference'} · 합성`,
         textStyle: { fontSize: 12 },
       },
       series: [
@@ -329,11 +510,12 @@ export function WaferChart({
         },
       ],
     };
-  }, [seed, compact, filter]);
+  }, [seed, compact, filter, geometry]);
   return (
     <Chart
       option={option}
       label="합성 Wafer die map"
+      mapNavigation={!compact}
       className={compact ? 'wafer-chart compact-wafer' : 'wafer-chart'}
       onSelect={(p) =>
         onSelect?.({ x: p.value[0], y: p.value[1], bin: p.value[2] })

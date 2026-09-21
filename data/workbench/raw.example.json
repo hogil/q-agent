@@ -31,13 +31,14 @@
             "equipment": "SYN-EQP-02",
             "step": "SYN-ETCH-10",
             "item": "SYN-QUEUE",
-            "legendAxis": "eqp_id",
+            "legendAxis": "recipe",
             "recipe": "SYN-RCP-B",
             "detectedAt": "2026-03-28T08:05:00.000Z",
             "startIndex": 8,
             "endIndex": 19,
             "description": "SYN-EQP-02 · SYN-ETCH-10 · 합성 대기시간",
-            "onsetIndex": 6
+            "onsetIndex": 6,
+            "highlightedMember": "SYN-RCP-B"
           },
           {
             "id": "synthetic-signal-equipment-down",
@@ -48,13 +49,14 @@
             "equipment": "SYN-EQP-02",
             "step": "SYN-ETCH-10",
             "item": "SYN-AVAIL",
-            "legendAxis": "eqp_id",
+            "legendAxis": "chamber",
             "recipe": "SYN-RCP-B",
             "detectedAt": "2026-03-28T08:05:00.000Z",
             "startIndex": 14,
             "endIndex": 17,
             "description": "SYN-EQP-02 · 합성 설비 가동률",
-            "onsetIndex": 14
+            "onsetIndex": 14,
+            "highlightedMember": "SYN-CH-02"
           },
           {
             "id": "synthetic-signal-level-shift",
@@ -3347,7 +3349,7 @@
         ],
         "synthetic-signal-queue-rise": [
           {
-            "member": "SYN-EQP-02",
+            "member": "SYN-RCP-B",
             "highlighted": true,
             "points": [
               [
@@ -3929,7 +3931,7 @@
             ]
           },
           {
-            "member": "SYN-REF-1",
+            "member": "SYN-RCP-A",
             "highlighted": false,
             "points": [
               [
@@ -4511,7 +4513,7 @@
             ]
           },
           {
-            "member": "SYN-REF-2",
+            "member": "SYN-RCP-C",
             "highlighted": false,
             "points": [
               [
@@ -5093,7 +5095,7 @@
             ]
           },
           {
-            "member": "SYN-REF-3",
+            "member": "SYN-RCP-D",
             "highlighted": false,
             "points": [
               [
@@ -5675,7 +5677,7 @@
             ]
           },
           {
-            "member": "SYN-REF-4",
+            "member": "SYN-RCP-E",
             "highlighted": false,
             "points": [
               [
@@ -6259,7 +6261,7 @@
         ],
         "synthetic-signal-equipment-down": [
           {
-            "member": "SYN-EQP-02",
+            "member": "SYN-CH-02",
             "highlighted": true,
             "points": [
               [
@@ -6841,7 +6843,7 @@
             ]
           },
           {
-            "member": "SYN-REF-1",
+            "member": "SYN-CH-01",
             "highlighted": false,
             "points": [
               [
@@ -7423,7 +7425,7 @@
             ]
           },
           {
-            "member": "SYN-REF-2",
+            "member": "SYN-CH-03",
             "highlighted": false,
             "points": [
               [
@@ -8005,7 +8007,7 @@
             ]
           },
           {
-            "member": "SYN-REF-3",
+            "member": "SYN-CH-04",
             "highlighted": false,
             "points": [
               [
@@ -8587,7 +8589,7 @@
             ]
           },
           {
-            "member": "SYN-REF-4",
+            "member": "SYN-CH-05",
             "highlighted": false,
             "points": [
               [
@@ -21017,402 +21019,8 @@
             }
           ]
         },
-        "synthetic-signal-queue-rise": {
-          "SYN-EQP-01": [
-            {
-              "timestamp": "2026-03-27T21:05:00.000Z",
-              "value": 1.955862
-            },
-            {
-              "timestamp": "2026-03-27T22:05:00.000Z",
-              "value": 2.024241
-            },
-            {
-              "timestamp": "2026-03-27T23:05:00.000Z",
-              "value": 1.96026
-            },
-            {
-              "timestamp": "2026-03-28T00:05:00.000Z",
-              "value": 1.993422
-            },
-            {
-              "timestamp": "2026-03-28T01:05:00.000Z",
-              "value": 1.964325
-            },
-            {
-              "timestamp": "2026-03-28T02:05:00.000Z",
-              "value": 1.959647
-            },
-            {
-              "timestamp": "2026-03-28T03:05:00.000Z",
-              "value": 2.007414
-            },
-            {
-              "timestamp": "2026-03-28T04:05:00.000Z",
-              "value": 1.963381
-            },
-            {
-              "timestamp": "2026-03-28T05:05:00.000Z",
-              "value": 1.952938
-            },
-            {
-              "timestamp": "2026-03-28T06:05:00.000Z",
-              "value": 2.030937
-            },
-            {
-              "timestamp": "2026-03-28T07:05:00.000Z",
-              "value": 1.961534
-            },
-            {
-              "timestamp": "2026-03-28T08:05:00.000Z",
-              "value": 1.949308
-            },
-            {
-              "timestamp": "2026-03-28T09:05:00.000Z",
-              "value": 1.95264
-            },
-            {
-              "timestamp": "2026-03-28T10:05:00.000Z",
-              "value": 2.030026
-            },
-            {
-              "timestamp": "2026-03-28T11:05:00.000Z",
-              "value": 1.990788
-            },
-            {
-              "timestamp": "2026-03-28T12:05:00.000Z",
-              "value": 2.038848
-            },
-            {
-              "timestamp": "2026-03-28T13:05:00.000Z",
-              "value": 2.032697
-            },
-            {
-              "timestamp": "2026-03-28T14:05:00.000Z",
-              "value": 2.03451
-            },
-            {
-              "timestamp": "2026-03-28T15:05:00.000Z",
-              "value": 2.027624
-            },
-            {
-              "timestamp": "2026-03-28T16:05:00.000Z",
-              "value": 2.002767
-            },
-            {
-              "timestamp": "2026-03-28T17:05:00.000Z",
-              "value": 2.004025
-            },
-            {
-              "timestamp": "2026-03-28T18:05:00.000Z",
-              "value": 1.986427
-            },
-            {
-              "timestamp": "2026-03-28T19:05:00.000Z",
-              "value": 1.99016
-            },
-            {
-              "timestamp": "2026-03-28T20:05:00.000Z",
-              "value": 1.947383
-            }
-          ],
-          "SYN-EQP-02": [
-            {
-              "timestamp": "2026-03-27T21:05:00.000Z",
-              "value": 1.99
-            },
-            {
-              "timestamp": "2026-03-27T22:05:00.000Z",
-              "value": 1.99
-            },
-            {
-              "timestamp": "2026-03-27T23:05:00.000Z",
-              "value": 1.99
-            },
-            {
-              "timestamp": "2026-03-28T00:05:00.000Z",
-              "value": 1.99
-            },
-            {
-              "timestamp": "2026-03-28T01:05:00.000Z",
-              "value": 1.99
-            },
-            {
-              "timestamp": "2026-03-28T02:05:00.000Z",
-              "value": 2
-            },
-            {
-              "timestamp": "2026-03-28T03:05:00.000Z",
-              "value": 2.24
-            },
-            {
-              "timestamp": "2026-03-28T04:05:00.000Z",
-              "value": 2.48
-            },
-            {
-              "timestamp": "2026-03-28T05:05:00.000Z",
-              "value": 2.22
-            },
-            {
-              "timestamp": "2026-03-28T06:05:00.000Z",
-              "value": 2.46
-            },
-            {
-              "timestamp": "2026-03-28T07:05:00.000Z",
-              "value": 2.88
-            },
-            {
-              "timestamp": "2026-03-28T08:05:00.000Z",
-              "value": 3.11
-            },
-            {
-              "timestamp": "2026-03-28T09:05:00.000Z",
-              "value": 3.35
-            },
-            {
-              "timestamp": "2026-03-28T10:05:00.000Z",
-              "value": 3.59
-            },
-            {
-              "timestamp": "2026-03-28T11:05:00.000Z",
-              "value": 3.84
-            },
-            {
-              "timestamp": "2026-03-28T12:05:00.000Z",
-              "value": 4.08
-            },
-            {
-              "timestamp": "2026-03-28T13:05:00.000Z",
-              "value": 4.32
-            },
-            {
-              "timestamp": "2026-03-28T14:05:00.000Z",
-              "value": 4.56
-            },
-            {
-              "timestamp": "2026-03-28T15:05:00.000Z",
-              "value": 4.81
-            },
-            {
-              "timestamp": "2026-03-28T16:05:00.000Z",
-              "value": 5.05
-            },
-            {
-              "timestamp": "2026-03-28T17:05:00.000Z",
-              "value": 5.29
-            },
-            {
-              "timestamp": "2026-03-28T18:05:00.000Z",
-              "value": 5.53
-            },
-            {
-              "timestamp": "2026-03-28T19:05:00.000Z",
-              "value": 1.68
-            },
-            {
-              "timestamp": "2026-03-28T20:05:00.000Z",
-              "value": 1.68
-            }
-          ]
-        },
-        "synthetic-signal-equipment-down": {
-          "SYN-EQP-01": [
-            {
-              "timestamp": "2026-03-27T21:05:00.000Z",
-              "value": 99.291349
-            },
-            {
-              "timestamp": "2026-03-27T22:05:00.000Z",
-              "value": 99.192011
-            },
-            {
-              "timestamp": "2026-03-27T23:05:00.000Z",
-              "value": 99.197754
-            },
-            {
-              "timestamp": "2026-03-28T00:05:00.000Z",
-              "value": 99.388804
-            },
-            {
-              "timestamp": "2026-03-28T01:05:00.000Z",
-              "value": 99.365025
-            },
-            {
-              "timestamp": "2026-03-28T02:05:00.000Z",
-              "value": 99.230591
-            },
-            {
-              "timestamp": "2026-03-28T03:05:00.000Z",
-              "value": 99.178263
-            },
-            {
-              "timestamp": "2026-03-28T04:05:00.000Z",
-              "value": 99.299596
-            },
-            {
-              "timestamp": "2026-03-28T05:05:00.000Z",
-              "value": 99.198205
-            },
-            {
-              "timestamp": "2026-03-28T06:05:00.000Z",
-              "value": 99.252115
-            },
-            {
-              "timestamp": "2026-03-28T07:05:00.000Z",
-              "value": 99.195115
-            },
-            {
-              "timestamp": "2026-03-28T08:05:00.000Z",
-              "value": 99.216741
-            },
-            {
-              "timestamp": "2026-03-28T09:05:00.000Z",
-              "value": 99.341195
-            },
-            {
-              "timestamp": "2026-03-28T10:05:00.000Z",
-              "value": 99.233555
-            },
-            {
-              "timestamp": "2026-03-28T11:05:00.000Z",
-              "value": 99.33963
-            },
-            {
-              "timestamp": "2026-03-28T12:05:00.000Z",
-              "value": 99.302407
-            },
-            {
-              "timestamp": "2026-03-28T13:05:00.000Z",
-              "value": 99.244597
-            },
-            {
-              "timestamp": "2026-03-28T14:05:00.000Z",
-              "value": 99.319373
-            },
-            {
-              "timestamp": "2026-03-28T15:05:00.000Z",
-              "value": 99.183674
-            },
-            {
-              "timestamp": "2026-03-28T16:05:00.000Z",
-              "value": 99.397174
-            },
-            {
-              "timestamp": "2026-03-28T17:05:00.000Z",
-              "value": 99.363409
-            },
-            {
-              "timestamp": "2026-03-28T18:05:00.000Z",
-              "value": 99.227481
-            },
-            {
-              "timestamp": "2026-03-28T19:05:00.000Z",
-              "value": 99.339286
-            },
-            {
-              "timestamp": "2026-03-28T20:05:00.000Z",
-              "value": 99.195375
-            }
-          ],
-          "SYN-EQP-02": [
-            {
-              "timestamp": "2026-03-27T21:05:00.000Z",
-              "value": 99.29
-            },
-            {
-              "timestamp": "2026-03-27T22:05:00.000Z",
-              "value": 99.29
-            },
-            {
-              "timestamp": "2026-03-27T23:05:00.000Z",
-              "value": 99.29
-            },
-            {
-              "timestamp": "2026-03-28T00:05:00.000Z",
-              "value": 99.29
-            },
-            {
-              "timestamp": "2026-03-28T01:05:00.000Z",
-              "value": 99.28
-            },
-            {
-              "timestamp": "2026-03-28T02:05:00.000Z",
-              "value": 99.28
-            },
-            {
-              "timestamp": "2026-03-28T03:05:00.000Z",
-              "value": 99.29
-            },
-            {
-              "timestamp": "2026-03-28T04:05:00.000Z",
-              "value": 99.28
-            },
-            {
-              "timestamp": "2026-03-28T05:05:00.000Z",
-              "value": 99.28
-            },
-            {
-              "timestamp": "2026-03-28T06:05:00.000Z",
-              "value": 99.27
-            },
-            {
-              "timestamp": "2026-03-28T07:05:00.000Z",
-              "value": 99.09
-            },
-            {
-              "timestamp": "2026-03-28T08:05:00.000Z",
-              "value": 99.09
-            },
-            {
-              "timestamp": "2026-03-28T09:05:00.000Z",
-              "value": 99.09
-            },
-            {
-              "timestamp": "2026-03-28T10:05:00.000Z",
-              "value": 99.09
-            },
-            {
-              "timestamp": "2026-03-28T11:05:00.000Z",
-              "value": 98.48
-            },
-            {
-              "timestamp": "2026-03-28T12:05:00.000Z",
-              "value": 97.88
-            },
-            {
-              "timestamp": "2026-03-28T13:05:00.000Z",
-              "value": 97.28
-            },
-            {
-              "timestamp": "2026-03-28T14:05:00.000Z",
-              "value": 96.68
-            },
-            {
-              "timestamp": "2026-03-28T15:05:00.000Z",
-              "value": 96.1
-            },
-            {
-              "timestamp": "2026-03-28T16:05:00.000Z",
-              "value": 95.5
-            },
-            {
-              "timestamp": "2026-03-28T17:05:00.000Z",
-              "value": 95.12
-            },
-            {
-              "timestamp": "2026-03-28T18:05:00.000Z",
-              "value": 94.52
-            },
-            {
-              "timestamp": "2026-03-28T19:05:00.000Z",
-              "value": 99.31
-            },
-            {
-              "timestamp": "2026-03-28T20:05:00.000Z",
-              "value": 99.31
-            }
-          ]
-        },
+        "synthetic-signal-queue-rise": {},
+        "synthetic-signal-equipment-down": {},
         "synthetic-signal-level-shift": {
           "SYN-EQP-01": [
             {
@@ -22292,13 +21900,14 @@
             "equipment": "SYN-EQP-02",
             "step": "SYN-ETCH-10",
             "item": "SYN-QUEUE",
-            "legendAxis": "eqp_id",
+            "legendAxis": "recipe",
             "recipe": "SYN-RCP-B",
             "detectedAt": "2026-03-21T06:50:00.000Z",
             "startIndex": 8,
             "endIndex": 19,
             "description": "SYN-EQP-02 · SYN-ETCH-10 · 합성 대기시간",
-            "onsetIndex": 6
+            "onsetIndex": 6,
+            "highlightedMember": "SYN-RCP-B"
           },
           {
             "id": "synthetic-signal-equipment-down",
@@ -22309,13 +21918,14 @@
             "equipment": "SYN-EQP-02",
             "step": "SYN-ETCH-10",
             "item": "SYN-AVAIL",
-            "legendAxis": "eqp_id",
+            "legendAxis": "chamber",
             "recipe": "SYN-RCP-B",
             "detectedAt": "2026-03-21T06:50:00.000Z",
             "startIndex": 14,
             "endIndex": 17,
             "description": "SYN-EQP-02 · 합성 설비 가동률",
-            "onsetIndex": 14
+            "onsetIndex": 14,
+            "highlightedMember": "SYN-CH-02"
           },
           {
             "id": "synthetic-signal-level-shift",
@@ -25608,7 +25218,7 @@
         ],
         "synthetic-signal-queue-rise": [
           {
-            "member": "SYN-EQP-02",
+            "member": "SYN-RCP-B",
             "highlighted": true,
             "points": [
               [
@@ -26190,7 +25800,7 @@
             ]
           },
           {
-            "member": "SYN-REF-1",
+            "member": "SYN-RCP-A",
             "highlighted": false,
             "points": [
               [
@@ -26772,7 +26382,7 @@
             ]
           },
           {
-            "member": "SYN-REF-2",
+            "member": "SYN-RCP-C",
             "highlighted": false,
             "points": [
               [
@@ -27354,7 +26964,7 @@
             ]
           },
           {
-            "member": "SYN-REF-3",
+            "member": "SYN-RCP-D",
             "highlighted": false,
             "points": [
               [
@@ -27936,7 +27546,7 @@
             ]
           },
           {
-            "member": "SYN-REF-4",
+            "member": "SYN-RCP-E",
             "highlighted": false,
             "points": [
               [
@@ -28520,7 +28130,7 @@
         ],
         "synthetic-signal-equipment-down": [
           {
-            "member": "SYN-EQP-02",
+            "member": "SYN-CH-02",
             "highlighted": true,
             "points": [
               [
@@ -29102,7 +28712,7 @@
             ]
           },
           {
-            "member": "SYN-REF-1",
+            "member": "SYN-CH-01",
             "highlighted": false,
             "points": [
               [
@@ -29684,7 +29294,7 @@
             ]
           },
           {
-            "member": "SYN-REF-2",
+            "member": "SYN-CH-03",
             "highlighted": false,
             "points": [
               [
@@ -30266,7 +29876,7 @@
             ]
           },
           {
-            "member": "SYN-REF-3",
+            "member": "SYN-CH-04",
             "highlighted": false,
             "points": [
               [
@@ -30848,7 +30458,7 @@
             ]
           },
           {
-            "member": "SYN-REF-4",
+            "member": "SYN-CH-05",
             "highlighted": false,
             "points": [
               [
@@ -43278,402 +42888,8 @@
             }
           ]
         },
-        "synthetic-signal-queue-rise": {
-          "SYN-EQP-01": [
-            {
-              "timestamp": "2026-03-20T19:50:00.000Z",
-              "value": 1.725137
-            },
-            {
-              "timestamp": "2026-03-20T20:50:00.000Z",
-              "value": 1.702538
-            },
-            {
-              "timestamp": "2026-03-20T21:50:00.000Z",
-              "value": 1.758039
-            },
-            {
-              "timestamp": "2026-03-20T22:50:00.000Z",
-              "value": 1.765026
-            },
-            {
-              "timestamp": "2026-03-20T23:50:00.000Z",
-              "value": 1.752352
-            },
-            {
-              "timestamp": "2026-03-21T00:50:00.000Z",
-              "value": 1.747027
-            },
-            {
-              "timestamp": "2026-03-21T01:50:00.000Z",
-              "value": 1.705325
-            },
-            {
-              "timestamp": "2026-03-21T02:50:00.000Z",
-              "value": 1.701218
-            },
-            {
-              "timestamp": "2026-03-21T03:50:00.000Z",
-              "value": 1.731062
-            },
-            {
-              "timestamp": "2026-03-21T04:50:00.000Z",
-              "value": 1.748022
-            },
-            {
-              "timestamp": "2026-03-21T05:50:00.000Z",
-              "value": 1.758436
-            },
-            {
-              "timestamp": "2026-03-21T06:50:00.000Z",
-              "value": 1.739727
-            },
-            {
-              "timestamp": "2026-03-21T07:50:00.000Z",
-              "value": 1.731443
-            },
-            {
-              "timestamp": "2026-03-21T08:50:00.000Z",
-              "value": 1.758255
-            },
-            {
-              "timestamp": "2026-03-21T09:50:00.000Z",
-              "value": 1.69471
-            },
-            {
-              "timestamp": "2026-03-21T10:50:00.000Z",
-              "value": 1.744955
-            },
-            {
-              "timestamp": "2026-03-21T11:50:00.000Z",
-              "value": 1.70824
-            },
-            {
-              "timestamp": "2026-03-21T12:50:00.000Z",
-              "value": 1.77898
-            },
-            {
-              "timestamp": "2026-03-21T13:50:00.000Z",
-              "value": 1.724312
-            },
-            {
-              "timestamp": "2026-03-21T14:50:00.000Z",
-              "value": 1.758452
-            },
-            {
-              "timestamp": "2026-03-21T15:50:00.000Z",
-              "value": 1.704544
-            },
-            {
-              "timestamp": "2026-03-21T16:50:00.000Z",
-              "value": 1.786779
-            },
-            {
-              "timestamp": "2026-03-21T17:50:00.000Z",
-              "value": 1.708791
-            },
-            {
-              "timestamp": "2026-03-21T18:50:00.000Z",
-              "value": 1.761114
-            }
-          ],
-          "SYN-EQP-02": [
-            {
-              "timestamp": "2026-03-20T19:50:00.000Z",
-              "value": 1.74
-            },
-            {
-              "timestamp": "2026-03-20T20:50:00.000Z",
-              "value": 1.74
-            },
-            {
-              "timestamp": "2026-03-20T21:50:00.000Z",
-              "value": 1.74
-            },
-            {
-              "timestamp": "2026-03-20T22:50:00.000Z",
-              "value": 1.74
-            },
-            {
-              "timestamp": "2026-03-20T23:50:00.000Z",
-              "value": 1.73
-            },
-            {
-              "timestamp": "2026-03-21T00:50:00.000Z",
-              "value": 1.73
-            },
-            {
-              "timestamp": "2026-03-21T01:50:00.000Z",
-              "value": 1.97
-            },
-            {
-              "timestamp": "2026-03-21T02:50:00.000Z",
-              "value": 2.21
-            },
-            {
-              "timestamp": "2026-03-21T03:50:00.000Z",
-              "value": 2.44
-            },
-            {
-              "timestamp": "2026-03-21T04:50:00.000Z",
-              "value": 2.68
-            },
-            {
-              "timestamp": "2026-03-21T05:50:00.000Z",
-              "value": 2.91
-            },
-            {
-              "timestamp": "2026-03-21T06:50:00.000Z",
-              "value": 3.16
-            },
-            {
-              "timestamp": "2026-03-21T07:50:00.000Z",
-              "value": 3.4
-            },
-            {
-              "timestamp": "2026-03-21T08:50:00.000Z",
-              "value": 3.64
-            },
-            {
-              "timestamp": "2026-03-21T09:50:00.000Z",
-              "value": 3.87
-            },
-            {
-              "timestamp": "2026-03-21T10:50:00.000Z",
-              "value": 4.11
-            },
-            {
-              "timestamp": "2026-03-21T11:50:00.000Z",
-              "value": 4.35
-            },
-            {
-              "timestamp": "2026-03-21T12:50:00.000Z",
-              "value": 4.59
-            },
-            {
-              "timestamp": "2026-03-21T13:50:00.000Z",
-              "value": 4.85
-            },
-            {
-              "timestamp": "2026-03-21T14:50:00.000Z",
-              "value": 5.09
-            },
-            {
-              "timestamp": "2026-03-21T15:50:00.000Z",
-              "value": 5.6
-            },
-            {
-              "timestamp": "2026-03-21T16:50:00.000Z",
-              "value": 5.84
-            },
-            {
-              "timestamp": "2026-03-21T17:50:00.000Z",
-              "value": 1.5
-            },
-            {
-              "timestamp": "2026-03-21T18:50:00.000Z",
-              "value": 1.5
-            }
-          ]
-        },
-        "synthetic-signal-equipment-down": {
-          "SYN-EQP-01": [
-            {
-              "timestamp": "2026-03-20T19:50:00.000Z",
-              "value": 99.153388
-            },
-            {
-              "timestamp": "2026-03-20T20:50:00.000Z",
-              "value": 99.126525
-            },
-            {
-              "timestamp": "2026-03-20T21:50:00.000Z",
-              "value": 99.176123
-            },
-            {
-              "timestamp": "2026-03-20T22:50:00.000Z",
-              "value": 99.021407
-            },
-            {
-              "timestamp": "2026-03-20T23:50:00.000Z",
-              "value": 99.114264
-            },
-            {
-              "timestamp": "2026-03-21T00:50:00.000Z",
-              "value": 99.002822
-            },
-            {
-              "timestamp": "2026-03-21T01:50:00.000Z",
-              "value": 99.019194
-            },
-            {
-              "timestamp": "2026-03-21T02:50:00.000Z",
-              "value": 99.144818
-            },
-            {
-              "timestamp": "2026-03-21T03:50:00.000Z",
-              "value": 98.953378
-            },
-            {
-              "timestamp": "2026-03-21T04:50:00.000Z",
-              "value": 99.007594
-            },
-            {
-              "timestamp": "2026-03-21T05:50:00.000Z",
-              "value": 99.016376
-            },
-            {
-              "timestamp": "2026-03-21T06:50:00.000Z",
-              "value": 98.99348
-            },
-            {
-              "timestamp": "2026-03-21T07:50:00.000Z",
-              "value": 99.027155
-            },
-            {
-              "timestamp": "2026-03-21T08:50:00.000Z",
-              "value": 99.13219
-            },
-            {
-              "timestamp": "2026-03-21T09:50:00.000Z",
-              "value": 99.07754
-            },
-            {
-              "timestamp": "2026-03-21T10:50:00.000Z",
-              "value": 98.984792
-            },
-            {
-              "timestamp": "2026-03-21T11:50:00.000Z",
-              "value": 99.008463
-            },
-            {
-              "timestamp": "2026-03-21T12:50:00.000Z",
-              "value": 98.966632
-            },
-            {
-              "timestamp": "2026-03-21T13:50:00.000Z",
-              "value": 99.020391
-            },
-            {
-              "timestamp": "2026-03-21T14:50:00.000Z",
-              "value": 99.095208
-            },
-            {
-              "timestamp": "2026-03-21T15:50:00.000Z",
-              "value": 99.174812
-            },
-            {
-              "timestamp": "2026-03-21T16:50:00.000Z",
-              "value": 99.024557
-            },
-            {
-              "timestamp": "2026-03-21T17:50:00.000Z",
-              "value": 98.984266
-            },
-            {
-              "timestamp": "2026-03-21T18:50:00.000Z",
-              "value": 99.069523
-            }
-          ],
-          "SYN-EQP-02": [
-            {
-              "timestamp": "2026-03-20T19:50:00.000Z",
-              "value": 99.05
-            },
-            {
-              "timestamp": "2026-03-20T20:50:00.000Z",
-              "value": 99.05
-            },
-            {
-              "timestamp": "2026-03-20T21:50:00.000Z",
-              "value": 99.05
-            },
-            {
-              "timestamp": "2026-03-20T22:50:00.000Z",
-              "value": 99.05
-            },
-            {
-              "timestamp": "2026-03-20T23:50:00.000Z",
-              "value": 99.06
-            },
-            {
-              "timestamp": "2026-03-21T00:50:00.000Z",
-              "value": 99.06
-            },
-            {
-              "timestamp": "2026-03-21T01:50:00.000Z",
-              "value": 99.06
-            },
-            {
-              "timestamp": "2026-03-21T02:50:00.000Z",
-              "value": 99.06
-            },
-            {
-              "timestamp": "2026-03-21T03:50:00.000Z",
-              "value": 99.06
-            },
-            {
-              "timestamp": "2026-03-21T04:50:00.000Z",
-              "value": 99.07
-            },
-            {
-              "timestamp": "2026-03-21T05:50:00.000Z",
-              "value": 99.06
-            },
-            {
-              "timestamp": "2026-03-21T06:50:00.000Z",
-              "value": 99.06
-            },
-            {
-              "timestamp": "2026-03-21T07:50:00.000Z",
-              "value": 99.06
-            },
-            {
-              "timestamp": "2026-03-21T08:50:00.000Z",
-              "value": 99.05
-            },
-            {
-              "timestamp": "2026-03-21T09:50:00.000Z",
-              "value": 98.47
-            },
-            {
-              "timestamp": "2026-03-21T10:50:00.000Z",
-              "value": 97.86
-            },
-            {
-              "timestamp": "2026-03-21T11:50:00.000Z",
-              "value": 97.26
-            },
-            {
-              "timestamp": "2026-03-21T12:50:00.000Z",
-              "value": 96.66
-            },
-            {
-              "timestamp": "2026-03-21T13:50:00.000Z",
-              "value": 96.05
-            },
-            {
-              "timestamp": "2026-03-21T14:50:00.000Z",
-              "value": 95.44
-            },
-            {
-              "timestamp": "2026-03-21T15:50:00.000Z",
-              "value": 95.03
-            },
-            {
-              "timestamp": "2026-03-21T16:50:00.000Z",
-              "value": 94.43
-            },
-            {
-              "timestamp": "2026-03-21T17:50:00.000Z",
-              "value": 99.23
-            },
-            {
-              "timestamp": "2026-03-21T18:50:00.000Z",
-              "value": 99.23
-            }
-          ]
-        },
+        "synthetic-signal-queue-rise": {},
+        "synthetic-signal-equipment-down": {},
         "synthetic-signal-level-shift": {
           "SYN-EQP-01": [
             {
@@ -44553,13 +43769,14 @@
             "equipment": "SYN-EQP-02",
             "step": "SYN-ETCH-10",
             "item": "SYN-QUEUE",
-            "legendAxis": "eqp_id",
+            "legendAxis": "recipe",
             "recipe": "SYN-RCP-B",
             "detectedAt": "2026-03-12T01:00:00.000Z",
             "startIndex": 8,
             "endIndex": 19,
             "description": "SYN-EQP-02 · SYN-ETCH-10 · 합성 대기시간",
-            "onsetIndex": 6
+            "onsetIndex": 6,
+            "highlightedMember": "SYN-RCP-B"
           },
           {
             "id": "synthetic-signal-equipment-down",
@@ -44570,13 +43787,14 @@
             "equipment": "SYN-EQP-02",
             "step": "SYN-ETCH-10",
             "item": "SYN-AVAIL",
-            "legendAxis": "eqp_id",
+            "legendAxis": "chamber",
             "recipe": "SYN-RCP-B",
             "detectedAt": "2026-03-12T01:00:00.000Z",
             "startIndex": 14,
             "endIndex": 17,
             "description": "SYN-EQP-02 · 합성 설비 가동률",
-            "onsetIndex": 14
+            "onsetIndex": 14,
+            "highlightedMember": "SYN-CH-02"
           },
           {
             "id": "synthetic-signal-level-shift",
@@ -47909,7 +47127,7 @@
         ],
         "synthetic-signal-queue-rise": [
           {
-            "member": "SYN-EQP-02",
+            "member": "SYN-RCP-B",
             "highlighted": true,
             "points": [
               [
@@ -48491,7 +47709,7 @@
             ]
           },
           {
-            "member": "SYN-REF-1",
+            "member": "SYN-RCP-A",
             "highlighted": false,
             "points": [
               [
@@ -49073,7 +48291,7 @@
             ]
           },
           {
-            "member": "SYN-REF-2",
+            "member": "SYN-RCP-C",
             "highlighted": false,
             "points": [
               [
@@ -49655,7 +48873,7 @@
             ]
           },
           {
-            "member": "SYN-REF-3",
+            "member": "SYN-RCP-D",
             "highlighted": false,
             "points": [
               [
@@ -50237,7 +49455,7 @@
             ]
           },
           {
-            "member": "SYN-REF-4",
+            "member": "SYN-RCP-E",
             "highlighted": false,
             "points": [
               [
@@ -50821,7 +50039,7 @@
         ],
         "synthetic-signal-equipment-down": [
           {
-            "member": "SYN-EQP-02",
+            "member": "SYN-CH-02",
             "highlighted": true,
             "points": [
               [
@@ -51403,7 +50621,7 @@
             ]
           },
           {
-            "member": "SYN-REF-1",
+            "member": "SYN-CH-01",
             "highlighted": false,
             "points": [
               [
@@ -51985,7 +51203,7 @@
             ]
           },
           {
-            "member": "SYN-REF-2",
+            "member": "SYN-CH-03",
             "highlighted": false,
             "points": [
               [
@@ -52567,7 +51785,7 @@
             ]
           },
           {
-            "member": "SYN-REF-3",
+            "member": "SYN-CH-04",
             "highlighted": false,
             "points": [
               [
@@ -53149,7 +52367,7 @@
             ]
           },
           {
-            "member": "SYN-REF-4",
+            "member": "SYN-CH-05",
             "highlighted": false,
             "points": [
               [
@@ -65579,402 +64797,8 @@
             }
           ]
         },
-        "synthetic-signal-queue-rise": {
-          "SYN-EQP-01": [
-            {
-              "timestamp": "2026-03-11T14:00:00.000Z",
-              "value": 1.675902
-            },
-            {
-              "timestamp": "2026-03-11T15:00:00.000Z",
-              "value": 1.712481
-            },
-            {
-              "timestamp": "2026-03-11T16:00:00.000Z",
-              "value": 1.699425
-            },
-            {
-              "timestamp": "2026-03-11T17:00:00.000Z",
-              "value": 1.680315
-            },
-            {
-              "timestamp": "2026-03-11T18:00:00.000Z",
-              "value": 1.722079
-            },
-            {
-              "timestamp": "2026-03-11T19:00:00.000Z",
-              "value": 1.721953
-            },
-            {
-              "timestamp": "2026-03-11T20:00:00.000Z",
-              "value": 1.721424
-            },
-            {
-              "timestamp": "2026-03-11T21:00:00.000Z",
-              "value": 1.719987
-            },
-            {
-              "timestamp": "2026-03-11T22:00:00.000Z",
-              "value": 1.71755
-            },
-            {
-              "timestamp": "2026-03-11T23:00:00.000Z",
-              "value": 1.756204
-            },
-            {
-              "timestamp": "2026-03-12T00:00:00.000Z",
-              "value": 1.737465
-            },
-            {
-              "timestamp": "2026-03-12T01:00:00.000Z",
-              "value": 1.740996
-            },
-            {
-              "timestamp": "2026-03-12T02:00:00.000Z",
-              "value": 1.741241
-            },
-            {
-              "timestamp": "2026-03-12T03:00:00.000Z",
-              "value": 1.716442
-            },
-            {
-              "timestamp": "2026-03-12T04:00:00.000Z",
-              "value": 1.748132
-            },
-            {
-              "timestamp": "2026-03-12T05:00:00.000Z",
-              "value": 1.677128
-            },
-            {
-              "timestamp": "2026-03-12T06:00:00.000Z",
-              "value": 1.7187
-            },
-            {
-              "timestamp": "2026-03-12T07:00:00.000Z",
-              "value": 1.731542
-            },
-            {
-              "timestamp": "2026-03-12T08:00:00.000Z",
-              "value": 1.753847
-            },
-            {
-              "timestamp": "2026-03-12T09:00:00.000Z",
-              "value": 1.765281
-            },
-            {
-              "timestamp": "2026-03-12T10:00:00.000Z",
-              "value": 1.730229
-            },
-            {
-              "timestamp": "2026-03-12T11:00:00.000Z",
-              "value": 1.732148
-            },
-            {
-              "timestamp": "2026-03-12T12:00:00.000Z",
-              "value": 1.686498
-            },
-            {
-              "timestamp": "2026-03-12T13:00:00.000Z",
-              "value": 1.759688
-            }
-          ],
-          "SYN-EQP-02": [
-            {
-              "timestamp": "2026-03-11T14:00:00.000Z",
-              "value": 1.72
-            },
-            {
-              "timestamp": "2026-03-11T15:00:00.000Z",
-              "value": 1.72
-            },
-            {
-              "timestamp": "2026-03-11T16:00:00.000Z",
-              "value": 1.72
-            },
-            {
-              "timestamp": "2026-03-11T17:00:00.000Z",
-              "value": 1.72
-            },
-            {
-              "timestamp": "2026-03-11T18:00:00.000Z",
-              "value": 1.72
-            },
-            {
-              "timestamp": "2026-03-11T19:00:00.000Z",
-              "value": 1.72
-            },
-            {
-              "timestamp": "2026-03-11T20:00:00.000Z",
-              "value": 1.97
-            },
-            {
-              "timestamp": "2026-03-11T21:00:00.000Z",
-              "value": 2.21
-            },
-            {
-              "timestamp": "2026-03-11T22:00:00.000Z",
-              "value": 2.45
-            },
-            {
-              "timestamp": "2026-03-11T23:00:00.000Z",
-              "value": 2.69
-            },
-            {
-              "timestamp": "2026-03-12T00:00:00.000Z",
-              "value": 3.06
-            },
-            {
-              "timestamp": "2026-03-12T01:00:00.000Z",
-              "value": 3.3
-            },
-            {
-              "timestamp": "2026-03-12T02:00:00.000Z",
-              "value": 3.54
-            },
-            {
-              "timestamp": "2026-03-12T03:00:00.000Z",
-              "value": 3.79
-            },
-            {
-              "timestamp": "2026-03-12T04:00:00.000Z",
-              "value": 4.03
-            },
-            {
-              "timestamp": "2026-03-12T05:00:00.000Z",
-              "value": 4.27
-            },
-            {
-              "timestamp": "2026-03-12T06:00:00.000Z",
-              "value": 4.51
-            },
-            {
-              "timestamp": "2026-03-12T07:00:00.000Z",
-              "value": 4.75
-            },
-            {
-              "timestamp": "2026-03-12T08:00:00.000Z",
-              "value": 5
-            },
-            {
-              "timestamp": "2026-03-12T09:00:00.000Z",
-              "value": 5.24
-            },
-            {
-              "timestamp": "2026-03-12T10:00:00.000Z",
-              "value": 5.25
-            },
-            {
-              "timestamp": "2026-03-12T11:00:00.000Z",
-              "value": 5.48
-            },
-            {
-              "timestamp": "2026-03-12T12:00:00.000Z",
-              "value": 1.65
-            },
-            {
-              "timestamp": "2026-03-12T13:00:00.000Z",
-              "value": 1.65
-            }
-          ]
-        },
-        "synthetic-signal-equipment-down": {
-          "SYN-EQP-01": [
-            {
-              "timestamp": "2026-03-11T14:00:00.000Z",
-              "value": 99.119047
-            },
-            {
-              "timestamp": "2026-03-11T15:00:00.000Z",
-              "value": 99.08125
-            },
-            {
-              "timestamp": "2026-03-11T16:00:00.000Z",
-              "value": 98.962219
-            },
-            {
-              "timestamp": "2026-03-11T17:00:00.000Z",
-              "value": 99.100359
-            },
-            {
-              "timestamp": "2026-03-11T18:00:00.000Z",
-              "value": 98.984465
-            },
-            {
-              "timestamp": "2026-03-11T19:00:00.000Z",
-              "value": 98.953652
-            },
-            {
-              "timestamp": "2026-03-11T20:00:00.000Z",
-              "value": 98.986909
-            },
-            {
-              "timestamp": "2026-03-11T21:00:00.000Z",
-              "value": 99.134576
-            },
-            {
-              "timestamp": "2026-03-11T22:00:00.000Z",
-              "value": 99.002267
-            },
-            {
-              "timestamp": "2026-03-11T23:00:00.000Z",
-              "value": 99.16615
-            },
-            {
-              "timestamp": "2026-03-12T00:00:00.000Z",
-              "value": 98.947181
-            },
-            {
-              "timestamp": "2026-03-12T01:00:00.000Z",
-              "value": 99.054557
-            },
-            {
-              "timestamp": "2026-03-12T02:00:00.000Z",
-              "value": 99.021747
-            },
-            {
-              "timestamp": "2026-03-12T03:00:00.000Z",
-              "value": 99.147691
-            },
-            {
-              "timestamp": "2026-03-12T04:00:00.000Z",
-              "value": 99.1496
-            },
-            {
-              "timestamp": "2026-03-12T05:00:00.000Z",
-              "value": 98.980522
-            },
-            {
-              "timestamp": "2026-03-12T06:00:00.000Z",
-              "value": 98.962926
-            },
-            {
-              "timestamp": "2026-03-12T07:00:00.000Z",
-              "value": 98.952024
-            },
-            {
-              "timestamp": "2026-03-12T08:00:00.000Z",
-              "value": 99.119619
-            },
-            {
-              "timestamp": "2026-03-12T09:00:00.000Z",
-              "value": 99.07197
-            },
-            {
-              "timestamp": "2026-03-12T10:00:00.000Z",
-              "value": 99.000631
-            },
-            {
-              "timestamp": "2026-03-12T11:00:00.000Z",
-              "value": 99.167866
-            },
-            {
-              "timestamp": "2026-03-12T12:00:00.000Z",
-              "value": 99.135678
-            },
-            {
-              "timestamp": "2026-03-12T13:00:00.000Z",
-              "value": 99.121378
-            }
-          ],
-          "SYN-EQP-02": [
-            {
-              "timestamp": "2026-03-11T14:00:00.000Z",
-              "value": 99.05
-            },
-            {
-              "timestamp": "2026-03-11T15:00:00.000Z",
-              "value": 99.05
-            },
-            {
-              "timestamp": "2026-03-11T16:00:00.000Z",
-              "value": 99.05
-            },
-            {
-              "timestamp": "2026-03-11T17:00:00.000Z",
-              "value": 99.05
-            },
-            {
-              "timestamp": "2026-03-11T18:00:00.000Z",
-              "value": 99.04
-            },
-            {
-              "timestamp": "2026-03-11T19:00:00.000Z",
-              "value": 99.05
-            },
-            {
-              "timestamp": "2026-03-11T20:00:00.000Z",
-              "value": 99.04
-            },
-            {
-              "timestamp": "2026-03-11T21:00:00.000Z",
-              "value": 99.04
-            },
-            {
-              "timestamp": "2026-03-11T22:00:00.000Z",
-              "value": 99.06
-            },
-            {
-              "timestamp": "2026-03-11T23:00:00.000Z",
-              "value": 99.06
-            },
-            {
-              "timestamp": "2026-03-12T00:00:00.000Z",
-              "value": 99.17
-            },
-            {
-              "timestamp": "2026-03-12T01:00:00.000Z",
-              "value": 99.17
-            },
-            {
-              "timestamp": "2026-03-12T02:00:00.000Z",
-              "value": 99.17
-            },
-            {
-              "timestamp": "2026-03-12T03:00:00.000Z",
-              "value": 99.17
-            },
-            {
-              "timestamp": "2026-03-12T04:00:00.000Z",
-              "value": 98.57
-            },
-            {
-              "timestamp": "2026-03-12T05:00:00.000Z",
-              "value": 97.97
-            },
-            {
-              "timestamp": "2026-03-12T06:00:00.000Z",
-              "value": 97.37
-            },
-            {
-              "timestamp": "2026-03-12T07:00:00.000Z",
-              "value": 96.76
-            },
-            {
-              "timestamp": "2026-03-12T08:00:00.000Z",
-              "value": 96.19
-            },
-            {
-              "timestamp": "2026-03-12T09:00:00.000Z",
-              "value": 95.59
-            },
-            {
-              "timestamp": "2026-03-12T10:00:00.000Z",
-              "value": 95.2
-            },
-            {
-              "timestamp": "2026-03-12T11:00:00.000Z",
-              "value": 94.6
-            },
-            {
-              "timestamp": "2026-03-12T12:00:00.000Z",
-              "value": 99.39
-            },
-            {
-              "timestamp": "2026-03-12T13:00:00.000Z",
-              "value": 99.4
-            }
-          ]
-        },
+        "synthetic-signal-queue-rise": {},
+        "synthetic-signal-equipment-down": {},
         "synthetic-signal-level-shift": {
           "SYN-EQP-01": [
             {
@@ -66854,13 +65678,14 @@
             "equipment": "SYN-EQP-02",
             "step": "SYN-ETCH-10",
             "item": "SYN-QUEUE",
-            "legendAxis": "eqp_id",
+            "legendAxis": "recipe",
             "recipe": "SYN-RCP-B",
             "detectedAt": "2026-03-05T04:00:00.000Z",
             "startIndex": 8,
             "endIndex": 19,
             "description": "SYN-EQP-02 · SYN-ETCH-10 · 합성 대기시간",
-            "onsetIndex": 6
+            "onsetIndex": 6,
+            "highlightedMember": "SYN-RCP-B"
           },
           {
             "id": "synthetic-signal-equipment-down",
@@ -66871,13 +65696,14 @@
             "equipment": "SYN-EQP-02",
             "step": "SYN-ETCH-10",
             "item": "SYN-AVAIL",
-            "legendAxis": "eqp_id",
+            "legendAxis": "chamber",
             "recipe": "SYN-RCP-B",
             "detectedAt": "2026-03-05T04:00:00.000Z",
             "startIndex": 14,
             "endIndex": 17,
             "description": "SYN-EQP-02 · 합성 설비 가동률",
-            "onsetIndex": 14
+            "onsetIndex": 14,
+            "highlightedMember": "SYN-CH-02"
           },
           {
             "id": "synthetic-signal-level-shift",
@@ -70170,7 +68996,7 @@
         ],
         "synthetic-signal-queue-rise": [
           {
-            "member": "SYN-EQP-02",
+            "member": "SYN-RCP-B",
             "highlighted": true,
             "points": [
               [
@@ -70752,7 +69578,7 @@
             ]
           },
           {
-            "member": "SYN-REF-1",
+            "member": "SYN-RCP-A",
             "highlighted": false,
             "points": [
               [
@@ -71334,7 +70160,7 @@
             ]
           },
           {
-            "member": "SYN-REF-2",
+            "member": "SYN-RCP-C",
             "highlighted": false,
             "points": [
               [
@@ -71916,7 +70742,7 @@
             ]
           },
           {
-            "member": "SYN-REF-3",
+            "member": "SYN-RCP-D",
             "highlighted": false,
             "points": [
               [
@@ -72498,7 +71324,7 @@
             ]
           },
           {
-            "member": "SYN-REF-4",
+            "member": "SYN-RCP-E",
             "highlighted": false,
             "points": [
               [
@@ -73082,7 +71908,7 @@
         ],
         "synthetic-signal-equipment-down": [
           {
-            "member": "SYN-EQP-02",
+            "member": "SYN-CH-02",
             "highlighted": true,
             "points": [
               [
@@ -73664,7 +72490,7 @@
             ]
           },
           {
-            "member": "SYN-REF-1",
+            "member": "SYN-CH-01",
             "highlighted": false,
             "points": [
               [
@@ -74246,7 +73072,7 @@
             ]
           },
           {
-            "member": "SYN-REF-2",
+            "member": "SYN-CH-03",
             "highlighted": false,
             "points": [
               [
@@ -74828,7 +73654,7 @@
             ]
           },
           {
-            "member": "SYN-REF-3",
+            "member": "SYN-CH-04",
             "highlighted": false,
             "points": [
               [
@@ -75410,7 +74236,7 @@
             ]
           },
           {
-            "member": "SYN-REF-4",
+            "member": "SYN-CH-05",
             "highlighted": false,
             "points": [
               [
@@ -87840,402 +86666,8 @@
             }
           ]
         },
-        "synthetic-signal-queue-rise": {
-          "SYN-EQP-01": [
-            {
-              "timestamp": "2026-03-04T17:00:00.000Z",
-              "value": 1.463643
-            },
-            {
-              "timestamp": "2026-03-04T18:00:00.000Z",
-              "value": 1.499258
-            },
-            {
-              "timestamp": "2026-03-04T19:00:00.000Z",
-              "value": 1.534827
-            },
-            {
-              "timestamp": "2026-03-04T20:00:00.000Z",
-              "value": 1.490668
-            },
-            {
-              "timestamp": "2026-03-04T21:00:00.000Z",
-              "value": 1.550925
-            },
-            {
-              "timestamp": "2026-03-04T22:00:00.000Z",
-              "value": 1.485092
-            },
-            {
-              "timestamp": "2026-03-04T23:00:00.000Z",
-              "value": 1.466252
-            },
-            {
-              "timestamp": "2026-03-05T00:00:00.000Z",
-              "value": 1.461133
-            },
-            {
-              "timestamp": "2026-03-05T01:00:00.000Z",
-              "value": 1.526384
-            },
-            {
-              "timestamp": "2026-03-05T02:00:00.000Z",
-              "value": 1.524915
-            },
-            {
-              "timestamp": "2026-03-05T03:00:00.000Z",
-              "value": 1.559659
-            },
-            {
-              "timestamp": "2026-03-05T04:00:00.000Z",
-              "value": 1.550749
-            },
-            {
-              "timestamp": "2026-03-05T05:00:00.000Z",
-              "value": 1.557023
-            },
-            {
-              "timestamp": "2026-03-05T06:00:00.000Z",
-              "value": 1.465839
-            },
-            {
-              "timestamp": "2026-03-05T07:00:00.000Z",
-              "value": 1.502544
-            },
-            {
-              "timestamp": "2026-03-05T08:00:00.000Z",
-              "value": 1.530259
-            },
-            {
-              "timestamp": "2026-03-05T09:00:00.000Z",
-              "value": 1.547834
-            },
-            {
-              "timestamp": "2026-03-05T10:00:00.000Z",
-              "value": 1.52073
-            },
-            {
-              "timestamp": "2026-03-05T11:00:00.000Z",
-              "value": 1.461726
-            },
-            {
-              "timestamp": "2026-03-05T12:00:00.000Z",
-              "value": 1.491435
-            },
-            {
-              "timestamp": "2026-03-05T13:00:00.000Z",
-              "value": 1.558716
-            },
-            {
-              "timestamp": "2026-03-05T14:00:00.000Z",
-              "value": 1.490175
-            },
-            {
-              "timestamp": "2026-03-05T15:00:00.000Z",
-              "value": 1.536288
-            },
-            {
-              "timestamp": "2026-03-05T16:00:00.000Z",
-              "value": 1.496201
-            }
-          ],
-          "SYN-EQP-02": [
-            {
-              "timestamp": "2026-03-04T17:00:00.000Z",
-              "value": 1.51
-            },
-            {
-              "timestamp": "2026-03-04T18:00:00.000Z",
-              "value": 1.51
-            },
-            {
-              "timestamp": "2026-03-04T19:00:00.000Z",
-              "value": 1.51
-            },
-            {
-              "timestamp": "2026-03-04T20:00:00.000Z",
-              "value": 1.51
-            },
-            {
-              "timestamp": "2026-03-04T21:00:00.000Z",
-              "value": 1.52
-            },
-            {
-              "timestamp": "2026-03-04T22:00:00.000Z",
-              "value": 1.52
-            },
-            {
-              "timestamp": "2026-03-04T23:00:00.000Z",
-              "value": 1.75
-            },
-            {
-              "timestamp": "2026-03-05T00:00:00.000Z",
-              "value": 2
-            },
-            {
-              "timestamp": "2026-03-05T01:00:00.000Z",
-              "value": 2.25
-            },
-            {
-              "timestamp": "2026-03-05T02:00:00.000Z",
-              "value": 2.49
-            },
-            {
-              "timestamp": "2026-03-05T03:00:00.000Z",
-              "value": 3
-            },
-            {
-              "timestamp": "2026-03-05T04:00:00.000Z",
-              "value": 3.24
-            },
-            {
-              "timestamp": "2026-03-05T05:00:00.000Z",
-              "value": 3.49
-            },
-            {
-              "timestamp": "2026-03-05T06:00:00.000Z",
-              "value": 3.72
-            },
-            {
-              "timestamp": "2026-03-05T07:00:00.000Z",
-              "value": 3.97
-            },
-            {
-              "timestamp": "2026-03-05T08:00:00.000Z",
-              "value": 4.21
-            },
-            {
-              "timestamp": "2026-03-05T09:00:00.000Z",
-              "value": 4.45
-            },
-            {
-              "timestamp": "2026-03-05T10:00:00.000Z",
-              "value": 4.69
-            },
-            {
-              "timestamp": "2026-03-05T11:00:00.000Z",
-              "value": 4.91
-            },
-            {
-              "timestamp": "2026-03-05T12:00:00.000Z",
-              "value": 5.14
-            },
-            {
-              "timestamp": "2026-03-05T13:00:00.000Z",
-              "value": 5.12
-            },
-            {
-              "timestamp": "2026-03-05T14:00:00.000Z",
-              "value": 5.36
-            },
-            {
-              "timestamp": "2026-03-05T15:00:00.000Z",
-              "value": 1.52
-            },
-            {
-              "timestamp": "2026-03-05T16:00:00.000Z",
-              "value": 1.52
-            }
-          ]
-        },
-        "synthetic-signal-equipment-down": {
-          "SYN-EQP-01": [
-            {
-              "timestamp": "2026-03-04T17:00:00.000Z",
-              "value": 99.197009
-            },
-            {
-              "timestamp": "2026-03-04T18:00:00.000Z",
-              "value": 99.219631
-            },
-            {
-              "timestamp": "2026-03-04T19:00:00.000Z",
-              "value": 99.321449
-            },
-            {
-              "timestamp": "2026-03-04T20:00:00.000Z",
-              "value": 99.283523
-            },
-            {
-              "timestamp": "2026-03-04T21:00:00.000Z",
-              "value": 99.237988
-            },
-            {
-              "timestamp": "2026-03-04T22:00:00.000Z",
-              "value": 99.300995
-            },
-            {
-              "timestamp": "2026-03-04T23:00:00.000Z",
-              "value": 99.263954
-            },
-            {
-              "timestamp": "2026-03-05T00:00:00.000Z",
-              "value": 99.364978
-            },
-            {
-              "timestamp": "2026-03-05T01:00:00.000Z",
-              "value": 99.289402
-            },
-            {
-              "timestamp": "2026-03-05T02:00:00.000Z",
-              "value": 99.362416
-            },
-            {
-              "timestamp": "2026-03-05T03:00:00.000Z",
-              "value": 99.257464
-            },
-            {
-              "timestamp": "2026-03-05T04:00:00.000Z",
-              "value": 99.292227
-            },
-            {
-              "timestamp": "2026-03-05T05:00:00.000Z",
-              "value": 99.356247
-            },
-            {
-              "timestamp": "2026-03-05T06:00:00.000Z",
-              "value": 99.366793
-            },
-            {
-              "timestamp": "2026-03-05T07:00:00.000Z",
-              "value": 99.254612
-            },
-            {
-              "timestamp": "2026-03-05T08:00:00.000Z",
-              "value": 99.386801
-            },
-            {
-              "timestamp": "2026-03-05T09:00:00.000Z",
-              "value": 99.236584
-            },
-            {
-              "timestamp": "2026-03-05T10:00:00.000Z",
-              "value": 99.401633
-            },
-            {
-              "timestamp": "2026-03-05T11:00:00.000Z",
-              "value": 99.331206
-            },
-            {
-              "timestamp": "2026-03-05T12:00:00.000Z",
-              "value": 99.225807
-            },
-            {
-              "timestamp": "2026-03-05T13:00:00.000Z",
-              "value": 99.37935
-            },
-            {
-              "timestamp": "2026-03-05T14:00:00.000Z",
-              "value": 99.217065
-            },
-            {
-              "timestamp": "2026-03-05T15:00:00.000Z",
-              "value": 99.318008
-            },
-            {
-              "timestamp": "2026-03-05T16:00:00.000Z",
-              "value": 99.283457
-            }
-          ],
-          "SYN-EQP-02": [
-            {
-              "timestamp": "2026-03-04T17:00:00.000Z",
-              "value": 99.3
-            },
-            {
-              "timestamp": "2026-03-04T18:00:00.000Z",
-              "value": 99.3
-            },
-            {
-              "timestamp": "2026-03-04T19:00:00.000Z",
-              "value": 99.3
-            },
-            {
-              "timestamp": "2026-03-04T20:00:00.000Z",
-              "value": 99.3
-            },
-            {
-              "timestamp": "2026-03-04T21:00:00.000Z",
-              "value": 99.3
-            },
-            {
-              "timestamp": "2026-03-04T22:00:00.000Z",
-              "value": 99.3
-            },
-            {
-              "timestamp": "2026-03-04T23:00:00.000Z",
-              "value": 99.3
-            },
-            {
-              "timestamp": "2026-03-05T00:00:00.000Z",
-              "value": 99.29
-            },
-            {
-              "timestamp": "2026-03-05T01:00:00.000Z",
-              "value": 99.32
-            },
-            {
-              "timestamp": "2026-03-05T02:00:00.000Z",
-              "value": 99.32
-            },
-            {
-              "timestamp": "2026-03-05T03:00:00.000Z",
-              "value": 99.26
-            },
-            {
-              "timestamp": "2026-03-05T04:00:00.000Z",
-              "value": 99.27
-            },
-            {
-              "timestamp": "2026-03-05T05:00:00.000Z",
-              "value": 99.27
-            },
-            {
-              "timestamp": "2026-03-05T06:00:00.000Z",
-              "value": 99.27
-            },
-            {
-              "timestamp": "2026-03-05T07:00:00.000Z",
-              "value": 98.66
-            },
-            {
-              "timestamp": "2026-03-05T08:00:00.000Z",
-              "value": 98.06
-            },
-            {
-              "timestamp": "2026-03-05T09:00:00.000Z",
-              "value": 97.46
-            },
-            {
-              "timestamp": "2026-03-05T10:00:00.000Z",
-              "value": 96.86
-            },
-            {
-              "timestamp": "2026-03-05T11:00:00.000Z",
-              "value": 96.28
-            },
-            {
-              "timestamp": "2026-03-05T12:00:00.000Z",
-              "value": 95.68
-            },
-            {
-              "timestamp": "2026-03-05T13:00:00.000Z",
-              "value": 95.05
-            },
-            {
-              "timestamp": "2026-03-05T14:00:00.000Z",
-              "value": 94.45
-            },
-            {
-              "timestamp": "2026-03-05T15:00:00.000Z",
-              "value": 99.26
-            },
-            {
-              "timestamp": "2026-03-05T16:00:00.000Z",
-              "value": 99.26
-            }
-          ]
-        },
+        "synthetic-signal-queue-rise": {},
+        "synthetic-signal-equipment-down": {},
         "synthetic-signal-level-shift": {
           "SYN-EQP-01": [
             {
@@ -89115,13 +87547,14 @@
             "equipment": "SYN-EQP-02",
             "step": "SYN-ETCH-10",
             "item": "SYN-QUEUE",
-            "legendAxis": "eqp_id",
+            "legendAxis": "recipe",
             "recipe": "SYN-RCP-B",
             "detectedAt": "2026-02-26T23:40:00.000Z",
             "startIndex": 8,
             "endIndex": 19,
             "description": "SYN-EQP-02 · SYN-ETCH-10 · 합성 대기시간",
-            "onsetIndex": 6
+            "onsetIndex": 6,
+            "highlightedMember": "SYN-RCP-B"
           },
           {
             "id": "synthetic-signal-equipment-down",
@@ -89132,13 +87565,14 @@
             "equipment": "SYN-EQP-02",
             "step": "SYN-ETCH-10",
             "item": "SYN-AVAIL",
-            "legendAxis": "eqp_id",
+            "legendAxis": "chamber",
             "recipe": "SYN-RCP-B",
             "detectedAt": "2026-02-26T23:40:00.000Z",
             "startIndex": 14,
             "endIndex": 17,
             "description": "SYN-EQP-02 · 합성 설비 가동률",
-            "onsetIndex": 14
+            "onsetIndex": 14,
+            "highlightedMember": "SYN-CH-02"
           },
           {
             "id": "synthetic-signal-level-shift",
@@ -92471,7 +90905,7 @@
         ],
         "synthetic-signal-queue-rise": [
           {
-            "member": "SYN-EQP-02",
+            "member": "SYN-RCP-B",
             "highlighted": true,
             "points": [
               [
@@ -93053,7 +91487,7 @@
             ]
           },
           {
-            "member": "SYN-REF-1",
+            "member": "SYN-RCP-A",
             "highlighted": false,
             "points": [
               [
@@ -93635,7 +92069,7 @@
             ]
           },
           {
-            "member": "SYN-REF-2",
+            "member": "SYN-RCP-C",
             "highlighted": false,
             "points": [
               [
@@ -94217,7 +92651,7 @@
             ]
           },
           {
-            "member": "SYN-REF-3",
+            "member": "SYN-RCP-D",
             "highlighted": false,
             "points": [
               [
@@ -94799,7 +93233,7 @@
             ]
           },
           {
-            "member": "SYN-REF-4",
+            "member": "SYN-RCP-E",
             "highlighted": false,
             "points": [
               [
@@ -95383,7 +93817,7 @@
         ],
         "synthetic-signal-equipment-down": [
           {
-            "member": "SYN-EQP-02",
+            "member": "SYN-CH-02",
             "highlighted": true,
             "points": [
               [
@@ -95965,7 +94399,7 @@
             ]
           },
           {
-            "member": "SYN-REF-1",
+            "member": "SYN-CH-01",
             "highlighted": false,
             "points": [
               [
@@ -96547,7 +94981,7 @@
             ]
           },
           {
-            "member": "SYN-REF-2",
+            "member": "SYN-CH-03",
             "highlighted": false,
             "points": [
               [
@@ -97129,7 +95563,7 @@
             ]
           },
           {
-            "member": "SYN-REF-3",
+            "member": "SYN-CH-04",
             "highlighted": false,
             "points": [
               [
@@ -97711,7 +96145,7 @@
             ]
           },
           {
-            "member": "SYN-REF-4",
+            "member": "SYN-CH-05",
             "highlighted": false,
             "points": [
               [
@@ -110141,402 +108575,8 @@
             }
           ]
         },
-        "synthetic-signal-queue-rise": {
-          "SYN-EQP-01": [
-            {
-              "timestamp": "2026-02-26T12:40:00.000Z",
-              "value": 1.749077
-            },
-            {
-              "timestamp": "2026-02-26T13:40:00.000Z",
-              "value": 1.798283
-            },
-            {
-              "timestamp": "2026-02-26T14:40:00.000Z",
-              "value": 1.781833
-            },
-            {
-              "timestamp": "2026-02-26T15:40:00.000Z",
-              "value": 1.770464
-            },
-            {
-              "timestamp": "2026-02-26T16:40:00.000Z",
-              "value": 1.777974
-            },
-            {
-              "timestamp": "2026-02-26T17:40:00.000Z",
-              "value": 1.747808
-            },
-            {
-              "timestamp": "2026-02-26T18:40:00.000Z",
-              "value": 1.758578
-            },
-            {
-              "timestamp": "2026-02-26T19:40:00.000Z",
-              "value": 1.824039
-            },
-            {
-              "timestamp": "2026-02-26T20:40:00.000Z",
-              "value": 1.810897
-            },
-            {
-              "timestamp": "2026-02-26T21:40:00.000Z",
-              "value": 1.807302
-            },
-            {
-              "timestamp": "2026-02-26T22:40:00.000Z",
-              "value": 1.830571
-            },
-            {
-              "timestamp": "2026-02-26T23:40:00.000Z",
-              "value": 1.844662
-            },
-            {
-              "timestamp": "2026-02-27T00:40:00.000Z",
-              "value": 1.754995
-            },
-            {
-              "timestamp": "2026-02-27T01:40:00.000Z",
-              "value": 1.836608
-            },
-            {
-              "timestamp": "2026-02-27T02:40:00.000Z",
-              "value": 1.841279
-            },
-            {
-              "timestamp": "2026-02-27T03:40:00.000Z",
-              "value": 1.799833
-            },
-            {
-              "timestamp": "2026-02-27T04:40:00.000Z",
-              "value": 1.745661
-            },
-            {
-              "timestamp": "2026-02-27T05:40:00.000Z",
-              "value": 1.804713
-            },
-            {
-              "timestamp": "2026-02-27T06:40:00.000Z",
-              "value": 1.83703
-            },
-            {
-              "timestamp": "2026-02-27T07:40:00.000Z",
-              "value": 1.835838
-            },
-            {
-              "timestamp": "2026-02-27T08:40:00.000Z",
-              "value": 1.783533
-            },
-            {
-              "timestamp": "2026-02-27T09:40:00.000Z",
-              "value": 1.83704
-            },
-            {
-              "timestamp": "2026-02-27T10:40:00.000Z",
-              "value": 1.807983
-            },
-            {
-              "timestamp": "2026-02-27T11:40:00.000Z",
-              "value": 1.806175
-            }
-          ],
-          "SYN-EQP-02": [
-            {
-              "timestamp": "2026-02-26T12:40:00.000Z",
-              "value": 1.8
-            },
-            {
-              "timestamp": "2026-02-26T13:40:00.000Z",
-              "value": 1.79
-            },
-            {
-              "timestamp": "2026-02-26T14:40:00.000Z",
-              "value": 1.79
-            },
-            {
-              "timestamp": "2026-02-26T15:40:00.000Z",
-              "value": 1.79
-            },
-            {
-              "timestamp": "2026-02-26T16:40:00.000Z",
-              "value": 1.8
-            },
-            {
-              "timestamp": "2026-02-26T17:40:00.000Z",
-              "value": 1.8
-            },
-            {
-              "timestamp": "2026-02-26T18:40:00.000Z",
-              "value": 2.04
-            },
-            {
-              "timestamp": "2026-02-26T19:40:00.000Z",
-              "value": 2.28
-            },
-            {
-              "timestamp": "2026-02-26T20:40:00.000Z",
-              "value": 2.5
-            },
-            {
-              "timestamp": "2026-02-26T21:40:00.000Z",
-              "value": 2.74
-            },
-            {
-              "timestamp": "2026-02-26T22:40:00.000Z",
-              "value": 3.1
-            },
-            {
-              "timestamp": "2026-02-26T23:40:00.000Z",
-              "value": 3.34
-            },
-            {
-              "timestamp": "2026-02-27T00:40:00.000Z",
-              "value": 3.57
-            },
-            {
-              "timestamp": "2026-02-27T01:40:00.000Z",
-              "value": 3.81
-            },
-            {
-              "timestamp": "2026-02-27T02:40:00.000Z",
-              "value": 4.05
-            },
-            {
-              "timestamp": "2026-02-27T03:40:00.000Z",
-              "value": 4.29
-            },
-            {
-              "timestamp": "2026-02-27T04:40:00.000Z",
-              "value": 4.52
-            },
-            {
-              "timestamp": "2026-02-27T05:40:00.000Z",
-              "value": 4.77
-            },
-            {
-              "timestamp": "2026-02-27T06:40:00.000Z",
-              "value": 5
-            },
-            {
-              "timestamp": "2026-02-27T07:40:00.000Z",
-              "value": 5.24
-            },
-            {
-              "timestamp": "2026-02-27T08:40:00.000Z",
-              "value": 5.48
-            },
-            {
-              "timestamp": "2026-02-27T09:40:00.000Z",
-              "value": 5.72
-            },
-            {
-              "timestamp": "2026-02-27T10:40:00.000Z",
-              "value": 1.88
-            },
-            {
-              "timestamp": "2026-02-27T11:40:00.000Z",
-              "value": 1.88
-            }
-          ]
-        },
-        "synthetic-signal-equipment-down": {
-          "SYN-EQP-01": [
-            {
-              "timestamp": "2026-02-26T12:40:00.000Z",
-              "value": 99.169491
-            },
-            {
-              "timestamp": "2026-02-26T13:40:00.000Z",
-              "value": 99.303109
-            },
-            {
-              "timestamp": "2026-02-26T14:40:00.000Z",
-              "value": 99.125133
-            },
-            {
-              "timestamp": "2026-02-26T15:40:00.000Z",
-              "value": 99.271946
-            },
-            {
-              "timestamp": "2026-02-26T16:40:00.000Z",
-              "value": 99.123372
-            },
-            {
-              "timestamp": "2026-02-26T17:40:00.000Z",
-              "value": 99.205171
-            },
-            {
-              "timestamp": "2026-02-26T18:40:00.000Z",
-              "value": 99.27205
-            },
-            {
-              "timestamp": "2026-02-26T19:40:00.000Z",
-              "value": 99.306929
-            },
-            {
-              "timestamp": "2026-02-26T20:40:00.000Z",
-              "value": 99.321163
-            },
-            {
-              "timestamp": "2026-02-26T21:40:00.000Z",
-              "value": 99.158716
-            },
-            {
-              "timestamp": "2026-02-26T22:40:00.000Z",
-              "value": 99.242499
-            },
-            {
-              "timestamp": "2026-02-26T23:40:00.000Z",
-              "value": 99.193885
-            },
-            {
-              "timestamp": "2026-02-27T00:40:00.000Z",
-              "value": 99.317968
-            },
-            {
-              "timestamp": "2026-02-27T01:40:00.000Z",
-              "value": 99.314705
-            },
-            {
-              "timestamp": "2026-02-27T02:40:00.000Z",
-              "value": 99.201209
-            },
-            {
-              "timestamp": "2026-02-27T03:40:00.000Z",
-              "value": 99.22847
-            },
-            {
-              "timestamp": "2026-02-27T04:40:00.000Z",
-              "value": 99.312893
-            },
-            {
-              "timestamp": "2026-02-27T05:40:00.000Z",
-              "value": 99.130974
-            },
-            {
-              "timestamp": "2026-02-27T06:40:00.000Z",
-              "value": 99.240703
-            },
-            {
-              "timestamp": "2026-02-27T07:40:00.000Z",
-              "value": 99.315798
-            },
-            {
-              "timestamp": "2026-02-27T08:40:00.000Z",
-              "value": 99.325915
-            },
-            {
-              "timestamp": "2026-02-27T09:40:00.000Z",
-              "value": 99.295146
-            },
-            {
-              "timestamp": "2026-02-27T10:40:00.000Z",
-              "value": 99.213001
-            },
-            {
-              "timestamp": "2026-02-27T11:40:00.000Z",
-              "value": 99.325507
-            }
-          ],
-          "SYN-EQP-02": [
-            {
-              "timestamp": "2026-02-26T12:40:00.000Z",
-              "value": 99.23
-            },
-            {
-              "timestamp": "2026-02-26T13:40:00.000Z",
-              "value": 99.23
-            },
-            {
-              "timestamp": "2026-02-26T14:40:00.000Z",
-              "value": 99.24
-            },
-            {
-              "timestamp": "2026-02-26T15:40:00.000Z",
-              "value": 99.24
-            },
-            {
-              "timestamp": "2026-02-26T16:40:00.000Z",
-              "value": 99.24
-            },
-            {
-              "timestamp": "2026-02-26T17:40:00.000Z",
-              "value": 99.24
-            },
-            {
-              "timestamp": "2026-02-26T18:40:00.000Z",
-              "value": 99.24
-            },
-            {
-              "timestamp": "2026-02-26T19:40:00.000Z",
-              "value": 99.24
-            },
-            {
-              "timestamp": "2026-02-26T20:40:00.000Z",
-              "value": 99.24
-            },
-            {
-              "timestamp": "2026-02-26T21:40:00.000Z",
-              "value": 99.25
-            },
-            {
-              "timestamp": "2026-02-26T22:40:00.000Z",
-              "value": 99.13
-            },
-            {
-              "timestamp": "2026-02-26T23:40:00.000Z",
-              "value": 99.13
-            },
-            {
-              "timestamp": "2026-02-27T00:40:00.000Z",
-              "value": 99.13
-            },
-            {
-              "timestamp": "2026-02-27T01:40:00.000Z",
-              "value": 99.13
-            },
-            {
-              "timestamp": "2026-02-27T02:40:00.000Z",
-              "value": 98.52
-            },
-            {
-              "timestamp": "2026-02-27T03:40:00.000Z",
-              "value": 97.92
-            },
-            {
-              "timestamp": "2026-02-27T04:40:00.000Z",
-              "value": 97.33
-            },
-            {
-              "timestamp": "2026-02-27T05:40:00.000Z",
-              "value": 96.72
-            },
-            {
-              "timestamp": "2026-02-27T06:40:00.000Z",
-              "value": 96.14
-            },
-            {
-              "timestamp": "2026-02-27T07:40:00.000Z",
-              "value": 95.54
-            },
-            {
-              "timestamp": "2026-02-27T08:40:00.000Z",
-              "value": 94.94
-            },
-            {
-              "timestamp": "2026-02-27T09:40:00.000Z",
-              "value": 94.34
-            },
-            {
-              "timestamp": "2026-02-27T10:40:00.000Z",
-              "value": 99.14
-            },
-            {
-              "timestamp": "2026-02-27T11:40:00.000Z",
-              "value": 99.14
-            }
-          ]
-        },
+        "synthetic-signal-queue-rise": {},
+        "synthetic-signal-equipment-down": {},
         "synthetic-signal-level-shift": {
           "SYN-EQP-01": [
             {
@@ -111416,13 +109456,14 @@
             "equipment": "SYN-EQP-02",
             "step": "SYN-ETCH-10",
             "item": "SYN-QUEUE",
-            "legendAxis": "eqp_id",
+            "legendAxis": "recipe",
             "recipe": "SYN-RCP-B",
             "detectedAt": "2026-02-15T07:30:00.000Z",
             "startIndex": 8,
             "endIndex": 19,
             "description": "SYN-EQP-02 · SYN-ETCH-10 · 합성 대기시간",
-            "onsetIndex": 6
+            "onsetIndex": 6,
+            "highlightedMember": "SYN-RCP-B"
           },
           {
             "id": "synthetic-signal-equipment-down",
@@ -111433,13 +109474,14 @@
             "equipment": "SYN-EQP-02",
             "step": "SYN-ETCH-10",
             "item": "SYN-AVAIL",
-            "legendAxis": "eqp_id",
+            "legendAxis": "chamber",
             "recipe": "SYN-RCP-B",
             "detectedAt": "2026-02-15T07:30:00.000Z",
             "startIndex": 14,
             "endIndex": 17,
             "description": "SYN-EQP-02 · 합성 설비 가동률",
-            "onsetIndex": 14
+            "onsetIndex": 14,
+            "highlightedMember": "SYN-CH-02"
           },
           {
             "id": "synthetic-signal-level-shift",
@@ -114732,7 +112774,7 @@
         ],
         "synthetic-signal-queue-rise": [
           {
-            "member": "SYN-EQP-02",
+            "member": "SYN-RCP-B",
             "highlighted": true,
             "points": [
               [
@@ -115314,7 +113356,7 @@
             ]
           },
           {
-            "member": "SYN-REF-1",
+            "member": "SYN-RCP-A",
             "highlighted": false,
             "points": [
               [
@@ -115896,7 +113938,7 @@
             ]
           },
           {
-            "member": "SYN-REF-2",
+            "member": "SYN-RCP-C",
             "highlighted": false,
             "points": [
               [
@@ -116478,7 +114520,7 @@
             ]
           },
           {
-            "member": "SYN-REF-3",
+            "member": "SYN-RCP-D",
             "highlighted": false,
             "points": [
               [
@@ -117060,7 +115102,7 @@
             ]
           },
           {
-            "member": "SYN-REF-4",
+            "member": "SYN-RCP-E",
             "highlighted": false,
             "points": [
               [
@@ -117644,7 +115686,7 @@
         ],
         "synthetic-signal-equipment-down": [
           {
-            "member": "SYN-EQP-02",
+            "member": "SYN-CH-02",
             "highlighted": true,
             "points": [
               [
@@ -118226,7 +116268,7 @@
             ]
           },
           {
-            "member": "SYN-REF-1",
+            "member": "SYN-CH-01",
             "highlighted": false,
             "points": [
               [
@@ -118808,7 +116850,7 @@
             ]
           },
           {
-            "member": "SYN-REF-2",
+            "member": "SYN-CH-03",
             "highlighted": false,
             "points": [
               [
@@ -119390,7 +117432,7 @@
             ]
           },
           {
-            "member": "SYN-REF-3",
+            "member": "SYN-CH-04",
             "highlighted": false,
             "points": [
               [
@@ -119972,7 +118014,7 @@
             ]
           },
           {
-            "member": "SYN-REF-4",
+            "member": "SYN-CH-05",
             "highlighted": false,
             "points": [
               [
@@ -132402,402 +130444,8 @@
             }
           ]
         },
-        "synthetic-signal-queue-rise": {
-          "SYN-EQP-01": [
-            {
-              "timestamp": "2026-02-14T20:30:00.000Z",
-              "value": 1.864907
-            },
-            {
-              "timestamp": "2026-02-14T21:30:00.000Z",
-              "value": 1.880105
-            },
-            {
-              "timestamp": "2026-02-14T22:30:00.000Z",
-              "value": 1.91069
-            },
-            {
-              "timestamp": "2026-02-14T23:30:00.000Z",
-              "value": 1.901894
-            },
-            {
-              "timestamp": "2026-02-15T00:30:00.000Z",
-              "value": 1.870278
-            },
-            {
-              "timestamp": "2026-02-15T01:30:00.000Z",
-              "value": 1.903834
-            },
-            {
-              "timestamp": "2026-02-15T02:30:00.000Z",
-              "value": 1.942694
-            },
-            {
-              "timestamp": "2026-02-15T03:30:00.000Z",
-              "value": 1.908765
-            },
-            {
-              "timestamp": "2026-02-15T04:30:00.000Z",
-              "value": 1.890832
-            },
-            {
-              "timestamp": "2026-02-15T05:30:00.000Z",
-              "value": 1.956786
-            },
-            {
-              "timestamp": "2026-02-15T06:30:00.000Z",
-              "value": 1.924602
-            },
-            {
-              "timestamp": "2026-02-15T07:30:00.000Z",
-              "value": 1.933769
-            },
-            {
-              "timestamp": "2026-02-15T08:30:00.000Z",
-              "value": 1.882629
-            },
-            {
-              "timestamp": "2026-02-15T09:30:00.000Z",
-              "value": 1.921916
-            },
-            {
-              "timestamp": "2026-02-15T10:30:00.000Z",
-              "value": 1.871532
-            },
-            {
-              "timestamp": "2026-02-15T11:30:00.000Z",
-              "value": 1.945263
-            },
-            {
-              "timestamp": "2026-02-15T12:30:00.000Z",
-              "value": 1.886953
-            },
-            {
-              "timestamp": "2026-02-15T13:30:00.000Z",
-              "value": 1.902916
-            },
-            {
-              "timestamp": "2026-02-15T14:30:00.000Z",
-              "value": 1.94107
-            },
-            {
-              "timestamp": "2026-02-15T15:30:00.000Z",
-              "value": 1.897497
-            },
-            {
-              "timestamp": "2026-02-15T16:30:00.000Z",
-              "value": 1.9552
-            },
-            {
-              "timestamp": "2026-02-15T17:30:00.000Z",
-              "value": 1.863223
-            },
-            {
-              "timestamp": "2026-02-15T18:30:00.000Z",
-              "value": 1.943834
-            },
-            {
-              "timestamp": "2026-02-15T19:30:00.000Z",
-              "value": 1.866074
-            }
-          ],
-          "SYN-EQP-02": [
-            {
-              "timestamp": "2026-02-14T20:30:00.000Z",
-              "value": 1.91
-            },
-            {
-              "timestamp": "2026-02-14T21:30:00.000Z",
-              "value": 1.91
-            },
-            {
-              "timestamp": "2026-02-14T22:30:00.000Z",
-              "value": 1.91
-            },
-            {
-              "timestamp": "2026-02-14T23:30:00.000Z",
-              "value": 1.91
-            },
-            {
-              "timestamp": "2026-02-15T00:30:00.000Z",
-              "value": 1.92
-            },
-            {
-              "timestamp": "2026-02-15T01:30:00.000Z",
-              "value": 1.92
-            },
-            {
-              "timestamp": "2026-02-15T02:30:00.000Z",
-              "value": 2.15
-            },
-            {
-              "timestamp": "2026-02-15T03:30:00.000Z",
-              "value": 2.4
-            },
-            {
-              "timestamp": "2026-02-15T04:30:00.000Z",
-              "value": 2.65
-            },
-            {
-              "timestamp": "2026-02-15T05:30:00.000Z",
-              "value": 2.89
-            },
-            {
-              "timestamp": "2026-02-15T06:30:00.000Z",
-              "value": 3.03
-            },
-            {
-              "timestamp": "2026-02-15T07:30:00.000Z",
-              "value": 3.26
-            },
-            {
-              "timestamp": "2026-02-15T08:30:00.000Z",
-              "value": 3.51
-            },
-            {
-              "timestamp": "2026-02-15T09:30:00.000Z",
-              "value": 3.75
-            },
-            {
-              "timestamp": "2026-02-15T10:30:00.000Z",
-              "value": 3.99
-            },
-            {
-              "timestamp": "2026-02-15T11:30:00.000Z",
-              "value": 4.23
-            },
-            {
-              "timestamp": "2026-02-15T12:30:00.000Z",
-              "value": 4.48
-            },
-            {
-              "timestamp": "2026-02-15T13:30:00.000Z",
-              "value": 4.72
-            },
-            {
-              "timestamp": "2026-02-15T14:30:00.000Z",
-              "value": 4.93
-            },
-            {
-              "timestamp": "2026-02-15T15:30:00.000Z",
-              "value": 5.17
-            },
-            {
-              "timestamp": "2026-02-15T16:30:00.000Z",
-              "value": 5.14
-            },
-            {
-              "timestamp": "2026-02-15T17:30:00.000Z",
-              "value": 5.38
-            },
-            {
-              "timestamp": "2026-02-15T18:30:00.000Z",
-              "value": 1.55
-            },
-            {
-              "timestamp": "2026-02-15T19:30:00.000Z",
-              "value": 1.55
-            }
-          ]
-        },
-        "synthetic-signal-equipment-down": {
-          "SYN-EQP-01": [
-            {
-              "timestamp": "2026-02-14T20:30:00.000Z",
-              "value": 99.189825
-            },
-            {
-              "timestamp": "2026-02-14T21:30:00.000Z",
-              "value": 99.315311
-            },
-            {
-              "timestamp": "2026-02-14T22:30:00.000Z",
-              "value": 99.191655
-            },
-            {
-              "timestamp": "2026-02-14T23:30:00.000Z",
-              "value": 99.224628
-            },
-            {
-              "timestamp": "2026-02-15T00:30:00.000Z",
-              "value": 99.278855
-            },
-            {
-              "timestamp": "2026-02-15T01:30:00.000Z",
-              "value": 99.24238
-            },
-            {
-              "timestamp": "2026-02-15T02:30:00.000Z",
-              "value": 99.331149
-            },
-            {
-              "timestamp": "2026-02-15T03:30:00.000Z",
-              "value": 99.359758
-            },
-            {
-              "timestamp": "2026-02-15T04:30:00.000Z",
-              "value": 99.19875
-            },
-            {
-              "timestamp": "2026-02-15T05:30:00.000Z",
-              "value": 99.337922
-            },
-            {
-              "timestamp": "2026-02-15T06:30:00.000Z",
-              "value": 99.285603
-            },
-            {
-              "timestamp": "2026-02-15T07:30:00.000Z",
-              "value": 99.367163
-            },
-            {
-              "timestamp": "2026-02-15T08:30:00.000Z",
-              "value": 99.214367
-            },
-            {
-              "timestamp": "2026-02-15T09:30:00.000Z",
-              "value": 99.30271
-            },
-            {
-              "timestamp": "2026-02-15T10:30:00.000Z",
-              "value": 99.281945
-            },
-            {
-              "timestamp": "2026-02-15T11:30:00.000Z",
-              "value": 99.195862
-            },
-            {
-              "timestamp": "2026-02-15T12:30:00.000Z",
-              "value": 99.350254
-            },
-            {
-              "timestamp": "2026-02-15T13:30:00.000Z",
-              "value": 99.346093
-            },
-            {
-              "timestamp": "2026-02-15T14:30:00.000Z",
-              "value": 99.341624
-            },
-            {
-              "timestamp": "2026-02-15T15:30:00.000Z",
-              "value": 99.153468
-            },
-            {
-              "timestamp": "2026-02-15T16:30:00.000Z",
-              "value": 99.228045
-            },
-            {
-              "timestamp": "2026-02-15T17:30:00.000Z",
-              "value": 99.290643
-            },
-            {
-              "timestamp": "2026-02-15T18:30:00.000Z",
-              "value": 99.202697
-            },
-            {
-              "timestamp": "2026-02-15T19:30:00.000Z",
-              "value": 99.211436
-            }
-          ],
-          "SYN-EQP-02": [
-            {
-              "timestamp": "2026-02-14T20:30:00.000Z",
-              "value": 99.25
-            },
-            {
-              "timestamp": "2026-02-14T21:30:00.000Z",
-              "value": 99.25
-            },
-            {
-              "timestamp": "2026-02-14T22:30:00.000Z",
-              "value": 99.24
-            },
-            {
-              "timestamp": "2026-02-14T23:30:00.000Z",
-              "value": 99.24
-            },
-            {
-              "timestamp": "2026-02-15T00:30:00.000Z",
-              "value": 99.24
-            },
-            {
-              "timestamp": "2026-02-15T01:30:00.000Z",
-              "value": 99.24
-            },
-            {
-              "timestamp": "2026-02-15T02:30:00.000Z",
-              "value": 99.24
-            },
-            {
-              "timestamp": "2026-02-15T03:30:00.000Z",
-              "value": 99.24
-            },
-            {
-              "timestamp": "2026-02-15T04:30:00.000Z",
-              "value": 99.26
-            },
-            {
-              "timestamp": "2026-02-15T05:30:00.000Z",
-              "value": 99.26
-            },
-            {
-              "timestamp": "2026-02-15T06:30:00.000Z",
-              "value": 99.34
-            },
-            {
-              "timestamp": "2026-02-15T07:30:00.000Z",
-              "value": 99.34
-            },
-            {
-              "timestamp": "2026-02-15T08:30:00.000Z",
-              "value": 99.34
-            },
-            {
-              "timestamp": "2026-02-15T09:30:00.000Z",
-              "value": 99.34
-            },
-            {
-              "timestamp": "2026-02-15T10:30:00.000Z",
-              "value": 98.73
-            },
-            {
-              "timestamp": "2026-02-15T11:30:00.000Z",
-              "value": 98.13
-            },
-            {
-              "timestamp": "2026-02-15T12:30:00.000Z",
-              "value": 97.53
-            },
-            {
-              "timestamp": "2026-02-15T13:30:00.000Z",
-              "value": 96.94
-            },
-            {
-              "timestamp": "2026-02-15T14:30:00.000Z",
-              "value": 96.35
-            },
-            {
-              "timestamp": "2026-02-15T15:30:00.000Z",
-              "value": 95.75
-            },
-            {
-              "timestamp": "2026-02-15T16:30:00.000Z",
-              "value": 95.13
-            },
-            {
-              "timestamp": "2026-02-15T17:30:00.000Z",
-              "value": 94.53
-            },
-            {
-              "timestamp": "2026-02-15T18:30:00.000Z",
-              "value": 99.33
-            },
-            {
-              "timestamp": "2026-02-15T19:30:00.000Z",
-              "value": 99.33
-            }
-          ]
-        },
+        "synthetic-signal-queue-rise": {},
+        "synthetic-signal-equipment-down": {},
         "synthetic-signal-level-shift": {
           "SYN-EQP-01": [
             {
@@ -133677,13 +131325,14 @@
             "equipment": "SYN-EQP-02",
             "step": "SYN-ETCH-10",
             "item": "SYN-QUEUE",
-            "legendAxis": "eqp_id",
+            "legendAxis": "recipe",
             "recipe": "SYN-RCP-B",
             "detectedAt": "2026-02-03T02:10:00.000Z",
             "startIndex": 8,
             "endIndex": 19,
             "description": "SYN-EQP-02 · SYN-ETCH-10 · 합성 대기시간",
-            "onsetIndex": 6
+            "onsetIndex": 6,
+            "highlightedMember": "SYN-RCP-B"
           },
           {
             "id": "synthetic-signal-equipment-down",
@@ -133694,13 +131343,14 @@
             "equipment": "SYN-EQP-02",
             "step": "SYN-ETCH-10",
             "item": "SYN-AVAIL",
-            "legendAxis": "eqp_id",
+            "legendAxis": "chamber",
             "recipe": "SYN-RCP-B",
             "detectedAt": "2026-02-03T02:10:00.000Z",
             "startIndex": 14,
             "endIndex": 17,
             "description": "SYN-EQP-02 · 합성 설비 가동률",
-            "onsetIndex": 14
+            "onsetIndex": 14,
+            "highlightedMember": "SYN-CH-02"
           },
           {
             "id": "synthetic-signal-level-shift",
@@ -137033,7 +134683,7 @@
         ],
         "synthetic-signal-queue-rise": [
           {
-            "member": "SYN-EQP-02",
+            "member": "SYN-RCP-B",
             "highlighted": true,
             "points": [
               [
@@ -137615,7 +135265,7 @@
             ]
           },
           {
-            "member": "SYN-REF-1",
+            "member": "SYN-RCP-A",
             "highlighted": false,
             "points": [
               [
@@ -138197,7 +135847,7 @@
             ]
           },
           {
-            "member": "SYN-REF-2",
+            "member": "SYN-RCP-C",
             "highlighted": false,
             "points": [
               [
@@ -138779,7 +136429,7 @@
             ]
           },
           {
-            "member": "SYN-REF-3",
+            "member": "SYN-RCP-D",
             "highlighted": false,
             "points": [
               [
@@ -139361,7 +137011,7 @@
             ]
           },
           {
-            "member": "SYN-REF-4",
+            "member": "SYN-RCP-E",
             "highlighted": false,
             "points": [
               [
@@ -139945,7 +137595,7 @@
         ],
         "synthetic-signal-equipment-down": [
           {
-            "member": "SYN-EQP-02",
+            "member": "SYN-CH-02",
             "highlighted": true,
             "points": [
               [
@@ -140527,7 +138177,7 @@
             ]
           },
           {
-            "member": "SYN-REF-1",
+            "member": "SYN-CH-01",
             "highlighted": false,
             "points": [
               [
@@ -141109,7 +138759,7 @@
             ]
           },
           {
-            "member": "SYN-REF-2",
+            "member": "SYN-CH-03",
             "highlighted": false,
             "points": [
               [
@@ -141691,7 +139341,7 @@
             ]
           },
           {
-            "member": "SYN-REF-3",
+            "member": "SYN-CH-04",
             "highlighted": false,
             "points": [
               [
@@ -142273,7 +139923,7 @@
             ]
           },
           {
-            "member": "SYN-REF-4",
+            "member": "SYN-CH-05",
             "highlighted": false,
             "points": [
               [
@@ -154703,402 +152353,8 @@
             }
           ]
         },
-        "synthetic-signal-queue-rise": {
-          "SYN-EQP-01": [
-            {
-              "timestamp": "2026-02-02T15:10:00.000Z",
-              "value": 1.944009
-            },
-            {
-              "timestamp": "2026-02-02T16:10:00.000Z",
-              "value": 1.946268
-            },
-            {
-              "timestamp": "2026-02-02T17:10:00.000Z",
-              "value": 1.976765
-            },
-            {
-              "timestamp": "2026-02-02T18:10:00.000Z",
-              "value": 1.964049
-            },
-            {
-              "timestamp": "2026-02-02T19:10:00.000Z",
-              "value": 1.901407
-            },
-            {
-              "timestamp": "2026-02-02T20:10:00.000Z",
-              "value": 1.925631
-            },
-            {
-              "timestamp": "2026-02-02T21:10:00.000Z",
-              "value": 1.956611
-            },
-            {
-              "timestamp": "2026-02-02T22:10:00.000Z",
-              "value": 1.968806
-            },
-            {
-              "timestamp": "2026-02-02T23:10:00.000Z",
-              "value": 1.993645
-            },
-            {
-              "timestamp": "2026-02-03T00:10:00.000Z",
-              "value": 1.998613
-            },
-            {
-              "timestamp": "2026-02-03T01:10:00.000Z",
-              "value": 1.986247
-            },
-            {
-              "timestamp": "2026-02-03T02:10:00.000Z",
-              "value": 1.987715
-            },
-            {
-              "timestamp": "2026-02-03T03:10:00.000Z",
-              "value": 1.929565
-            },
-            {
-              "timestamp": "2026-02-03T04:10:00.000Z",
-              "value": 1.967715
-            },
-            {
-              "timestamp": "2026-02-03T05:10:00.000Z",
-              "value": 1.990163
-            },
-            {
-              "timestamp": "2026-02-03T06:10:00.000Z",
-              "value": 1.95825
-            },
-            {
-              "timestamp": "2026-02-03T07:10:00.000Z",
-              "value": 1.957173
-            },
-            {
-              "timestamp": "2026-02-03T08:10:00.000Z",
-              "value": 1.976762
-            },
-            {
-              "timestamp": "2026-02-03T09:10:00.000Z",
-              "value": 1.930916
-            },
-            {
-              "timestamp": "2026-02-03T10:10:00.000Z",
-              "value": 1.992852
-            },
-            {
-              "timestamp": "2026-02-03T11:10:00.000Z",
-              "value": 1.917304
-            },
-            {
-              "timestamp": "2026-02-03T12:10:00.000Z",
-              "value": 1.948911
-            },
-            {
-              "timestamp": "2026-02-03T13:10:00.000Z",
-              "value": 1.951611
-            },
-            {
-              "timestamp": "2026-02-03T14:10:00.000Z",
-              "value": 1.900119
-            }
-          ],
-          "SYN-EQP-02": [
-            {
-              "timestamp": "2026-02-02T15:10:00.000Z",
-              "value": 1.95
-            },
-            {
-              "timestamp": "2026-02-02T16:10:00.000Z",
-              "value": 1.95
-            },
-            {
-              "timestamp": "2026-02-02T17:10:00.000Z",
-              "value": 1.95
-            },
-            {
-              "timestamp": "2026-02-02T18:10:00.000Z",
-              "value": 1.95
-            },
-            {
-              "timestamp": "2026-02-02T19:10:00.000Z",
-              "value": 1.96
-            },
-            {
-              "timestamp": "2026-02-02T20:10:00.000Z",
-              "value": 1.96
-            },
-            {
-              "timestamp": "2026-02-02T21:10:00.000Z",
-              "value": 2.19
-            },
-            {
-              "timestamp": "2026-02-02T22:10:00.000Z",
-              "value": 2.44
-            },
-            {
-              "timestamp": "2026-02-02T23:10:00.000Z",
-              "value": 2.69
-            },
-            {
-              "timestamp": "2026-02-03T00:10:00.000Z",
-              "value": 2.93
-            },
-            {
-              "timestamp": "2026-02-03T01:10:00.000Z",
-              "value": 3.03
-            },
-            {
-              "timestamp": "2026-02-03T02:10:00.000Z",
-              "value": 3.27
-            },
-            {
-              "timestamp": "2026-02-03T03:10:00.000Z",
-              "value": 3.51
-            },
-            {
-              "timestamp": "2026-02-03T04:10:00.000Z",
-              "value": 3.75
-            },
-            {
-              "timestamp": "2026-02-03T05:10:00.000Z",
-              "value": 4
-            },
-            {
-              "timestamp": "2026-02-03T06:10:00.000Z",
-              "value": 4.24
-            },
-            {
-              "timestamp": "2026-02-03T07:10:00.000Z",
-              "value": 4.48
-            },
-            {
-              "timestamp": "2026-02-03T08:10:00.000Z",
-              "value": 4.72
-            },
-            {
-              "timestamp": "2026-02-03T09:10:00.000Z",
-              "value": 4.93
-            },
-            {
-              "timestamp": "2026-02-03T10:10:00.000Z",
-              "value": 5.17
-            },
-            {
-              "timestamp": "2026-02-03T11:10:00.000Z",
-              "value": 5.15
-            },
-            {
-              "timestamp": "2026-02-03T12:10:00.000Z",
-              "value": 5.39
-            },
-            {
-              "timestamp": "2026-02-03T13:10:00.000Z",
-              "value": 1.55
-            },
-            {
-              "timestamp": "2026-02-03T14:10:00.000Z",
-              "value": 1.55
-            }
-          ]
-        },
-        "synthetic-signal-equipment-down": {
-          "SYN-EQP-01": [
-            {
-              "timestamp": "2026-02-02T15:10:00.000Z",
-              "value": 99.28338
-            },
-            {
-              "timestamp": "2026-02-02T16:10:00.000Z",
-              "value": 99.147827
-            },
-            {
-              "timestamp": "2026-02-02T17:10:00.000Z",
-              "value": 99.178218
-            },
-            {
-              "timestamp": "2026-02-02T18:10:00.000Z",
-              "value": 99.284674
-            },
-            {
-              "timestamp": "2026-02-02T19:10:00.000Z",
-              "value": 99.10132
-            },
-            {
-              "timestamp": "2026-02-02T20:10:00.000Z",
-              "value": 99.069938
-            },
-            {
-              "timestamp": "2026-02-02T21:10:00.000Z",
-              "value": 99.243595
-            },
-            {
-              "timestamp": "2026-02-02T22:10:00.000Z",
-              "value": 99.101597
-            },
-            {
-              "timestamp": "2026-02-02T23:10:00.000Z",
-              "value": 99.067442
-            },
-            {
-              "timestamp": "2026-02-03T00:10:00.000Z",
-              "value": 99.184134
-            },
-            {
-              "timestamp": "2026-02-03T01:10:00.000Z",
-              "value": 99.255418
-            },
-            {
-              "timestamp": "2026-02-03T02:10:00.000Z",
-              "value": 99.137095
-            },
-            {
-              "timestamp": "2026-02-03T03:10:00.000Z",
-              "value": 99.187474
-            },
-            {
-              "timestamp": "2026-02-03T04:10:00.000Z",
-              "value": 99.061668
-            },
-            {
-              "timestamp": "2026-02-03T05:10:00.000Z",
-              "value": 99.208085
-            },
-            {
-              "timestamp": "2026-02-03T06:10:00.000Z",
-              "value": 99.173585
-            },
-            {
-              "timestamp": "2026-02-03T07:10:00.000Z",
-              "value": 99.189633
-            },
-            {
-              "timestamp": "2026-02-03T08:10:00.000Z",
-              "value": 99.158645
-            },
-            {
-              "timestamp": "2026-02-03T09:10:00.000Z",
-              "value": 99.176486
-            },
-            {
-              "timestamp": "2026-02-03T10:10:00.000Z",
-              "value": 99.169859
-            },
-            {
-              "timestamp": "2026-02-03T11:10:00.000Z",
-              "value": 99.168829
-            },
-            {
-              "timestamp": "2026-02-03T12:10:00.000Z",
-              "value": 99.058166
-            },
-            {
-              "timestamp": "2026-02-03T13:10:00.000Z",
-              "value": 99.25045
-            },
-            {
-              "timestamp": "2026-02-03T14:10:00.000Z",
-              "value": 99.102615
-            }
-          ],
-          "SYN-EQP-02": [
-            {
-              "timestamp": "2026-02-02T15:10:00.000Z",
-              "value": 99.17
-            },
-            {
-              "timestamp": "2026-02-02T16:10:00.000Z",
-              "value": 99.17
-            },
-            {
-              "timestamp": "2026-02-02T17:10:00.000Z",
-              "value": 99.16
-            },
-            {
-              "timestamp": "2026-02-02T18:10:00.000Z",
-              "value": 99.16
-            },
-            {
-              "timestamp": "2026-02-02T19:10:00.000Z",
-              "value": 99.16
-            },
-            {
-              "timestamp": "2026-02-02T20:10:00.000Z",
-              "value": 99.16
-            },
-            {
-              "timestamp": "2026-02-02T21:10:00.000Z",
-              "value": 99.16
-            },
-            {
-              "timestamp": "2026-02-02T22:10:00.000Z",
-              "value": 99.16
-            },
-            {
-              "timestamp": "2026-02-02T23:10:00.000Z",
-              "value": 99.18
-            },
-            {
-              "timestamp": "2026-02-03T00:10:00.000Z",
-              "value": 99.18
-            },
-            {
-              "timestamp": "2026-02-03T01:10:00.000Z",
-              "value": 99.33
-            },
-            {
-              "timestamp": "2026-02-03T02:10:00.000Z",
-              "value": 99.33
-            },
-            {
-              "timestamp": "2026-02-03T03:10:00.000Z",
-              "value": 99.33
-            },
-            {
-              "timestamp": "2026-02-03T04:10:00.000Z",
-              "value": 99.33
-            },
-            {
-              "timestamp": "2026-02-03T05:10:00.000Z",
-              "value": 98.72
-            },
-            {
-              "timestamp": "2026-02-03T06:10:00.000Z",
-              "value": 98.12
-            },
-            {
-              "timestamp": "2026-02-03T07:10:00.000Z",
-              "value": 97.52
-            },
-            {
-              "timestamp": "2026-02-03T08:10:00.000Z",
-              "value": 96.92
-            },
-            {
-              "timestamp": "2026-02-03T09:10:00.000Z",
-              "value": 96.34
-            },
-            {
-              "timestamp": "2026-02-03T10:10:00.000Z",
-              "value": 95.74
-            },
-            {
-              "timestamp": "2026-02-03T11:10:00.000Z",
-              "value": 95.12
-            },
-            {
-              "timestamp": "2026-02-03T12:10:00.000Z",
-              "value": 94.52
-            },
-            {
-              "timestamp": "2026-02-03T13:10:00.000Z",
-              "value": 99.32
-            },
-            {
-              "timestamp": "2026-02-03T14:10:00.000Z",
-              "value": 99.32
-            }
-          ]
-        },
+        "synthetic-signal-queue-rise": {},
+        "synthetic-signal-equipment-down": {},
         "synthetic-signal-level-shift": {
           "SYN-EQP-01": [
             {
@@ -155978,13 +153234,14 @@
             "equipment": "SYN-EQP-02",
             "step": "SYN-ETCH-10",
             "item": "SYN-QUEUE",
-            "legendAxis": "eqp_id",
+            "legendAxis": "recipe",
             "recipe": "SYN-RCP-B",
             "detectedAt": "2026-01-19T05:20:00.000Z",
             "startIndex": 8,
             "endIndex": 19,
             "description": "SYN-EQP-02 · SYN-ETCH-10 · 합성 대기시간",
-            "onsetIndex": 6
+            "onsetIndex": 6,
+            "highlightedMember": "SYN-RCP-B"
           },
           {
             "id": "synthetic-signal-equipment-down",
@@ -155995,13 +153252,14 @@
             "equipment": "SYN-EQP-02",
             "step": "SYN-ETCH-10",
             "item": "SYN-AVAIL",
-            "legendAxis": "eqp_id",
+            "legendAxis": "chamber",
             "recipe": "SYN-RCP-B",
             "detectedAt": "2026-01-19T05:20:00.000Z",
             "startIndex": 14,
             "endIndex": 17,
             "description": "SYN-EQP-02 · 합성 설비 가동률",
-            "onsetIndex": 14
+            "onsetIndex": 14,
+            "highlightedMember": "SYN-CH-02"
           },
           {
             "id": "synthetic-signal-level-shift",
@@ -159294,7 +156552,7 @@
         ],
         "synthetic-signal-queue-rise": [
           {
-            "member": "SYN-EQP-02",
+            "member": "SYN-RCP-B",
             "highlighted": true,
             "points": [
               [
@@ -159876,7 +157134,7 @@
             ]
           },
           {
-            "member": "SYN-REF-1",
+            "member": "SYN-RCP-A",
             "highlighted": false,
             "points": [
               [
@@ -160458,7 +157716,7 @@
             ]
           },
           {
-            "member": "SYN-REF-2",
+            "member": "SYN-RCP-C",
             "highlighted": false,
             "points": [
               [
@@ -161040,7 +158298,7 @@
             ]
           },
           {
-            "member": "SYN-REF-3",
+            "member": "SYN-RCP-D",
             "highlighted": false,
             "points": [
               [
@@ -161622,7 +158880,7 @@
             ]
           },
           {
-            "member": "SYN-REF-4",
+            "member": "SYN-RCP-E",
             "highlighted": false,
             "points": [
               [
@@ -162206,7 +159464,7 @@
         ],
         "synthetic-signal-equipment-down": [
           {
-            "member": "SYN-EQP-02",
+            "member": "SYN-CH-02",
             "highlighted": true,
             "points": [
               [
@@ -162788,7 +160046,7 @@
             ]
           },
           {
-            "member": "SYN-REF-1",
+            "member": "SYN-CH-01",
             "highlighted": false,
             "points": [
               [
@@ -163370,7 +160628,7 @@
             ]
           },
           {
-            "member": "SYN-REF-2",
+            "member": "SYN-CH-03",
             "highlighted": false,
             "points": [
               [
@@ -163952,7 +161210,7 @@
             ]
           },
           {
-            "member": "SYN-REF-3",
+            "member": "SYN-CH-04",
             "highlighted": false,
             "points": [
               [
@@ -164534,7 +161792,7 @@
             ]
           },
           {
-            "member": "SYN-REF-4",
+            "member": "SYN-CH-05",
             "highlighted": false,
             "points": [
               [
@@ -176964,402 +174222,8 @@
             }
           ]
         },
-        "synthetic-signal-queue-rise": {
-          "SYN-EQP-01": [
-            {
-              "timestamp": "2026-01-18T18:20:00.000Z",
-              "value": 1.914437
-            },
-            {
-              "timestamp": "2026-01-18T19:20:00.000Z",
-              "value": 1.963794
-            },
-            {
-              "timestamp": "2026-01-18T20:20:00.000Z",
-              "value": 1.989649
-            },
-            {
-              "timestamp": "2026-01-18T21:20:00.000Z",
-              "value": 1.978047
-            },
-            {
-              "timestamp": "2026-01-18T22:20:00.000Z",
-              "value": 1.929112
-            },
-            {
-              "timestamp": "2026-01-18T23:20:00.000Z",
-              "value": 1.923793
-            },
-            {
-              "timestamp": "2026-01-19T00:20:00.000Z",
-              "value": 1.934414
-            },
-            {
-              "timestamp": "2026-01-19T01:20:00.000Z",
-              "value": 1.985029
-            },
-            {
-              "timestamp": "2026-01-19T02:20:00.000Z",
-              "value": 1.940512
-            },
-            {
-              "timestamp": "2026-01-19T03:20:00.000Z",
-              "value": 1.924074
-            },
-            {
-              "timestamp": "2026-01-19T04:20:00.000Z",
-              "value": 1.996404
-            },
-            {
-              "timestamp": "2026-01-19T05:20:00.000Z",
-              "value": 1.975235
-            },
-            {
-              "timestamp": "2026-01-19T06:20:00.000Z",
-              "value": 1.961008
-            },
-            {
-              "timestamp": "2026-01-19T07:20:00.000Z",
-              "value": 1.915087
-            },
-            {
-              "timestamp": "2026-01-19T08:20:00.000Z",
-              "value": 2.005125
-            },
-            {
-              "timestamp": "2026-01-19T09:20:00.000Z",
-              "value": 1.969235
-            },
-            {
-              "timestamp": "2026-01-19T10:20:00.000Z",
-              "value": 1.953496
-            },
-            {
-              "timestamp": "2026-01-19T11:20:00.000Z",
-              "value": 1.912233
-            },
-            {
-              "timestamp": "2026-01-19T12:20:00.000Z",
-              "value": 1.932725
-            },
-            {
-              "timestamp": "2026-01-19T13:20:00.000Z",
-              "value": 2.004928
-            },
-            {
-              "timestamp": "2026-01-19T14:20:00.000Z",
-              "value": 1.950996
-            },
-            {
-              "timestamp": "2026-01-19T15:20:00.000Z",
-              "value": 2.009437
-            },
-            {
-              "timestamp": "2026-01-19T16:20:00.000Z",
-              "value": 1.98902
-            },
-            {
-              "timestamp": "2026-01-19T17:20:00.000Z",
-              "value": 2.009695
-            }
-          ],
-          "SYN-EQP-02": [
-            {
-              "timestamp": "2026-01-18T18:20:00.000Z",
-              "value": 1.96
-            },
-            {
-              "timestamp": "2026-01-18T19:20:00.000Z",
-              "value": 1.96
-            },
-            {
-              "timestamp": "2026-01-18T20:20:00.000Z",
-              "value": 1.95
-            },
-            {
-              "timestamp": "2026-01-18T21:20:00.000Z",
-              "value": 1.96
-            },
-            {
-              "timestamp": "2026-01-18T22:20:00.000Z",
-              "value": 1.97
-            },
-            {
-              "timestamp": "2026-01-18T23:20:00.000Z",
-              "value": 1.97
-            },
-            {
-              "timestamp": "2026-01-19T00:20:00.000Z",
-              "value": 2.2
-            },
-            {
-              "timestamp": "2026-01-19T01:20:00.000Z",
-              "value": 2.44
-            },
-            {
-              "timestamp": "2026-01-19T02:20:00.000Z",
-              "value": 2.66
-            },
-            {
-              "timestamp": "2026-01-19T03:20:00.000Z",
-              "value": 2.9
-            },
-            {
-              "timestamp": "2026-01-19T04:20:00.000Z",
-              "value": 3.03
-            },
-            {
-              "timestamp": "2026-01-19T05:20:00.000Z",
-              "value": 3.27
-            },
-            {
-              "timestamp": "2026-01-19T06:20:00.000Z",
-              "value": 3.51
-            },
-            {
-              "timestamp": "2026-01-19T07:20:00.000Z",
-              "value": 3.75
-            },
-            {
-              "timestamp": "2026-01-19T08:20:00.000Z",
-              "value": 4
-            },
-            {
-              "timestamp": "2026-01-19T09:20:00.000Z",
-              "value": 4.23
-            },
-            {
-              "timestamp": "2026-01-19T10:20:00.000Z",
-              "value": 4.48
-            },
-            {
-              "timestamp": "2026-01-19T11:20:00.000Z",
-              "value": 4.72
-            },
-            {
-              "timestamp": "2026-01-19T12:20:00.000Z",
-              "value": 4.96
-            },
-            {
-              "timestamp": "2026-01-19T13:20:00.000Z",
-              "value": 5.2
-            },
-            {
-              "timestamp": "2026-01-19T14:20:00.000Z",
-              "value": 5.21
-            },
-            {
-              "timestamp": "2026-01-19T15:20:00.000Z",
-              "value": 5.45
-            },
-            {
-              "timestamp": "2026-01-19T16:20:00.000Z",
-              "value": 1.61
-            },
-            {
-              "timestamp": "2026-01-19T17:20:00.000Z",
-              "value": 1.61
-            }
-          ]
-        },
-        "synthetic-signal-equipment-down": {
-          "SYN-EQP-01": [
-            {
-              "timestamp": "2026-01-18T18:20:00.000Z",
-              "value": 99.24843
-            },
-            {
-              "timestamp": "2026-01-18T19:20:00.000Z",
-              "value": 99.131024
-            },
-            {
-              "timestamp": "2026-01-18T20:20:00.000Z",
-              "value": 99.159762
-            },
-            {
-              "timestamp": "2026-01-18T21:20:00.000Z",
-              "value": 99.249699
-            },
-            {
-              "timestamp": "2026-01-18T22:20:00.000Z",
-              "value": 99.335854
-            },
-            {
-              "timestamp": "2026-01-18T23:20:00.000Z",
-              "value": 99.230892
-            },
-            {
-              "timestamp": "2026-01-19T00:20:00.000Z",
-              "value": 99.362527
-            },
-            {
-              "timestamp": "2026-01-19T01:20:00.000Z",
-              "value": 99.308619
-            },
-            {
-              "timestamp": "2026-01-19T02:20:00.000Z",
-              "value": 99.144662
-            },
-            {
-              "timestamp": "2026-01-19T03:20:00.000Z",
-              "value": 99.219764
-            },
-            {
-              "timestamp": "2026-01-19T04:20:00.000Z",
-              "value": 99.25728
-            },
-            {
-              "timestamp": "2026-01-19T05:20:00.000Z",
-              "value": 99.19179
-            },
-            {
-              "timestamp": "2026-01-19T06:20:00.000Z",
-              "value": 99.142327
-            },
-            {
-              "timestamp": "2026-01-19T07:20:00.000Z",
-              "value": 99.241643
-            },
-            {
-              "timestamp": "2026-01-19T08:20:00.000Z",
-              "value": 99.137616
-            },
-            {
-              "timestamp": "2026-01-19T09:20:00.000Z",
-              "value": 99.189329
-            },
-            {
-              "timestamp": "2026-01-19T10:20:00.000Z",
-              "value": 99.325017
-            },
-            {
-              "timestamp": "2026-01-19T11:20:00.000Z",
-              "value": 99.352353
-            },
-            {
-              "timestamp": "2026-01-19T12:20:00.000Z",
-              "value": 99.336943
-            },
-            {
-              "timestamp": "2026-01-19T13:20:00.000Z",
-              "value": 99.325708
-            },
-            {
-              "timestamp": "2026-01-19T14:20:00.000Z",
-              "value": 99.2471
-            },
-            {
-              "timestamp": "2026-01-19T15:20:00.000Z",
-              "value": 99.151989
-            },
-            {
-              "timestamp": "2026-01-19T16:20:00.000Z",
-              "value": 99.326214
-            },
-            {
-              "timestamp": "2026-01-19T17:20:00.000Z",
-              "value": 99.276335
-            }
-          ],
-          "SYN-EQP-02": [
-            {
-              "timestamp": "2026-01-18T18:20:00.000Z",
-              "value": 99.26
-            },
-            {
-              "timestamp": "2026-01-18T19:20:00.000Z",
-              "value": 99.26
-            },
-            {
-              "timestamp": "2026-01-18T20:20:00.000Z",
-              "value": 99.26
-            },
-            {
-              "timestamp": "2026-01-18T21:20:00.000Z",
-              "value": 99.26
-            },
-            {
-              "timestamp": "2026-01-18T22:20:00.000Z",
-              "value": 99.26
-            },
-            {
-              "timestamp": "2026-01-18T23:20:00.000Z",
-              "value": 99.25
-            },
-            {
-              "timestamp": "2026-01-19T00:20:00.000Z",
-              "value": 99.25
-            },
-            {
-              "timestamp": "2026-01-19T01:20:00.000Z",
-              "value": 99.25
-            },
-            {
-              "timestamp": "2026-01-19T02:20:00.000Z",
-              "value": 99.25
-            },
-            {
-              "timestamp": "2026-01-19T03:20:00.000Z",
-              "value": 99.25
-            },
-            {
-              "timestamp": "2026-01-19T04:20:00.000Z",
-              "value": 99.25
-            },
-            {
-              "timestamp": "2026-01-19T05:20:00.000Z",
-              "value": 99.25
-            },
-            {
-              "timestamp": "2026-01-19T06:20:00.000Z",
-              "value": 99.25
-            },
-            {
-              "timestamp": "2026-01-19T07:20:00.000Z",
-              "value": 99.25
-            },
-            {
-              "timestamp": "2026-01-19T08:20:00.000Z",
-              "value": 98.64
-            },
-            {
-              "timestamp": "2026-01-19T09:20:00.000Z",
-              "value": 98.04
-            },
-            {
-              "timestamp": "2026-01-19T10:20:00.000Z",
-              "value": 97.44
-            },
-            {
-              "timestamp": "2026-01-19T11:20:00.000Z",
-              "value": 96.85
-            },
-            {
-              "timestamp": "2026-01-19T12:20:00.000Z",
-              "value": 96.23
-            },
-            {
-              "timestamp": "2026-01-19T13:20:00.000Z",
-              "value": 95.64
-            },
-            {
-              "timestamp": "2026-01-19T14:20:00.000Z",
-              "value": 95.04
-            },
-            {
-              "timestamp": "2026-01-19T15:20:00.000Z",
-              "value": 94.44
-            },
-            {
-              "timestamp": "2026-01-19T16:20:00.000Z",
-              "value": 99.24
-            },
-            {
-              "timestamp": "2026-01-19T17:20:00.000Z",
-              "value": 99.24
-            }
-          ]
-        },
+        "synthetic-signal-queue-rise": {},
+        "synthetic-signal-equipment-down": {},
         "synthetic-signal-level-shift": {
           "SYN-EQP-01": [
             {
@@ -178239,13 +175103,14 @@
             "equipment": "SYN-EQP-02",
             "step": "SYN-ETCH-10",
             "item": "SYN-QUEUE",
-            "legendAxis": "eqp_id",
+            "legendAxis": "recipe",
             "recipe": "SYN-RCP-B",
             "detectedAt": "2026-01-08T00:00:00.000Z",
             "startIndex": 8,
             "endIndex": 19,
             "description": "SYN-EQP-02 · SYN-ETCH-10 · 합성 대기시간",
-            "onsetIndex": 6
+            "onsetIndex": 6,
+            "highlightedMember": "SYN-RCP-B"
           },
           {
             "id": "synthetic-signal-equipment-down",
@@ -178256,13 +175121,14 @@
             "equipment": "SYN-EQP-02",
             "step": "SYN-ETCH-10",
             "item": "SYN-AVAIL",
-            "legendAxis": "eqp_id",
+            "legendAxis": "chamber",
             "recipe": "SYN-RCP-B",
             "detectedAt": "2026-01-08T00:00:00.000Z",
             "startIndex": 14,
             "endIndex": 17,
             "description": "SYN-EQP-02 · 합성 설비 가동률",
-            "onsetIndex": 14
+            "onsetIndex": 14,
+            "highlightedMember": "SYN-CH-02"
           },
           {
             "id": "synthetic-signal-level-shift",
@@ -181595,7 +178461,7 @@
         ],
         "synthetic-signal-queue-rise": [
           {
-            "member": "SYN-EQP-02",
+            "member": "SYN-RCP-B",
             "highlighted": true,
             "points": [
               [
@@ -182177,7 +179043,7 @@
             ]
           },
           {
-            "member": "SYN-REF-1",
+            "member": "SYN-RCP-A",
             "highlighted": false,
             "points": [
               [
@@ -182759,7 +179625,7 @@
             ]
           },
           {
-            "member": "SYN-REF-2",
+            "member": "SYN-RCP-C",
             "highlighted": false,
             "points": [
               [
@@ -183341,7 +180207,7 @@
             ]
           },
           {
-            "member": "SYN-REF-3",
+            "member": "SYN-RCP-D",
             "highlighted": false,
             "points": [
               [
@@ -183923,7 +180789,7 @@
             ]
           },
           {
-            "member": "SYN-REF-4",
+            "member": "SYN-RCP-E",
             "highlighted": false,
             "points": [
               [
@@ -184507,7 +181373,7 @@
         ],
         "synthetic-signal-equipment-down": [
           {
-            "member": "SYN-EQP-02",
+            "member": "SYN-CH-02",
             "highlighted": true,
             "points": [
               [
@@ -185089,7 +181955,7 @@
             ]
           },
           {
-            "member": "SYN-REF-1",
+            "member": "SYN-CH-01",
             "highlighted": false,
             "points": [
               [
@@ -185671,7 +182537,7 @@
             ]
           },
           {
-            "member": "SYN-REF-2",
+            "member": "SYN-CH-03",
             "highlighted": false,
             "points": [
               [
@@ -186253,7 +183119,7 @@
             ]
           },
           {
-            "member": "SYN-REF-3",
+            "member": "SYN-CH-04",
             "highlighted": false,
             "points": [
               [
@@ -186835,7 +183701,7 @@
             ]
           },
           {
-            "member": "SYN-REF-4",
+            "member": "SYN-CH-05",
             "highlighted": false,
             "points": [
               [
@@ -199265,402 +196131,8 @@
             }
           ]
         },
-        "synthetic-signal-queue-rise": {
-          "SYN-EQP-01": [
-            {
-              "timestamp": "2026-01-07T13:00:00.000Z",
-              "value": 1.541425
-            },
-            {
-              "timestamp": "2026-01-07T14:00:00.000Z",
-              "value": 1.596142
-            },
-            {
-              "timestamp": "2026-01-07T15:00:00.000Z",
-              "value": 1.559697
-            },
-            {
-              "timestamp": "2026-01-07T16:00:00.000Z",
-              "value": 1.508321
-            },
-            {
-              "timestamp": "2026-01-07T17:00:00.000Z",
-              "value": 1.573675
-            },
-            {
-              "timestamp": "2026-01-07T18:00:00.000Z",
-              "value": 1.574757
-            },
-            {
-              "timestamp": "2026-01-07T19:00:00.000Z",
-              "value": 1.503899
-            },
-            {
-              "timestamp": "2026-01-07T20:00:00.000Z",
-              "value": 1.515873
-            },
-            {
-              "timestamp": "2026-01-07T21:00:00.000Z",
-              "value": 1.572161
-            },
-            {
-              "timestamp": "2026-01-07T22:00:00.000Z",
-              "value": 1.540606
-            },
-            {
-              "timestamp": "2026-01-07T23:00:00.000Z",
-              "value": 1.548906
-            },
-            {
-              "timestamp": "2026-01-08T00:00:00.000Z",
-              "value": 1.561714
-            },
-            {
-              "timestamp": "2026-01-08T01:00:00.000Z",
-              "value": 1.594153
-            },
-            {
-              "timestamp": "2026-01-08T02:00:00.000Z",
-              "value": 1.542787
-            },
-            {
-              "timestamp": "2026-01-08T03:00:00.000Z",
-              "value": 1.534455
-            },
-            {
-              "timestamp": "2026-01-08T04:00:00.000Z",
-              "value": 1.590972
-            },
-            {
-              "timestamp": "2026-01-08T05:00:00.000Z",
-              "value": 1.592068
-            },
-            {
-              "timestamp": "2026-01-08T06:00:00.000Z",
-              "value": 1.519544
-            },
-            {
-              "timestamp": "2026-01-08T07:00:00.000Z",
-              "value": 1.506756
-            },
-            {
-              "timestamp": "2026-01-08T08:00:00.000Z",
-              "value": 1.501327
-            },
-            {
-              "timestamp": "2026-01-08T09:00:00.000Z",
-              "value": 1.558661
-            },
-            {
-              "timestamp": "2026-01-08T10:00:00.000Z",
-              "value": 1.527228
-            },
-            {
-              "timestamp": "2026-01-08T11:00:00.000Z",
-              "value": 1.558328
-            },
-            {
-              "timestamp": "2026-01-08T12:00:00.000Z",
-              "value": 1.507858
-            }
-          ],
-          "SYN-EQP-02": [
-            {
-              "timestamp": "2026-01-07T13:00:00.000Z",
-              "value": 1.55
-            },
-            {
-              "timestamp": "2026-01-07T14:00:00.000Z",
-              "value": 1.55
-            },
-            {
-              "timestamp": "2026-01-07T15:00:00.000Z",
-              "value": 1.56
-            },
-            {
-              "timestamp": "2026-01-07T16:00:00.000Z",
-              "value": 1.55
-            },
-            {
-              "timestamp": "2026-01-07T17:00:00.000Z",
-              "value": 1.55
-            },
-            {
-              "timestamp": "2026-01-07T18:00:00.000Z",
-              "value": 1.54
-            },
-            {
-              "timestamp": "2026-01-07T19:00:00.000Z",
-              "value": 1.79
-            },
-            {
-              "timestamp": "2026-01-07T20:00:00.000Z",
-              "value": 2.03
-            },
-            {
-              "timestamp": "2026-01-07T21:00:00.000Z",
-              "value": 2.26
-            },
-            {
-              "timestamp": "2026-01-07T22:00:00.000Z",
-              "value": 2.5
-            },
-            {
-              "timestamp": "2026-01-07T23:00:00.000Z",
-              "value": 2.78
-            },
-            {
-              "timestamp": "2026-01-08T00:00:00.000Z",
-              "value": 3.03
-            },
-            {
-              "timestamp": "2026-01-08T01:00:00.000Z",
-              "value": 3.27
-            },
-            {
-              "timestamp": "2026-01-08T02:00:00.000Z",
-              "value": 3.51
-            },
-            {
-              "timestamp": "2026-01-08T03:00:00.000Z",
-              "value": 3.74
-            },
-            {
-              "timestamp": "2026-01-08T04:00:00.000Z",
-              "value": 3.98
-            },
-            {
-              "timestamp": "2026-01-08T05:00:00.000Z",
-              "value": 4.22
-            },
-            {
-              "timestamp": "2026-01-08T06:00:00.000Z",
-              "value": 4.46
-            },
-            {
-              "timestamp": "2026-01-08T07:00:00.000Z",
-              "value": 4.72
-            },
-            {
-              "timestamp": "2026-01-08T08:00:00.000Z",
-              "value": 4.96
-            },
-            {
-              "timestamp": "2026-01-08T09:00:00.000Z",
-              "value": 5.47
-            },
-            {
-              "timestamp": "2026-01-08T10:00:00.000Z",
-              "value": 5.71
-            },
-            {
-              "timestamp": "2026-01-08T11:00:00.000Z",
-              "value": 1.87
-            },
-            {
-              "timestamp": "2026-01-08T12:00:00.000Z",
-              "value": 1.87
-            }
-          ]
-        },
-        "synthetic-signal-equipment-down": {
-          "SYN-EQP-01": [
-            {
-              "timestamp": "2026-01-07T13:00:00.000Z",
-              "value": 99.035902
-            },
-            {
-              "timestamp": "2026-01-07T14:00:00.000Z",
-              "value": 99.182217
-            },
-            {
-              "timestamp": "2026-01-07T15:00:00.000Z",
-              "value": 99.247182
-            },
-            {
-              "timestamp": "2026-01-07T16:00:00.000Z",
-              "value": 99.190505
-            },
-            {
-              "timestamp": "2026-01-07T17:00:00.000Z",
-              "value": 99.046937
-            },
-            {
-              "timestamp": "2026-01-07T18:00:00.000Z",
-              "value": 99.043798
-            },
-            {
-              "timestamp": "2026-01-07T19:00:00.000Z",
-              "value": 99.193341
-            },
-            {
-              "timestamp": "2026-01-07T20:00:00.000Z",
-              "value": 99.222079
-            },
-            {
-              "timestamp": "2026-01-07T21:00:00.000Z",
-              "value": 99.083786
-            },
-            {
-              "timestamp": "2026-01-07T22:00:00.000Z",
-              "value": 99.253652
-            },
-            {
-              "timestamp": "2026-01-07T23:00:00.000Z",
-              "value": 99.071228
-            },
-            {
-              "timestamp": "2026-01-08T00:00:00.000Z",
-              "value": 99.212417
-            },
-            {
-              "timestamp": "2026-01-08T01:00:00.000Z",
-              "value": 99.256527
-            },
-            {
-              "timestamp": "2026-01-08T02:00:00.000Z",
-              "value": 99.033489
-            },
-            {
-              "timestamp": "2026-01-08T03:00:00.000Z",
-              "value": 99.059279
-            },
-            {
-              "timestamp": "2026-01-08T04:00:00.000Z",
-              "value": 99.183677
-            },
-            {
-              "timestamp": "2026-01-08T05:00:00.000Z",
-              "value": 99.261531
-            },
-            {
-              "timestamp": "2026-01-08T06:00:00.000Z",
-              "value": 99.089272
-            },
-            {
-              "timestamp": "2026-01-08T07:00:00.000Z",
-              "value": 99.069276
-            },
-            {
-              "timestamp": "2026-01-08T08:00:00.000Z",
-              "value": 99.237788
-            },
-            {
-              "timestamp": "2026-01-08T09:00:00.000Z",
-              "value": 99.053433
-            },
-            {
-              "timestamp": "2026-01-08T10:00:00.000Z",
-              "value": 99.093939
-            },
-            {
-              "timestamp": "2026-01-08T11:00:00.000Z",
-              "value": 99.041068
-            },
-            {
-              "timestamp": "2026-01-08T12:00:00.000Z",
-              "value": 99.200006
-            }
-          ],
-          "SYN-EQP-02": [
-            {
-              "timestamp": "2026-01-07T13:00:00.000Z",
-              "value": 99.15
-            },
-            {
-              "timestamp": "2026-01-07T14:00:00.000Z",
-              "value": 99.15
-            },
-            {
-              "timestamp": "2026-01-07T15:00:00.000Z",
-              "value": 99.15
-            },
-            {
-              "timestamp": "2026-01-07T16:00:00.000Z",
-              "value": 99.15
-            },
-            {
-              "timestamp": "2026-01-07T17:00:00.000Z",
-              "value": 99.15
-            },
-            {
-              "timestamp": "2026-01-07T18:00:00.000Z",
-              "value": 99.16
-            },
-            {
-              "timestamp": "2026-01-07T19:00:00.000Z",
-              "value": 99.15
-            },
-            {
-              "timestamp": "2026-01-07T20:00:00.000Z",
-              "value": 99.15
-            },
-            {
-              "timestamp": "2026-01-07T21:00:00.000Z",
-              "value": 99.16
-            },
-            {
-              "timestamp": "2026-01-07T22:00:00.000Z",
-              "value": 99.16
-            },
-            {
-              "timestamp": "2026-01-07T23:00:00.000Z",
-              "value": 99.12
-            },
-            {
-              "timestamp": "2026-01-08T00:00:00.000Z",
-              "value": 99.12
-            },
-            {
-              "timestamp": "2026-01-08T01:00:00.000Z",
-              "value": 99.12
-            },
-            {
-              "timestamp": "2026-01-08T02:00:00.000Z",
-              "value": 99.12
-            },
-            {
-              "timestamp": "2026-01-08T03:00:00.000Z",
-              "value": 98.53
-            },
-            {
-              "timestamp": "2026-01-08T04:00:00.000Z",
-              "value": 97.93
-            },
-            {
-              "timestamp": "2026-01-08T05:00:00.000Z",
-              "value": 97.33
-            },
-            {
-              "timestamp": "2026-01-08T06:00:00.000Z",
-              "value": 96.72
-            },
-            {
-              "timestamp": "2026-01-08T07:00:00.000Z",
-              "value": 96.11
-            },
-            {
-              "timestamp": "2026-01-08T08:00:00.000Z",
-              "value": 95.51
-            },
-            {
-              "timestamp": "2026-01-08T09:00:00.000Z",
-              "value": 94.89
-            },
-            {
-              "timestamp": "2026-01-08T10:00:00.000Z",
-              "value": 94.3
-            },
-            {
-              "timestamp": "2026-01-08T11:00:00.000Z",
-              "value": 99.09
-            },
-            {
-              "timestamp": "2026-01-08T12:00:00.000Z",
-              "value": 99.09
-            }
-          ]
-        },
+        "synthetic-signal-queue-rise": {},
+        "synthetic-signal-equipment-down": {},
         "synthetic-signal-level-shift": {
           "SYN-EQP-01": [
             {
