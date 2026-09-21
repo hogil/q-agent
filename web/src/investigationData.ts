@@ -1,5 +1,5 @@
 import type { Workspace } from './api';
-import type { EngineeringData, WipRow } from './engineeringData';
+import type { EngineeringData, FabRow, WipRow } from './engineeringData';
 
 export type InformNote = {
   id: string;
@@ -19,6 +19,14 @@ export type SemAsset = {
   provenance: string;
   description: string;
 };
+
+export function filterSemWafers(rows: readonly FabRow[], query: string): FabRow[] {
+  const terms = query.trim().toLocaleLowerCase().split(/[\s/]+/).filter(Boolean);
+  return rows.filter((row) => {
+    const identity = `${row.lotId} / ${row.waferId}`.toLocaleLowerCase();
+    return terms.every((term) => identity.includes(term));
+  });
+}
 
 // UI fixtures only; never treated as retrieved company documents.
 export function makeInformNotes(data: EngineeringData): InformNote[] {

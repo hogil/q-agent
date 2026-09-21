@@ -1,17 +1,20 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import {
   ArrowLeftRight,
+  ChevronDown,
+  Check,
   ImageOff,
   Link2,
   Minus,
   Plus,
   RefreshCcw,
   Unlink2,
+  X,
 } from 'lucide-react';
 import type { Workspace } from './api';
 import type { FabRow } from './engineeringData';
 import { pairKey } from './engineeringAnalysis';
-import { semRecord } from './investigationData';
+import { filterSemWafers, semRecord } from './investigationData';
 import './boardSem.css';
 
 type Owner = 'A' | 'B';
@@ -27,6 +30,125 @@ const shortTime = (timestamp: string) => {
     ? timestamp
     : `${parsed.toISOString().slice(0, 16).replace('T', ' ')} UTC`;
 };
+
+function WaferSearch({
+  owner,
+  row,
+  options,
+  onSelect,
+  onFocus,
+}: {
+  owner: Owner;
+  row?: FabRow;
+  options: FabRow[];
+  onSelect: (key: string) => void;
+  onFocus: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const dialog = useRef<HTMLDialogElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    dialog.current?.showModal();
+    return () => trigger.current?.focus({ preventScroll: true });
+  }, [open]);
+  const label = (item: FabRow) => `${item.lotId} / ${item.waferId}`;
+  const selected = row ? label(row) : '';
+  const matches = filterSemWafers(options, query);
+  const choose = (item: FabRow) => {
+    onSelect(pairKey(item));
+    setOpen(false);
+  };
+  return (
+    <div className="sem-select-field">
+      <span className={`sem-owner sem-owner-${owner}`}>{owner}</span>
+      <button
+        ref={trigger}
+        type="button"
+        className="sem-wafer-trigger"
+        aria-label={`SEM ${owner} Lot/Wafer 검색`}
+        aria-haspopup="dialog"
+        title={selected || 'Lot / Wafer'}
+        disabled={!options.length}
+        onFocus={onFocus}
+        onClick={() => {
+          setQuery('');
+          setOpen(true);
+        }}
+      >
+        <span>{selected || 'Wafer 없음'}</span>
+        <ChevronDown size={12} />
+      </button>
+      {open && (
+        <dialog
+          ref={dialog}
+          className="analysis-dialog sem-wafer-dialog"
+          aria-label={`SEM ${owner} Lot/Wafer 선택`}
+          onCancel={() => setOpen(false)}
+          onClose={() => setOpen(false)}
+          onKeyDown={(event) => {
+            if (event.key !== 'Escape') return;
+            event.preventDefault();
+            event.stopPropagation();
+            setOpen(false);
+          }}
+        >
+          <header>
+            <h2>SEM {owner} · Lot / Wafer</h2>
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="SEM Wafer 선택 닫기"
+              onClick={() => setOpen(false)}
+            >
+              <X size={16} />
+            </button>
+          </header>
+          <input
+            type="search"
+            autoFocus
+            aria-label="Lot/Wafer 검색어"
+            placeholder="Lot / Wafer"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (
+                event.key === 'Enter' &&
+                !event.nativeEvent.isComposing &&
+                matches.length === 1
+              ) {
+                event.preventDefault();
+                event.stopPropagation();
+                choose(matches[0]);
+              }
+            }}
+          />
+          <div className="sem-wafer-columns">
+            <span>Lot</span>
+            <span>Wafer</span>
+          </div>
+          <div className="sem-wafer-results">
+            {matches.map((item) => (
+              <button
+                key={pairKey(item)}
+                type="button"
+                aria-label={label(item)}
+                aria-pressed={!!row && pairKey(item) === pairKey(row)}
+                onClick={() => choose(item)}
+              >
+                <span>{item.lotId}</span>
+                <span>{item.waferId}</span>
+                {row && pairKey(item) === pairKey(row) && <Check size={13} />}
+              </button>
+            ))}
+            {!matches.length && <p role="status">일치하는 Lot/Wafer 없음</p>}
+          </div>
+        </dialog>
+      )}
+    </div>
+  );
+}
 
 export default function BoardSem({
   workspace,
@@ -170,39 +292,13 @@ export default function BoardSem({
   };
 
   const selectControl = (owner: Owner, row: FabRow | undefined) => (
-    <label className="sem-select-field">
-      <span className={`sem-owner sem-owner-${owner}`}>{owner}</span>
-      <select
-        aria-label={`SEM ${owner} 선택`}
-        title={
-          row
-            ? `${row.lotId} / ${row.waferId} · ${row.equipment} · ${shortTime(row.timestamp)}`
-            : '선택 없음'
-        }
-        value={row ? pairKey(row) : ''}
-        onFocus={() => setActiveOwner(owner)}
-        onChange={(event) =>
-          owner === 'A'
-            ? selectA(event.target.value)
-            : selectB(event.target.value)
-        }
-      >
-        {!row && (
-          <option value="">
-            {rows.length ? '비교 대상 없음' : '범위 내 Wafer 없음'}
-          </option>
-        )}
-        {(owner === 'A' ? rows : bOptions).map((item) => {
-          const record = records.get(pairKey(item));
-          return (
-            <option key={pairKey(item)} value={pairKey(item)}>
-              {item.lotId} / {item.waferId} · {item.equipment} ·{' '}
-              {shortTime(item.timestamp)} · {record ? 'SEM 등록' : 'SEM 미등록'}
-            </option>
-          );
-        })}
-      </select>
-    </label>
+    <WaferSearch
+      owner={owner}
+      row={row}
+      options={owner === 'A' ? rows : bOptions}
+      onSelect={owner === 'A' ? selectA : selectB}
+      onFocus={() => setActiveOwner(owner)}
+    />
   );
 
   const pane = (owner: Owner, row: FabRow | undefined) => {

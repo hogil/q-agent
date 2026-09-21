@@ -6,6 +6,7 @@ import {
   formatInformTimestamp,
   documentUrl,
   semRecord,
+  filterSemWafers,
   wipLayerBounds,
   wipLayerOption,
 } from '../src/investigationData.ts';
@@ -66,6 +67,22 @@ test('SEM fixture lookup uses full Lot/Wafer identity and never borrows a differ
   );
   assert.equal(semRecord(workspace, 'L1', 'unknown'), null);
   assert.equal(semRecord({ ...workspace, wafers: [] }, 'L1', 'W01'), null);
+});
+
+test('SEM search matches Lot and Wafer terms only without changing identities', () => {
+  const rows = [
+    { lotId: 'LOT-A', waferId: 'W01', equipment: 'EQP-99' },
+    { lotId: 'LOT-A', waferId: 'W02', equipment: 'EQP-99' },
+    { lotId: 'LOT-B', waferId: 'W01', equipment: 'EQP-88' },
+  ];
+  assert.deepEqual(filterSemWafers(rows, '  lot-a / w01 '), [rows[0]]);
+  assert.deepEqual(filterSemWafers(rows, 'w01'), [rows[0], rows[2]]);
+  assert.deepEqual(filterSemWafers(rows, 'lot-a'), rows.slice(0, 2));
+  assert.deepEqual(filterSemWafers(rows, 'EQP-99'), []);
+  assert.deepEqual(filterSemWafers(rows, 'unknown'), []);
+  assert.deepEqual(filterSemWafers(rows, ' / '), rows);
+  assert.equal(filterSemWafers(rows, 'lot-b')[0], rows[2]);
+  assert.deepEqual(filterSemWafers([], 'W01'), []);
 });
 
 test('WIP uses product rows, numeric layer positions and clips route to occupied region', () => {

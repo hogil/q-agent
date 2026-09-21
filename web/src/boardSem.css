@@ -49,7 +49,10 @@
   min-width: 0;
 }
 
-.sem-select-field select {
+.sem-wafer-trigger {
+  display: flex;
+  align-items: center;
+  gap: 3px;
   width: 100%;
   min-width: 0;
   height: 22px;
@@ -60,6 +63,57 @@
   font: inherit;
   font-size: 10px;
   text-overflow: ellipsis;
+}
+.sem-wafer-trigger > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+.sem-wafer-trigger > svg {
+  flex-shrink: 0;
+}
+.analysis-dialog.sem-wafer-dialog {
+  width: min(420px, 94vw);
+  height: min(360px, 80dvh);
+}
+.sem-wafer-dialog > input {
+  flex-shrink: 0;
+  min-width: 0;
+  margin: 10px 0;
+  padding: 6px 8px;
+  border: 1px solid var(--sem-border);
+  font-size: 12px;
+}
+.sem-wafer-columns,
+.sem-wafer-results > button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 70px 16px;
+  gap: 8px;
+  padding: 8px;
+  text-align: left;
+  font-size: 12px;
+}
+.sem-wafer-columns {
+  color: var(--sem-muted);
+}
+.sem-wafer-results {
+  min-height: 0;
+  overflow: auto;
+}
+.sem-wafer-results > button {
+  width: 100%;
+  border-bottom: 1px solid var(--sem-border);
+  border-radius: 0;
+}
+.sem-wafer-results > button span {
+  overflow-wrap: anywhere;
+}
+.sem-wafer-results > button:hover,
+.sem-wafer-results > button[aria-pressed='true'] {
+  background: #eef5f2;
 }
 
 .sem-owner {
