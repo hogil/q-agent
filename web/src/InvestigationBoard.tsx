@@ -56,7 +56,7 @@ import BoardAnalysis from './BoardAnalysis';
 import DetectionFlow from './DetectionFlow';
 import ResizableBoard from './ResizableBoard';
 import MetrologyMap from './BoardMetrology';
-import BoardOverlay from './BoardOverlay';
+import BoardOverlay, { type OverlayView } from './BoardOverlay';
 import { SourcePreview } from './ReviewView';
 import {
   makeInformNotes,
@@ -129,6 +129,7 @@ export default function InvestigationBoard({
     'cd',
   );
   const [vectorScale, setVectorScale] = useState(1);
+  const [overlayView, setOverlayView] = useState<OverlayView>('raw');
   const [signalQuery, setSignalQuery] = useState('');
   const [priority, setPriority] = useState('all');
   const [signalOrder, setSignalOrder] = useState('source');
@@ -1391,6 +1392,8 @@ export default function InvestigationBoard({
               geometry={workspace.wafer_geometry}
               vectorScale={vectorScale}
               onVectorScale={setVectorScale}
+              view={overlayView}
+              onView={setOverlayView}
             />
           ) : focused ? (
             <MetrologyMap
@@ -1493,6 +1496,8 @@ export default function InvestigationBoard({
               geometry={workspace.wafer_geometry}
               vectorScale={vectorScale}
               onVectorScale={setVectorScale}
+              view={overlayView}
+              onView={setOverlayView}
             />
           ) : (
             <MetrologyMap

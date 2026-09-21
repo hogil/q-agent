@@ -52,7 +52,6 @@ type ChartProps = {
   label: string;
   className?: string;
   mapNavigation?: boolean;
-  syncGroup?: string;
 };
 export function Chart({
   option,
@@ -62,11 +61,10 @@ export function Chart({
   label,
   className = '',
   mapNavigation = false,
-  syncGroup,
 }: ChartProps) {
-  const [mapMode, setMapMode] = useState<'select' | 'pan'>(
-    onArea ? 'select' : 'pan',
-  );
+  const [mapMode, setMapMode] = useState<'select' | 'pan'>('pan');
+  const [spacePan, setSpacePan] = useState(false);
+  const panning = mapMode === 'pan' || spacePan;
   const element = useRef<HTMLDivElement>(null);
   const instance = useRef<echarts.EChartsType | null>(null);
   const brushModifier = useRef(false);
@@ -82,7 +80,7 @@ export function Chart({
       filterMode: 'none',
       minSpan: 5,
       zoomOnMouseWheel: true,
-      moveOnMouseMove: mapMode === 'pan',
+      moveOnMouseMove: panning,
       moveOnMouseWheel: false,
     },
     {
@@ -92,7 +90,7 @@ export function Chart({
       filterMode: 'none',
       minSpan: 5,
       zoomOnMouseWheel: true,
-      moveOnMouseMove: mapMode === 'pan',
+      moveOnMouseMove: panning,
       moveOnMouseWheel: false,
     },
   ];
@@ -125,14 +123,6 @@ export function Chart({
       renderer: 'canvas',
     });
     instance.current = chart;
-    if (syncGroup) {
-      chart.group = syncGroup;
-      echarts.connect(syncGroup);
-      chart.on('globalcursortaken', (event: any) => {
-        if (mapNavigation && event.key === 'brush')
-          setMapMode(event.brushOption?.brushType ? 'select' : 'pan');
-      });
-    }
     chart.on('click', (params) => handler.current?.(params));
     const zr = chart.getZr();
     const rememberBrushModifier = (event: any) => {
@@ -183,7 +173,6 @@ export function Chart({
       cancelAnimationFrame(resizeFrame);
       zr.off('mousedown', rememberBrushModifier);
       chart.dispose();
-      if (syncGroup) echarts.disconnect(syncGroup);
       instance.current = null;
     };
   }, []);
@@ -218,7 +207,7 @@ export function Chart({
         type: 'takeGlobalCursor',
         key: 'brush',
         brushOption: {
-          brushType: mapNavigation && mapMode === 'pan' ? false : 'rect',
+          brushType: mapNavigation && panning ? false : 'rect',
           brushMode: 'single',
         },
       });
@@ -245,17 +234,46 @@ export function Chart({
         type: 'takeGlobalCursor',
         key: 'brush',
         brushOption: {
-          brushType: mapMode === 'select' ? 'rect' : false,
+          brushType: panning ? false : 'rect',
           brushMode: 'single',
         },
       });
-  }, [mapMode, mapNavigation]);
+  }, [panning, mapNavigation]);
+  useEffect(() => {
+    if (!spacePan) return;
+    const release = (event: KeyboardEvent) => {
+      if (event.code === 'Space') setSpacePan(false);
+    };
+    const blur = () => setSpacePan(false);
+    window.addEventListener('keyup', release);
+    window.addEventListener('blur', blur);
+    return () => {
+      window.removeEventListener('keyup', release);
+      window.removeEventListener('blur', blur);
+    };
+  }, [spacePan]);
   if (mapNavigation)
     return (
       <div
         className={`chart map-chart-shell ${className}`}
         role="group"
         aria-label={label}
+        tabIndex={0}
+        data-navigation-mode={panning ? 'pan' : 'select'}
+        onPointerDownCapture={(event) => {
+          if (element.current?.contains(event.target as Node))
+            event.currentTarget.focus({ preventScroll: true });
+        }}
+        onKeyDown={(event) => {
+          if (event.target !== event.currentTarget || event.code !== 'Space')
+            return;
+          event.preventDefault();
+          setSpacePan(true);
+        }}
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget))
+            setSpacePan(false);
+        }}
       >
         <div
           ref={element}
@@ -273,7 +291,7 @@ export function Chart({
               type="button"
               title="영역 선택"
               aria-label="영역 선택"
-              aria-pressed={mapMode === 'select'}
+              aria-pressed={!panning}
               onClick={() => setMapMode('select')}
             >
               <Scan size={13} />
@@ -281,9 +299,9 @@ export function Chart({
           )}
           <button
             type="button"
-            title="Map 이동"
-            aria-label="Map 이동"
-            aria-pressed={mapMode === 'pan'}
+            title="Map 패닝 · 확대 후 드래그 / Space 누른 채 드래그"
+            aria-label="Map 패닝"
+            aria-pressed={panning}
             onClick={() => setMapMode('pan')}
           >
             <Hand size={13} />

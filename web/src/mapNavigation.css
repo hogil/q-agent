@@ -6,6 +6,24 @@
 .map-chart-surface {
   width: 100%;
   height: 100%;
+  touch-action: none;
+}
+.map-chart-shell[data-navigation-mode='pan'] .map-chart-surface {
+  cursor: grab;
+}
+.map-chart-shell[data-navigation-mode='pan'] .map-chart-surface:active {
+  cursor: grabbing;
+}
+.map-chart-shell[data-navigation-mode='select'] .map-chart-surface {
+  cursor: crosshair;
+}
+.map-chart-surface > div,
+.map-chart-surface canvas {
+  cursor: inherit !important;
+}
+.map-chart-shell:focus-visible {
+  outline: 1px solid #477eaa;
+  outline-offset: -1px;
 }
 .map-navigation {
   position: absolute;

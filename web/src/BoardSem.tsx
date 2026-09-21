@@ -3,12 +3,10 @@ import {
   ArrowLeftRight,
   ImageOff,
   Link2,
-  Maximize2,
   Minus,
   Plus,
   RefreshCcw,
   Unlink2,
-  X,
 } from 'lucide-react';
 import type { Workspace } from './api';
 import type { FabRow } from './engineeringData';
@@ -60,7 +58,6 @@ export default function BoardSem({
   const [views, setViews] = useState<ViewByOwner>(emptyViews);
   const [sync, setSync] = useState(true);
   const [activeOwner, setActiveOwner] = useState<Owner>('A');
-  const [expanded, setExpanded] = useState(false);
   const [failedSrc, setFailedSrc] = useState<Set<string>>(() => new Set());
   const drag = useRef<{
     owner: Owner;
@@ -68,7 +65,6 @@ export default function BoardSem({
     y: number;
     pan: { x: number; y: number };
   } | null>(null);
-  const dialog = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
     if (focused) setAKey(pairKey(focused));
@@ -76,11 +72,6 @@ export default function BoardSem({
   useEffect(() => {
     if (compare) setBKey(pairKey(compare));
   }, [compare]);
-  useEffect(() => {
-    if (expanded && dialog.current && !dialog.current.open)
-      dialog.current.showModal();
-    if (!expanded && dialog.current?.open) dialog.current.close();
-  }, [expanded]);
   useEffect(() => {
     setViews(emptyViews());
   }, [aKey, bKey]);
@@ -125,9 +116,7 @@ export default function BoardSem({
     const clamp = (value: number) => Math.max(-limit, Math.min(limit, value));
     updateView(owner, {
       pan: {
-        x: clamp(
-          pan.x + ((event.clientX - x) / Math.max(1, rect.width)) * 100,
-        ),
+        x: clamp(pan.x + ((event.clientX - x) / Math.max(1, rect.width)) * 100),
         y: clamp(
           pan.y + ((event.clientY - y) / Math.max(1, rect.height)) * 100,
         ),
@@ -156,15 +145,28 @@ export default function BoardSem({
       <span className={`sem-owner sem-owner-${owner}`}>{owner}</span>
       <select
         aria-label={`SEM ${owner} 선택`}
+        title={
+          row
+            ? `${row.lotId} / ${row.waferId} · ${row.equipment} · ${shortTime(row.timestamp)}`
+            : '선택 없음'
+        }
         value={row ? pairKey(row) : ''}
+        onFocus={() => setActiveOwner(owner)}
         onChange={(event) =>
-          owner === 'A' ? selectA(event.target.value) : selectB(event.target.value)
+          owner === 'A'
+            ? selectA(event.target.value)
+            : selectB(event.target.value)
         }
       >
         {!row && <option value="">선택 없음</option>}
-        {row && !(owner === 'A' ? rows : bOptions).some((item) => pairKey(item) === pairKey(row)) && (
-          <option value={pairKey(row)} disabled>{row.lotId} / {row.waferId} · SEM 없음</option>
-        )}
+        {row &&
+          !(owner === 'A' ? rows : bOptions).some(
+            (item) => pairKey(item) === pairKey(row),
+          ) && (
+            <option value={pairKey(row)} disabled>
+              {row.lotId} / {row.waferId} · SEM 없음
+            </option>
+          )}
         {(owner === 'A' ? rows : bOptions).map((item) => {
           const record = semRecord(workspace, item.lotId, item.waferId);
           return (
@@ -175,26 +177,21 @@ export default function BoardSem({
           );
         })}
       </select>
-      <small>
-        {row
-          ? `${row.lotId} · ${row.waferId} · ${row.equipment} · ${shortTime(row.timestamp)}`
-          : '비교 대상을 선택하세요'}
-      </small>
     </label>
   );
 
   const pane = (owner: Owner, row: FabRow | undefined) => {
     const record = row && semRecord(workspace, row.lotId, row.waferId);
     const view = views[owner];
+    const detail = row
+      ? `${row.equipment} · ${shortTime(row.timestamp)} · ${record?.description || '원본 미연결'}`
+      : '선택 없음';
     return (
-      <figure className="sem-pane" key={owner}>
-        <figcaption>
-          <span className={`sem-owner sem-owner-${owner}`}>{owner}</span>
-          <strong>{row ? `${row.lotId} / ${row.waferId}` : '선택 없음'}</strong>
-          <span className="sem-pane-status">
-            {record && !failedSrc.has(record.src) ? '확인 가능' : '이미지 없음'}
-          </span>
-        </figcaption>
+      <figure
+        className={`sem-pane${!sync && activeOwner === owner ? ' sem-pane-active' : ''}`}
+        key={owner}
+      >
+        <figcaption>{selectControl(owner, row)}</figcaption>
         <div
           className="sem-canvas"
           role="img"
@@ -245,110 +242,95 @@ export default function BoardSem({
             <div className="sem-missing">
               <ImageOff size={18} />
               <span>
-                {row ? 'SEM 이미지를 불러올 수 없습니다' : 'A/B 대상을 선택하세요'}
+                {row
+                  ? 'SEM 이미지를 불러올 수 없습니다'
+                  : 'A/B 대상을 선택하세요'}
               </span>
               <small>다른 Lot/Wafer를 선택해 비교하세요</small>
             </div>
           )}
         </div>
-        <small className="sem-pane-detail">
-          {row
-            ? `${row.equipment} · ${shortTime(row.timestamp)} · ${record?.description || '원본 미연결'}`
-            : '선택 없음'}
+        <small className="sem-pane-detail" title={detail}>
+          {detail}
         </small>
       </figure>
     );
   };
 
-  const viewer = (modal = false) => (
-    <div className={`sem-viewer${modal ? ' sem-viewer-modal' : ''}`}>
+  return (
+    <div className="sem-viewer">
       <header className="sem-viewer-header">
-        <div>
-          <h2>SEM 비교 검사</h2>
-          <span>합성 SEM · 이미지 모델 미연결</span>
+        <h2>SEM 비교 검사</h2>
+        <div className="sem-toolbar" role="toolbar" aria-label="SEM 검사 도구">
+          <button
+            className="icon-button"
+            title="축소"
+            aria-label="축소"
+            onClick={() => adjustZoom(-0.25)}
+          >
+            <Minus size={13} />
+          </button>
+          <output
+            aria-label={sync ? 'SEM A/B 배율' : `SEM ${activeOwner} 배율`}
+            title={sync ? 'A/B 함께 검사' : `${activeOwner} 검사 중`}
+          >
+            {!sync && `${activeOwner} `}
+            {(sync ? views.A.zoom : views[activeOwner].zoom).toFixed(2)}×
+          </output>
+          <button
+            className="icon-button"
+            title="확대"
+            aria-label="확대"
+            onClick={() => adjustZoom(0.25)}
+          >
+            <Plus size={13} />
+          </button>
+          <button
+            className="icon-button"
+            title="배율·위치 초기화"
+            aria-label="배율·위치 초기화"
+            onClick={resetView}
+          >
+            <RefreshCcw size={13} />
+          </button>
+          <label className="sem-sync-toggle" title="배율·이동 동기화">
+            <input
+              type="checkbox"
+              aria-label="배율·이동 동기화"
+              checked={sync}
+              onChange={(event) => setSync(event.target.checked)}
+            />
+            {sync ? (
+              <Link2 size={13} aria-hidden="true" />
+            ) : (
+              <Unlink2 size={13} aria-hidden="true" />
+            )}
+          </label>
+          <button
+            className="icon-button"
+            title="A와 B 바꾸기"
+            aria-label="A와 B 바꾸기"
+            disabled={!aRow || !bRow}
+            onClick={() => {
+              if (!aRow || !bRow) return;
+              const nextA = bRow;
+              const nextB = aRow;
+              setAKey(pairKey(nextA));
+              setBKey(pairKey(nextB));
+            }}
+          >
+            <ArrowLeftRight size={14} />
+          </button>
         </div>
-        {modal ? (
-          <button
-            className="icon-button"
-            title="SEM 전체 화면 닫기"
-            aria-label="SEM 전체 화면 닫기"
-            onClick={() => setExpanded(false)}
-          >
-            <X size={16} />
-          </button>
-        ) : (
-          <button
-            className="icon-button"
-            title="SEM 크게 보기"
-            aria-label="SEM 크게 보기"
-            onClick={() => setExpanded(true)}
-          >
-            <Maximize2 size={14} />
-          </button>
-        )}
       </header>
-      <div className="sem-compare-picks">
-        {selectControl('A', aRow)}
-        <ArrowLeftRight className="sem-compare-arrow" size={15} aria-hidden="true" />
-        {selectControl('B', bRow)}
-        <button
-          className="icon-button"
-          title="A와 B 바꾸기"
-          aria-label="A와 B 바꾸기"
-          disabled={!aRow || !bRow}
-          onClick={() => {
-            if (!aRow || !bRow) return;
-            const nextA = bRow;
-            const nextB = aRow;
-            setAKey(pairKey(nextA));
-            setBKey(pairKey(nextB));
-          }}
-        >
-          <ArrowLeftRight size={14} />
-        </button>
-      </div>
-      <div className="sem-toolbar" role="toolbar" aria-label="SEM 검사 도구">
-        <button className="icon-button" title="축소" aria-label="축소" onClick={() => adjustZoom(-0.25)}>
-          <Minus size={13} />
-        </button>
-        <output>{(sync ? views.A.zoom : views[activeOwner].zoom).toFixed(2)}×</output>
-        <button className="icon-button" title="확대" aria-label="확대" onClick={() => adjustZoom(0.25)}>
-          <Plus size={13} />
-        </button>
-        <button className="icon-button" title="배율·위치 초기화" aria-label="배율·위치 초기화" onClick={resetView}>
-          <RefreshCcw size={13} />
-        </button>
-        <label className="sem-sync-toggle">
-          <input type="checkbox" checked={sync} onChange={(event) => setSync(event.target.checked)} />
-          {sync ? <Link2 size={13} /> : <Unlink2 size={13} />}
-          <span>배율·이동 동기화</span>
-        </label>
-        <span className="sem-active-note">{sync ? 'A/B 함께 검사' : `${activeOwner} 검사 중`}</span>
-      </div>
       <div className="sem-panes">
         {pane('A', aRow)}
         {pane('B', bRow)}
       </div>
       <footer className="sem-viewer-footer">
-        <span>AI 생성 이미지 · 실측 아님</span>
-        <span>{rows.length}개 SEM asset 후보</span>
+        <span>합성 SEM · 실측 아님 · 이미지 모델 미연결</span>
+        <span>{rows.length}개 후보</span>
       </footer>
     </div>
-  );
-
-  return (
-    <>
-      {viewer()}
-      {expanded && (
-        <dialog
-          ref={dialog}
-          className="sem-dialog"
-          onCancel={() => setExpanded(false)}
-          onClose={() => setExpanded(false)}
-        >
-          {viewer(true)}
-        </dialog>
-      )}
-    </>
   );
 }

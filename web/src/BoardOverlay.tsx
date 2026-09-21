@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ArrowDownToLine } from 'lucide-react';
 import type { CustomSeriesRenderItem } from 'echarts';
 import { Chart } from './charts';
@@ -17,12 +17,15 @@ import {
 } from './overlayVectors';
 import './metrologyMap.css';
 
+export type OverlayView = 'raw' | 'fit' | 'residual';
 type Props = {
   wafers: { lotId: string; waferId: string }[];
   aggregate?: boolean;
   geometry?: WaferGeometry;
   vectorScale: number;
   onVectorScale: (value: number) => void;
+  view: OverlayView;
+  onView: (value: OverlayView) => void;
 };
 const views = [
   { key: 'raw', label: 'Raw', color: '#257d76' },
@@ -89,9 +92,11 @@ export default function BoardOverlay({
   geometry,
   vectorScale,
   onVectorScale,
+  view: viewKey,
+  onView,
 }: Props) {
   const [area, setArea] = useState<DieRegion | null>(null);
-  const syncGroup = useId();
+  const view = views.find((item) => item.key === viewKey)!;
   const radius = geometry?.coordinate_radius ?? 16;
   const fixtures = useMemo(
     () => wafers.map((row) => makeOverlayFixture(row.lotId, row.waferId)),
@@ -106,82 +111,88 @@ export default function BoardOverlay({
   );
   const model = useMemo(() => fitOverlayVectors(raw), [raw]);
   const gain = (radius / 8) * vectorScale;
-  const charts = useMemo(
-    () =>
-      views.map((view) => {
-        const points: OverlayVectorPoint[] =
-          view.key === 'raw' ? raw : model?.[view.key] || [];
-        const selected = selectDieRegion(points, area);
-        const selectedSet = new Set(selected);
-        const rms = selected.length
-          ? Math.sqrt(
-              selected.reduce((sum, p) => sum + p.dx ** 2 + p.dy ** 2, 0) /
-                selected.length,
-            )
-          : null;
-        return {
-          ...view,
-          n: selected.length,
-          rms,
-          option: {
-            animation: false,
-          grid: { left: '11%', right: '11%', top: '5%', bottom: '17%' },
-            xAxis: { type: 'value', min: -radius, max: radius, show: false },
-            yAxis: { type: 'value', min: -radius, max: radius, show: false },
-            brush: {
-              toolbox: [],
-              xAxisIndex: 0,
-              yAxisIndex: 0,
-              brushType: 'rect',
-              brushMode: 'single',
-            },
-            tooltip: {
-              trigger: 'item',
-              renderMode: 'richText',
-              confine: true,
-              textStyle: { fontSize: 10 },
-              formatter: (p: { value: number[] }) =>
-                `${view.label}${aggregate ? ' · Wafer mean (보간)' : ''}\n${waferCoordinateText(p.value[0], p.value[1], geometry, 'normalized')}\nΔX ${p.value[2].toFixed(3)} nm · ΔY ${p.value[3].toFixed(3)} nm\n|Δ| ${Math.hypot(p.value[2], p.value[3]).toFixed(3)} nm${aggregate ? `\n${p.value[4]} / ${wafers.length} Wafers` : ''}`,
-            },
-            series: [
-              {
-                type: 'custom',
-                z: 2,
-                zlevel: 0,
-                progressive: 0,
-                clip: true,
-                renderItem: vectorRenderer(view.color, gain),
-                encode: { x: 0, y: 1 },
-                data: points.map((p) => [
-                  p.x,
-                  p.y,
-                  p.dx,
-                  p.dy,
-                  p.contributors ?? 1,
-                  selectedSet.has(p) ? 1 : 0.2,
-                ]),
-              },
-              {
-                type: 'line',
-                data: waferOutline(radius),
-                silent: true,
-                showSymbol: false,
-                lineStyle: { color: '#94aaa4', width: 1 },
-              },
-              {
-                type: 'custom',
-                z: 2,
-                zlevel: 0,
-                silent: true,
-                renderItem: vectorRenderer(view.color, gain),
-                data: [[-radius * 0.3, -radius * 0.91, 1, 0, 0, 1]],
-              },
-            ],
+  const chart = useMemo(() => {
+    const points: OverlayVectorPoint[] =
+      view.key === 'raw' ? raw : model?.[view.key] || [];
+    const selected = selectDieRegion(points, area);
+    const selectedSet = new Set(selected);
+    const rms = selected.length
+      ? Math.sqrt(
+          selected.reduce((sum, p) => sum + p.dx ** 2 + p.dy ** 2, 0) /
+            selected.length,
+        )
+      : null;
+    return {
+      ...view,
+      n: selected.length,
+      rms,
+      option: {
+        animation: false,
+        grid: { left: '11%', right: '11%', top: '5%', bottom: '17%' },
+        xAxis: { type: 'value', min: -radius, max: radius, show: false },
+        yAxis: { type: 'value', min: -radius, max: radius, show: false },
+        brush: {
+          toolbox: [],
+          xAxisIndex: 0,
+          yAxisIndex: 0,
+          brushType: 'rect',
+          brushMode: 'single',
+        },
+        tooltip: {
+          trigger: 'item',
+          renderMode: 'richText',
+          confine: true,
+          textStyle: { fontSize: 10 },
+          formatter: (p: { value: number[] }) =>
+            `${view.label}${aggregate ? ' · Wafer mean (보간)' : ''}\n${waferCoordinateText(p.value[0], p.value[1], geometry, 'normalized')}\nΔX ${p.value[2].toFixed(3)} nm · ΔY ${p.value[3].toFixed(3)} nm\n|Δ| ${Math.hypot(p.value[2], p.value[3]).toFixed(3)} nm${aggregate ? `\n${p.value[4]} / ${wafers.length} Wafers` : ''}`,
+        },
+        series: [
+          {
+            type: 'custom',
+            z: 2,
+            zlevel: 0,
+            progressive: 0,
+            clip: true,
+            renderItem: vectorRenderer(view.color, gain),
+            encode: { x: 0, y: 1 },
+            data: points.map((p) => [
+              p.x,
+              p.y,
+              p.dx,
+              p.dy,
+              p.contributors ?? 1,
+              selectedSet.has(p) ? 1 : 0.2,
+            ]),
           },
-        };
-      }),
-    [raw, model, area, radius, gain, geometry, aggregate, wafers.length],
-  );
+          {
+            type: 'line',
+            data: waferOutline(radius),
+            silent: true,
+            showSymbol: false,
+            lineStyle: { color: '#94aaa4', width: 1 },
+          },
+          {
+            type: 'custom',
+            z: 2,
+            zlevel: 0,
+            silent: true,
+            renderItem: vectorRenderer(view.color, gain),
+            data: [[-radius * 0.3, -radius * 0.91, 1, 0, 0, 1]],
+          },
+        ],
+      },
+    };
+  }, [
+    view,
+    raw,
+    model,
+    area,
+    radius,
+    gain,
+    geometry,
+    aggregate,
+    wafers.length,
+  ]);
 
   return (
     <section
@@ -189,13 +200,26 @@ export default function BoardOverlay({
       aria-label={`${aggregate ? '전체' : '개별'} Overlay Raw Fit Res`}
     >
       <div className="overlay-vector-heading">
-        <span
-          title={wafers.map((row) => `${row.lotId}/${row.waferId}`).join(', ')}
+        <div
+          className="overlay-view-switch"
+          role="group"
+          aria-label="Overlay 표시"
         >
-          {aggregate
-            ? `${wafers.length} Wafers · 좌표별 벡터 평균`
-            : `${wafers[0]?.lotId} / ${wafers[0]?.waferId}`}
-        </span>
+          {views.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              aria-pressed={viewKey === item.key}
+              title={
+                item.key === 'residual' ? 'Residual · Raw − Fit' : item.label
+              }
+              style={{ color: item.color }}
+              onClick={() => onView(item.key)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
         <button
           className="icon-button"
           title="Overlay Raw Fit Res 다운로드"
@@ -241,37 +265,32 @@ export default function BoardOverlay({
           />
         </label>
         <output>×{vectorScale}</output>
-        <span>기준 화살표 1 nm</span>
+        <span title="기준 화살표 1 nm">1 nm</span>
       </div>
-      <div className="overlay-vector-plots">
-        {charts.map((view) => (
-          <div className="overlay-vector-column" key={view.key}>
-            <h3 style={{ color: view.color }}>{view.label}</h3>
-            <div className="overlay-vector-stage">
-              <Chart
-                option={view.option}
-                mapNavigation
-                syncGroup={syncGroup}
-                label={`Overlay ${view.label} ${aggregate ? '전체' : '개별'} 벡터 Map`}
-                className="overlay-vector-chart"
-                onArea={setArea}
-              />
-            </div>
-            <div className="overlay-vector-stat">
-              RMS <b>{view.rms?.toFixed(3) ?? '-'}</b> nm
-              <br />n {view.n}
-            </div>
-          </div>
-        ))}
+      <div className="overlay-vector-stage">
+        <Chart
+          option={chart.option}
+          mapNavigation
+          label={`Overlay ${view.label} ${aggregate ? '전체' : '개별'} 벡터 Map`}
+          className="overlay-vector-chart"
+          onArea={setArea}
+        />
       </div>
-      <footer>
-        {model
-          ? '6-param linear · Res = Raw − Fit'
-          : 'Fit 불가 · 측정점/좌표 확인'}
-        <br />
-        {aggregate
-          ? 'Raw: 보간 벡터 평균 · 정렬 가정 · 합성'
-          : '합성 측정 · 실제 보정 모델 미연결'}
+      <div className="overlay-vector-stat" aria-live="polite">
+        <strong style={{ color: view.color }}>{view.label}</strong>
+        <span>
+          RMS <b>{chart.rms?.toFixed(3) ?? '-'}</b> nm
+        </span>
+        <span>n {chart.n}</span>
+      </div>
+      <footer
+        title={`${wafers.map((row) => `${row.lotId}/${row.waferId}`).join(', ')} · 6-param linear · Res = Raw − Fit · 실제 보정 모델 미연결`}
+      >
+        {!model
+          ? 'Fit 불가 · 측정점/좌표 확인'
+          : aggregate
+            ? '합성 · 보간 벡터 평균 · 정렬 가정'
+            : '합성 측정 · 보정 모델 미연결'}
       </footer>
     </section>
   );
