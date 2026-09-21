@@ -4,6 +4,7 @@ import {
   anomalyTrendOption,
   anomalyPattern,
   makeTrendFleet,
+  summarizeTrendSamples,
   trendBoxPlotOption,
   trendBoxSummaries,
   trendLegendGroups,
@@ -104,6 +105,97 @@ test('maps a brushed datetime range to ordered nearest trend indexes', () => {
   assert.deepEqual(trendSelectionFromTime(data, range), { start: 0, end: 3 });
 });
 
+test('trend statistics use the rendered raw target, not shared hourly or peer data', () => {
+  const t = data.trend.map((row) => Date.parse(row.timestamp));
+  const raw = {
+    ...data,
+    trendFleets: {
+      'signal-1': [
+        {
+          member: 'EQP-1',
+          highlighted: true,
+          points: [
+            [t[0] - 120000, 10],
+            [t[0] - 60000, 11],
+            [t[0], 12],
+            [t[2], 30],
+            [t[2] + 60000, 32],
+            [t[3], 34],
+          ],
+        },
+        { member: 'peer', highlighted: false, points: [[t[2], 999]] },
+      ],
+    },
+  };
+  const result = summarizeTrendSamples(raw, {
+    ...selection,
+    start: 2,
+    rangeSelected: true,
+  });
+  assert.equal(result.baseline.n, 3);
+  assert.equal(result.baseline.median, 11);
+  assert.equal(result.selected.n, 3);
+  assert.equal(result.selected.median, 32);
+  assert.equal(result.deltaMedian, 21);
+  assert.ok(result.selected.iqr > 0);
+  const full = summarizeTrendSamples(raw, {
+    ...selection,
+    rangeSelected: false,
+  });
+  assert.equal(full.selected.n, 6);
+  assert.equal(full.selected.min, 10);
+  assert.equal(full.selected.max, 34);
+});
+
+test('raw trend statistics honor XY union without counting gaps or overlaps twice', () => {
+  const t = data.trend.map((row) => Date.parse(row.timestamp));
+  const raw = {
+    ...data,
+    trendFleets: {
+      'signal-1': [
+        {
+          member: 'EQP-1',
+          highlighted: true,
+          points: [
+            [t[0], 10],
+            [t[1], 11],
+            [t[2], 30],
+            [t[2] + 60000, 32],
+            [t[3], 34],
+          ],
+        },
+      ],
+    },
+  };
+  const result = summarizeTrendSamples(raw, {
+    ...selection,
+    start: 2,
+    rangeSelected: true,
+    regions: [
+      [
+        [t[2], t[2] + 60000],
+        [29, 31],
+      ],
+      [
+        [t[3], t[3]],
+        [33, 35],
+      ],
+      [
+        [t[2], t[2]],
+        [30, 30],
+      ],
+    ],
+  });
+  assert.equal(result.selected.n, 2);
+  assert.equal(result.selected.median, 32);
+  assert.equal(result.selected.iqr, null);
+  assert.equal(result.deltaMedian, null);
+  assert.equal(result.comparable, false);
+  const missing = summarizeTrendSamples({ ...raw, trendFleets: {} }, selection);
+  assert.equal(missing.selected.n, 0);
+  assert.equal(missing.selected.median, null);
+});
+
 test('renders each synthetic anomaly pattern as a distinct finite target trace', () => {
   const patterns = [
     'abrupt_level_shift',
@@ -126,7 +218,11 @@ test('renders each synthetic anomaly pattern as a distinct finite target trace',
     assert.equal(anomalyPattern(signal), signal.pattern);
     const fleet = makeTrendFleet(patternData, signal);
     assert.equal(fleet[0].points.length, data.trend.length * 6);
-    assert.ok(fleet[0].points.every(([x, y]) => Number.isFinite(x) && Number.isFinite(y)));
+    assert.ok(
+      fleet[0].points.every(
+        ([x, y]) => Number.isFinite(x) && Number.isFinite(y),
+      ),
+    );
     return fleet[0].points.map(([, value]) => Number(value.toFixed(6)));
   });
   for (let left = 0; left < traces.length; left += 1) {

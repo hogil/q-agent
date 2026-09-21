@@ -1,5 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowUpRight, Download, Loader2, Play, Send, X } from 'lucide-react';
+import {
+  ArrowUpRight,
+  ChevronRight,
+  CircleAlert,
+  Clock3,
+  Download,
+  History,
+  Loader2,
+  Play,
+  Send,
+  X,
+} from 'lucide-react';
 import {
   api,
   download,
@@ -88,6 +99,22 @@ const eventText = (event: ProgressEvent) => {
   return `${name}${role}${source}`;
 };
 
+const eventLabel = (event: ProgressEvent) => {
+  const labels: Record<string, string> = {
+    scope_validated: '분석 범위 확인',
+    llm_start: event.role ? `${event.role} 단계 시작` : '모델 단계 시작',
+    llm_output: event.role ? `${event.role} 응답 수신` : '모델 응답 수신',
+    tool_result: event.source ? `${event.source} 결과 수신` : 'Tool 결과 수신',
+    source_result: event.source
+      ? `${event.source} 결과 수신`
+      : '자료 결과 수신',
+    route_selected: '분석 경로 선택',
+    validation_or_tool_error: '조회 또는 검증 오류',
+    run_error: '실행 오류',
+  };
+  return labels[event.event] || '분석 진행 중';
+};
+
 const elapsedText = (run: ProgressRun) => {
   const started = Date.parse(
     run.started_at || run.events.find((event) => event.time)?.time || '',
@@ -98,7 +125,10 @@ const elapsedText = (run: ProgressRun) => {
       ? Date.now()
       : Date.parse(run.finished_at || '') || Date.now();
   const seconds = Math.max(0, Math.round((finished - started) / 1000));
-  return `${seconds}s`;
+  if (seconds < 60) return `${seconds}초`;
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  return remainder ? `${minutes}분 ${remainder}초` : `${minutes}분`;
 };
 
 export default function BoardAnalysis({
@@ -184,7 +214,8 @@ export default function BoardAnalysis({
       .then(([analysisResult, progressResult, roomResult]) => {
         if (!active) return;
         setAnalysis(analysisResult.analysis);
-        if (analysisResult.analysis) setSources(analysisResult.analysis.sources);
+        if (analysisResult.analysis)
+          setSources(analysisResult.analysis.sources);
         progressRef.current = progressResult.run;
         setProgress(progressResult.run);
         setMessages(roomResult.messages);
@@ -218,6 +249,18 @@ export default function BoardAnalysis({
       : null;
   const remoteBusy = progress?.status === 'running';
   const effectiveBusy = busy || remoteBusy;
+  const otherContextBusy = remoteBusy && !currentProgress;
+  const failedCurrentRun = currentProgress?.status === 'failed';
+  const latestProgressEvent = currentProgress?.events.at(-1);
+  const progressError =
+    currentProgress?.error ||
+    [...(currentProgress?.events || [])].reverse().find((event) => event.error)
+      ?.error ||
+    '';
+  const completedStepCount =
+    analysis?.steps.filter((step) => step.status === 'completed').length || 0;
+  const unavailableStepCount =
+    analysis?.steps.filter((step) => step.status === 'unavailable').length || 0;
   const llmLabel = runtime?.llm_configured
     ? `${runtime.models?.router || 'LLM'} · ${effectiveBusy ? '분석 중' : analysis?.llm_connected || runtime.llm_connected ? '응답 확인' : '연결 확인 전'}`
     : 'LLM 미연결';
@@ -277,15 +320,13 @@ export default function BoardAnalysis({
     };
   }, [loadedRoom, roomId, effectiveBusy]);
 
-  async function execute(
-    request: {
-      followup: boolean;
-      key: string;
-      requestContext: AnalysisContext;
-      requestSources: string[];
-      content?: string;
-    },
-  ) {
+  async function execute(request: {
+    followup: boolean;
+    key: string;
+    requestContext: AnalysisContext;
+    requestSources: string[];
+    content?: string;
+  }) {
     if (busyRef.current || progressRef.current?.status === 'running') return;
     const runRoomId = roomId;
     const generation = generationRef.current;
@@ -346,10 +387,7 @@ export default function BoardAnalysis({
   }
 
   function run(followup = false) {
-    if (
-      effectiveBusy ||
-      (followup && (!draft.trim() || !analysis || stale))
-    )
+    if (effectiveBusy || (followup && (!draft.trim() || !analysis || stale)))
       return;
     void execute({
       followup,
@@ -474,71 +512,71 @@ export default function BoardAnalysis({
               </label>
             ))}
           </fieldset>
-          <div className="board-run-row">
-            <span>
-              {context.item} · {context.wafers.length} Wafers
-            </span>
-            <button
-              className="board-run"
-              onClick={() => void run()}
-              disabled={effectiveBusy}
-            >
-              {busy ? (
-                <Loader2 className="spin" size={12} />
-              ) : (
-                <Play size={12} />
-              )}
-              {effectiveBusy ? '분석 중' : stale ? '현재 조건 분석' : '분석 실행'}
-            </button>
-          </div>
         </>
       )}
-      <nav
-        className="board-analysis-tabs"
-        role="tablist"
-        aria-label="분석 패널"
-        onKeyDown={(event) => {
-          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key))
-            return;
-          event.preventDefault();
-          const next =
-            event.key === 'Home'
-              ? 'results'
-              : event.key === 'End'
-                ? 'review'
-                : panelTab === 'results'
+      <div className="board-analysis-controls">
+        <nav
+          className="board-analysis-tabs"
+          role="tablist"
+          aria-label="분석 패널"
+          onKeyDown={(event) => {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key))
+              return;
+            event.preventDefault();
+            const next =
+              event.key === 'Home'
+                ? 'results'
+                : event.key === 'End'
                   ? 'review'
-                  : 'results';
-          setPanelTab(next);
-          event.currentTarget
-            .querySelectorAll('button')
-            [next === 'results' ? 0 : 1]?.focus();
-        }}
-      >
-        <button
-          id={resultsTabId}
-          role="tab"
-          aria-selected={panelTab === 'results'}
-          aria-controls={resultsPanelId}
-          tabIndex={panelTab === 'results' ? 0 : -1}
-          className={panelTab === 'results' ? 'active' : ''}
-          onClick={() => setPanelTab('results')}
+                  : panelTab === 'results'
+                    ? 'review'
+                    : 'results';
+            setPanelTab(next);
+            event.currentTarget
+              .querySelectorAll('button')
+              [next === 'results' ? 0 : 1]?.focus();
+          }}
         >
-          조회 결과
-        </button>
-        <button
-          id={reviewTabId}
-          role="tab"
-          aria-selected={panelTab === 'review'}
-          aria-controls={reviewPanelId}
-          tabIndex={panelTab === 'review' ? 0 : -1}
-          className={panelTab === 'review' ? 'active' : ''}
-          onClick={() => setPanelTab('review')}
-        >
-          엔지니어 검토{' '}
-          <span className="board-review-tab-badge">{pinned.length}</span>
-        </button>
-      </nav>
+          <button
+            id={resultsTabId}
+            role="tab"
+            aria-selected={panelTab === 'results'}
+            aria-controls={resultsPanelId}
+            tabIndex={panelTab === 'results' ? 0 : -1}
+            className={panelTab === 'results' ? 'active' : ''}
+            onClick={() => setPanelTab('results')}
+          >
+            조회 결과
+          </button>
+          <button
+            id={reviewTabId}
+            role="tab"
+            aria-selected={panelTab === 'review'}
+            aria-controls={reviewPanelId}
+            tabIndex={panelTab === 'review' ? 0 : -1}
+            className={panelTab === 'review' ? 'active' : ''}
+            onClick={() => setPanelTab('review')}
+          >
+            엔지니어 검토{' '}
+            <span className="board-review-tab-badge">{pinned.length}</span>
+          </button>
+        </nav>
+        {panelTab === 'results' && (
+          <button
+            className="board-run"
+            title={`${context.item} · ${context.wafers.length} Wafers`}
+            onClick={() => void run()}
+            disabled={effectiveBusy}
+          >
+            {effectiveBusy ? (
+              <Loader2 className="spin" size={12} />
+            ) : (
+              <Play size={12} />
+            )}
+            {effectiveBusy ? '분석 중' : stale ? '현재 조건 분석' : '분석 실행'}
+          </button>
+        )}
+      </div>
       {panelTab === 'results' ? (
         <div
           id={resultsPanelId}
@@ -548,81 +586,62 @@ export default function BoardAnalysis({
           className="board-analysis-output"
           aria-live="polite"
         >
-          {error && <p role="alert">{error}</p>}
-          {currentProgress && (
+          {error && !failedCurrentRun && <p role="alert">{error}</p>}
+          {(effectiveBusy || failedCurrentRun) && (
             <section
-              className={`board-analysis-progress ${currentProgress.status}`}
-              aria-label="실시간 분석 진행"
+              className={`board-analysis-operation-row ${
+                currentProgress?.status || (effectiveBusy ? 'running' : '')
+              }`}
+              aria-label="분석 상태"
               aria-live="polite"
             >
-              <div className="board-analysis-progress-head">
+              <span
+                className="board-analysis-operation-icon"
+                aria-hidden="true"
+              >
+                {failedCurrentRun ? (
+                  <CircleAlert size={14} />
+                ) : (
+                  <Loader2 className="spin" size={14} />
+                )}
+              </span>
+              <span className="board-analysis-operation-copy">
                 <strong>
-                  {currentProgress.status === 'running'
-                    ? '실시간 분석 진행'
-                    : currentProgress.status === 'failed'
+                  {otherContextBusy
+                    ? '이전 선택 분석 중'
+                    : failedCurrentRun
                       ? '분석 실패'
-                      : '분석 실행 기록'}
+                      : '분석 중'}
                 </strong>
-                <span>
-                  {elapsedText(currentProgress)} · {currentProgress.id}
-                </span>
-              </div>
-              <ol className="board-analysis-timeline">
-                {currentProgress.events.map((event, index) => (
-                  <li
-                    key={`${event.time || event.event}-${index}`}
-                    className={event.error || event.status === 'error' ? 'error' : ''}
-                  >
-                    <span className="board-analysis-timeline-dot" aria-hidden="true" />
-                    <div>
-                      <strong>{eventText(event)}</strong>
-                      {event.status && <span>{event.status}</span>}
-                      {event.model && <small>{event.model}</small>}
-                      {event.error && <p>{event.error}</p>}
-                    </div>
-                  </li>
-                ))}
-              </ol>
-              {currentProgress.error && (
-                <p className="board-analysis-progress-error" role="alert">
-                  {currentProgress.error}
-                </p>
-              )}
+                {latestProgressEvent && !otherContextBusy && (
+                  <span title={latestProgressEvent.event}>
+                    {eventLabel(latestProgressEvent)}
+                  </span>
+                )}
+              </span>
+              <span className="board-analysis-operation-duration">
+                <Clock3 size={12} aria-hidden="true" />
+                {currentProgress ? elapsedText(currentProgress) : '진행 중'}
+              </span>
             </section>
           )}
-          {effectiveBusy ? (
-            <p role="status" className="board-analysis-current-activity">
-              {currentProgress?.events.at(-1)
-                ? `현재 작업 · ${eventText(currentProgress.events.at(-1)!)}`
-                : runtime?.llm_configured
-                  ? 'LLM 분석 요청 수락 대기'
-                  : '선택 범위 검증 및 합성 DB 조회 중'}
+          {failedCurrentRun ? (
+            <p className="board-analysis-failure" role="alert">
+              {progressError || error || '분석이 완료되지 않았습니다.'}
             </p>
-          ) : analysis ? (
+          ) : effectiveBusy || error ? null : analysis ? (
             <>
               <div className="board-analysis-status">
                 {stale
-                  ? '이전 조건 결과 · 현재 선택과 다른 분석'
+                  ? '이전 조건 결과 · 현재 선택과 불일치'
                   : analysis.status === 'partial'
                     ? '부분 답변'
                     : '분석 완료'}{' '}
-                ·{' '}
-                {
-                  analysis.steps.filter((step) => step.status === 'completed')
-                    .length
-                }
-                개 조회 ·{' '}
-                {
-                  analysis.steps.filter((step) => step.status === 'unavailable')
-                    .length
-                }
-                개 미연결
+                · {completedStepCount}개 조회 · {unavailableStepCount}개 미연결
               </div>
-              <p>
-                {stale
-                  ? '현재 선택 항목의 자동 분석을 기다리거나 현재 조건 분석을 실행하세요.'
-                  : latest?.content}
-              </p>
+              {!stale && (
+                <p className="board-analysis-answer">{latest?.content}</p>
+              )}
             </>
           ) : (
             <p>
@@ -630,6 +649,56 @@ export default function BoardAnalysis({
                 ? '분석 대기 · 합성 DB'
                 : '분석 대기 · LLM 미연결'}
             </p>
+          )}
+          {currentProgress && (
+            <details
+              className={`board-analysis-event-details ${currentProgress.status}`}
+            >
+              <summary>
+                <ChevronRight
+                  className="board-details-chevron"
+                  size={12}
+                  aria-hidden="true"
+                />
+                <History size={12} aria-hidden="true" />
+                전체 진행 기록
+                <span>
+                  {currentProgress.events.length}개 ·{' '}
+                  {elapsedText(currentProgress)}
+                </span>
+              </summary>
+              <section
+                className="board-analysis-progress"
+                aria-label="전체 분석 진행 기록"
+              >
+                <ol className="board-analysis-timeline">
+                  {currentProgress.events.map((event, index) => (
+                    <li
+                      key={`${event.time || event.event}-${index}`}
+                      className={
+                        event.error || event.status === 'error' ? 'error' : ''
+                      }
+                    >
+                      <span
+                        className="board-analysis-timeline-dot"
+                        aria-hidden="true"
+                      />
+                      <div>
+                        <strong title={event.event}>{eventText(event)}</strong>
+                        {event.status && <span>{event.status}</span>}
+                        {event.model && <small>{event.model}</small>}
+                        {event.error && <p>{event.error}</p>}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+                {progressError && (
+                  <p className="board-analysis-progress-error" role="alert">
+                    {progressError}
+                  </p>
+                )}
+              </section>
+            </details>
           )}
         </div>
       ) : (
@@ -702,7 +771,7 @@ export default function BoardAnalysis({
       {panelTab === 'results' && compose}
       {expanded && (
         <dialog
-          className="analysis-dialog"
+          className="analysis-dialog board-analysis-dialog"
           ref={dialog}
           onCancel={() => setExpanded(false)}
           onClose={() => setExpanded(false)}
@@ -721,39 +790,79 @@ export default function BoardAnalysis({
             </button>
           </header>
           {currentProgress && (
-            <div className="analysis-trace board-analysis-dialog-progress">
-              {currentProgress.events.map((event, index) => (
-                <div key={`progress-${event.time || event.event}-${index}`}>
-                  <strong>{eventText(event)}</strong>
-                  <span>{event.status || currentProgress.status}</span>
-                  {event.error && <p>{event.error}</p>}
-                </div>
-              ))}
-            </div>
+            <details className="board-analysis-dialog-details">
+              <summary>
+                <ChevronRight
+                  className="board-details-chevron"
+                  size={12}
+                  aria-hidden="true"
+                />
+                <History size={12} aria-hidden="true" />
+                실행 기록
+                <span>
+                  {currentProgress.events.length}개 ·{' '}
+                  {elapsedText(currentProgress)}
+                </span>
+              </summary>
+              <div className="analysis-trace board-analysis-trace board-analysis-dialog-progress">
+                {currentProgress.events.map((event, index) => (
+                  <div key={`progress-${event.time || event.event}-${index}`}>
+                    <strong title={event.event}>{eventText(event)}</strong>
+                    <span>{event.status || currentProgress.status}</span>
+                    {event.error && <p>{event.error}</p>}
+                  </div>
+                ))}
+              </div>
+            </details>
           )}
-          {analysis && !stale && (
-            <div className="analysis-trace">
-              {analysis.trace?.map((event) => (
-                <div key={`llm-${event.step}`}>
-                  <strong>{event.role}</strong>
-                  <span>{event.model}</span>
-                </div>
-              ))}
-              {analysis.steps.map((step) => (
-                <div key={step.source}>
-                  <strong>
-                    {sourceOptions.find(([id]) => id === step.source)?.[1] ||
-                      step.source}
-                  </strong>
+          {analysis &&
+            !stale &&
+            !failedCurrentRun &&
+            !effectiveBusy &&
+            !error && (
+              <details className="board-analysis-dialog-details">
+                <summary>
+                  <ChevronRight
+                    className="board-details-chevron"
+                    size={12}
+                    aria-hidden="true"
+                  />
+                  <History size={12} aria-hidden="true" />
+                  분석 구성
                   <span>
-                    {step.status === 'completed' ? '조회 완료' : '미연결'}
+                    {analysis.steps.length}개 자료 ·{' '}
+                    {analysis.trace?.length || 0}개 단계
                   </span>
-                  <p>{step.detail}</p>
+                </summary>
+                <div className="analysis-trace board-analysis-trace">
+                  {analysis.trace?.map((event) => (
+                    <div key={`llm-${event.step}`}>
+                      <strong>{event.role}</strong>
+                      <span>{event.model}</span>
+                    </div>
+                  ))}
+                  {analysis.steps.map((step) => (
+                    <div key={step.source}>
+                      <strong>
+                        {sourceOptions.find(
+                          ([id]) => id === step.source,
+                        )?.[1] || step.source}
+                      </strong>
+                      <span>
+                        {step.status === 'completed' ? '조회 완료' : '미연결'}
+                      </span>
+                      <p>{step.detail}</p>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </details>
+            )}
+          {failedCurrentRun && (
+            <p className="board-analysis-dialog-failure" role="alert">
+              이번 실행 실패 · 아래 대화는 이전 기록입니다.
+            </p>
           )}
-          <div className="analysis-chat-log">
+          <div className="analysis-chat-log board-analysis-chat-log">
             {messages.map((message) => (
               <article key={message.id} className={message.role}>
                 <strong>{message.role === 'user' ? '질문' : '답변'}</strong>

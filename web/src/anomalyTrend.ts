@@ -7,6 +7,7 @@ import type {
 import {
   changeTiming,
   pointInSelection,
+  selectionTimeWindows,
   type InvestigationSelection,
 } from './engineeringAnalysis.ts';
 import { makeEquipmentTrace } from './equipmentComparison.ts';
@@ -111,6 +112,56 @@ export function makeTrendFleet(data: EngineeringData, signal: Signal) {
       }),
     ),
   }));
+}
+
+export function summarizeTrendSamples(
+  data: EngineeringData,
+  selection: InvestigationSelection,
+) {
+  const signal = data.signals.find((row) => row.id === selection.signalId);
+  const points = signal
+    ? (
+        makeTrendFleet(data, signal).find((row) => row.highlighted)?.points ||
+        []
+      ).filter(
+        ([timestamp, value]) =>
+          Number.isFinite(timestamp) && Number.isFinite(value),
+      )
+    : [];
+  const stats = (samples: number[][]) => {
+    const values = samples.map((point) => point[1]).sort((a, b) => a - b);
+    const times = samples.map((point) => point[0]).sort((a, b) => a - b);
+    return {
+      n: samples.length,
+      median: values.length ? median(values) : null,
+      iqr:
+        values.length >= 3
+          ? quantileSorted(values, 0.75) - quantileSorted(values, 0.25)
+          : null,
+      min: values[0] ?? null,
+      max: values.at(-1) ?? null,
+      from: times.length ? new Date(times[0]).toISOString() : null,
+      to: times.length ? new Date(times.at(-1)!).toISOString() : null,
+    };
+  };
+  const onset = signal
+    ? Date.parse(data.trend[signal.onsetIndex]?.timestamp || '')
+    : NaN;
+  const windows = selectionTimeWindows(data, selection);
+  const cutoff = Math.min(onset, ...windows.map(([from]) => from));
+  const baseline = stats(points.filter(([timestamp]) => timestamp < cutoff));
+  const selected = stats(
+    points.filter(([timestamp, value]) =>
+      pointInSelection(timestamp, value, data, selection),
+    ),
+  );
+  const comparable = baseline.n >= 3 && selected.n >= 3;
+  return {
+    baseline,
+    selected,
+    comparable,
+    deltaMedian: comparable ? selected.median! - baseline.median! : null,
+  };
 }
 
 export function trendSelectionFromTime(

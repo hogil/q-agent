@@ -10,16 +10,21 @@ import {
   Columns2,
   ListFilter,
   Copy,
+  Search,
+  ListRestart,
 } from 'lucide-react';
 import { download, type Attachment, type Incident } from './api';
 import { Chart } from './charts';
-import { metricUnits, trendBoxPlotOption } from './anomalyTrend';
+import {
+  metricUnits,
+  summarizeTrendSamples,
+  trendBoxPlotOption,
+} from './anomalyTrend';
 import type { ViewProps } from './Views';
 import {
   pairKey,
   selectFabRows,
   engineeringReference,
-  summarizeSignalWindow,
   changeTiming,
   type InvestigationSelection,
 } from './engineeringAnalysis';
@@ -101,6 +106,52 @@ export default function InvestigationBoard({
 }) {
   const incident = workspace.incident.incident_number;
   const signal = data.signals.find((row) => row.id === selection.signalId)!;
+  const [signalQuery, setSignalQuery] = useState('');
+  const [priority, setPriority] = useState('all');
+  const [signalOrder, setSignalOrder] = useState('source');
+  const signalTable = useRef<HTMLDivElement>(null);
+  const visibleSignals = useMemo(() => {
+    const terms = signalQuery
+      .trim()
+      .toLocaleLowerCase()
+      .split(/\s+/)
+      .filter(Boolean);
+    const rows = data.signals.filter((row) => {
+      const text = [
+        row.device,
+        row.step,
+        row.item,
+        row.equipment,
+        row.recipe,
+        row.title,
+      ]
+        .join(' ')
+        .toLocaleLowerCase();
+      return (
+        (priority === 'all' || row.severity === priority) &&
+        terms.every((term) => text.includes(term))
+      );
+    });
+    if (signalOrder === 'priority')
+      rows.sort(
+        (a, b) => Number(b.severity === 'high') - Number(a.severity === 'high'),
+      );
+    if (signalOrder === 'latest')
+      rows.sort((a, b) => Date.parse(b.detectedAt) - Date.parse(a.detectedAt));
+    return rows;
+  }, [data.signals, signalQuery, priority, signalOrder]);
+  const selectedVisible = visibleSignals.some((row) => row.id === signal.id);
+  useEffect(() => {
+    const container = signalTable.current;
+    const row = container?.querySelector<HTMLTableRowElement>('tr.selected');
+    if (!container || !row) return;
+    const top =
+      row.getBoundingClientRect().top - container.getBoundingClientRect().top;
+    const bottom = top + row.offsetHeight;
+    if (top < 24) container.scrollTop += top - 24;
+    else if (bottom > container.clientHeight)
+      container.scrollTop += bottom - container.clientHeight;
+  }, [signal.id, visibleSignals]);
   const candidates = useMemo(
     () => selectFabRows(data, selection),
     [data, selection],
@@ -108,7 +159,10 @@ export default function InvestigationBoard({
   const from = data.trend[selection.start].timestamp;
   const to = data.trend[selection.end].timestamp;
   const events = changeTiming(data, signal, selection);
-  const windowSummary = summarizeSignalWindow(data, selection);
+  const windowSummary = useMemo(
+    () => summarizeTrendSamples(data, selection),
+    [data, selection],
+  );
   const [productionNotice, setProductionNotice] = useState('');
   const [copyStatus, setCopyStatus] = useState('');
   const [preview, setPreview] = useState<Attachment | null>(null);
@@ -334,6 +388,15 @@ export default function InvestigationBoard({
       },
     ],
   });
+  // List filtering must not reset the map renderer or its active brush.
+  const singleMapOption = useMemo(
+    () => mapOption(false),
+    [current, die, region],
+  );
+  const compositeMapOption = useMemo(
+    () => mapOption(true),
+    [composite, die, region, threshold],
+  );
 
   const exportComposite = () =>
     download(
@@ -546,10 +609,66 @@ export default function InvestigationBoard({
         >
           <header>
             <h2>이상감지</h2>
-            <span>{data.signals.length} items</span>
+            <span aria-live="polite">
+              {visibleSignals.length} / {data.signals.length} items
+            </span>
             {expand('이상감지 상세', 'signals')}
           </header>
-          <div className="board-signal-table">
+          <div className="board-signal-tools">
+            <label className="board-signal-search">
+              <Search size={13} aria-hidden="true" />
+              <input
+                aria-label="이상 목록 검색"
+                placeholder="Device · Step · Item · EQP"
+                value={signalQuery}
+                onChange={(event) => setSignalQuery(event.target.value)}
+              />
+              {signalQuery && (
+                <button
+                  className="icon-button"
+                  title="검색 지우기"
+                  aria-label="검색 지우기"
+                  onClick={() => setSignalQuery('')}
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </label>
+            <select
+              aria-label="이상 우선순위 필터"
+              value={priority}
+              onChange={(event) => setPriority(event.target.value)}
+            >
+              <option value="all">전체 우선순위</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+            </select>
+            <select
+              aria-label="이상 목록 정렬"
+              value={signalOrder}
+              onChange={(event) => setSignalOrder(event.target.value)}
+            >
+              <option value="source">원본 순서</option>
+              <option value="priority">우선순위순</option>
+              <option value="latest">최신순</option>
+            </select>
+            <button
+              className="icon-button"
+              aria-label="목록 필터 초기화"
+              title="목록 필터 초기화"
+              disabled={
+                !signalQuery && priority === 'all' && signalOrder === 'source'
+              }
+              onClick={() => {
+                setSignalQuery('');
+                setPriority('all');
+                setSignalOrder('source');
+              }}
+            >
+              <ListRestart size={14} />
+            </button>
+          </div>
+          <div className="board-signal-table" ref={signalTable}>
             <table>
               <thead>
                 <tr>
@@ -562,7 +681,7 @@ export default function InvestigationBoard({
                 </tr>
               </thead>
               <tbody>
-                {data.signals.map((row) => (
+                {visibleSignals.map((row, index) => (
                   <tr
                     key={row.id}
                     className={row.id === signal.id ? 'selected' : ''}
@@ -578,6 +697,34 @@ export default function InvestigationBoard({
                           choose(row);
                         }}
                         title={`${row.device} · ${row.step} · ${row.item} · ${row.title}`}
+                        onKeyDown={(event) => {
+                          if (
+                            !['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(
+                              event.key,
+                            )
+                          )
+                            return;
+                          event.preventDefault();
+                          const next =
+                            event.key === 'Home'
+                              ? 0
+                              : event.key === 'End'
+                                ? visibleSignals.length - 1
+                                : Math.max(
+                                    0,
+                                    Math.min(
+                                      visibleSignals.length - 1,
+                                      index +
+                                        (event.key === 'ArrowDown' ? 1 : -1),
+                                    ),
+                                  );
+                          choose(visibleSignals[next]);
+                          signalTable.current
+                            ?.querySelectorAll<HTMLButtonElement>(
+                              'tbody button',
+                            )
+                            [next]?.focus({ preventScroll: true });
+                        }}
                       >
                         {row.item}
                         <small>{row.title}</small>
@@ -600,14 +747,27 @@ export default function InvestigationBoard({
                     </td>
                   </tr>
                 ))}
+                {!visibleSignals.length && (
+                  <tr>
+                    <td colSpan={6} className="board-signal-empty">
+                      검색 결과 없음
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
           <footer>
-            {signal.device} / {signal.step} / {signal.item} ·{' '}
-            {signal.description}
-            <br />
-            합성 감지 목록 · 모델 미연결
+            <strong>{signal.item}</strong> · {signal.equipment}
+            {!selectedVisible && (
+              <span className="board-filter-hidden">
+                {' '}
+                · 선택 항목은 필터 밖
+              </span>
+            )}
+            <span className="board-source-caption">
+              합성 Raw · 감지 모델 미연결
+            </span>
           </footer>
         </section>
         <section
@@ -648,46 +808,58 @@ export default function InvestigationBoard({
             }
             aria-live="polite"
           >
-            {selection.rangeSelected !== false && (
-              <span
-                title={`감지 전 기준: ${windowSummary.baseline.from || '-'} ~ ${windowSummary.baseline.to || '-'} · 정상 검증 아님`}
-              >
-                감지 전 n={windowSummary.baseline.n}{' '}
-                <b>{number(windowSummary.baseline.median)}</b>
-              </span>
-            )}
-            <span>
-              {selection.rangeSelected === false ? '전체' : '선택'} n=
-              {windowSummary.selected.n}{' '}
-              <b>{number(windowSummary.selected.median)}</b>
-            </span>
-            {selection.rangeSelected !== false && (
-              <span>
-                Δ 중앙값{' '}
-                <b>
-                  {windowSummary.comparable
-                    ? number(windowSummary.deltaMedian)
-                    : '표본 부족'}
-                </b>{' '}
-                {metricUnits[signal.metric]}
-              </span>
-            )}
             <span
-              title={`${selection.rangeSelected === false ? '전체' : '선택'} 구간의 최솟값과 최댓값`}
+              title={`대상 설비 Raw · 감지 전 ${windowSummary.baseline.from || '-'} ~ ${windowSummary.baseline.to || '-'} · 정상 검증 아님`}
             >
-              범위 {number(windowSummary.selected.min)}~
-              {number(windowSummary.selected.max)}
+              <small>감지 전 · n={windowSummary.baseline.n}</small>
+              <b>
+                {number(windowSummary.baseline.median)}{' '}
+                <em>{metricUnits[signal.metric]}</em>
+              </b>
+            </span>
+            <span
+              title={`대상 설비 Raw · 범위 ${number(windowSummary.selected.min)} ~ ${number(windowSummary.selected.max)}`}
+            >
+              <small>
+                {selection.rangeSelected === false ? '전체' : '선택'} · n=
+                {windowSummary.selected.n}
+              </small>
+              <b>
+                {number(windowSummary.selected.median)}{' '}
+                <em>{metricUnits[signal.metric]}</em>
+              </b>
+            </span>
+            <span title="선택 중앙값 − 감지 전 중앙값 · 양쪽 최소 3개 표본 · 원인/유의성 판정 아님">
+              <small>Δ 중앙값</small>
+              <b className="board-delta-value">
+                {selection.rangeSelected === false
+                  ? '-'
+                  : windowSummary.comparable
+                    ? `${windowSummary.deltaMedian! > 0 ? '+' : ''}${number(windowSummary.deltaMedian)}`
+                    : '표본 부족'}
+              </b>
+            </span>
+            <span
+              title={`대상 설비 Raw의 Q3 − Q1 · 감지 전 IQR ${number(windowSummary.baseline.iqr)} · 최소 3개 표본`}
+            >
+              <small>
+                {selection.rangeSelected === false ? '전체' : '선택'} IQR
+              </small>
+              <b>
+                {number(windowSummary.selected.iqr)}{' '}
+                <em>{metricUnits[signal.metric]}</em>
+              </b>
             </span>
           </div>
           <div
             className="board-equipment-stats"
             aria-live="polite"
-            title={`Signal A ${signal.equipment} · B ${peerEquipment} · 합성 기준선`}
+            title={`시간 집계 중앙값 · Signal A ${signal.equipment} · B ${peerEquipment} · 합성 자료`}
           >
             {equipmentComparison.valid ? (
               <>
                 <b>
-                  A/B {equipmentComparison.medianA?.toFixed(2)} /{' '}
+                  시간 집계 A/B {equipmentComparison.medianA?.toFixed(2)} /{' '}
                   {equipmentComparison.medianB?.toFixed(2)}{' '}
                   {metricUnits[signal.metric]}
                 </b>
@@ -1013,7 +1185,7 @@ export default function InvestigationBoard({
           <div className="board-map-stage">
             {focused ? (
               <Chart
-                option={mapOption(false)}
+                option={singleMapOption}
                 className="board-map-canvas"
                 label="선택 Wafer 개별 Map"
                 onSelect={(p) => selectDie([p.value[0], p.value[1]])}
@@ -1069,7 +1241,7 @@ export default function InvestigationBoard({
           <div className="board-map-stage">
             {composite.waferCount ? (
               <Chart
-                option={mapOption(true)}
+                option={compositeMapOption}
                 className="board-map-canvas"
                 label={`선택 ${composite.waferCount}개 Wafer 합성 Map`}
                 onSelect={(p) => selectDie([p.value[0], p.value[1]])}
