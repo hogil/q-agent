@@ -1,6 +1,9 @@
 import type { Workspace } from './api';
 import type { EngineeringData } from './engineeringData';
 import type { InvestigationSelection } from './engineeringAnalysis';
+import { Matrix, QrDecomposition } from 'ml-matrix';
+
+export type RegressionDegree = 1 | 2 | 3;
 
 export type HistoricalRecord = {
   id: string;
@@ -125,4 +128,94 @@ export function selectHistoricalData(
         record.fabAt <= record.edsAt,
     )
     .sort((left, right) => left.edsAt.localeCompare(right.edsAt));
+}
+
+export function fitHistoricalRegression(
+  points: readonly (readonly [number, number])[],
+  degree: RegressionDegree,
+): { curve: [number, number][]; rSquared: number | null; n: number } | null {
+  if (degree !== 1 && degree !== 2 && degree !== 3) return null;
+  const finitePoints = points.filter(
+    ([x, y]) => Number.isFinite(x) && Number.isFinite(y),
+  );
+  const distinctX = new Set(finitePoints.map(([x]) => x));
+  if (finitePoints.length < degree + 1 || distinctX.size < degree + 1)
+    return null;
+
+  let xmin = finitePoints[0][0];
+  let xmax = xmin;
+  for (const [x] of finitePoints) {
+    xmin = Math.min(xmin, x);
+    xmax = Math.max(xmax, x);
+  }
+  const range = xmax - xmin;
+  const scale = range / 2;
+  const center = xmin / 2 + xmax / 2;
+  if (!Number.isFinite(range) || range <= 0 || !Number.isFinite(scale))
+    return null;
+
+  const normalized = (x: number): number => (x - center) / scale;
+  const design = finitePoints.map(([x]) => {
+    const z = normalized(x);
+    return Array.from({ length: degree + 1 }, (_, power) => z ** power);
+  });
+  if (design.some((row) => row.some((value) => !Number.isFinite(value))))
+    return null;
+
+  const qr = new QrDecomposition(new Matrix(design));
+  if (!qr.isFullRank()) return null;
+  const triangular = qr.upperTriangularMatrix;
+  const diagonal = Array.from({ length: degree + 1 }, (_, i) =>
+    Math.abs(triangular.get(i, i)),
+  );
+  const tolerance =
+    Number.EPSILON * finitePoints.length * Math.max(...diagonal);
+  if (diagonal.some((value) => value <= tolerance)) return null;
+  let solution: Matrix;
+  try {
+    solution = qr.solve(new Matrix(finitePoints.map(([, y]) => [y])));
+  } catch {
+    return null;
+  }
+  const coefficients = Array.from({ length: degree + 1 }, (_, index) =>
+    solution.get(index, 0),
+  );
+  if (coefficients.some((value) => !Number.isFinite(value))) return null;
+
+  const predict = (x: number): number => {
+    const z = normalized(x);
+    let value = 0;
+    for (let power = degree; power >= 0; power--)
+      value = value * z + coefficients[power];
+    return value;
+  };
+  const predictions = finitePoints.map(([x]) => predict(x));
+  if (predictions.some((value) => !Number.isFinite(value))) return null;
+
+  let mean = 0;
+  let sumSquaredTotal = 0;
+  for (let index = 0; index < finitePoints.length; index++) {
+    const y = finitePoints[index][1];
+    const delta = y - mean;
+    mean += delta / (index + 1);
+    sumSquaredTotal += delta * (y - mean);
+  }
+  let sumSquaredError = 0;
+  for (let index = 0; index < finitePoints.length; index++) {
+    const residual = finitePoints[index][1] - predictions[index];
+    sumSquaredError += residual * residual;
+  }
+  if (!Number.isFinite(sumSquaredTotal) || !Number.isFinite(sumSquaredError))
+    return null;
+  const rSquared =
+    sumSquaredTotal === 0 ? null : 1 - sumSquaredError / sumSquaredTotal;
+  if (rSquared !== null && !Number.isFinite(rSquared)) return null;
+
+  const curve: [number, number][] = Array.from({ length: 81 }, (_, index) => {
+    const x =
+      index === 0 ? xmin : index === 80 ? xmax : xmin + (range / 80) * index;
+    return [x, predict(x)];
+  });
+  if (curve.some(([, y]) => !Number.isFinite(y))) return null;
+  return { curve, rSquared, n: finitePoints.length };
 }

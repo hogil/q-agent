@@ -6,7 +6,9 @@ import { Chart } from './charts';
 import {
   historicalData,
   selectHistoricalData,
+  fitHistoricalRegression,
   type HistoricalRecord,
+  type RegressionDegree,
 } from './historicalData';
 import { download, type Workspace } from './api';
 import type { InvestigationSelection } from './engineeringAnalysis';
@@ -61,20 +63,43 @@ export default function HistoricalCorrelation({
 }) {
   const [xMetric, setXMetric] = useState<XMetric>('temperature');
   const [yMetric, setYMetric] = useState<YMetric>('yieldPct');
+  const [degree, setDegree] = useState<RegressionDegree>(1);
   const records = useMemo(
     () =>
       selectHistoricalData(historicalData(workspace, data), data, selection),
     [workspace, data, selection],
   );
+  const scatterValues = useMemo(
+    () =>
+      records
+        .map((record): [number, number, HistoricalRecord] => [
+          value(record, xMetric),
+          value(record, yMetric),
+          record,
+        ])
+        .filter(
+          ([x, y]) =>
+            Number.isFinite(x) && Number.isFinite(y) && y >= 0 && y <= 100,
+        ),
+    [records, xMetric, yMetric],
+  );
   const summary = useMemo(
     () =>
       correlationSummary(
-        records.map((record) => ({
-          value: value(record, xMetric),
-          yieldPct: value(record, yMetric),
+        scatterValues.map(([x, y]) => ({
+          value: x,
+          yieldPct: y,
         })),
       ),
-    [records, xMetric, yMetric],
+    [scatterValues],
+  );
+  const regression = useMemo(
+    () =>
+      fitHistoricalRegression(
+        scatterValues.map(([x, y]) => [x, y]),
+        degree,
+      ),
+    [scatterValues, degree],
   );
   const selectedSignal = data.signals.find(
     (signal) => signal.id === selection.signalId,
@@ -98,15 +123,11 @@ export default function HistoricalCorrelation({
   useEffect(() => {
     if (detail) dialog.current?.showModal();
   }, [detail]);
-  const scatterValues = records.map(
-    (record): [number, number, HistoricalRecord] => [
-      value(record, xMetric),
-      value(record, yMetric),
-      record,
-    ],
-  );
-  const xBounds = axisBounds(records.map((record) => value(record, xMetric)));
-  const yBounds = axisBounds(records.map((record) => value(record, yMetric)));
+  const xBounds = axisBounds(scatterValues.map(([x]) => x));
+  const yBounds = axisBounds([
+    ...scatterValues.map(([, y]) => y),
+    ...(regression?.curve.map(([, y]) => y) || []),
+  ]);
   const scatterOption = {
     animation: false,
     grid: {
@@ -141,21 +162,43 @@ export default function HistoricalCorrelation({
     tooltip: {
       renderMode: 'richText',
       formatter: (params: {
-        data: { record: HistoricalRecord };
+        data: { record?: HistoricalRecord };
         value: [number, number, string];
       }) =>
-        `${params.data.record.lotId} / ${params.data.record.waferId}\n${xLabels[xMetric]} ${params.value[0].toFixed(2)}\n${yLabels[yMetric]} ${params.value[1].toFixed(2)}\nFab ${dateLabel(params.data.record.fabAt)}\nEDS ${dateLabel(params.data.record.edsAt)} · 합성`,
+        params.data.record
+          ? `${params.data.record.lotId} / ${params.data.record.waferId}\n${xLabels[xMetric]} ${params.value[0].toFixed(2)}\n${yLabels[yMetric]} ${params.value[1].toFixed(2)}\nFab ${dateLabel(params.data.record.fabAt)}\nEDS ${dateLabel(params.data.record.edsAt)} · 합성`
+          : '',
     },
     series: [
       {
+        id: 'historical-observations',
         type: 'scatter',
+        z: 3,
         symbolSize: 7,
         data: scatterValues.map(([x, y, record]) => ({
           record,
-          value: [x, y, (record as HistoricalRecord).edsAt],
+          value: [x, y, record.edsAt],
           itemStyle: { color: '#367f99' },
         })),
       },
+      ...(regression
+        ? [
+            {
+              id: 'historical-regression',
+              name: `${degree}차 회귀`,
+              type: 'line',
+              data: regression.curve,
+              showSymbol: false,
+              smooth: false,
+              silent: true,
+              clip: true,
+              z: 2,
+              lineStyle: { color: '#b45b3e', width: 2 },
+              tooltip: { show: false },
+              emphasis: { disabled: true },
+            },
+          ]
+        : []),
     ],
   };
   return (
@@ -175,6 +218,7 @@ export default function HistoricalCorrelation({
           X
           <select
             aria-label="과거 Fab 지표"
+            title={xLabels[xMetric]}
             value={xMetric}
             onChange={(event) => setXMetric(event.target.value as XMetric)}
           >
@@ -189,6 +233,7 @@ export default function HistoricalCorrelation({
           Y
           <select
             aria-label="과거 EDS 지표"
+            title={yLabels[yMetric]}
             value={yMetric}
             onChange={(event) => setYMetric(event.target.value as YMetric)}
           >
@@ -199,6 +244,18 @@ export default function HistoricalCorrelation({
             ))}
           </select>
         </label>
+        <select
+          aria-label="회귀 차수"
+          title="다항 회귀 차수"
+          value={degree}
+          onChange={(event) =>
+            setDegree(Number(event.target.value) as RegressionDegree)
+          }
+        >
+          <option value={1}>1차</option>
+          <option value={2}>2차</option>
+          <option value={3}>3차</option>
+        </select>
         <button
           className="icon-button"
           title="과거 Fab EDS 표본 상세"
@@ -208,7 +265,7 @@ export default function HistoricalCorrelation({
           <FileSearch size={14} />
         </button>
       </div>
-      {!records.length ? (
+      {!scatterValues.length ? (
         <p className="board-empty">조건에 맞는 과거 완료 표본 없음</p>
       ) : (
         <div className="history-charts">
@@ -218,7 +275,10 @@ export default function HistoricalCorrelation({
               className="history-scatter-chart"
               label="과거 Fab과 EDS 산점도"
               onSelect={(event) => {
-                const record = records[event.dataIndex];
+                if (event.seriesType !== 'scatter') return;
+                const record = event.data?.record as
+                  | HistoricalRecord
+                  | undefined;
                 if (record) setDetailId(record.id);
               }}
             />
@@ -228,6 +288,19 @@ export default function HistoricalCorrelation({
       <div className="history-stats">
         <strong>n={summary.n}</strong>
         <strong>r={summary.r?.toFixed(3) ?? 'N/A'}</strong>
+        <strong
+          className="history-regression-stat"
+          aria-live="polite"
+          title={
+            regression
+              ? `${degree}차 최소제곱 회귀 · 현재 표본 적합도 · 인과관계 아님`
+              : `${degree}차 회귀 불가 · 서로 다른 X가 ${degree + 1}개 이상 필요하며 수치적으로 안정적이어야 합니다`
+          }
+        >
+          {regression
+            ? `R²=${regression.rSquared?.toFixed(3) ?? 'N/A'}`
+            : '회귀 불가'}
+        </strong>
         <span>
           Fab {selection.equipment || '전체'} · Recipe{' '}
           {selection.recipe || '전체'}
