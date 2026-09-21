@@ -130,6 +130,65 @@ class WorkbenchLLMTests(unittest.TestCase):
                 "content": "합성 재공과 상태 확인", "sources": ["incident", "production"], "context": context})
         self.assertEqual(response["analysis"]["steps"][1]["status"], "completed")
 
+    def test_enterprise_source_is_gated_and_failed_query_is_not_completed(self):
+        from unittest.mock import Mock
+        self.app.settings.data['enterprise']['enabled'] = True
+        enterprise_result = {'status': 'UNAVAILABLE', 'systems': [
+            {'id': 'mes', 'system': 'Synthetic MES', 'view': 'approved_events', 'status': 'UNAVAILABLE', 'row_count': 0}],
+            'limitations': ['ENTERPRISE_QUERY_FAILED']}
+        connector = Mock()
+        connector.query.return_value = enterprise_result
+
+        def fake_run(settings, question, **kwargs):
+            result = kwargs['engineering_query'](self.app.actor, [self.incident_id], '2026-03-31')
+            self.assertEqual(result['sections']['enterprise'], enterprise_result)
+            self.assertNotIn('synthetic', result)
+            self.assertIn('get_engineering_snapshot', kwargs['requested_tools'])
+            events = self._agent_result()['events'] + [
+                {'event': 'tool_result', 'source': 'get_engineering_snapshot', 'result': result}]
+            return self._agent_result(events=events, status='partial')
+
+        with patch.object(workbench_module, 'EnterpriseTools', return_value=connector), \
+                patch.object(workbench_module, 'run_agent', side_effect=fake_run):
+            result = self.app.analysis(self.room_id, {'content': 'Query system', 'sources': ['incident', 'enterprise'], 'context': self.context})
+        self.assertEqual(result['analysis']['steps'][1]['status'], 'unavailable')
+        self.assertEqual(result['analysis']['enterprise']['status'], 'UNAVAILABLE')
+        connector.query.assert_called_once_with(self.app.actor, [self.incident_id], '2026-03-31')
+
+    def test_enterprise_overlay_loads_but_cannot_target_chat_database(self):
+        import yaml
+        overlay = Path(self.temp.name) / 'sql.local.yaml'
+        cfg = yaml.safe_load((ROOT / 'config/enterprise.example.yaml').read_text(encoding='utf-8'))
+        overlay.write_text(yaml.safe_dump(cfg), encoding='utf-8')
+        loaded = load_workbench(self.config_path, agent_overlay=overlay)
+        self.assertEqual(loaded['settings'].data['enterprise']['sources'][0]['id'], 'equipment_events')
+        source = cfg['enterprise']['sources'][0]
+        source.update(dialect='sqlite', schema='', sqlite_file=str(self.chat_path))
+        overlay.write_text(yaml.safe_dump(cfg), encoding='utf-8')
+        with self.assertRaisesRegex(WorkbenchError, 'must differ from chat DB'):
+            load_workbench(self.config_path, agent_overlay=overlay)
+
+    def test_unconfigured_enterprise_does_not_create_connector(self):
+        with patch.object(workbench_module, 'EnterpriseTools') as connector, \
+                patch.object(workbench_module, 'run_agent', return_value=self._agent_result()):
+            result = self.app.analysis(self.room_id, {'content': 'Query system', 'sources': ['incident', 'enterprise'], 'context': self.context})
+        connector.assert_not_called()
+        self.assertIn('DB', result['analysis']['steps'][1]['detail'])
+
+    def test_map_question_requests_related_search_without_claiming_cd_model(self):
+        self.app.settings.data['image_tools']['overlay']['enabled'] = True
+        def fake_run(settings, question, **kwargs):
+            self.assertIn('search_related_incidents', kwargs['requested_tools'])
+            self.assertTrue(kwargs['related_search'])
+            self.assertEqual(kwargs['context_data']['map_model_capabilities']['cd'], 'not_connected')
+            self.assertFalse(settings.data['image_tools']['overlay']['enabled'])
+            self.assertNotIn('compare_overlay_maps', kwargs['requested_tools'])
+            return self._agent_result()
+        with patch.object(workbench_module, 'run_agent', side_effect=fake_run):
+            self.app.analysis(self.room_id, {'content': 'CD 이상 관련 사고와 Trend 비교',
+                                           'sources': ['incident', 'related', 'maps'],
+                                           'context': {**self.context, 'map_view': {'kind': 'cd', 'overlay': 'raw'}}})
+
     def test_prior_history_is_unverified_and_filtered_to_current_incident(self):
         self.app._append_messages(
             self.room_id,
@@ -161,8 +220,13 @@ class WorkbenchLLMTests(unittest.TestCase):
         history = captured["context"]["previous_messages_unverified"]
         history_text = " ".join(item["content"] for item in history)
         self.assertIn("current incident note", history_text)
+        self.assertNotIn("current answer", history_text)
         self.assertNotIn("other incident note", history_text)
         self.assertEqual(captured["context"]["selected_incident"], "SYN-2026-01")
+        with patch.object(workbench_module, "run_agent", side_effect=fake_run):
+            self.app.analysis(self.room_id, {"content": "continue with the previous answer"})
+        self.assertTrue(any(row['role'] == 'assistant'
+                            for row in captured['context']['previous_messages_unverified']))
 
     def test_checked_image_tools_remain_enabled_and_results_are_reported(self):
         self.app.settings = Settings(merge(self.app.settings.data, {

@@ -129,6 +129,51 @@ class IncidentTools:
         scope=secrets.token_hex(12);self.scopes[scope]={'actor':actor,'ids':tuple(r['incident_id'] for r in rows),'expires_at':now+self.scope_ttl_seconds,'requires_selection':selection_required}
         return {'status':'NEEDS_SELECTION' if selection_required else ('OK' if rows else 'NO_MATCH'),'scope_id':scope,'data':rows,'requires_selection':selection_required,'mapping_version':self.m['mapping_version']}
 
+    def search_related_incidents(self, actor, scope_id, terms, as_of):
+        from datetime import date, timedelta
+        ids = self._scope(actor, scope_id)['ids']
+        if (not isinstance(terms, list) or not 1 <= len(terms) <= 6
+                or any(not isinstance(term, str) or not 2 <= len(fold(term)) <= 80 for term in terms)):
+            raise ToolError('INVALID_RELATED_SEARCH_TERMS')
+        try:
+            cutoff = (date.fromisoformat(as_of) + timedelta(days=1)).isoformat()
+        except (TypeError, ValueError):
+            raise ToolError('INVALID_AS_OF') from None
+        mapped = self.m['entities']['incident']['columns']
+        if 'occurred_at' not in mapped:
+            raise ToolError('RELATED_SEARCH_DATE_UNMAPPED')
+        search_fields = [key for key in ('title', 'incident_detail', 'analysis_detail', 'confirmed_cause',
+                                         'fab_out_failure_codes') if key in mapped]
+        fields = ['incident_id', 'incident_number', 'occurred_at', *search_fields]
+        tests, params = [], []
+        for term in dict.fromkeys(map(fold, terms)):
+            tests.append('CASE WHEN (' + ' OR '.join(
+                'instr(qagent_fold(' + self.col('incident', key, 'i') + '),?)>0' for key in search_fields)
+                + ') THEN 1 ELSE 0 END')
+            params.extend([term] * len(search_fields))
+        select = ','.join(self.col('incident', key, 'i') + ' AS ' + ident(key) for key in fields)
+        score = '+'.join(tests)
+        sql = 'SELECT ' + select + ',(' + score + ') AS matched_term_count FROM ' + self.table('incident') + ' i'
+        sql += ' WHERE ' + self.col('incident', 'incident_id', 'i') + ' NOT IN (' + ','.join('?' for _ in ids) + ')'
+        sql += ' AND julianday(' + self.col('incident', 'occurred_at', 'i') + ')<julianday(?)'
+        params.extend([*ids, cutoff])
+        sql = 'SELECT * FROM (' + sql + ') WHERE matched_term_count>0 ORDER BY matched_term_count DESC, occurred_at DESC LIMIT 9'
+        rows = [dict(row) for row in self.db.execute(sql, params)]
+        truncated = len(rows) > 8
+        rows = rows[:8]
+        for row in rows:
+            row['matched_fields'] = [key for key in search_fields
+                                     if any(fold(term) in fold(row[key]) for term in terms)]
+            row['text_truncated'] = any(isinstance(row[key], str) and len(row[key]) > 600 for key in search_fields)
+            for key in search_fields:
+                if isinstance(row[key], str):
+                    row[key] = row[key][:600]
+        return {'status': 'OK' if rows else 'NO_MATCH', 'items': rows, 'terms': terms,
+                'truncated': truncated, 'count': len(rows), 'as_of': as_of,
+                'retrieval': 'lexical_sql_candidates', 'scope_changed': False,
+                'limitations': ['CANDIDATES_NOT_CONFIRMED_RELATION', 'NO_IMAGE_SIMILARITY_SEARCH',
+                                'DATABASE_ACCOUNT_ACCESS_NOT_PER_USER_ACL']}
+
     def _scope(self,actor,scope_id,allow_candidates=False):
         scope=self.scopes.get(scope_id)
         if not scope or scope['expires_at']<=time.monotonic():

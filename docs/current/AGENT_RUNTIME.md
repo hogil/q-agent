@@ -37,7 +37,9 @@ Router의 native tool_call 이름은 `submit_plan`이다. 그 arguments에는 �
 
 위 번호는 실행 예시용 placeholder다. 실제 입력에서 얻은 번호를 사용한다.
 Tool 실행 결과는 원래 tool_call_id와 연결한 role=tool 메시지로 다음 Router 호출에 전달한다.
-한 단계에 한 Tool만 실행한다. 실제 SQL이나 actor/scope_id를 모델이 지정할 수 없다.
+사고 조회는 한 단계에 한 Tool만 실행한다. scope 검증 후 현재 활성화된 독립적인 후속 Tool은
+최대 4개를 한 계획에 묶는다. 전체 인자를 먼저 검사하고 순차 실행하며, 실패하면 나머지를
+중단한다. 같은 계획의 앞 Tool이 반환할 ID를 미리 가정할 수 없다. 실제 SQL이나 actor/scope_id를 모델이 지정할 수 없다.
 
 find_incidents는 fields에 지정한 매핑된 논리 컬럼을 기본 요약 목록에 추가할 수 있다.
 원인·조치 질문에만 필요한 상세 컬럼을 요청한다. 생략하면 기존 목록 크기를 유지하며,
@@ -55,6 +57,12 @@ Router history에는 이전 함수 호출과 결과만 보관한다. 전체 상�
 user 메시지로 한 번만 전달하며, 과거 payload를 매번 누적하지 않는다. 이전 Tool 결과가
 history에 남아 있어도 현재 evidence_ids와 유효 scope에 없는 근거는 재사용하지 않는다.
 컨텍스트 제한, Tool 인자·scope 검사와 호출 전 릴리스 해시 검사는 유지한다.
+명시적 requested_tools 워크플로에서는 완료된 Engineering/회의록/이미지 결과를 Router용
+조회 상태로 축약한다. 실제 원문 근거는 폐기하지 않고 Judge/Answer에 전달한다.
+`structured_outputs: true`에서는 역할 JSON 계약을 response_format으로 검증하되, 의미 이해를
+위해 시스템 프롬프트에도 계약을 유지한다. 스키마 제거는 로컬 Qwen에서 빈 계획 회귀를 보였다.
+`llm_output.metrics`에 호출 시간·입출력 토큰을 기록한다. 출력 한도 초과는 MODEL_OUTPUT_LIMIT로
+구분하며 잘린 JSON을 성공 답변으로 복구하지 않는다.
 
 ## 역할별 Skill 관리
 
@@ -89,7 +97,12 @@ Tool 실행은 순차적이며 max_parallel_tools는 아직 사용하지 않는�
 복수 사고는 사용자 선택을 요구하며 --select-incident로 지정한 ID만 현재 검색 범위에서 검증한다.
 오류·모호함·조회 한도 도달 시 unavailable/needs_selection/needs_clarification을 반환한다.
 
-실제 연결된 Tool은 SQLite 값·컬럼 후보 조회, 사고 검색, Lot 조회, Wafer 조회 4개다. RAG/이미지/Trend/
-조치/서버 DB Adapter와 운영 ACL은 아직 없다. actor는 로컬 호출자 구분이며 인증이 아니다.
+현재 Tool에는 사고/값 후보/Lot/Wafer, 회의록, Engineering snapshot, SEM/Overlay 비교,
+관련 사고 텍스트 검색이 있다. Workbench의 사내 SQL 선택은 snapshot에 시스템별 조회 결과를
+추가한다. SQL은 설정한 View/컬럼과 설비·Step·기간·Lot 값만 사용하며 LLM SQL은 실행하지 않는다.
+SQLite 연결은 로컬 DB로 검증했다. 서버 SQL은 ODBC 드라이버/읽기 전용 계정과 실제 스키마
+검증이 필요하다. 사고 DB 주 Adapter 자체는 여전히 SQLite이며 사내 SQL 연결과 별개다.
+관련 사고 후보는 현재 scope를 변경하지 않고 텍스트 일치만 반환한다. CD/Bin/Failbit 모델,
+이미지 기반 사고 검색, 생산 조치, 운영 ACL은 없다. actor는 호출자 구분이며 인증이 아니다.
 배포 전에 사내 모델의 판단 품질, 실제 데이터/스키마, DB 권한과 전송 보안을 검증해야 한다.
 로컬 모의 HTTP 서버로 프로토콜 연결을 확인한 것은 실제 LLM 성능 검증이 아니다.

@@ -33,6 +33,7 @@ from runtime_factory import open_incident_tools  # noqa: E402
 from detection_workflow import DetectionWorkflow  # noqa: E402
 from workbench_data import load_workbench_data  # noqa: E402
 from engineering_tools import EngineeringTools  # noqa: E402
+from enterprise_tools import EnterpriseTools  # noqa: E402
 
 
 MAX_BODY = 64 * 1024
@@ -45,7 +46,7 @@ INCIDENT_FIELDS = [
 ]
 ANALYSIS_SOURCES = (
     "incident", "trend", "correlation", "maps", "sem", "production",
-    "inform", "meetings", "changes",
+    "inform", "meetings", "changes", "enterprise", "related",
 )
 ANALYSIS_CONTEXT_FIELDS = {"incident_number", "item", "step", "equipment", "from", "to", "wafers"}
 ANALYSIS_OPTIONAL_FIELDS = {"recipe", "trend_selection", "sem_wafers", "map_view", "map_comparison"}
@@ -179,8 +180,8 @@ def load_workbench(path: str | Path, *, raw_file=None, agent_overlay=None) -> di
         if overlay_path:
             agent_path = _path(overlay_path, config_path.parent)
             agent_config = read_config(agent_path)
-            if set(agent_config) - {"models", "roles", "runtime", "image_tools"}:
-                raise WorkbenchError("agent_overlay may only configure models, roles, runtime and image_tools")
+            if set(agent_config) - {"models", "roles", "runtime", "image_tools", "enterprise"}:
+                raise WorkbenchError("agent_overlay may only configure models, roles, runtime, image_tools and enterprise")
             merged = merge(settings.data, agent_config)
             check_shape(merged, SPEC)
             validate_values(merged)
@@ -196,6 +197,11 @@ def load_workbench(path: str | Path, *, raw_file=None, agent_overlay=None) -> di
     chat_db = _path(chat["sqlite_file"], config_path.parent)
     data = settings.data
     outputs = [Path(data["database"]["sqlite_file"]), Path(data["meetings"]["sqlite_file"]), Path(data["paths"]["golden_file"])]
+    for source in data["enterprise"]["sources"]:
+        if source["dialect"] == "sqlite":
+            source_path = Path(source["sqlite_file"]).resolve()
+            if source_path == chat_db.resolve() or source_path.is_relative_to(static_root.resolve()):
+                raise WorkbenchError("enterprise SQLite must differ from chat DB and stay outside static_root")
     if chat_db in {output.resolve() for output in outputs}:
         raise WorkbenchError("chat sqlite must differ from synthetic data outputs")
     try:
@@ -546,7 +552,7 @@ class Workbench:
         self._analysis_event(room_id, {"event": "scope_validated"})
 
     def _analysis_event(self, room_id, event):
-        allowed = ("event", "role", "model", "step", "source", "error", "status")
+        allowed = ("event", "role", "model", "step", "source", "error", "status", "metrics")
         item = {key: event[key] for key in allowed if key in event}
         item["time"] = _now()
         if event.get("event") == "tool_result":
@@ -650,7 +656,8 @@ class Workbench:
             self._begin_analysis_run(room_id, sources, context)
         try:
             if self.llm_status()["llm_configured"]:
-                answer, answer_attachments, runtime = self._llm_answer(room_id, content, sources, context)
+                answer, answer_attachments, runtime = self._llm_answer(
+                    room_id, content, sources, context, include_previous_answers="context" not in body)
             else:
                 data = self._workspace(room["incident_number"], include_meetings="meetings" in sources)
                 answer, answer_attachments, steps = self._analysis_answer(data, sources, context)
@@ -669,29 +676,57 @@ class Workbench:
             with self.lock:
                 self.running_rooms.discard(room_id)
 
-    def _llm_answer(self, room_id, content, sources, context):
+    def _llm_answer(self, room_id, content, sources, context, include_previous_answers=True):
         # UI context and earlier messages are unverified input, never tool evidence.
         incident = self._incident_map()[context["incident_number"]]
         history = [{"role": message["role"], "content": message["content"][:600]}
                    for message in self.room(room_id)["messages"][-8:]
-                   if any(ref.get("incident_number") == context["incident_number"]
+                   if (include_previous_answers or message["role"] != "assistant")
+                   and any(ref.get("incident_number") == context["incident_number"]
                           for ref in message["attachments"])]
-        image_config = {name: {"enabled": self.settings.data["image_tools"][name]["enabled"] and source in sources}
+        image_config = {name: {"enabled": self.settings.data["image_tools"][name]["enabled"] and source in sources
+                              and (name != "overlay" or context.get("map_view", {}).get("kind", "overlay") == "overlay")}
                         for name, source in (("sem", "sem"), ("overlay", "maps"))
                         }
-        available = {"incident", "meetings"}
-        engineering_sources = set(sources) & {"trend", "correlation", "production", "inform", "changes"}
+        available = {"incident", "meetings", "related"}
+        engineering_sources = set(sources) & {"trend", "correlation", "production", "inform", "changes", "maps"}
         engineering_context = {key: value for key, value in context.items() if key != "map_comparison"}
         engineering = (EngineeringTools(self.raw_data, self._incident_map(), engineering_context, sources)
                        if self.raw_data and engineering_sources else None)
         if engineering:
             available.update(engineering_sources)
+        enterprise = (EnterpriseTools(self.settings, self._incident_map(), engineering_context)
+                      if "enterprise" in sources and self.settings.data["enterprise"]["enabled"] else None)
+        if enterprise:
+            available.add("enterprise")
+
+        def engineering_query(actor, incident_ids, as_of):
+            result = (engineering.query(actor, incident_ids, as_of) if engineering else
+                      {"status": "OK", "sections": {}, "observations": {}, "limitations": []})
+            if enterprise:
+                section = enterprise.query(actor, incident_ids, as_of)
+                for system in section["systems"]:
+                    self._analysis_event(room_id, {"event": "source_result", "source": "enterprise:" + system["id"],
+                                                  "status": system["status"], **({"error": system["error"]}
+                                                  if system.get("error") else {})})
+                result["sections"]["enterprise"] = section
+                result["limitations"].extend(section["limitations"])
+                if section["status"] in ("UNAVAILABLE", "PARTIAL"):
+                    result["status"] = "PARTIAL" if engineering else section["status"]
+                result.pop("synthetic", None)
+                result["provenance"] = {"raw_sections_synthetic": bool(engineering),
+                                        "enterprise": "per_system_synthetic_flag"}
+            return result
         available.update(source for name, source in (("sem", "sem"), ("overlay", "maps"))
                          if image_config[name]["enabled"])
-        payload = {"synthetic_data": True,
+        payload = {"incident_data_synthetic": True,
                    "selected_incident": context["incident_number"], "ui_context_unverified": context,
                    "requested_sources": sources, "previous_messages_unverified": history,
-                   "unavailable_sources": [source for source in sources if source not in available]}
+                   "unavailable_sources": [source for source in sources if source not in available],
+                   "map_model_capabilities": {"cd": "not_connected", "bin": "not_connected",
+                                              "failbit": "not_connected", "thk": "not_connected",
+                                              "sem": "enabled" if image_config["sem"]["enabled"] else "not_connected",
+                                              "overlay": "enabled" if image_config["overlay"]["enabled"] else "not_connected"}}
         config = merge(self.settings.data, {"meetings": {"enabled": "meetings" in sources
                        and self.settings.data["meetings"]["enabled"]},
                        "image_tools": image_config})
@@ -699,7 +734,9 @@ class Workbench:
         if len(question) > 12000:
             raise WorkbenchError("content plus selected incident context must not exceed 12000 characters")
         requested_tools = ["find_incidents"]
-        if engineering:
+        if "related" in sources:
+            requested_tools.append("search_related_incidents")
+        if engineering or enterprise:
             requested_tools.append("get_engineering_snapshot")
         if config["meetings"]["enabled"]:
             requested_tools.append("search_meeting_minutes")
@@ -707,8 +744,8 @@ class Workbench:
                                if image_config[name]["enabled"])
         result = run_agent(Settings(config, self.settings.source_files), question, actor=self.actor,
                            selected=[incident["incident_id"]], request_scope="incident", as_of=self.cutoff,
-                           requested_tools=requested_tools,
-                           context_data=payload, engineering_query=engineering.query if engineering else None,
+                           requested_tools=requested_tools, related_search="related" in sources,
+                           context_data=payload, engineering_query=engineering_query if engineering or enterprise else None,
                            emit=lambda event: self._analysis_event(room_id, event))
         events = result.get("events", [])
         self.llm_connected = any(event["event"] == "llm_output" for event in events)
@@ -721,24 +758,38 @@ class Workbench:
             self.image_connections.update(name for name, tool in (
                 ("sem", "compare_sem_images"), ("overlay", "compare_overlay_maps")) if tool in tool_names)
         retrieved = {"incident": "find_incidents" in tool_names,
+                     "related": "search_related_incidents" in tool_names,
                      "meetings": "search_meeting_minutes" in tool_names,
                      "sem": "compare_sem_images" in tool_names,
                      "maps": "compare_overlay_maps" in tool_names}
+        enterprise_result = None
         for event in events:
             if event.get("event") == "tool_result" and event.get("source") == "get_engineering_snapshot":
                 retrieved.update({source: True for source in event["result"].get("sections", {})})
+                enterprise_result = event["result"].get("sections", {}).get("enterprise")
+        if enterprise_result:
+            retrieved["enterprise"] = enterprise_result["status"] in ("OK", "PARTIAL")
         steps = [{"source": source, "status": "completed" if retrieved.get(source) else "unavailable",
                   "detail": "Agent tool queried synthetic data" if retrieved.get(source)
                   else "Not queried; UI fixtures are not model evidence"} for source in sources]
+        for step in steps:
+            if step["source"] == "enterprise":
+                step["detail"] = ("; ".join(f"{s['system']} / {s['view']}: {s['status']} ({s['row_count']})"
+                                            for s in enterprise_result["systems"]) if enterprise_result
+                                  else "사내 SQL 미연결: 조회용 DB 설정 필요")
         trace = [{"role": event["role"], "model": event["model"], "step": event["step"]}
                  for event in events if event["event"] == "llm_start"]
         runtime = {"mode": "llm", "llm_connected": self.llm_connected, "steps": steps,
                    "status": result["status"], "trace": trace, "tool_calls": result["tool_calls"],
-                   "llm_calls": result["llm_calls"], "limitations": result.get("limitations", [])}
+                   "llm_calls": result["llm_calls"], "limitations": result.get("limitations", []),
+                   "enterprise": enterprise_result,
+                   "llm_metrics": [{"role": event["role"], **event["metrics"]} for event in events
+                                   if event["event"] in ("llm_output", "llm_metrics") and event.get("metrics")]}
         answer = result["answer"]
         if result.get("limitations"):
             answer += "\n\n제한 사항:\n" + "\n".join(result["limitations"])
-        answer += "\n\n[합성 데이터 · LLM 생성 답변]"
+        answer += ("\n\n[합성 사고 데이터 + SQL 조회 · 출처별 synthetic 표시 확인 · LLM 생성 답변]"
+                   if enterprise_result else "\n\n[합성 데이터 · LLM 생성 답변]")
         refs = [self._ref("data", context["incident_number"], incident["incident_id"], context["incident_number"])]
         return answer, refs, runtime
 

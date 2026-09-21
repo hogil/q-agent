@@ -2,6 +2,7 @@
 import copy
 import json
 import os
+from time import perf_counter
 
 from openai import OpenAI, OpenAIError
 from skill_loader import read_role_reference
@@ -22,6 +23,15 @@ class RoleClient:
                 raise LLMError('MODEL_API_KEY_ENV_MISSING: ' + role)
 
     def call(self, role, system_prompt, payload, history):
+        started = perf_counter()
+        self.last_metrics = {
+            'elapsed_seconds': 0.0,
+            'input_tokens': None,
+            'output_tokens': None,
+            'total_tokens': None,
+            'finish_reason': None,
+            'request_characters': None,
+        }
         profile = self.settings.model_profile(role)
         model = profile['deployment']
         structured_router = role == 'router' and model['structured_outputs']
@@ -36,8 +46,14 @@ class RoleClient:
         if role == 'router':
             paths = self.settings.data['paths']
             schema = read_role_reference('router', 'output.schema.json', paths['skills_root'], paths['registry_file'])
+            if 'available_topics' in payload:
+                schema['properties']['needs_skills']['items']['enum'] = list(payload['available_topics'])
             if structured_router:
-                schema['properties']['plan']['maxItems'] = 1
+                budget_remaining = payload.get('budget_remaining', 4)
+                if not isinstance(budget_remaining, int):
+                    budget_remaining = 4
+                schema['properties']['plan']['maxItems'] = (
+                    min(4, max(0, budget_remaining)) if payload.get('scope_valid') is True else 1)
                 catalog = read_role_reference('router', 'tools.json', paths['skills_root'], paths['registry_file'])
                 advertised = payload.get('available_tools')
                 if payload.get('pending_requested_tools') and isinstance(advertised, dict) and any(
@@ -48,6 +64,11 @@ class RoleClient:
                     enabled = {name for name, spec in advertised.items()
                                if isinstance(spec, dict) and spec.get('enabled') is True}
                     catalog = {name: spec for name, spec in catalog.items() if name in enabled}
+                    if payload.get('pending_requested_tools'):
+                        slots = sum(len(advertised[name].get('modalities', ['sem', 'overlay']))
+                                    if name == 'list_comparison_assets' else 1 for name in catalog)
+                        schema['properties']['plan']['maxItems'] = min(
+                            schema['properties']['plan']['maxItems'], slots)
                 step = schema['properties']['plan']['items']
                 if catalog:
                     variants = []
@@ -112,16 +133,35 @@ class RoleClient:
                 options['response_format'] = {'type': 'json_schema', 'json_schema': {
                     'name': role + '_output', 'strict': True, 'schema': schema}}
         # Count the complete request, including function schemas; this is not a token budget.
-        if len(json.dumps(options, ensure_ascii=False)) > self.settings.data['runtime']['max_context_characters']:
+        request_characters = len(json.dumps(options, ensure_ascii=False))
+        self.last_metrics['request_characters'] = request_characters
+        if request_characters > self.settings.data['runtime']['max_context_characters']:
+            self.last_metrics['elapsed_seconds'] = perf_counter() - started
             raise LLMError('MODEL_CONTEXT_LIMIT')
         try:
             with OpenAI(base_url=model['base_url'], api_key=os.environ[model['api_key_env']],
                         timeout=model['timeout_seconds'], max_retries=self.settings.data['runtime']['max_retries']) as client:
                 completion = client.chat.completions.create(**options)
+            usage = getattr(completion, 'usage', None)
+            if usage is not None:
+                def usage_value(*names):
+                    if isinstance(usage, dict):
+                        return next((usage[name] for name in names
+                                     if name in usage and usage[name] is not None), None)
+                    return next((value for name in names
+                                 if (value := getattr(usage, name, None)) is not None), None)
+
+                self.last_metrics.update(
+                    input_tokens=usage_value('prompt_tokens', 'input_tokens'),
+                    output_tokens=usage_value('completion_tokens', 'output_tokens'),
+                    total_tokens=usage_value('total_tokens'))
             choice = completion.choices[0]
             message = choice.message
-            if choice.finish_reason in ('length', 'content_filter') or message.refusal:
-                raise LLMError('MODEL_OUTPUT_INCOMPLETE_OR_REFUSED')
+            self.last_metrics['finish_reason'] = getattr(choice, 'finish_reason', None)
+            if self.last_metrics['finish_reason'] == 'length':
+                raise LLMError('MODEL_OUTPUT_LIMIT')
+            if getattr(message, 'refusal', None) or self.last_metrics['finish_reason'] == 'content_filter':
+                raise LLMError('MODEL_OUTPUT_REFUSED')
             if role == 'router' and not structured_router:
                 calls = message.tool_calls or []
                 if len(calls) != 1 or calls[0].type != 'function' or calls[0].function.name != 'submit_plan':
@@ -141,3 +181,5 @@ class RoleClient:
             raise LLMError('MODEL_REQUEST_FAILED: ' + type(exc).__name__) from None
         except (ValueError, IndexError, AttributeError, KeyError):
             raise LLMError('MODEL_RESPONSE_INVALID') from None
+        finally:
+            self.last_metrics['elapsed_seconds'] = perf_counter() - started

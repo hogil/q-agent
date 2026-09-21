@@ -107,6 +107,43 @@ class WorkbenchDataTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             load()
 
+    def test_defect_references_link_inform_history_and_finite_cd_measurements(self):
+        payload = valid_payload()
+        incident = payload["incidents"]["SYN-1"]
+        incident["image_history"] = [
+            {"id": "sem-ref", "incident_number": "SYN-PAST", "occurred_at": "2025-12-01T00:00:00Z",
+             "item": "ITEM-1", "step": "STEP-1", "modality": "sem", "provenance": "synthetic",
+             "description": "reference", "src": "/assets/past.png"},
+            {"id": "overlay-ref", "incident_number": "SYN-PAST", "occurred_at": "2025-12-01T00:00:00Z",
+             "item": "ITEM-1", "step": "STEP-1", "modality": "overlay", "provenance": "synthetic",
+             "description": "reference", "vectors": [{"x": 0, "y": 0, "dx": 1, "dy": 2}]},
+        ]
+        incident["historical_records"] = [{
+            "id": "hist-1", "lotId": "past-lot", "waferId": "W01", "step": "STEP-1", "item": "ITEM-1",
+            "equipment": "EQP-1", "recipe": "RCP-1", "fabAt": "2025-11-30T00:00:00Z",
+            "edsAt": "2025-12-01T00:00:00Z", "temperature": 65, "queue": 2, "availability": 97,
+            "yieldPct": 90, "bin3Pct": 3, "bin4Pct": 2,
+        }]
+        incident["defect_references"] = [{
+            "id": "defect-ref-1", "date": "2026-01-01T00:00:00Z", "step": "STEP-1", "equipment": "EQP-1",
+            "item": "ITEM-1", "lotId": "past-lot", "waferId": "W01", "inform_id": "note-1",
+            "historical_record_id": "hist-1", "incident_number": "SYN-PAST", "sem": {"image_history_id": "sem-ref"},
+            "cd": {"unit": "nm", "range": [40, 50], "measurements": [{"site": "center", "value": 45}]},
+            "overlay": {"image_history_id": "overlay-ref"}, "finding": "stored synthetic reference", "synthetic": True,
+        }]
+        loaded = load_workbench_data({"raw_file": self.write(payload).name}, self.root)
+        self.assertEqual(loaded["SYN-1"]["defect_references"][0]["cd"]["unit"], "nm")
+
+        invalid = json.loads(json.dumps(payload))
+        invalid["incidents"]["SYN-1"]["defect_references"][0]["cd"]["measurements"][0]["value"] = float("nan")
+        with self.assertRaisesRegex(ValueError, "must be finite"):
+            load_workbench_data({"raw_file": self.write(invalid, "invalid-defect.json").name}, self.root)
+
+        invalid = json.loads(json.dumps(payload))
+        invalid["incidents"]["SYN-1"]["defect_references"][0]["step"] = "STEP-OTHER"
+        with self.assertRaisesRegex(ValueError, "invalid Inform or historical"):
+            load_workbench_data({"raw_file": self.write(invalid, "cross-step-defect.json").name}, self.root)
+
     def test_optional_equipment_state_history_is_validated_and_preserved(self):
         payload = valid_payload()
         payload["incidents"]["SYN-1"]["engineering"]["equipmentStates"] = [

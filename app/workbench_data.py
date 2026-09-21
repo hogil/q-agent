@@ -374,10 +374,71 @@ def _validate_image_history(value: object) -> None:
     _unique(ids, "image_history reference ids")
 
 
+def _validate_defect_references(value: object, inform_notes: list[dict], image_history: list[dict],
+                                historical_records: list[dict]) -> None:
+    references = _array(value, "defect_references")
+    if len(references) > 100:
+        _fail("defect_references exceeds 100 records")
+    informs = {row["id"]: row for row in inform_notes}
+    images = {row["id"]: row for row in image_history}
+    historical_by_id = {row["id"]: row for row in historical_records}
+    ids = []
+    required = {"id", "date", "step", "equipment", "item", "lotId", "waferId", "inform_id",
+                "historical_record_id", "incident_number", "sem", "cd", "overlay", "finding", "synthetic"}
+    for index, row in enumerate(references):
+        item = _object(row, f"defect_references[{index}]")
+        if set(item) != required:
+            _fail(f"defect_references[{index}] has unsupported fields")
+        for key in required - {"sem", "cd", "overlay", "synthetic"}:
+            _string(item[key], f"defect_references[{index}].{key}")
+        if item["synthetic"] is not True:
+            _fail(f"defect_references[{index}].synthetic must be true")
+        date_text = _timestamp(item["date"], f"defect_references[{index}].date")
+        date_value = datetime.fromisoformat(date_text.replace("Z", "+00:00"))
+        inform = informs.get(item["inform_id"])
+        historical = historical_by_id.get(item["historical_record_id"])
+        if (not inform or inform["step"] != item["step"] or inform["equipment"] != item["equipment"]
+                or not historical or any(historical.get(key) != item[key]
+                                         for key in ("step", "item", "equipment", "lotId", "waferId"))
+                or (inform and datetime.fromisoformat(inform["date"].replace("Z", "+00:00")) > date_value)
+                or (historical and datetime.fromisoformat(historical["edsAt"].replace("Z", "+00:00")) > date_value)):
+            _fail(f"defect_references[{index}] has an invalid Inform or historical record link")
+        for modality in ("sem", "overlay"):
+            reference = _object(item[modality], f"defect_references[{index}].{modality}")
+            if set(reference) != {"image_history_id"}:
+                _fail(f"defect_references[{index}].{modality} must reference image_history")
+            image = images.get(reference["image_history_id"])
+            if (not image or image["modality"] != modality or image["step"] != item["step"]
+                    or image["item"] != item["item"]
+                    or image["incident_number"] != item["incident_number"]
+                    or datetime.fromisoformat(image["occurred_at"].replace("Z", "+00:00")) > date_value):
+                _fail(f"defect_references[{index}].{modality} has an invalid image_history link")
+        cd = _object(item["cd"], f"defect_references[{index}].cd")
+        if set(cd) != {"unit", "range", "measurements"} or cd["unit"] != "nm":
+            _fail(f"defect_references[{index}].cd must contain nm measurements")
+        bounds = cd["range"]
+        if not isinstance(bounds, list) or len(bounds) != 2 or not all(
+                type(value) in (int, float) and math.isfinite(value) for value in bounds) or bounds[0] > bounds[1]:
+            _fail(f"defect_references[{index}].cd.range must be finite and ordered")
+        measurements = _array(cd["measurements"], f"defect_references[{index}].cd.measurements")
+        if not measurements:
+            _fail(f"defect_references[{index}].cd.measurements must not be empty")
+        for point in measurements:
+            point = _object(point, f"defect_references[{index}].cd.measurement")
+            if set(point) != {"site", "value"}:
+                _fail(f"defect_references[{index}].cd.measurement has unsupported fields")
+            _string(point["site"], f"defect_references[{index}].cd.measurement.site")
+            measured = _finite(point["value"], f"defect_references[{index}].cd.measurement.value")
+            if not bounds[0] <= measured <= bounds[1]:
+                _fail(f"defect_references[{index}].cd measurement is outside range")
+        ids.append(item["id"])
+    _unique(ids, "defect reference ids")
+
+
 def _validate_incident(incident_number: str, record: object) -> dict:
     item = _object(record, f"incidents.{incident_number}")
     required = {"engineering", "trend_fleets", "comparison_traces", "inform_notes", "sem_assets"}
-    if not required.issubset(item) or set(item) - required - {"historical_records", "image_history"}:
+    if not required.issubset(item) or set(item) - required - {"historical_records", "image_history", "defect_references"}:
         _fail(f"incidents.{incident_number} must contain engineering, trend_fleets, comparison_traces, inform_notes and sem_assets")
     engineering = _object(item["engineering"], f"incidents.{incident_number}.engineering")
     signal_scopes = _validate_engineering(engineering)
@@ -388,9 +449,11 @@ def _validate_incident(incident_number: str, record: object) -> dict:
     _validate_sem_assets(item["sem_assets"], fab_pairs)
     if "image_history" in item:
         _validate_image_history(item["image_history"])
+    historical_records = []
     if "historical_records" in item:
         ids = []
-        for row in _array(item["historical_records"], "historical_records"):
+        historical_records = _array(item["historical_records"], "historical_records")
+        for row in historical_records:
             _object(row, "historical record")
             for field in ("id", "lotId", "waferId", "step", "item", "equipment", "recipe"):
                 _string(row.get(field), "historical_records." + field)
@@ -405,6 +468,9 @@ def _validate_incident(incident_number: str, record: object) -> dict:
                 _fail("historical_records EDS must follow Fab")
             ids.append(row["id"])
         _unique(ids, "historical record ids")
+    if "defect_references" in item:
+        _validate_defect_references(item["defect_references"], item["inform_notes"],
+                                     item.get("image_history", []), historical_records)
     return item
 
 

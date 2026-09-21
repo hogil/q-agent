@@ -284,6 +284,46 @@ details[open] > summary > .board-details-chevron {
   line-height: 1.35;
 }
 
+.board-enterprise-evidence {
+  margin: 6px 0;
+  min-width: 0;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.board-enterprise-evidence summary {
+  cursor: pointer;
+}
+
+.board-enterprise-evidence section {
+  padding: 6px 0;
+  border-bottom: 1px solid #d2dcd7;
+}
+
+.board-enterprise-evidence p {
+  margin: 3px 0;
+}
+
+.board-enterprise-table {
+  overflow: auto;
+  max-height: 210px;
+}
+
+.board-enterprise-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.board-enterprise-table th,
+.board-enterprise-table td {
+  min-width: 72px;
+  max-width: 240px;
+  padding: 4px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid #d2dcd7;
+}
+
 .board-analysis-chat-log article {
   font-size: 11.5px;
   line-height: 1.5;

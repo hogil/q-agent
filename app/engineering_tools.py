@@ -8,7 +8,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from incident_tools import ToolError
 
 
-ENGINEERING_SOURCES = ("trend", "correlation", "production", "inform", "changes")
+ENGINEERING_SOURCES = ("trend", "correlation", "production", "inform", "changes", "maps")
 MAX_ROWS = 12
 MAX_WIP_GROUPS = 100
 _UNITS = {"temperature": "degC", "queue": "hours", "availability": "%"}
@@ -51,6 +51,14 @@ def _summary(values, unit=None):
     if unit is not None:
         result["unit"] = unit
     return result
+
+
+def _bounded_intervals(rows, selected):
+    rows = list(rows)
+    selected = list(selected)
+    return {"rows": copy.deepcopy(selected), "count": len(rows),
+            "returned_count": len(selected), "truncated": len(selected) < len(rows),
+            "truncated_count": max(0, len(rows) - len(selected))}
 
 
 class EngineeringTools:
@@ -179,6 +187,7 @@ class EngineeringTools:
         engineering = record["engineering"]
         signals = [row for row in engineering["signals"] if self._signal_match(row)]
         signal_ids = {row["id"] for row in signals}
+        trend_rows = [row for row in engineering.get("trend", []) if self._in_time_scope(row.get("timestamp"), as_of)]
         fleets = {}
         stats = {}
         fleet_source = record.get("trend_fleets", {})
@@ -186,6 +195,7 @@ class EngineeringTools:
             signal_id, metric = signal["id"], signal["metric"]
             traces = []
             selected_values = []
+            selected_fleet_points = []
             matching_traces = fleet_source.get(signal_id, [])
             selected_members = {trace.get("member") for trace in matching_traces if trace.get("highlighted")}
             point_budget = 6
@@ -197,6 +207,7 @@ class EngineeringTools:
                                    and self._point_selected(point[0], point[1], as_of)]
                 if trace.get("member") in selected_members:
                     selected_values.extend(point[1] for point in selected_points)
+                    selected_fleet_points.extend(selected_points)
                 group_stats[trace.get("member")] = _summary(
                     [point[1] for point in selected_points], _UNITS.get(metric))
                 visible_points = selected_points[:point_budget]
@@ -220,11 +231,11 @@ class EngineeringTools:
                                if trace.get("member") in selected_members
                                for point in trace.get("points", [])
                                if point[0] < baseline_cutoff.timestamp() * 1000]
+            onset_summary = self._onset_summary(engineering, signal, metric, selected_fleet_points)
             stats[signal_id] = {"metric": metric, "unit": _UNITS.get(metric),
                                 "selected": _summary(selected_values, _UNITS.get(metric)),
                                 "baseline": _summary(baseline_values, _UNITS.get(metric)),
-                                "group_stats": group_stats}
-        trend_rows = [row for row in engineering.get("trend", []) if self._in_time_scope(row.get("timestamp"), as_of)]
+                                "group_stats": group_stats, "onset_summary": onset_summary}
         pairs = {(row["lot_id"], row["wafer_id"]) for row in self.context["wafers"]}
         fab_rows = [row for row in engineering.get("fab", [])
                     if self._in_time_scope(row.get("timestamp"), as_of)
@@ -235,6 +246,40 @@ class EngineeringTools:
         return {"signals": copy.deepcopy(signals[:MAX_ROWS]), "trend_fleets": fleets,
                 "engineering_trend": _copy_rows(trend_rows), "fab": _copy_rows(fab_rows),
                 "stats": stats, "signal_count": len(signal_ids)}
+
+    def _onset_summary(self, engineering, signal, metric, fleet_points):
+        onset_index = signal.get("onsetIndex")
+        trend = engineering.get("trend", [])
+        onset_row = trend[onset_index] if isinstance(onset_index, int) and 0 <= onset_index < len(trend) else None
+        onset_time = onset_row.get("timestamp") if isinstance(onset_row, dict) else None
+        if onset_time is None:
+            return {"timestamp": None, "before": _summary([], _UNITS.get(metric)),
+                    "after": _summary([], _UNITS.get(metric)), "delta": None}
+        onset_moment = _parse_time(onset_time)
+        onset_timestamp_ms = onset_moment.timestamp() * 1000
+        before = [point[1] for point in fleet_points if point[0] < onset_timestamp_ms]
+        after = [point[1] for point in fleet_points if point[0] >= onset_timestamp_ms]
+        before_summary = _summary(before, _UNITS.get(metric))
+        after_summary = _summary(after, _UNITS.get(metric))
+        delta = (round(after_summary["mean"] - before_summary["mean"], 6)
+                 if before_summary["mean"] is not None and after_summary["mean"] is not None else None)
+        return {"timestamp": onset_time, "basis": "highlighted_fleet_points",
+                "before": before_summary, "after": after_summary,
+                "delta": {"value": delta, "unit": _UNITS.get(metric)} if delta is not None else None}
+
+    @staticmethod
+    def _prioritize_intervals(rows, anchor, limit=MAX_ROWS):
+        def priority(row):
+            start = _parse_time(row["start"])
+            end = _parse_time(row["end"])
+            if start <= anchor <= end:
+                distance = 0.0
+            else:
+                distance = min(abs((start - anchor).total_seconds()), abs((end - anchor).total_seconds()))
+            return (distance, 0 if row.get("state") == "DOWN" else 1, start)
+
+        prioritized = sorted(rows, key=priority)[:limit]
+        return sorted(prioritized, key=lambda row: _parse_time(row["start"]))
 
     def _production(self, record, as_of):
         engineering = record["engineering"]
@@ -261,6 +306,7 @@ class EngineeringTools:
             clipped = self._clip_interval(row, window_start, window_end)
             if clipped:
                 states.append(clipped)
+        selected_states = self._prioritize_intervals(states, anchor)
         downtime = []
         for row in engineering.get("downtime", []):
             if self.context["equipment"] and row.get("equipment") != self.context["equipment"]:
@@ -269,10 +315,11 @@ class EngineeringTools:
             if clipped:
                 downtime.append(clipped)
         return {"wip": _copy_rows(wip), "wip_by_step_equipment_recipe": _copy_rows(list(groups.values()), MAX_WIP_GROUPS),
-                "equipmentStates": _copy_rows(states), "downtime": _copy_rows(downtime),
+                "equipmentStates": _bounded_intervals(states, selected_states), "downtime": _copy_rows(downtime),
                 "detection_window": {"from": window_start.isoformat().replace("+00:00", "Z"),
                                      "to": window_end.isoformat().replace("+00:00", "Z"),
-                                     "days_each_side": 3.5, "clipped_as_of": True}}
+                                     "days_each_side": 3.5, "clipped_as_of": True,
+                                     "state_selection": "onset_priority"}}
 
     def _inform(self, record, as_of):
         rows = [row for row in record.get("inform_notes", [])
@@ -294,7 +341,8 @@ class EngineeringTools:
         if not isinstance(historical, list):
             return {"baseline": "historical_records", "rows": [], "count": 0,
                     "pearson_r": None,
-                    "truncated": False, "limitations": ["RAW_HISTORICAL_PAIRS_UNAVAILABLE"]}
+                    "truncated": False,
+                    "limitations": ["RAW_HISTORICAL_PAIRS_UNAVAILABLE", "CORRELATION_NOT_CAUSATION"]}
         signals = [row for row in record["engineering"].get("signals", []) if self._signal_match(row)]
         signal = signals[0] if signals else None
         metric = signal.get("metric") if signal else None
@@ -331,10 +379,101 @@ class EngineeringTools:
                    "yieldPct": row["yieldPct"]} for row in rows if metric]
         result = {"baseline": "historical_records", "metric": metric, "unit": _UNITS.get(metric),
                   "yield_unit": "%", "count": len(values), "pearson_r": pearson,
-                  "truncated": len(rows) > MAX_ROWS, "rows": paired[:MAX_ROWS]}
+                  "truncated": len(rows) > MAX_ROWS, "rows": paired[:MAX_ROWS],
+                  "limitations": ["CORRELATION_NOT_CAUSATION"]}
         if len(rows) > MAX_ROWS:
-            result["limitations"] = ["CORRELATION_ROWS_TRUNCATED"]
+            result["limitations"].append("CORRELATION_ROWS_TRUNCATED")
         return result
+
+    def _maps(self, record, as_of):
+        references = record.get("defect_references")
+        if not isinstance(references, list):
+            return {"records": [], "count": 0, "truncated": False,
+                    "limitations": ["RAW_DEFECT_REFERENCES_UNAVAILABLE", "STORED_REFERENCES_ONLY"]}
+        history = {row.get("id"): row for row in record.get("image_history", []) if isinstance(row, dict)}
+        informs = {row.get("id"): row for row in record.get("inform_notes", []) if isinstance(row, dict)}
+        historical = {row.get("id"): row for row in record.get("historical_records", []) if isinstance(row, dict)}
+        prior_cutoff = min(as_of, self.context["_from_time"])
+        output = []
+        for row in references:
+            self._validate_map_record(row, history, informs, historical)
+            moment = _parse_time(row["date"], "INVALID_ENGINEERING_MAP_TIME")
+            inform_moment = _parse_time(informs[row["inform_id"]]["date"])
+            historical_moment = _parse_time(historical[row["historical_record_id"]]["edsAt"])
+            image_moments = [_parse_time(history[row[modality]["image_history_id"]]["occurred_at"])
+                             for modality in ("sem", "overlay")]
+            if (moment >= prior_cutoff or row["step"] != self.context["step"] or row["item"] != self.context["item"]
+                    or inform_moment >= prior_cutoff or historical_moment >= prior_cutoff
+                    or any(moment_value >= prior_cutoff for moment_value in image_moments)
+                    or (self.context["equipment"] and row["equipment"] != self.context["equipment"])):
+                continue
+            sem_ref = history[row["sem"]["image_history_id"]]
+            overlay_ref = history[row["overlay"]["image_history_id"]]
+            sem = {"id": sem_ref["id"], "occurred_at": sem_ref["occurred_at"],
+                   "description": sem_ref["description"]}
+            if sem_ref.get("src"):
+                sem["src"] = sem_ref["src"]
+            output.append({"id": row["id"], "date": row["date"], "step": row["step"],
+                           "equipment": row["equipment"], "item": row["item"],
+                           "lotId": row["lotId"], "waferId": row["waferId"],
+                           "inform_id": row["inform_id"],
+                           "historical_record_id": row["historical_record_id"],
+                           "incident_number": row["incident_number"], "sem": sem,
+                           "cd": copy.deepcopy(row["cd"]),
+                           "overlay": {"id": overlay_ref["id"], "occurred_at": overlay_ref["occurred_at"],
+                                       "vector_count": len(overlay_ref["vectors"]),
+                                       "description": overlay_ref["description"]},
+                           "finding": row["finding"], "synthetic": True})
+        output.sort(key=lambda row: (_parse_time(row["date"]), row["id"]), reverse=True)
+        limited = output[:MAX_ROWS]
+        return {"records": limited, "count": len(output), "truncated": len(output) > len(limited),
+                "truncated_count": max(0, len(output) - len(limited)),
+                "limitations": ["STORED_REFERENCES_ONLY", "NO_IMAGE_MODEL_ANALYSIS",
+                                "CORRELATION_NOT_CAUSATION"]}
+
+    def _validate_map_record(self, row, history, informs, historical):
+        if not isinstance(row, dict):
+            _error("INVALID_ENGINEERING_MAP_RECORD")
+        required = {"id", "date", "step", "equipment", "item", "lotId", "waferId",
+                    "inform_id", "historical_record_id", "incident_number", "sem", "cd",
+                    "overlay", "finding", "synthetic"}
+        if set(row) != required or any(not isinstance(row[key], str) or not row[key].strip()
+                                       for key in required - {"sem", "cd", "overlay", "synthetic"}):
+            _error("INVALID_ENGINEERING_MAP_RECORD")
+        if row["synthetic"] is not True:
+            _error("INVALID_ENGINEERING_MAP_RECORD")
+        record_time = _parse_time(row["date"], "INVALID_ENGINEERING_MAP_TIME")
+        inform = informs.get(row["inform_id"])
+        historical_row = historical.get(row["historical_record_id"])
+        if (not inform or inform.get("step") != row["step"] or inform.get("equipment") != row["equipment"]
+                or not historical_row or any(historical_row.get(key) != row[key]
+                                             for key in ("step", "item", "equipment", "lotId", "waferId"))
+                or (inform and _parse_time(inform["date"]) > record_time)
+                or (historical_row and _parse_time(historical_row["edsAt"]) > record_time)):
+            _error("INVALID_ENGINEERING_MAP_REFERENCE")
+        for modality in ("sem", "overlay"):
+            ref = row[modality]
+            if (not isinstance(ref, dict) or set(ref) != {"image_history_id"}
+                    or ref["image_history_id"] not in history):
+                _error("INVALID_ENGINEERING_MAP_REFERENCE")
+            image = history[ref["image_history_id"]]
+            if (image.get("modality") != modality or image.get("step") != row["step"]
+                    or image.get("item") != row["item"]
+                    or image.get("incident_number") != row["incident_number"]
+                    or _parse_time(image["occurred_at"]) > record_time):
+                _error("INVALID_ENGINEERING_MAP_REFERENCE")
+        cd = row["cd"]
+        if (not isinstance(cd, dict) or set(cd) != {"unit", "range", "measurements"}
+                or cd["unit"] != "nm" or not _valid_bounds(cd["range"])
+                or not isinstance(cd["measurements"], list) or not cd["measurements"]):
+            _error("INVALID_ENGINEERING_MAP_MEASUREMENT")
+        for measurement in cd["measurements"]:
+            if (not isinstance(measurement, dict) or set(measurement) != {"site", "value"}
+                    or not isinstance(measurement["site"], str) or not measurement["site"].strip()
+                    or type(measurement["value"]) not in (int, float)
+                    or not math.isfinite(measurement["value"])
+                    or not cd["range"][0] <= measurement["value"] <= cd["range"][1]):
+                _error("INVALID_ENGINEERING_MAP_MEASUREMENT")
 
     def query(self, actor, incident_ids, as_of):
         if not isinstance(actor, str) or not actor.strip():
@@ -361,10 +500,31 @@ class EngineeringTools:
             elif source == "correlation":
                 sections[source] = self._correlation(record, as_of_value)
                 limitations.extend(sections[source].get("limitations", []))
+            elif source == "maps":
+                sections[source] = self._maps(record, as_of_value)
+                limitations.extend(sections[source].get("limitations", []))
         scope = {key: copy.deepcopy(value) for key, value in self.context.items() if not key.startswith("_")}
         scope.update({"incident_ids": list(incident_ids), "as_of": as_of})
+        source_inventory = {"selected": list(self.sources),
+                            "scope": {"from": self.context["from"], "to": self.context["to"],
+                                      "as_of": as_of, "item": self.context["item"],
+                                      "step": self.context["step"], "equipment": self.context["equipment"]}}
+        observations = {}
+        if "trend" in sections:
+            observations["trend_onset"] = {key: value["onset_summary"]
+                                           for key, value in sections["trend"]["stats"].items()}
+        if "production" in sections:
+            observations["equipment_events"] = [copy.deepcopy(row)
+                for row in sections["production"]["equipmentStates"]["rows"]
+                if row["state"] in ("DOWN", "PM")
+                and _parse_time(row["start"]) < self.context["_to_time"]
+                and _parse_time(row["end"]) > self.context["_from_time"]]
+        if "maps" in sections:
+            observations["historical_references"] = copy.deepcopy(sections["maps"]["records"])
         return {"status": "OK", "synthetic": True, "sections": sections,
-                "limitations": limitations, "scope": scope}
+                "limitations": list(dict.fromkeys(limitations)), "scope": scope,
+                "source_inventory": source_inventory, "interpretation": "observations_only",
+                "observations": observations}
 
 
 def _valid_bounds(value):

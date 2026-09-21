@@ -26,17 +26,21 @@ request_scope=auto면 조회 전 route로 분류한다. 사고 사실·원인·L
 ## 출력 규칙
 이미지: images Skill → 사고 DB/Lot/Wafer → list_comparison_assets → SEM/Overlay Tool. modality별 목록 조회 뒤 비교가 활성화된다. asset_ids_by_item의 ID만 쓴다. INCOMPARABLE의 findings/limitations도 Judge에 전달하되 비교 충족은 아니다. 다른 A/B만 재조회한다. 미연결은 limitations로 남기고 화면 비교로 대체하지 않는다.
 
-references/output.schema.json 객체를 반환한다. execute의 plan은 정확히 한 항목: tool, arguments, depends_on=[], reason. 결과 확인 후 다음 Tool을 결정한다. tools는 search_mode=none. 실행 외 결정은 plan=[].
+references/output.schema.json 객체를 반환한다. 사고 검색은 plan 한 항목이다. 유효 scope의 후속 조회는 현재 enabled인 독립 Tool을 최대 4개까지 한 plan으로 묶는다. 각 항목은 tool, arguments, depends_on=[], 짧은 reason이다. 같은 단계의 반환 ID가 필요한 Tool은 다음 Router 호출까지 기다린다. tools는 search_mode=none. 실행 외 결정은 plan=[].
 response_contract.transport가 function_call이면 submit_plan에 전체 객체를 전달한다. json_schema이면 같은 객체를 wrapper/설명 없이 JSON으로 반환한다. find_incidents 같은 업무 Tool 이름은 plan[].tool에만 넣는다.
 미지정 선택 인자는 생략한다. null/빈 문자열/빈 배열 placeholder는 금지한다. city/line/title/incident_number는 문자열, fields는 논리 컬럼명 배열이다. last_error이면 tools.json에 맞춰 전체 계획을 수정해 다시 제출한다. 명시 조건을 삭제해 검색 범위를 넓히거나 최종 답변으로 대체하지 않는다.
 find_incidents의 최상위 filters는 arguments.filters와 같고 생략 시 {}다. 사고번호는 arguments.incident_number에 넣고 sql_exact를 쓴다. title/fields도 별도 arguments다. 조건별 예시는 references/conditions.md를 따른다.
 비활성 Tool은 limitations, Skill은 load_skills, 확인은 clarify, 근거 수집 완료는 ready_for_judge다. 물리명/SQL/미조회 ID를 발명하지 않는다. Adapter의 논리 키만 쓴다.
-선택한 Trend·Fab/EDS·생산·Inform·변경 이력은 사고 조회 뒤 활성 get_engineering_snapshot({})으로 읽는다. 결과의 합성 표시, 범위, 누락을 유지한다. UI 조건 자체는 근거가 아니다.
-execute의 clarification은 null, needs_skills는 []다. Skill 요청이 섞이면 코드는 허용 Skill을 먼저 로드하고 계획 전체를 재검증한다. 여러 Tool을 한 plan에 넣지 않는다.
+Trend·생산·Inform·변경 이력·사내 SQL은 사고 조회 뒤 get_engineering_snapshot({})으로 읽는다. SQL은 서버 설정의 View/컬럼과 선택 범위를 사용한다. SQL문·접속정보를 만들지 않는다. 출처·누락을 유지하며 UI 조건은 근거가 아니다.
+Trend 또는 CD/SEM/Overlay/Bin/Failbit Map 문의 모두 현재 범위 조회 → 관련 정보 → Judge 순서다. 유사 사고는 search_related_incidents(terms)로 조회한다. terms는 질문/조회 결과의 공정·결함·계측 용어이며 후보는 확정 관계가 아니다. 미구현 Map 모델은 unavailable로 남긴다.
+execute는 clarification=null, needs_skills=[]다. 최대 4개를 채울 필요는 없다. 예: Lot+Engineering+회의록 → Wafer+SEM 목록+Overlay 목록 → 두 이미지 비교. 실제 enabled 상태를 우선한다. 같은 Lot/Wafer Tool은 계획당 한 번만, 다음 페이지는 반환된 next_offset 확인 후 요청한다. Item과 Step을 혼동하지 않는다.
 Lot/Wafer의 PARTIAL은 등록 범위 미확정일 수 있다. next_offset=null이면 같은 페이지를 반복하지 말고 한계를 유지한 채 후속 Tool로 진행한다.
 pending_requested_tools는 미조회 선택 자료다. 선행 조회 후 실행하고 완료한 비교는 반복하지 않는다.
+requested_tools가 있는 경우 routing_only 근거는 조회 상태 요약이다. 판정에 사용하지 않고 Judge에 원문 검토를 맡긴다. 사용자의 map_comparison/sem_wafers에 해당하는 실제 자산 ID를 선택하고, 연결되는 자산이 없으면 없는 점을 명시한다.
 
 ## 실제 데이터 확인 후 변경
 
-2026-09-18 로컬 Tool/합성 회의록 계약, 2026-09-21 Qwen 실행 오류(TYPE: $.city, 호출 누락, 반복 조회), 합성 ImageTools 결과를 근거로 수정했다. 통합 프롬프트 길이 검사에 따라 중복 설명을 축약했다. Orchestrator 검증은 유지한다. 사내 데이터·모델 성능은 미검증이며 examples.md는 합성 행동 예시다.
-수정 전 출처·시점·근거를 기록한다. 실데이터 없이는 미검증 초안이며 실제 컬럼·관계·코드 검증을 주장하지 않는다. 원본 DB 수정과 온라인 Skill 자기 수정은 금지한다.
+2026-09-22 합성 Qwen의 9회 Router·중복 입력·TOPIC_NOT_ALLOWED 오류에 따라 조회 묶음/요약과 등록 topic 검증을 추가했다.
+
+09-18 합성 Tool/회의록 계약, 09-21 Qwen 오류, 09-22 SQL·Map 문의 요구 기준이다. 사내 성능 미검증, 예시는 합성이다.
+출처·시점·근거를 기록한다. DB 수정/온라인 자기 수정 금지.

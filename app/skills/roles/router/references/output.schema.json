@@ -1,5 +1,5 @@
 {
-  "description": "Return a complete routing object using response_contract.transport. Business tools belong in plan[].tool; execute exactly one Tool with clarification=null and needs_skills=[]. Omit unused arguments. Incident numbers use arguments.incident_number, filters={}, search_mode=sql_exact.",
+  "description": "Return a complete routing object using response_contract.transport. Incident lookup is one action; after valid scope, batch up to four independent currently enabled Tools with known arguments and depends_on=[]. Use clarification=null, needs_skills=[]. Omit unused arguments. Incident numbers use arguments.incident_number, filters={}, search_mode=sql_exact.",
   "type": "object",
   "additionalProperties": false,
   "required": [

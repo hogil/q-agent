@@ -19,7 +19,7 @@ def release_files(root,settings=None):
   for f in sorted(paths[key].rglob('*'),key=lambda f:f.relative_to(paths[key]).as_posix()):
    if f.is_file():files[label+'/'+f.relative_to(paths[key]).as_posix()]=f
  files['skill_registry.json']=paths['registry_file']
- for name in ['incident_tools.py','incident_filters.py','terminology.py','prompt_contracts.py','skill_loader.py','config_loader.py','runtime_factory.py','run_agent.py','agent.py','llm_client.py','meeting_tools.py','image_tools.py','engineering_tools.py','demo_data.py','golden.py']:
+ for name in ['incident_tools.py','incident_filters.py','terminology.py','prompt_contracts.py','skill_loader.py','config_loader.py','runtime_factory.py','run_agent.py','agent.py','llm_client.py','meeting_tools.py','image_tools.py','engineering_tools.py','enterprise_tools.py','demo_data.py','golden.py']:
   files[name]=root/name
  return files
 def freeze(root=P,settings=None):
@@ -85,7 +85,7 @@ def compile_prompt(role,topics,root=P,settings=None,shared_topics=False):
   parts.append('[runtime/schema-mapping]\nUse logical field names in Tool arguments. Empty physical column mappings are unavailable. Connection settings are managed by the Adapter.\n'+json.dumps(context,ensure_ascii=False,separators=(',',':')))
  prompt='\n\n'.join(parts)
  if len(prompt)>reg['max_prompt_characters']:raise ValueError(f'PROMPT_BUDGET_EXCEEDED: {role} {topics}: {len(prompt)} > {reg["max_prompt_characters"]}; choose narrower topics; do not silently truncate rules')
- return {'role':role,'release':lock['release'],'topics':sorted(set(topics)),'loaded_files':loaded,'prompt_sha256':hashlib.sha256(prompt.encode()).hexdigest(),'system_prompt':prompt,'model_profile':settings.model_profile(role) if settings else {'status':'RUNTIME_CONFIG_NOT_ATTACHED'},'config_hash':settings.config_hash if settings else None}
+ return {'role':role,'release':lock['release'],'topics':sorted(set(topics)),'available_topics':reg['role_allowed_topics'][role],'loaded_files':loaded,'prompt_sha256':hashlib.sha256(prompt.encode()).hexdigest(),'system_prompt':prompt,'model_profile':settings.model_profile(role) if settings else {'status':'RUNTIME_CONFIG_NOT_ATTACHED'},'config_hash':settings.config_hash if settings else None}
 
 if __name__=='__main__':
  from config_loader import add_config_arguments,load_config,ConfigError

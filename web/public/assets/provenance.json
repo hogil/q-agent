@@ -1,4 +1,11 @@
 {
+  "synthetic-sem-open-v1.png": {
+    "synthetic": true,
+    "generator": "built-in image_gen",
+    "date": "2026-09-22",
+    "prompt": "Square top-down grayscale SEM-style synthetic fixture with about 20 parallel vertical fine lines, bright edges and dark trenches. Two adjacent lines just right of center have small open defects with rough rounded ends; elsewhere uniform continuous lines and fine grain. No perspective, arrows, scale bar or measurement numbers. Small SYNTHETIC label at bottom left. Artificial educational demonstration, not microscopy evidence.",
+    "limitations": "No measured scale, registered physical Point, real incident relationship or validated defect label. Explicitly reused across synthetic wafer fixtures; visual comparison only."
+  },
   "synthetic-sem.png": {
     "synthetic": true,
     "generator": "built-in image_gen",

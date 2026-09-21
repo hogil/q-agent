@@ -62,7 +62,19 @@ SEM 픽셀·Overlay 벡터에서 계산한 값과 분류 결과가 Tool 근거�
 합성 Map은 W01 방사형 이상, W03 평행 이동 이상, W02 정상 비교군을 포함합니다. 화면과 서버는 같은 44개 좌표·값을 사용합니다. 이는 미리 구성한 합성 시나리오이며 실제 사고 이미지 검색 성능의 증거가 아닙니다.
 
 `get_engineering_snapshot`은 사고 DB 범위 확인 후 선택한 Trend·과거 Fab/EDS·재공/설비 상태·Inform·변경 이력을 `sources.raw_file`에서 읽습니다. 선택 조건은 필터일 뿐 근거가 아니며, 반환된 데이터와 계산값만 Judge/Answer에 전달합니다. 같은 조회 반복은 제한하고, 확인 불가능한 물리 정렬은 부분 답변의 한계로 남깁니다.
+Map 자료를 선택하면 `defect_references`의 과거 Inform·SEM·CD 계측·Overlay 참조도 읽습니다. 사고/공정/시점이 맞는 저장 기록이며 CD 이미지 모델 추론을 뜻하지 않습니다. 현재 관측, 당시 설비 상태, 이전 불량 기록, 추가 검증 항목을 구분해 답합니다. 합성 사례에 없는 연결은 만들어내지 않습니다.
 통계는 필터에 맞는 전체 표본으로 계산하고 LLM에 전달하는 원자료 행·점은 제한합니다. `count`/`truncated`로 생략을 표시하며 원본 파일을 변경하지 않습니다. 로컬 Qwen 16K에서 전체 자료 입력이 잘리는 현상을 확인했으므로 전체 패널 분석은 32K 설정으로 검증합니다. 배포 모델의 실제 문맥 한도와 서버 truncation 로그를 확인해야 합니다.
+사고 DB 조회는 단독 실행하고, scope 확인 뒤 독립적인 후속 Tool은 Router 계획 하나에 최대 4개까지 묶습니다. 실제 Tool은 순차 실행하며 전체 인자 사전 검사와 오류 시 나머지 실행 중단을 유지합니다. 다음 페이지는 앞 페이지 결과를 받은 뒤 요청합니다. 명시적으로 선택한 자료를 조회하는 동안 Router에는 라우팅용 결과만, Judge/Answer에는 전체 조회 근거를 전달합니다. JSON 계약은 모델의 의미 이해를 위해 프롬프트에도 유지합니다. 역할별 시간·입출력 토큰은 진행 기록에서 확인합니다. 새 조건 분석은 이전 답변을 복제하지 않고, 후속 채팅은 기존 대화 문맥을 유지합니다.
+
+### 사내 SQL과 관련 사고
+
+`D:\project\q-agent\config\enterprise.example.yaml`의 `enterprise` 블록을 site overlay에 병합합니다. 시스템별 DSN 환경변수, View, 논리/물리 컬럼, DB 시간대를 지정합니다. SQLite 로컬 검증과 SQL Server/Oracle/PostgreSQL용 ODBC SELECT 생성 경로가 있으며 서버 DB는 `pyodbc`와 해당 ODBC 드라이버가 필요합니다. 실제 사내 DB 접속은 아직 검증하지 않았습니다. 연결 문자열은 환경변수에만 넣고 Git/LLM/로그로 전달하지 않습니다.
+
+사고 범위 검증 후 `D:\project\q-agent\app\enterprise_tools.py`가 설비·Step·기간, 매핑된 경우 Lot 조건을 바인딩해 읽습니다. 여러 테이블 Join은 관리자가 승인한 View에서 정의합니다. `max_rows`, `max_window_days`, `timeout_seconds`로 제한하고 연결은 항상 닫습니다. DB 계정에는 승인된 View의 SELECT 권한만 부여해야 합니다. ODBC readonly/timeout은 드라이버 지원에 의존하며 사용자별 ACL을 구현한 것은 아닙니다. [pyodbc 연결 계약](https://github.com/mkleehammer/pyodbc/wiki/The-pyodbc-Module).
+
+분석 자료에서 **사내 시스템 SQL**을 선택하면 결과·실패·시스템/View·조회시각을 Judge/Answer와 SQL 결과 표에 전달합니다. 미설정/실패는 합성 결과로 대체하지 않습니다. API 연결은 해당 시스템 계약 확인 전까지 예약 설정이며 구현 완료가 아닙니다. 이 연결은 Workbench의 선택 범위를 사용하며, CLI에서 접속 설정만 켜도 조회가 자동 실행되지는 않습니다.
+
+**관련 사고**는 `search_related_incidents(terms)`로 사고명/내용/원인/불량 코드의 텍스트를 조회합니다. 현재 사고 scope를 변경하지 않고 cutoff 내 최대 8개 후보를 반환합니다. Trend 또는 Map 문의에서 같은 흐름으로 사용할 수 있으나 이미지 임베딩 검색, 동일 원인 확정, 후보 사고의 전체 생산정보 자동 병합은 아닙니다. SEM/Overlay는 기존 비교 Tool을 사용하고 CD/Bin/Failbit 모델은 미연결임을 명시합니다.
 
 ### 화면 구성
 
@@ -129,7 +141,9 @@ UI 실행 설정의 진입점은 `D:\project\q-agent\config\workbench.yaml`입�
 
 YAML 안의 상대 경로는 해당 YAML 폴더 기준입니다. CLI/환경변수의 상대 경로는 실행 디렉터리 기준이며 환경변수가 YAML보다 우선합니다. API 키는 기존 `api_key_env`가 가리키는 환경변수로만 전달합니다.
 
-Raw 예제는 `D:\project\q-agent\data\workbench\raw.example.json`입니다. `incidents[사고번호].engineering.signals`가 이상 Raw 목록이며, `trend_fleets`, `comparison_traces`, `inform_notes`, `sem_assets`가 연결 자료입니다. Drift, level shift, spike, variance burst, periodic pattern을 포함합니다. 파일 누락·잘못된 값·참조 불일치는 중단하며 자동 데모 대체는 없습니다. 현재 로더는 **합성 자료만 허용**합니다. 실제 자료 전환 시 `synthetic` 표시를 거짓으로 바꾸는 것만으로 운영 연결이 되지는 않습니다.
+Raw 예제는 `D:\project\q-agent\data\workbench\raw.example.json`입니다. `incidents[사고번호].engineering.signals`가 이상 Raw 목록이며, `trend_fleets`, `comparison_traces`, `inform_notes`, `sem_assets`가 연결 자료입니다. Drift, 작은 level shift/spike, 완만한 분산·주기 변동의 soft anomaly 예시로 정상 구간과 분포가 겹칩니다. 감지 성능 검증이나 정답 불량 판정을 뜻하지 않습니다. 파일 누락·참조 불일치는 중단하고 자동 데모 대체하지 않습니다. 현재 raw 로더는 **합성 자료만 허용**하며 사내 SQL 조회는 별도 `enterprise` 출처입니다.
+
+CD·THK Map은 측정 Point scatter와 Point 순서 연결선, 반경별 평균선을 제공합니다. 여러 Wafer의 동일 좌표 평균에서 결측값은 제외합니다. 합성 측정 Point를 표시하며 실제 CD/THK 판정 모델을 뜻하지 않습니다. 기본 Map 두 패널은 각각 작업 영역의 27%이며 사용자 저장 배치는 유지합니다. SEM 정상 Line/Bridge/Line-break 예제의 생성 기록과 제약은 `D:\project\q-agent\web\public\assets\provenance.json`에 있습니다.
 
 Linux 실행 예시(경로는 Linux 배치 위치로 지정):
 
@@ -146,7 +160,7 @@ LLM을 켜려면 `QAGENT_LLM_OVERLAY=/srv/q-agent/config/llm.local.yaml`과 설�
 
 ### 로컬 LLM 연결
 
-`D:\project\q-agent\config\workbench.local.yaml`에 기본 workbench 설정과 `agent_overlay: llm.local.yaml`을 지정합니다. `D:\project\q-agent\config\llm.local.yaml`은 `models`, `roles`, `runtime`, `image_tools`만 재정의하며 DB 경로 변경은 거부합니다. 두 로컬 파일은 Git에서 제외됩니다. SEM/Map 자료가 체크되어 있고 해당 서비스 설정이 활성화되어야 이미지 Tool을 호출할 수 있습니다. 체크를 해제하면 호출도 비활성화됩니다.
+`D:\project\q-agent\config\workbench.local.yaml`에 기본 workbench 설정과 `agent_overlay: llm.local.yaml`을 지정합니다. `D:\project\q-agent\config\llm.local.yaml`은 `models`, `roles`, `runtime`, `image_tools`, `enterprise`만 재정의하며 사고 DB 경로 변경은 거부합니다. 두 로컬 파일은 Git에서 제외됩니다. SEM/Map 자료가 체크되어 있고 해당 서비스 설정이 활성화되어야 이미지 Tool을 호출할 수 있습니다. CD/Bin/THK 선택을 Overlay 모델로 대체하지 않습니다.
 
 ```yaml
 models:

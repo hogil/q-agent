@@ -43,6 +43,9 @@ RAG_SPEC = dict(enabled=bool, endpoint=str, api_key_env=str, index_name=str,
                 existing_chunks=bool, methods=list, fusion=str, reranker=str,
                 top_k=int, timeout_seconds=int)
 SERVICE_SPEC = dict(enabled=bool, endpoint=str, api_key_env=str, timeout_seconds=int)
+ENTERPRISE_SOURCE_SPEC = dict(
+    id=str, system=str, dialect=str, dsn_env=str, sqlite_file=str, schema=str, view=str,
+    timezone=str, synthetic=bool, columns={'*': str})
 SPEC = {
     'config_version': int, 'environment': str,
     'paths': dict.fromkeys(PATH_KEYS, str),
@@ -65,7 +68,7 @@ SPEC = {
     'retrieval': {name: RAG_SPEC for name in ('internal_documents', 'engineer_notes')},
     'meetings': dict(enabled=bool, backend=str, sqlite_file=str, table=str, fts_table=str,
                      endpoint=str, api_key_env=str, top_k=int, max_top_k=int, timeout_seconds=int),
-    'enterprise': SERVICE_SPEC,
+    'enterprise': dict(SERVICE_SPEC, max_rows=int, max_window_days=int, sources=list),
     'actions': dict(SERVICE_SPEC, require_approval=bool),
     'runtime': dict(timezone=str, default_page_size=int, max_page_size=int,
                     max_scope_incidents=int, scope_ttl_seconds=int, max_tool_calls=int,
@@ -280,7 +283,34 @@ def validate_values(data):
             raise ConfigError(f'retrieval.{name}: existing retrieval policy required')
         if source['enabled'] and (not source['index_name'] or source['index_name'].startswith(('SET_', 'YOUR_'))):
             raise ConfigError(f'retrieval.{name}.index_name: actual index required')
-    for name in ('enterprise', 'actions'):
+    enterprise = data['enterprise']
+    if not 1 <= enterprise['max_rows'] <= 100 or not 1 <= enterprise['max_window_days'] <= 366:
+        raise ConfigError('enterprise: bounded max_rows/max_window_days required')
+    if len(enterprise['sources']) > 8 or (enterprise['enabled'] and not enterprise['sources']):
+        raise ConfigError('enterprise.sources: 1..8 SQL sources required when enabled')
+    source_ids = set()
+    for source in enterprise['sources']:
+        check_shape(source, ENTERPRISE_SOURCE_SPEC, 'enterprise.sources')
+        if not re.fullmatch(r'[a-z][a-z0-9_]*', source['id']) or source['id'] in source_ids:
+            raise ConfigError('enterprise.sources: unique logical id required')
+        source_ids.add(source['id'])
+        if not source['system'].strip() or source['dialect'] not in ('sqlite', 'sqlserver', 'oracle', 'postgresql'):
+            raise ConfigError('enterprise.sources: system and supported SQL dialect required')
+        if not re.fullmatch(r'[A-Z_][A-Z0-9_]*', source['dsn_env']):
+            raise ConfigError('enterprise.sources: DSN environment variable NAME required')
+        if source['dialect'] == 'sqlite' and (not source['sqlite_file'] or source['schema']):
+            raise ConfigError('enterprise.sources: SQLite file and empty schema required')
+        columns = source['columns']
+        if not {'record_id', 'equipment', 'step', 'occurred_at'} <= columns.keys() or len(columns) > 16:
+            raise ConfigError('enterprise.sources: record_id/equipment/step/occurred_at mappings required; max 16')
+        for value in [source['view'], *columns.values(), *([source['schema']] if source['schema'] else [])]:
+            if not re.fullmatch(r'[^\W\d]\w*', value):
+                raise ConfigError('enterprise.sources: simple SQL identifiers required')
+        try:
+            ZoneInfo(source['timezone'])
+        except (ZoneInfoNotFoundError, ValueError):
+            raise ConfigError('enterprise.sources: valid source timezone required') from None
+    for name in ('actions',):
         url(data[name]['endpoint'], f'{name}.endpoint', data[name]['enabled'])
     if data['actions']['require_approval'] is not True:
         raise ConfigError('actions.require_approval must remain true')
@@ -331,6 +361,9 @@ def resolve_paths(data, base_dir):
     data['paths'] = cache
     data['database']['sqlite_file'] = absolute(expand(data['database']['sqlite_file']), 'database.sqlite_file')
     data['meetings']['sqlite_file'] = absolute(expand(data['meetings']['sqlite_file']), 'meetings.sqlite_file')
+    for source in data['enterprise']['sources']:
+        if source['sqlite_file']:
+            source['sqlite_file'] = absolute(expand(source['sqlite_file']), 'enterprise.sources.sqlite_file')
     for name, model in data['models'].items():
         for key in ('local_dir', 'tokenizer_dir'):
             if model[key]:

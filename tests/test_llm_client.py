@@ -16,7 +16,7 @@ from skill_loader import read_role_reference
 
 
 def completion(*, arguments='{}', content=None, finish_reason='tool_calls',
-               refusal=None, tool_call=True):
+               refusal=None, tool_call=True, usage=None):
     message = SimpleNamespace(content=content, refusal=refusal,
                               tool_calls=[])
     if tool_call:
@@ -24,7 +24,7 @@ def completion(*, arguments='{}', content=None, finish_reason='tool_calls',
             id='call-1', type='function',
             function=SimpleNamespace(name='submit_plan', arguments=arguments))]
     return SimpleNamespace(choices=[SimpleNamespace(
-        finish_reason=finish_reason, message=message)])
+        finish_reason=finish_reason, message=message)], usage=usage)
 
 
 class RoleClientTests(unittest.TestCase):
@@ -169,6 +169,23 @@ class RoleClientTests(unittest.TestCase):
                  for variant in variants['properties']['plan']['items']['anyOf']}
         self.assertNotIn('find_incidents', names)
 
+    def test_structured_router_plan_capacity_uses_scope_and_budget(self):
+        self.settings.data['models']['text']['structured_outputs'] = True
+        self.create.return_value = completion(content='{}', tool_call=False)
+        client = self.make_client()
+        available = {'search_meeting_minutes': {'enabled': True}}
+
+        for scope_valid, budget_remaining, expected in (
+                (False, 4, 1), (True, 0, 0), (True, 2, 2), (True, 9, 4)):
+            with self.subTest(scope_valid=scope_valid, budget_remaining=budget_remaining):
+                client.call('router', 'router', {
+                    'available_tools': available,
+                    'scope_valid': scope_valid,
+                    'budget_remaining': budget_remaining,
+                }, [])
+                schema = self.create.call_args.kwargs['response_format']['json_schema']['schema']
+                self.assertEqual(schema['properties']['plan']['maxItems'], expected)
+
     def test_structured_router_with_no_available_tools_has_zero_plan_schema(self):
         self.settings.data['models']['text']['structured_outputs'] = True
         self.create.return_value = completion(
@@ -179,6 +196,18 @@ class RoleClientTests(unittest.TestCase):
         plan_schema = self.create.call_args.kwargs['response_format']['json_schema']['schema']
         items = plan_schema['properties']['plan']['items']
         self.assertEqual(items['properties']['tool']['enum'], [])
+
+    def test_pending_workflow_capacity_counts_only_ready_independent_actions(self):
+        self.settings.data['models']['text']['structured_outputs'] = True
+        self.create.return_value = completion(content='{}', tool_call=False)
+        self.make_client().call('router', 'router', {
+            'scope_valid': True, 'budget_remaining': 9,
+            'pending_requested_tools': ['compare_sem_images', 'compare_overlay_maps'],
+            'available_tools': {'list_incident_wafers': {'enabled': True},
+                                'list_comparison_assets': {'enabled': True, 'modalities': ['sem', 'overlay']}},
+        }, [])
+        schema = self.create.call_args.kwargs['response_format']['json_schema']['schema']
+        self.assertEqual(schema['properties']['plan']['maxItems'], 3)
 
     def test_pending_requested_source_cannot_be_skipped_by_structured_router(self):
         self.settings.data['models']['text']['structured_outputs'] = True
@@ -279,16 +308,61 @@ class RoleClientTests(unittest.TestCase):
 
     def test_incomplete_or_refused_completion_fails(self):
         cases = (
-            completion(finish_reason='length'),
-            completion(finish_reason='content_filter'),
-            completion(refusal='safety refusal'),
+            (completion(finish_reason='length'), 'MODEL_OUTPUT_LIMIT'),
+            (completion(finish_reason='content_filter'), 'MODEL_OUTPUT_REFUSED'),
+            (completion(refusal='safety refusal'), 'MODEL_OUTPUT_REFUSED'),
         )
-        for response in cases:
-            with self.subTest(response=response.choices[0].finish_reason):
+        for response, error in cases:
+            with self.subTest(response=response.choices[0].finish_reason or 'refusal'):
                 self.create.reset_mock()
                 self.create.return_value = response
-                with self.assertRaisesRegex(LLMError, 'MODEL_OUTPUT_INCOMPLETE_OR_REFUSED'):
+                with self.assertRaisesRegex(LLMError, error):
                     self.make_client().call('router', 'system', {}, [])
+
+    def test_call_records_metrics_and_resets_missing_usage(self):
+        self.create.return_value = completion(
+            content='{"verdict":"pass"}', tool_call=False, finish_reason='stop',
+            usage=SimpleNamespace(prompt_tokens=11, completion_tokens=7, total_tokens=18))
+        client = self.make_client()
+        client.call('judge', 'judge', {}, [])
+        metrics = client.last_metrics
+        self.assertEqual(metrics['input_tokens'], 11)
+        self.assertEqual(metrics['output_tokens'], 7)
+        self.assertEqual(metrics['total_tokens'], 18)
+        self.assertEqual(metrics['finish_reason'], 'stop')
+        self.assertGreaterEqual(metrics['elapsed_seconds'], 0)
+        self.assertEqual(metrics['request_characters'],
+                         len(json.dumps(self.create.call_args.kwargs, ensure_ascii=False)))
+
+        self.create.return_value = completion(content='{"verdict":"pass"}',
+                                              tool_call=False, finish_reason='stop')
+        client.call('judge', 'judge', {}, [])
+        self.assertIsNone(client.last_metrics['input_tokens'])
+        self.assertIsNone(client.last_metrics['output_tokens'])
+        self.assertIsNone(client.last_metrics['total_tokens'])
+
+    def test_length_error_records_completion_metrics(self):
+        self.create.return_value = completion(
+            finish_reason='length',
+            usage={'prompt_tokens': 13, 'completion_tokens': 4, 'total_tokens': 17})
+        client = self.make_client()
+        with self.assertRaisesRegex(LLMError, 'MODEL_OUTPUT_LIMIT'):
+            client.call('router', 'system', {}, [])
+        self.assertEqual(client.last_metrics['input_tokens'], 13)
+        self.assertEqual(client.last_metrics['output_tokens'], 4)
+        self.assertEqual(client.last_metrics['total_tokens'], 17)
+        self.assertEqual(client.last_metrics['finish_reason'], 'length')
+        self.assertGreaterEqual(client.last_metrics['elapsed_seconds'], 0)
+
+    def test_skill_requests_are_constrained_to_registered_topics(self):
+        for structured in (False, True):
+            self.settings.data['models']['text']['structured_outputs'] = structured
+            self.create.return_value = completion(content='{}', tool_call=not structured)
+            self.make_client().call('router', 'system', {'available_topics': ['images', 'meetings']}, [])
+            options = self.create.call_args.kwargs
+            schema = (options['response_format']['json_schema']['schema'] if structured
+                      else options['tools'][0]['function']['parameters'])
+            self.assertEqual(schema['properties']['needs_skills']['items']['enum'], ['images', 'meetings'])
 
     def test_malformed_completion_fails(self):
         cases = (

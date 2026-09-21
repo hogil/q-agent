@@ -9,9 +9,10 @@ export type BoardLayout = {
   columns: number[][];
   workspace: number[];
 };
-export const layoutVersion = 5;
+export const layoutVersion = 6;
 export const layoutStorageKey = `qagent:board-layout:v${layoutVersion}`;
 export const previousLayoutStorageKeys = [
+  'qagent:board-layout:v5',
   'qagent:board-layout:v4',
   'qagent:board-layout:v3',
 ];
@@ -21,7 +22,7 @@ export const defaultLayout = (): BoardLayout => ({
   workspace: [0.7, 0.3],
   columns: [
     [0.41, 0.37, 0.22],
-    [0.3, 0.3, 0.4],
+    [0.27, 0.27, 0.46],
     [0.32, 0.35, 0.33],
   ],
 });
@@ -75,6 +76,19 @@ export function parseLayout(raw: string | null): BoardLayout | null {
 }
 
 export function migrateLayout(raw: string | null): BoardLayout | null {
+  const current = readLayout(raw, 5, [3, 3, 3]);
+  if (current) {
+    const oldDefault = [0.3, 0.3, 0.4];
+    const custom = current.columns[1].some(
+      (size, index) => Math.abs(size - oldDefault[index]) > 0.0001,
+    );
+    return custom
+      ? current
+      : {
+          ...current,
+          columns: [current.columns[0], defaultLayout().columns[1], current.columns[2]],
+        };
+  }
   const previous =
     readLayout(raw, 4, [3, 3, 3]) || readLayout(raw, 3, [3, 4, 3]);
   if (!previous) return null;

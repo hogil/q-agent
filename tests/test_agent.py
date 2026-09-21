@@ -132,6 +132,105 @@ class AgentContracts(unittest.TestCase):
         self.assertEqual(result['evidence'][-1]['source'], 'get_engineering_snapshot')
         self.assertEqual(client.calls[-1][2]['evidence'][-1]['result']['sections']['trend']['count'], 4)
 
+    def test_related_search_keeps_scope_and_cannot_bypass_incident_gate(self):
+        related = ('router', plan(stage='tools', tool='search_related_incidents', arguments={'terms': ['SYN']}))
+        result, client = self.run_script([self.lookup(), related, *self.finish_steps()])
+        self.assertEqual(result['status'], 'answered', result)
+        initial, candidates = result['evidence'][:2]
+        self.assertEqual(result['scope_id'], initial['result']['scope_id'])
+        self.assertFalse(candidates['result']['scope_changed'])
+        current_ids = {row['incident_id'] for row in initial['result']['data']}
+        self.assertTrue(all(row['incident_id'] not in current_ids for row in candidates['result']['items']))
+        self.assertIn('CANDIDATES_NOT_CONFIRMED_RELATION', candidates['result']['limitations'])
+        result, _ = self.run_script([related, related, related])
+        self.assertEqual(result['tool_calls'], 0)
+
+    def test_related_search_uses_date_cutoff_and_bound_terms(self):
+        related = ('router', plan(stage='tools', tool='search_related_incidents',
+                                  arguments={'terms': ["xx' OR 1=1 --"]}))
+        result, _ = self.run_script([self.lookup(), related, *self.finish_steps()])
+        self.assertEqual(result['evidence'][1]['result']['status'], 'NO_MATCH')
+
+    def test_unselected_related_source_is_disabled(self):
+        result, client = self.run_script([self.lookup(), *self.finish_steps()], related_search=False)
+        self.assertFalse(client.calls[1][2]['available_tools']['search_related_incidents']['enabled'])
+
+    def test_independent_followups_share_one_router_plan(self):
+        batch = plan(stage='tools', tool='list_incident_lots')
+        batch['plan'] += plan(stage='tools', tool='search_meeting_minutes', arguments={'query': 'SYN'})['plan']
+        result, client = self.run_script([self.lookup(), ('router', batch), *self.finish_steps()])
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertEqual(result['tool_calls'], 3)
+        self.assertEqual(result['llm_calls'], 5)
+        receipt = json.loads(client.histories[2][-1]['content'])
+        self.assertEqual([row['tool'] for row in receipt['observations']],
+                         ['list_incident_lots', 'search_meeting_minutes'])
+
+    def test_batch_preflight_rejects_invalid_tail_without_running_prefix(self):
+        self.settings.data['runtime']['max_retries'] = 0
+        batch = plan(stage='tools', tool='list_incident_lots')
+        batch['plan'] += plan(stage='tools', tool='search_meeting_minutes', arguments={'query': 123})['plan']
+        result, _ = self.run_script([self.lookup(), ('router', batch)])
+        self.assertEqual(result['tool_calls'], 1)
+        self.assertEqual(len(result['evidence']), 1)
+        self.assertIn('TYPE:', result['limitations'][0])
+
+    def test_batch_cannot_cross_unresolved_lot_prerequisite(self):
+        self.settings.data['runtime']['max_retries'] = 0
+        batch = plan(stage='tools', tool='list_incident_lots')
+        batch['plan'] += plan(stage='tools', tool='list_incident_wafers')['plan']
+        result, _ = self.run_script([self.lookup(), ('router', batch)])
+        self.assertEqual(result['tool_calls'], 1)
+        self.assertIn('BATCH_TOOL_NOT_READY', result['limitations'][0])
+
+    def test_batch_budget_is_checked_before_running_any_followup(self):
+        self.settings.data['runtime'].update(max_retries=0, max_tool_calls=2)
+        batch = plan(stage='tools', tool='list_incident_lots')
+        batch['plan'] += plan(stage='tools', tool='search_meeting_minutes', arguments={'query': 'SYN'})['plan']
+        result, _ = self.run_script([self.lookup(), ('router', batch)])
+        self.assertEqual(result['tool_calls'], 1)
+        self.assertEqual(len(result['evidence']), 1)
+        self.assertIn('TOOL_BUDGET', result['limitations'][0])
+
+    def test_batch_cannot_guess_pagination_before_receiving_first_page(self):
+        self.settings.data['runtime']['max_retries'] = 0
+        batch = plan(stage='tools', tool='list_incident_lots', arguments={'offset': 0})
+        batch['plan'] += plan(stage='tools', tool='list_incident_lots', arguments={'offset': 10})['plan']
+        result, _ = self.run_script([self.lookup(), ('router', batch)])
+        self.assertEqual(result['tool_calls'], 1)
+        self.assertIn('BATCH_PAGINATION', result['limitations'][0])
+
+    def test_batch_runtime_failure_keeps_evidence_and_stops_remaining_tools(self):
+        self.settings.data['runtime']['max_retries'] = 0
+        batch = plan(stage='tools', tool='list_incident_lots')
+        batch['plan'] += plan(stage='tools', tool='get_engineering_snapshot')['plan']
+        batch['plan'] += plan(stage='tools', tool='search_meeting_minutes', arguments={'query': 'SYN'})['plan']
+        result, _ = self.run_script([self.lookup(), ('router', batch)],
+                                   engineering_query=Mock(side_effect=ToolError('SNAPSHOT_DOWN')))
+        self.assertEqual(result['status'], 'unavailable')
+        self.assertEqual(result['tool_calls'], 3)
+        self.assertEqual([row['source'] for row in result['evidence']], ['find_incidents', 'list_incident_lots'])
+
+    def test_requested_workflow_projects_router_only_and_finishes_without_ready_roundtrip(self):
+        full = {'status': 'OK', 'sections': {'trend': {'raw_text': 'complete source text'}},
+                'observations': {'value': 3.5}}
+        result, client = self.run_script([
+            self.lookup(), ('router', plan(stage='tools', tool='get_engineering_snapshot')),
+            ('router', plan(stage='tools', tool='search_meeting_minutes', arguments={'query': 'SYN'})),
+            ('judge', judge), ('answer', answer)], engineering_query=Mock(return_value=full),
+            requested_tools=['find_incidents', 'get_engineering_snapshot', 'search_meeting_minutes'])
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertTrue(client.calls[2][2]['evidence'][1]['routing_only'])
+        self.assertNotIn('sections', client.calls[2][2]['evidence'][1]['result'])
+        self.assertEqual(result['evidence'][1]['result'], full)
+        self.assertNotIn('evidence_focus', client.calls[2][2])
+        for role, _, payload in client.calls:
+            if role in ('judge', 'answer'):
+                self.assertEqual(payload['evidence_focus'][0]['observations'], {'value': 3.5})
+                self.assertEqual(payload['evidence_focus'][0]['evidence_id'], 'e2')
+        for _, _, payload in client.calls[-2:]:
+            self.assertEqual(payload['evidence'][1]['result'], full)
+
     def test_execute_skill_preflight_keeps_tool_validation(self):
         lookup = self.lookup()[1]
         lookup['needs_skills'] = ['incident_search']
@@ -389,7 +488,7 @@ class AgentContracts(unittest.TestCase):
     def test_requested_sources_are_collected_before_judge_without_repeating_completed_tools(self):
         steps = [self.lookup(), ('router', plan('ready_for_judge', 'tools')),
                  ('router', plan(stage='tools', tool='search_meeting_minutes', arguments={'query': 'SYN'})),
-                 *self.finish_steps()]
+                 ('judge', judge), ('answer', answer)]
         result, client = self.run_script(steps, requested_tools=['find_incidents', 'search_meeting_minutes'])
         self.assertEqual(result['status'], 'answered', result)
         self.assertEqual(client.calls[1][2]['pending_requested_tools'], ['search_meeting_minutes'])

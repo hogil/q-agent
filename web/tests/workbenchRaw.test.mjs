@@ -57,6 +57,10 @@ test('uses raw.example locally with seven signals, explicit patterns, and raw tr
     raw.comparison_traces[data.signals[0].id]['SYN-EQP-01'],
   );
   assert.equal(semRecord(workspace, 'SYN-LOT-09-01', 'W01').id, 'SYN-SEM-01');
+  assert.equal(raw.defect_references[0].historical_record_id, 'SYN-HIST-MET-001');
+  assert.equal(raw.defect_references[0].sem.image_history_id, 'SYN-HIST-SEM-BRIDGE');
+  assert.equal(raw.inform_notes[0].id, 'SYN-INFORM-HIST-DEFECT-1');
+  assert.equal(raw.historical_records[0].id, 'SYN-HIST-MET-001');
 });
 
 test('does not generate substitutes when supplied raw sections are missing', () => {
@@ -75,4 +79,40 @@ test('does not generate substitutes when supplied raw sections are missing', () 
   assert.deepEqual(makeEquipmentTrace(data, data.signals[0], 'UNKNOWN-EQP'), []);
   assert.deepEqual(makeInformNotes(data), []);
   assert.equal(semRecord(workspace, 'SYN-LOT-09-01', 'W01'), null);
+});
+
+test('every synthetic Fab wafer has a registered SEM asset with varied examples', () => {
+  for (const record of Object.values(fixture.incidents)) {
+    const workspace = workspaceWithRaw(record);
+    const paths = new Set();
+    for (const row of record.engineering.fab) {
+      const asset = semRecord(workspace, row.lotId, row.waferId);
+      assert.ok(asset, `${row.lotId}/${row.waferId}`);
+      assert.ok(readFileSync(new URL(`../public${asset.src}`, import.meta.url)).length > 0);
+      paths.add(asset.src);
+    }
+    assert.ok(paths.size >= 3);
+  }
+});
+
+test('all nine raw incidents use current seeded fleets and matching target comparisons', () => {
+  assert.equal(Object.keys(fixture.incidents).length, 9);
+  for (const [id, record] of Object.entries(fixture.incidents)) {
+    for (const signal of record.engineering.signals) {
+      const fleet = makeTrendFleet(record.engineering, signal);
+      assert.deepEqual(
+        record.trend_fleets[signal.id].map(({ points }) => points),
+        fleet.map(({ points }) => points),
+        `${id}/${signal.id}`,
+      );
+      assert.equal(signal.startIndex, signal.onsetIndex);
+      const target = fleet.find((row) => row.highlighted);
+      const comparison = record.comparison_traces[signal.id]?.[signal.equipment];
+      comparison?.forEach((point, index) => {
+        const samples = target.points.slice(index * 6, index * 6 + 6);
+        const mean = samples.reduce((sum, [, value]) => sum + value, 0) / samples.length;
+        assert.ok(Math.abs(point.value - mean) <= 0.000001);
+      });
+    }
+  }
 });

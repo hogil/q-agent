@@ -48,7 +48,8 @@ class EngineeringToolsTests(unittest.TestCase):
 
     def test_real_raw_fixture_returns_bounded_engineering_snapshot(self):
         result = self.tool().query("actor", [self.incident_id], "2026-03-31")
-        self.assertEqual({"status", "synthetic", "sections", "limitations", "scope"}, set(result))
+        self.assertEqual({"status", "synthetic", "sections", "limitations", "scope",
+                          "source_inventory", "interpretation", "observations"}, set(result))
         self.assertTrue(result["synthetic"])
         self.assertEqual(set(result["sections"]), {"trend", "correlation", "production", "inform", "changes"})
         self.assertLessEqual(len(result["sections"]["trend"]["engineering_trend"]["rows"]), 200)
@@ -69,9 +70,83 @@ class EngineeringToolsTests(unittest.TestCase):
             self.assertLessEqual(row["timestamp"], "2026-03-27T23:59:59.999999Z")
 
     def test_unchecked_sources_are_not_returned(self):
-        result = self.tool(("trend", "maps", "sem", "meetings")).query(
+        result = self.tool(("trend", "unknown", "sem", "meetings")).query(
             "actor", [self.incident_id], "2026-03-31")
         self.assertEqual(set(result["sections"]), {"trend"})
+
+    def test_maps_return_stored_references_and_scope_provenance_only(self):
+        result = self.tool(("maps",)).query("actor", [self.incident_id], "2026-03-31")
+        maps = result["sections"]["maps"]
+        self.assertEqual(maps["count"], 1)
+        reference = maps["records"][0]
+        self.assertEqual(reference["inform_id"], "SYN-INFORM-HIST-DEFECT-1")
+        self.assertEqual(reference["historical_record_id"], "SYN-HIST-MET-001")
+        self.assertEqual(reference["sem"]["id"], "SYN-HIST-SEM-BRIDGE")
+        self.assertEqual(reference["sem"]["src"], "/assets/synthetic-sem-history.png")
+        self.assertEqual(reference["overlay"]["id"], "SYN-HIST-OVL-RADIAL")
+        self.assertEqual(reference["cd"]["unit"], "nm")
+        self.assertEqual(reference["cd"]["measurements"][0]["value"], 45.2)
+        self.assertTrue(reference["synthetic"])
+        self.assertIn("STORED_REFERENCES_ONLY", maps["limitations"])
+        self.assertIn("NO_IMAGE_MODEL_ANALYSIS", maps["limitations"])
+        self.assertEqual(result["source_inventory"]["selected"], ["maps"])
+        self.assertEqual(result["interpretation"], "observations_only")
+
+    def test_maps_filter_future_and_cross_scope_records(self):
+        future = copy.deepcopy(self.raw)
+        future[self.number]["defect_references"][0]["date"] = "2026-04-01T00:00:00Z"
+        result = EngineeringTools(future, self.map, self.context(), ["maps"]).query(
+            "actor", [self.incident_id], "2026-03-31")
+        self.assertEqual(result["sections"]["maps"]["records"], [])
+        future[self.number]["defect_references"][0]["date"] = "2026-03-28T00:00:00Z"
+        result = EngineeringTools(future, self.map, self.context(), ["maps"]).query(
+            "actor", [self.incident_id], "2026-03-31")
+        self.assertEqual(result["sections"]["maps"]["records"], [])
+        result = self.tool(("maps",), item="SYN-OTHER-ITEM").query(
+            "actor", [self.incident_id], "2026-03-31")
+        self.assertEqual(result["sections"]["maps"]["records"], [])
+
+    def test_maps_reject_nonfinite_stored_cd_measurement(self):
+        raw = copy.deepcopy(self.raw)
+        raw[self.number]["defect_references"][0]["cd"]["measurements"][0]["value"] = float("nan")
+        with self.assertRaisesRegex(ToolError, "INVALID_ENGINEERING_MAP_MEASUREMENT"):
+            EngineeringTools(raw, self.map, self.context(), ["maps"]).query(
+                "actor", [self.incident_id], "2026-03-31")
+
+    def test_trend_reports_deterministic_before_after_onset_delta(self):
+        result = self.tool(("trend",)).query("actor", [self.incident_id], "2026-03-31")
+        stats = result["sections"]["trend"]["stats"][self.signal["id"]]
+        onset = stats["onset_summary"]
+        self.assertEqual(onset["timestamp"], self.record["engineering"]["trend"][self.signal["onsetIndex"]]["timestamp"])
+        highlighted = next(trace for trace in self.record["trend_fleets"][self.signal["id"]] if trace["highlighted"])
+        onset_ms = datetime.fromisoformat(onset["timestamp"].replace("Z", "+00:00")).timestamp() * 1000
+        selected = [point for point in highlighted["points"]
+                    if self.tool(("trend",)).context["_from_time"].timestamp() * 1000 <= point[0]
+                    <= self.tool(("trend",)).context["_to_time"].timestamp() * 1000]
+        self.assertEqual(onset["basis"], "highlighted_fleet_points")
+        self.assertEqual(onset["before"]["count"], sum(point[0] < onset_ms for point in selected))
+        self.assertEqual(onset["after"]["count"], sum(point[0] >= onset_ms for point in selected))
+        self.assertAlmostEqual(onset["delta"]["value"], onset["after"]["mean"] - onset["before"]["mean"])
+
+    def test_production_prioritizes_onset_state_and_reports_truncation(self):
+        result = self.tool(("production",), equipment="").query(
+            "actor", [self.incident_id], "2026-03-31")
+        states = result["sections"]["production"]["equipmentStates"]
+        self.assertEqual(states["count"], 18)
+        self.assertEqual(states["returned_count"], 12)
+        self.assertEqual(states["truncated_count"], 6)
+        self.assertTrue(any(row["state"] == "DOWN" and row["start"] <= "2026-03-28T08:05:00Z" <= row["end"]
+                            for row in states["rows"]))
+
+    def test_focus_observations_preserve_actual_state_and_source_values(self):
+        result = self.tool(("trend", "production", "maps")).query("actor", [self.incident_id], "2026-03-31")
+        focus = result["observations"]
+        self.assertEqual(focus["trend_onset"][self.signal["id"]],
+                         result["sections"]["trend"]["stats"][self.signal["id"]]["onset_summary"])
+        self.assertEqual(focus["historical_references"], result["sections"]["maps"]["records"])
+        self.assertEqual({row['state'] for row in focus['equipment_events']}, {'DOWN', 'PM'})
+        for row in focus['equipment_events']:
+            self.assertIn(row, result['sections']['production']['equipmentStates']['rows'])
 
     def test_exact_xy_rectangles_exclude_gap_and_compute_stats(self):
         target = next(trace for trace in self.record["trend_fleets"][self.signal["id"]] if trace["highlighted"])
@@ -90,7 +165,7 @@ class EngineeringToolsTests(unittest.TestCase):
         self.assertLessEqual(selected["count"], 2)
         summary = result["sections"]["trend"]["stats"][self.signal["id"]]["selected"]
         self.assertEqual(summary["count"], 2)
-        self.assertAlmostEqual(summary["mean"], (first[1] + second[1]) / 2)
+        self.assertEqual(summary["mean"], round((first[1] + second[1]) / 2, 6))
         self.assertAlmostEqual(summary["min"], min(first[1], second[1]), places=6)
         self.assertAlmostEqual(summary["max"], max(first[1], second[1]), places=6)
         self.assertEqual(summary["unit"], "degC")

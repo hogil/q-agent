@@ -32,6 +32,8 @@ const sourceOptions = [
   ['maps', 'Map'],
   ['sem', 'SEM'],
   ['production', '재공 / 다운'],
+  ['enterprise', '사내 시스템 SQL'],
+  ['related', '관련 사고'],
   ['inform', 'Eng’r Inform'],
   ['meetings', '회의록'],
   ['changes', '변경 이력'],
@@ -40,6 +42,14 @@ type Analysis = {
   mode: 'demo' | 'llm';
   llm_connected: boolean;
   status?: string;
+  enterprise?: {
+    status: string;
+    systems: {
+      id: string; system: string; view: string; status: string; synthetic: boolean;
+      queried_at: string; row_count: number; truncated: boolean; text_truncated: boolean;
+      error?: string; rows: Record<string, string | number | boolean | null>[];
+    }[];
+  } | null;
   trace?: { role: string; model: string; step: number }[];
   sources: string[];
   context: AnalysisContext;
@@ -58,6 +68,7 @@ type ProgressEvent = {
   status?: string;
   error?: string;
   time?: string;
+  metrics?: { elapsed_seconds?: number; input_tokens?: number; output_tokens?: number };
 };
 type ProgressRun = {
   id: string;
@@ -83,7 +94,12 @@ const eventText = (event: ProgressEvent) => {
   const name = event.event.replaceAll('_', ' ');
   const role = event.role ? ` · ${event.role}` : '';
   const source = event.source ? ` · ${event.source}` : '';
-  return `${name}${role}${source}`;
+  const elapsed = event.metrics?.elapsed_seconds;
+  const timing = typeof elapsed === 'number' ? ` · ${elapsed.toFixed(1)}s` : '';
+  const tokens = event.metrics?.input_tokens != null
+    ? ` · ${event.metrics.input_tokens} → ${event.metrics.output_tokens ?? '?'} tokens`
+    : '';
+  return `${name}${role}${source}${timing}${tokens}`;
 };
 
 const eventLabel = (event: ProgressEvent) => {
@@ -475,6 +491,29 @@ export default function BoardAnalysis({
       </button>
     </form>
   );
+  const enterpriseEvidence = analysis?.sources.includes('enterprise') && !stale && !effectiveBusy && !error && (
+    <details className="board-enterprise-evidence">
+      <summary>사내 시스템 SQL · {analysis.enterprise?.status || '미연결'}</summary>
+      {analysis.enterprise?.systems.map((system) => (
+        <section key={system.id}>
+          <strong>{system.system} · {system.status} · {system.row_count}건{system.synthetic ? ' · SYNTHETIC' : ''}</strong>
+          <p>{system.view} · {system.queried_at}</p>
+          {system.error && <p role="status">{system.error}</p>}
+          {(system.truncated || system.text_truncated) && <p>일부 결과만 표시 · 조회 한도 적용</p>}
+          {!!system.rows.length && (
+            <div className="board-enterprise-table">
+              <table>
+                <thead><tr>{Object.keys(system.rows[0]).map((key) => <th key={key}>{key}</th>)}</tr></thead>
+                <tbody>{system.rows.map((row, index) => (
+                  <tr key={index}>{Object.keys(system.rows[0]).map((key) => <td key={key}>{String(row[key] ?? '')}</td>)}</tr>
+                ))}</tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )) || <p>조회용 DB 설정 필요</p>}
+    </details>
+  );
   return (
     <>
       <header>
@@ -640,6 +679,7 @@ export default function BoardAnalysis({
               {!stale && (
                 <p className="board-analysis-answer">{latest?.content}</p>
               )}
+              {enterpriseEvidence}
             </>
           ) : (
             <p>
@@ -861,6 +901,7 @@ export default function BoardAnalysis({
             </p>
           )}
           <div className="analysis-chat-log board-analysis-chat-log">
+            {enterpriseEvidence}
             {messages.map((message) => (
               <article key={message.id} className={message.role}>
                 <strong>{message.role === 'user' ? '질문' : '답변'}</strong>

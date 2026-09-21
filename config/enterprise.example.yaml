@@ -1,0 +1,42 @@
+# Merge via site.local.yaml into config.yaml. This is NOT a live connection.
+# Replace View/column mappings; use a DB account granted SELECT on approved views only.
+# SQL joins belong in those views, not in LLM-generated SQL.
+enterprise:
+  enabled: false
+  max_rows: 40
+  max_window_days: 31
+  timeout_seconds: 15
+  sources:
+    - id: equipment_events
+      system: MES
+      dialect: sqlserver
+      dsn_env: QAGENT_MES_DSN
+      sqlite_file: ''
+      schema: dbo
+      view: approved_equipment_events
+      timezone: Asia/Seoul
+      synthetic: false
+      columns:
+        record_id: event_id
+        equipment: eqp_id
+        step: step_id
+        occurred_at: start_time
+        ended_at: end_time
+        state: state_code
+        description: event_text
+    - id: recipe_changes
+      system: Recipe
+      dialect: sqlserver
+      dsn_env: QAGENT_RECIPE_DSN
+      sqlite_file: ''
+      schema: dbo
+      view: approved_recipe_changes
+      timezone: Asia/Seoul
+      synthetic: false
+      columns:
+        record_id: change_id
+        equipment: eqp_id
+        step: step_id
+        occurred_at: changed_at
+        recipe: recipe_id
+        description: change_text

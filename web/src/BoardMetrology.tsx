@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { ArrowDownToLine } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { ArrowDownToLine, Link2 } from 'lucide-react';
 import type { EChartsCoreOption } from 'echarts/core';
 import type { CustomSeriesRenderItem } from 'echarts';
 import { Chart } from './charts';
@@ -14,6 +14,12 @@ import {
   waferOutline,
   type MetrologyMetric,
 } from './metrologyMap';
+import {
+  makeAggregateMetrologyProfile,
+  makeMetrologyProfile,
+  orderProfilePoints,
+  type ProfileOrder,
+} from './metrologyProfile';
 import './metrologyMap.css';
 
 export type MetrologyMapProps = {
@@ -39,11 +45,30 @@ function tooltipText(
   if (!Array.isArray(values)) return '';
   const measured = data?.kind === 'measured';
   const kind = aggregate
-    ? `Wafer mean · ${data.contributors} Wafers`
+    ? measured
+      ? `Measured mean · ${data.contributors} Wafers`
+      : `Wafer mean · ${data.contributors} Wafers`
     : measured
       ? 'Measured'
       : 'Linear estimate';
   return `${kind}\n${waferCoordinateText(values[0], values[1], geometry, 'normalized')}\n${METRIC_CONFIG[metric].label}: ${formatValue(values[2], metric)} nm`;
+}
+
+function profileTooltip(
+  item: any,
+  metric: MetrologyMetric,
+  geometry: WaferGeometry | undefined,
+  radiusUnit: 'mm' | 'coord',
+): string {
+  const data = item?.data;
+  const values = Array.isArray(data) ? data : data?.value;
+  if (!Array.isArray(values)) return '';
+  if (data?.kind === 'radial-mean') {
+    return `Radial bin ${data.start.toFixed(1)}–${data.end.toFixed(1)} ${radiusUnit}\nMean: ${formatValue(data.mean, metric)} nm · N ${data.contributors}`;
+  }
+  const pointNumber = Number(data?.sourceIndex) + 1;
+  const radius = Number(data?.radius);
+  return `Point ${pointNumber}\n${waferCoordinateText(data.x, data.y, geometry, 'normalized')}\nRadius ${radius.toFixed(2)} ${radiusUnit}\n${METRIC_CONFIG[metric].label}: ${formatValue(data.valueNm, metric)} nm · N ${data.contributors}`;
 }
 
 export default function BoardMetrology({
@@ -53,6 +78,11 @@ export default function BoardMetrology({
   geometry,
 }: MetrologyMapProps) {
   const [areaSelection, setAreaSelection] = useState<DieRegion | null>(null);
+  const [profileOrder, setProfileOrder] = useState<ProfileOrder>('radius');
+  const [showPointLine, setShowPointLine] = useState(true);
+  const [selectedSourceIndex, setSelectedSourceIndex] = useState<string | null>(
+    null,
+  );
   const fixtures = useMemo(
     () =>
       wafers.map(({ lotId, waferId }) => {
@@ -79,7 +109,28 @@ export default function BoardMetrology({
     [fixtures, aggregate, radius, gridStep],
   );
   const grid = field.grid;
-  const measured = aggregate ? [] : fixture?.points || [];
+  const individualMeasured = fixture?.points || [];
+  const showProfile = metric === 'cd' || metric === 'thk';
+  const profile = useMemo(
+    () =>
+      aggregate
+        ? makeAggregateMetrologyProfile(
+            fixtures.map((item) => item.points),
+            geometry,
+            radius,
+          )
+        : makeMetrologyProfile(individualMeasured, geometry, radius),
+    [aggregate, fixtures, geometry, individualMeasured, radius],
+  );
+  const measured = profile.points;
+  const orderedProfilePoints = useMemo(
+    () => orderProfilePoints(profile.points, profileOrder),
+    [profile.points, profileOrder],
+  );
+  const waferKey = wafers.map(({ lotId, waferId }) => `${lotId}\u0000${waferId}`).join('|');
+  useEffect(() => {
+    setSelectedSourceIndex(null);
+  }, [metric, waferKey, aggregate, geometry?.coordinate_radius]);
   const outline = useMemo(() => waferOutline(radius), [radius]);
   const renderCell: CustomSeriesRenderItem = (_params, api) => {
     const center = api.coord([api.value(0), api.value(1)]);
@@ -158,11 +209,19 @@ export default function BoardMetrology({
           data: measured.map((point) => ({
             value: [point.x, point.y, point.value],
             kind: 'measured',
+            sourceIndex: point.sourceIndex,
+            selectionKey: point.selectionKey,
+            contributors: point.contributors,
             itemStyle: {
-              color: '#ffffff',
-              borderColor: metricColor(metric, point.value),
-              borderWidth: 1.4,
+              color:
+                point.selectionKey === selectedSourceIndex ? '#273d42' : '#ffffff',
+              borderColor:
+                point.selectionKey === selectedSourceIndex
+                  ? '#273d42'
+                  : metricColor(metric, point.value),
+              borderWidth: point.selectionKey === selectedSourceIndex ? 2 : 1.4,
             },
+            symbolSize: point.selectionKey === selectedSourceIndex ? 6 : 3.5,
           })),
           emphasis: {
             scale: 1.45,
@@ -180,12 +239,141 @@ export default function BoardMetrology({
         },
       ],
     }),
-    [fixtures, grid, metric, outline, geometry, radius, gridStep, aggregate],
+    [fixtures, grid, metric, outline, geometry, radius, gridStep, aggregate, measured, selectedSourceIndex],
+  );
+  const profileOption = useMemo<EChartsCoreOption>(
+    () => {
+      const radiusMode = profileOrder === 'radius';
+      const pointData = orderedProfilePoints.map((point) => ({
+        value: [radiusMode ? point.radius : point.sourceIndex + 1, point.value],
+        x: point.x,
+        y: point.y,
+        valueNm: point.value,
+        radius: point.radius,
+        sourceIndex: point.sourceIndex,
+        selectionKey: point.selectionKey,
+        contributors: point.contributors,
+        kind: 'measured',
+        itemStyle: {
+          color:
+            point.selectionKey === selectedSourceIndex
+              ? '#273d42'
+              : metricColor(metric, point.value),
+          borderColor: '#ffffff',
+          borderWidth: point.selectionKey === selectedSourceIndex ? 1.8 : 1,
+        },
+        symbolSize: point.selectionKey === selectedSourceIndex ? 7 : 5,
+      }));
+      const radialData = profile.radialMeans.map((bin) => ({
+        value: [bin.x, bin.mean],
+        start: bin.start,
+        end: bin.end,
+        mean: bin.mean,
+        contributors: bin.contributors,
+        kind: bin.kind,
+      }));
+      return {
+        animation: false,
+        grid: { left: 38, right: 7, top: 12, bottom: 30 },
+        xAxis: {
+          type: 'value',
+          splitNumber: 3,
+          minInterval: radiusMode ? undefined : 1,
+          min: radiusMode ? 0 : 0.5,
+          max: radiusMode
+            ? profile.edgeRadius
+            : Math.max(1.5, ...orderedProfilePoints.map((point) => point.sourceIndex + 1.5)),
+          name: radiusMode
+            ? `Radius (${profile.radiusUnit})`
+            : 'Point order',
+          nameLocation: 'middle',
+          nameGap: 21,
+          nameTextStyle: { color: '#70817a', fontSize: 9 },
+          axisLabel: {
+            color: '#71817b',
+            fontSize: 9,
+            hideOverlap: true,
+            formatter: (value: number) =>
+              radiusMode ? value.toFixed(0) : String(Math.round(value)),
+          },
+          axisLine: { lineStyle: { color: '#cfdad5' } },
+          splitLine: { lineStyle: { color: '#edf1ef' } },
+        },
+        yAxis: {
+          type: 'value',
+          splitNumber: 2,
+          name: `${METRIC_CONFIG[metric].label} (nm)`,
+          nameLocation: 'middle',
+          nameGap: 30,
+          nameTextStyle: { color: '#70817a', fontSize: 9 },
+          axisLabel: { color: '#71817b', fontSize: 9, hideOverlap: true },
+          axisLine: { lineStyle: { color: '#cfdad5' } },
+          splitLine: { lineStyle: { color: '#edf1ef' } },
+          scale: true,
+        },
+        tooltip: {
+          trigger: 'item',
+          renderMode: 'richText',
+          confine: true,
+          backgroundColor: '#ffffff',
+          borderColor: '#dfe6e3',
+          textStyle: { color: '#304b4a', fontSize: 10 },
+          formatter: (item: any) =>
+            profileTooltip(item, metric, geometry, profile.radiusUnit),
+        },
+        series: [
+          ...(radiusMode
+            ? [
+                {
+                  name: 'Radial-bin mean',
+                  type: 'line',
+                  data: radialData,
+                  symbol: 'circle',
+                  symbolSize: 5,
+                  connectNulls: false,
+                  lineStyle: { color: '#c1764f', width: 1.8 },
+                  itemStyle: { color: '#c1764f', borderColor: '#ffffff' },
+                },
+              ]
+            : showPointLine
+              ? [
+                  {
+                    name: 'Point order',
+                    type: 'line',
+                    data: pointData,
+                    symbol: 'none',
+                    lineStyle: { color: '#8fa99f', width: 1.2 },
+                  },
+                ]
+              : []),
+          {
+            name: 'Measured points',
+            type: 'scatter',
+            data: pointData,
+            z: 3,
+            emphasis: { scale: 1.35 },
+          },
+        ],
+      };
+    },
+    [
+      geometry,
+      metric,
+      orderedProfilePoints,
+      profile,
+      profileOrder,
+      selectedSourceIndex,
+      showPointLine,
+    ],
   );
   const scale = METRIC_CONFIG[metric];
 
   return (
-    <section className="metrology-map" aria-label={`${scale.label} wafer map`}>
+    <section
+      className="metrology-map"
+      aria-label={`${scale.label} wafer map`}
+      data-selected-point={selectedSourceIndex ?? 'none'}
+    >
       <header className="metrology-map-header">
         <span
           title={wafers
@@ -228,15 +416,66 @@ export default function BoardMetrology({
           </button>
         )}
       </header>
-      <div className="metrology-map-stage">
-        <Chart
-          option={option}
-          mapNavigation
-          areaSelection={areaSelection}
-          label={`${scale.label} ${aggregate ? 'composite mean' : 'individual'} wafer map`}
-          className="metrology-map-chart"
-          onArea={(region) => setAreaSelection(region)}
-        />
+      <div className={`metrology-map-stage${showProfile ? ' has-profile' : ''}`}>
+        <div className="metrology-map-canvas-frame">
+          <Chart
+            option={option}
+            mapNavigation
+            areaSelection={areaSelection}
+            label={`${scale.label} ${aggregate ? 'composite mean' : 'individual'} wafer map`}
+            className="metrology-map-chart"
+            onSelect={(item) => {
+              if (item?.data?.kind === 'measured')
+                setSelectedSourceIndex(item.data.selectionKey);
+            }}
+            onClearSelection={() => setSelectedSourceIndex(null)}
+            onArea={(region) => setAreaSelection(region)}
+          />
+        </div>
+        {showProfile && (
+          <aside className="metrology-profile" aria-label={`${scale.label} edge profile`}>
+            <header className="metrology-profile-header">
+              <span>Edge profile</span>
+              <button
+                type="button"
+                className="icon-button metrology-profile-line-toggle"
+                title="Point mode connecting line"
+                aria-label="Point mode connecting line"
+                aria-pressed={showPointLine}
+                disabled={profileOrder === 'radius'}
+                onClick={() => setShowPointLine((value) => !value)}
+              >
+                <Link2 size={12} />
+              </button>
+            </header>
+            <div className="metrology-profile-switch" role="group" aria-label="Profile x-axis">
+              <button
+                type="button"
+                aria-pressed={profileOrder === 'point'}
+                onClick={() => setProfileOrder('point')}
+              >
+                Point order
+              </button>
+              <button
+                type="button"
+                aria-pressed={profileOrder === 'radius'}
+                onClick={() => setProfileOrder('radius')}
+              >
+                Radius({profile.radiusUnit})
+              </button>
+            </div>
+            <Chart
+              option={profileOption}
+              label={`${scale.label} measured point profile`}
+              className="metrology-profile-chart"
+              onSelect={(item) => {
+                if (item?.data?.kind === 'measured')
+                  setSelectedSourceIndex(item.data.selectionKey);
+              }}
+              onClearSelection={() => setSelectedSourceIndex(null)}
+            />
+          </aside>
+        )}
       </div>
     </section>
   );

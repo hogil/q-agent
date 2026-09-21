@@ -43,6 +43,17 @@ class SkillCompactionTests(unittest.TestCase):
             self.assertIn('column_fields', prompt['system_prompt'])
             self.assertTrue(any('image-metadata-schema' in value for value in prompt['loaded_files']))
 
+    def test_prompt_retains_contract_grounding_and_registered_topics(self):
+        settings = load_config(ROOT / 'config/config.yaml', ROOT / 'config/demo.yaml')
+        topics = ['incident_search', 'lots', 'wafers', 'images', 'meetings']
+        for role in ('router', 'judge', 'answer'):
+            prompt = compile_prompt(role, topics, settings=settings)
+            self.assertIn('column_fields', prompt['system_prompt'])
+            self.assertIn('confirmed_cause', prompt['system_prompt'])
+            self.assertTrue(any('output.schema.json' in path for path in prompt['loaded_files']))
+            self.assertIn('images', prompt['available_topics'])
+            self.assertNotIn('get_engineering_snapshot', prompt['available_topics'])
+
 
 if __name__ == '__main__':
     unittest.main()

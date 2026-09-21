@@ -20,6 +20,12 @@
     "enabled": true, "stage": "tools",
     "parameters": {"type": "object", "additionalProperties": false, "properties": {}}
   },
+  "search_related_incidents": {
+    "enabled": true, "stage": "tools",
+    "parameters": {"type": "object", "additionalProperties": false, "required": ["terms"],
+      "properties": {"terms": {"type": "array",
+                                "items": {"type": "string"}}}}
+  },
   "search_meeting_minutes": {
     "enabled": true, "stage": "tools",
     "parameters": {

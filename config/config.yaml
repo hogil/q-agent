@@ -247,6 +247,10 @@ enterprise:
   endpoint: ''
   api_key_env: QAGENT_ENTERPRISE_KEY
   timeout_seconds: 30
+  # SQL sources only. endpoint is reserved; no undocumented API requests are sent.
+  max_rows: 40
+  max_window_days: 31
+  sources: []
 actions:
   enabled: false
   endpoint: ''

@@ -11,6 +11,11 @@
   font-size: 9px;
 }
 
+.metrology-map {
+  container-type: inline-size;
+  container-name: metrology-map;
+}
+
 .metrology-map-header,
 .overlay-vector-heading {
   display: flex;
@@ -101,4 +106,142 @@
 .overlay-view-switch button[aria-pressed='true'] {
   background: #e8f1fa;
   box-shadow: inset 0 -2px currentColor;
+}
+
+.metrology-map-stage.has-profile {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: minmax(0, 1fr) 120px;
+  gap: 6px;
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+.metrology-map-canvas-frame {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  container-type: size;
+  min-width: 0;
+  min-height: 0;
+  justify-self: center;
+}
+
+.board-panel .metrology-map-canvas-frame > .metrology-map-chart {
+  position: relative;
+  width: min(100cqw, 100cqh);
+  height: min(100cqw, 100cqh);
+  flex: none;
+  max-width: none;
+  max-height: none;
+  min-width: 0;
+  min-height: 0;
+}
+
+.metrology-profile {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-top: 1px solid #e1e9e5;
+}
+
+.metrology-profile-header {
+  display: flex;
+  align-items: center;
+  min-height: 20px;
+  gap: 3px;
+  color: #668078;
+  font-size: 9px;
+  flex-shrink: 0;
+}
+
+.metrology-profile-header span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.metrology-profile-line-toggle {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  padding: 2px;
+}
+
+.metrology-profile-line-toggle[aria-pressed='true'] {
+  color: #195d48;
+  background: #e4efeb;
+}
+
+.metrology-profile-line-toggle:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.metrology-profile-switch {
+  display: flex;
+  min-width: 0;
+  margin: 1px 0 3px;
+  border: 1px solid #d5e0e8;
+  flex-shrink: 0;
+}
+
+.metrology-profile-switch button {
+  flex: 1;
+  min-width: 0;
+  min-height: 21px;
+  overflow: hidden;
+  padding: 2px 3px;
+  border: 0;
+  color: #667a74;
+  background: transparent;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.metrology-profile-switch button + button {
+  border-left: 1px solid #d5e0e8;
+}
+
+.metrology-profile-switch button[aria-pressed='true'] {
+  color: #195d48;
+  background: #e8f1fa;
+  box-shadow: inset 0 -2px currentColor;
+}
+
+.metrology-profile-chart {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 64px;
+}
+
+@container metrology-map (min-width: 240px) {
+  .metrology-map-stage.has-profile {
+    grid-template-columns: minmax(0, 1fr) minmax(128px, min(45%, 400px));
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .metrology-profile {
+    border-top: 0;
+    border-left: 1px solid #e1e9e5;
+    padding-top: 0;
+    padding-left: 5px;
+  }
+}
+
+@media (hover: hover) {
+  .metrology-map-canvas-frame:not(:hover):not(:focus-within) .map-navigation {
+    opacity: 0;
+    pointer-events: none;
+  }
 }

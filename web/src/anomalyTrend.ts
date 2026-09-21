@@ -96,7 +96,7 @@ function targetPatternValue(
   }
   if (pattern === 'variance_burst') {
     const burstNoise =
-      seededNormalNoise(`${signal.id}:variance:${index}:${sample}`) *
+      seededNormalNoise(`${incidentSeed}:${signal.id}:variance:${index}:${sample}`) *
       spread *
       (active ? 1.25 : 0.8);
     return data.trend[index][signal.metric] + burstNoise;

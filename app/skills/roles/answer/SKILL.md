@@ -17,7 +17,15 @@ description: Judge 검토 뒤 확인된 근거로 최종 답변과 제한을 작
 - persona, confidence 같은 새 JSON 필드를 만들지 않는다. 페르소나는 기존 answer/reason/limitations의 표현과 판단에 반영한다.
 
 ## 작성 조건
-get_engineering_snapshot의 수치·문서 관측은 합성 출처와 기간을 명시한다. Trend 변화, 상태 변경, 불량 패턴의 동시 발생은 관측/가설/추가 확인으로 나누며 원인을 단정하지 않는다.
+evidence_focus는 같은 Tool 결과에서 코드가 추출한 핵심 관측이며 evidence_id로 원문과 연결된다. 원인 결론이나 정답 예시가 아니다. 다음 순서의 짧은 문단으로 실제 값을 답한다:
+1. 현재 검증이 필요한 이상과 그 근거. Trend onset의 before.mean → after.mean, delta.value와 단위·시점을 적는다. 단순히 '상승했다'로 수치를 생략하지 않는다.
+2. 해당 설비의 state와 start/end를 그대로 구분한다. PM은 예방정비이며 DOWN이 아니다. PM이나 시간상 겹침만으로 고장·원인을 단정하지 않는다.
+3. 현재 SEM/Overlay findings의 class·수치 관측과 모델/asset ID. INCOMPARABLE은 정렬/의미 검증 한계이지 모든 관측이 없다는 뜻이 아니다.
+4. 과거 Inform ID·날짜와 연결된 SEM/Overlay 참조 ID·형상, CD measurements의 site/value/unit. 과거 기록과 현재 관측은 별개이며 동일 원인 확정 근거가 아니다. CD 계측값은 CD 이미지 모델 분석이 아니다.
+5. 현재/과거 동일 조건 SEM 재촬영·CD 재측정·Overlay 정렬 확인 등 필요한 검증을 근거에 맞게 한 번만 설명한다. 실행 안 된 검증/조치를 완료라고 쓰지 않는다.
+근거 없는 항목은 미확인으로 남긴다. '필요한 검증'과 '확인 항목'을 중복 작성하지 않는다. 한계는 관련 관측 문단에 한 번만 적고 'INCOMPARABLE라서 원인 확정 불가'를 매 문단 반복하지 않는다. claims는 간결한 근거 연결이며 본문을 복사하지 않는다.
+get_engineering_snapshot은 출처와 기간을 명시한다. 사내 SQL은 system/view/조회시각과 실패·잘림을 보존하며 합성 자료와 구분한다. Trend·설비·불량 패턴의 동시 발생은 관측/가설/추가 확인으로 나누고 원인을 단정하지 않는다.
+관련 사고는 번호·일자·검색 일치 근거와 비교 한계를 표시한다. 후보를 현재 사고로 섞지 않으며, 미연결 CD/Bin/Failbit 모델 분석을 수행했다고 쓰지 않는다.
 같은 확인 항목은 반복하지 않는다. 소스별 내용을 지어 채우지 말고 실제 수치·class·과거 참조 ID를 요약한다. asset 목록은 비교 결과가 아니다. 각 claims.evidence_ids는 해당 주장이 들어 있는 Tool 결과를 가리켜야 한다. unknown 완전성의 Lot/Wafer 수는 등록 수이지 전체 영향 수가 아니다.
 모델 이미지 비교는 Tool의 model/model_version, 비교 asset_id/revision, 관측 차이와 limitations를 표시한다. `INCOMPARABLE`, `alignment_verified=false`, `similarity=null`이면 유효한 findings가 있을 때 그 관측만 partial Answer에 포함하고, 물리 정렬/의미 확정/원인 확정으로 표현하지 않는다. 모델 비교 요구는 미충족으로 남긴다. 화면 중첩/Die 통계와 모델 추론을 구분하고, 미연결이면 모델 분석 완료를 주장하지 않는다. 유사도는 확정 원인이나 조치 권한이 아니다. 2026-09-21 로컬 합성 서비스/더미 결과 기준이며 운영 SEM/Overlay 검증 미완료.
 
@@ -34,6 +42,8 @@ references/output.schema.json만 반환한다. status는 요청 범위 충족이
 claims.evidence_ids의 각 문자열은 입력 evidence_ids 목록에서 그대로 복사한다. row 번호 접미사나 chunk_id로 ID를 변형하지 않는다. 예를 들어 입력이 ["e1"]이면 "e1-0"이나 "e1.data[0]"는 없는 근거다. 여러 주장이 같은 Tool 결과를 사용하면 같은 ID를 재사용한다.
 
 ## 실제 데이터 확인 후 변경
+
+2026-09-22 합성 Qwen 실행에서 출력 반복/한도 초과, PM을 DOWN으로 묶는 오류와 수치/참조 누락을 확인했다. 코드 추출 관측의 우선 확인과 상태별 구분을 명시했다. 원문 근거를 유지하며 강제 불량 확정은 금지한다. 사내 검증은 미완료다.
 
 2026-09-21 로컬 Qwen/Ollama + 합성 사고 DB에서 Answer가 "e1"을 "e1-0"으로 바꾸어 UNKNOWN_EVIDENCE가 발생했다. 입력 ID를 보존하는 계약만 명시했으며 답변 사실이나 사내 근거를 추가한 변경이 아니다.
 
