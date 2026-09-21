@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
-import { X } from 'lucide-react';
+import { ArrowDownToLine, X } from 'lucide-react';
 import type { EChartsCoreOption } from 'echarts/core';
 import type { CustomSeriesRenderItem } from 'echarts';
 import { Chart } from './charts';
 import { waferCoordinateText, type DieRegion } from './waferMaps';
-import type { WaferGeometry } from './api';
+import { download, type WaferGeometry } from './api';
 import {
   makeMetrologyFixture,
+  compositeMetrologyMaps,
   metricColor,
   metricStats,
   METRIC_CONFIG,
@@ -18,8 +19,8 @@ import {
 import './metrologyMap.css';
 
 export type MetrologyMapProps = {
-  lotId: string;
-  waferId: string;
+  wafers: { lotId: string; waferId: string }[];
+  aggregate?: boolean;
   metric: MetrologyMetric;
   geometry?: WaferGeometry;
 };
@@ -33,37 +34,60 @@ function tooltipText(
   item: any,
   metric: MetrologyMetric,
   geometry?: WaferGeometry,
+  aggregate = false,
 ): string {
   const data = item?.data;
   const values = Array.isArray(data) ? data : data?.value;
   if (!Array.isArray(values)) return '';
   const measured = data?.kind === 'measured';
-  const kind = measured ? 'Measured' : 'Linear estimate';
+  const kind = aggregate
+    ? `Wafer mean · ${data.contributors} Wafers`
+    : measured
+      ? 'Measured'
+      : 'Linear estimate';
   return `${kind}\n${waferCoordinateText(values[0], values[1], geometry, 'normalized')}\n${METRIC_CONFIG[metric].label}: ${formatValue(values[2], metric)} nm`;
 }
 
 export default function BoardMetrology({
-  lotId,
-  waferId,
+  wafers,
+  aggregate = false,
   metric,
   geometry,
 }: MetrologyMapProps) {
   const [areaSelection, setAreaSelection] = useState<DieRegion | null>(null);
-  const fixture = useMemo(
-    () => makeMetrologyFixture(lotId, waferId, metric),
-    [lotId, metric, waferId],
+  const fixtures = useMemo(
+    () =>
+      wafers.map(({ lotId, waferId }) => {
+        const fixture = makeMetrologyFixture(lotId, waferId, metric);
+        return {
+          ...fixture,
+          radius: geometry?.coordinate_radius ?? fixture.radius,
+        };
+      }),
+    [wafers, metric, geometry?.coordinate_radius],
   );
-  const radius = geometry?.coordinate_radius ?? fixture.radius;
+  const fixture = fixtures[0];
+  const radius = geometry?.coordinate_radius ?? fixture?.radius ?? 16;
   const gridStep = radius / 64;
-  const grid = useMemo(
-    () => interpolateWaferGrid(fixture.points, radius, gridStep),
-    [fixture, radius, gridStep],
+  const field = useMemo(
+    () =>
+      aggregate
+        ? compositeMetrologyMaps(fixtures, radius, gridStep)
+        : {
+            grid: interpolateWaferGrid(fixture?.points || [], radius, gridStep),
+            waferCount: fixtures.length,
+            measurementCount: fixture?.points.length || 0,
+          },
+    [fixtures, aggregate, radius, gridStep],
   );
+  const grid = field.grid;
+  const measured = aggregate ? [] : fixture?.points || [];
+  const statsPoints = aggregate ? grid : measured;
   const outline = useMemo(() => waferOutline(radius), [radius]);
-  const stats = useMemo(() => metricStats(fixture.points), [fixture]);
+  const stats = useMemo(() => metricStats(statsPoints), [statsPoints]);
   const areaStats = useMemo(
-    () => metricStats(selectMeasuredRegion(fixture.points, areaSelection)),
-    [areaSelection, fixture],
+    () => metricStats(selectMeasuredRegion(statsPoints, areaSelection)),
+    [areaSelection, statsPoints],
   );
   const renderCell: CustomSeriesRenderItem = (_params, api) => {
     const center = api.coord([api.value(0), api.value(1)]);
@@ -110,7 +134,8 @@ export default function BoardMetrology({
         backgroundColor: '#ffffff',
         borderColor: '#dfe6e3',
         textStyle: { color: '#304b4a', fontSize: 10 },
-        formatter: (item: any) => tooltipText(item, metric, geometry),
+        formatter: (item: any) =>
+          tooltipText(item, metric, geometry, aggregate),
       },
       series: [
         {
@@ -125,6 +150,7 @@ export default function BoardMetrology({
           data: grid.map((point) => ({
             value: [point.x, point.y, point.value],
             kind: point.kind,
+            contributors: 'contributors' in point ? point.contributors : 1,
             itemStyle: {
               color: metricColor(metric, point.value),
               opacity: 0.9,
@@ -137,7 +163,7 @@ export default function BoardMetrology({
           type: 'scatter',
           symbol: 'circle',
           symbolSize: 3.5,
-          data: fixture.points.map((point) => ({
+          data: measured.map((point) => ({
             value: [point.x, point.y, point.value],
             kind: 'measured',
             itemStyle: {
@@ -162,19 +188,55 @@ export default function BoardMetrology({
         },
       ],
     }),
-    [fixture, grid, metric, outline, geometry, radius, gridStep],
+    [fixtures, grid, metric, outline, geometry, radius, gridStep, aggregate],
   );
   const scale = METRIC_CONFIG[metric];
 
   return (
     <section className="metrology-map" aria-label={`${scale.label} wafer map`}>
       <header className="metrology-map-header">
-        <span title={`${lotId} / ${waferId}`}>
-          {lotId} / {waferId}
+        <span
+          title={wafers
+            .map((row) => `${row.lotId} / ${row.waferId}`)
+            .join(', ')}
+        >
+          {aggregate
+            ? `${scale.label} · ${wafers.length} Wafers · 좌표별 평균`
+            : `${fixture?.lotId} / ${fixture?.waferId}`}
         </span>
         <strong>nm</strong>
+        {aggregate && (
+          <button
+            className="icon-button"
+            title={`${scale.label} 합성 Map 다운로드`}
+            aria-label={`${scale.label} 합성 Map 다운로드`}
+            onClick={() =>
+              download(
+                `${metric}-composite-map.json`,
+                JSON.stringify(
+                  {
+                    synthetic: true,
+                    metric,
+                    unit: 'nm',
+                    wafers,
+                    geometry,
+                    method:
+                      'mean of per-wafer linear interpolation; missing excluded',
+                    physicalAlignmentVerified: false,
+                    ...field,
+                  },
+                  null,
+                  2,
+                ),
+                'application/json',
+              )
+            }
+          >
+            <ArrowDownToLine size={12} />
+          </button>
+        )}
       </header>
-      <div className="metrology-map-source" title={fixture.sourceLabel}>
+      <div className="metrology-map-source" title={fixture?.sourceLabel}>
         합성 측정 ·{' '}
         {geometry ? `${geometry.radius_mm * 2} mm` : 'geometry 미설정'}
       </div>
@@ -182,7 +244,7 @@ export default function BoardMetrology({
         <Chart
           option={option}
           mapNavigation
-          label={`${scale.label} interpolated wafer map; measured points and linear estimates`}
+          label={`${scale.label} ${aggregate ? 'composite mean' : 'individual'} wafer map`}
           className="metrology-map-chart"
           onArea={(region) => setAreaSelection(region)}
         />
@@ -193,11 +255,14 @@ export default function BoardMetrology({
         <span>{scale.max}</span>
       </div>
       <div className="metrology-map-legend" aria-label="Point legend">
+        {!aggregate && (
+          <span>
+            <i className="measured" /> measured
+          </span>
+        )}
         <span>
-          <i className="measured" /> measured
-        </span>
-        <span>
-          <i className="estimated" /> linear estimate
+          <i className="estimated" />{' '}
+          {aggregate ? 'wafer mean · linear estimate' : 'linear estimate'}
         </span>
       </div>
       <div className="metrology-map-stats">
@@ -211,13 +276,13 @@ export default function BoardMetrology({
           max <b>{formatValue(stats.max, metric)}</b>
         </span>
         <span>
-          n <b>{stats.n}</b>
+          {aggregate ? 'grid n' : 'n'} <b>{stats.n}</b>
         </span>
       </div>
       {areaSelection && (
         <div className="metrology-map-area-stats">
           <span>
-            Area n {areaStats.n} | median{' '}
+            Area {aggregate ? 'grid n' : 'n'} {areaStats.n} | median{' '}
             {formatValue(areaStats.median, metric)} nm
           </span>
           <button
@@ -232,7 +297,9 @@ export default function BoardMetrology({
         </div>
       )}
       <footer className="metrology-map-footer">
-        합성 측정 · Agent Tool 미연결
+        {aggregate
+          ? '좌표 정렬 가정 · 미관측 제외 · 합성 데이터'
+          : '합성 측정 · Agent Tool 미연결'}
       </footer>
     </section>
   );

@@ -56,7 +56,7 @@ import BoardAnalysis from './BoardAnalysis';
 import DetectionFlow from './DetectionFlow';
 import ResizableBoard from './ResizableBoard';
 import MetrologyMap from './BoardMetrology';
-import type { MetrologyMetric } from './metrologyMap';
+import BoardOverlay from './BoardOverlay';
 import { SourcePreview } from './ReviewView';
 import {
   makeInformNotes,
@@ -125,9 +125,10 @@ export default function InvestigationBoard({
   const [layoutLocked, setLayoutLocked] = useState(false);
   const [layoutReset, setLayoutReset] = useState(0);
   const [layoutStorageError, setLayoutStorageError] = useState(false);
-  const [mapMode, setMapMode] = useState<'bin' | 'cd' | 'overlay'>('bin');
-  const [overlayMetric, setOverlayMetric] =
-    useState<MetrologyMetric>('overlay-magnitude');
+  const [mapMode, setMapMode] = useState<'cd' | 'thk' | 'overlay' | 'bin'>(
+    'cd',
+  );
+  const [vectorScale, setVectorScale] = useState(1);
   const [signalQuery, setSignalQuery] = useState('');
   const [priority, setPriority] = useState('all');
   const [signalOrder, setSignalOrder] = useState('source');
@@ -322,7 +323,36 @@ export default function InvestigationBoard({
       })),
     [incident, candidates],
   );
-  const selectedMaps = maps.filter((row) => checked.has(pairKey(row)));
+  const selectedMaps = useMemo(
+    () => maps.filter((row) => checked.has(pairKey(row))),
+    [maps, checked],
+  );
+  const focusedMetrologyWafers = useMemo(
+    () => (focused ? [{ lotId: focused.lotId, waferId: focused.waferId }] : []),
+    [focused?.lotId, focused?.waferId],
+  );
+  const selectedMapKey = JSON.stringify(
+    selectedMaps.map((row) => [row.lotId, row.waferId]),
+  );
+  const mapModeControls = (label: string) => (
+    <div className="board-map-modes">
+      <div role="group" aria-label={label}>
+        {(['cd', 'thk', 'overlay', 'bin'] as const).map((mode) => (
+          <button
+            key={mode}
+            aria-pressed={mapMode === mode}
+            onClick={() => setMapMode(mode)}
+          >
+            {mode === 'bin'
+              ? 'Bin'
+              : mode === 'overlay'
+                ? 'Overlay'
+                : mode.toUpperCase()}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
   const dieEvidence = useMemo(() => inspectWaferDie(maps, die), [maps, die]);
   const flaggedDieWafers = dieEvidence.filter((row) => row.flag === true);
   const composite = useMemo(
@@ -1303,32 +1333,7 @@ export default function InvestigationBoard({
               <X size={14} />
             </button>
           </header>
-          <div className="board-map-modes">
-            <div role="group" aria-label="개별 Map 종류">
-              {(['bin', 'cd', 'overlay'] as const).map((mode) => (
-                <button
-                  key={mode}
-                  aria-pressed={mapMode === mode}
-                  onClick={() => setMapMode(mode)}
-                >
-                  {mode === 'bin' ? 'Bin' : mode === 'cd' ? 'CD' : 'Overlay'}
-                </button>
-              ))}
-            </div>
-            {mapMode === 'overlay' && (
-              <select
-                aria-label="Overlay 측정값"
-                value={overlayMetric}
-                onChange={(event) =>
-                  setOverlayMetric(event.target.value as MetrologyMetric)
-                }
-              >
-                <option value="overlay-magnitude">|Δ|</option>
-                <option value="overlay-x">ΔX</option>
-                <option value="overlay-y">ΔY</option>
-              </select>
-            )}
-          </div>
+          {mapModeControls('개별 Map 종류')}
           {mapMode === 'bin' ? (
             <>
               <div className="board-map-label">
@@ -1375,12 +1380,19 @@ export default function InvestigationBoard({
                 Bin 4 · Flag ≥ 3
               </footer>
             </>
+          ) : focused && mapMode === 'overlay' ? (
+            <BoardOverlay
+              key={`${focused.lotId}:${focused.waferId}`}
+              wafers={focusedMetrologyWafers}
+              geometry={workspace.wafer_geometry}
+              vectorScale={vectorScale}
+              onVectorScale={setVectorScale}
+            />
           ) : focused ? (
             <MetrologyMap
-              key={`${focused.lotId}:${focused.waferId}:${mapMode}:${overlayMetric}`}
-              lotId={focused.lotId}
-              waferId={focused.waferId}
-              metric={mapMode === 'cd' ? 'cd' : overlayMetric}
+              key={`${focused.lotId}:${focused.waferId}:${mapMode}`}
+              wafers={focusedMetrologyWafers}
+              metric={mapMode === 'thk' ? 'thk' : 'cd'}
               geometry={workspace.wafer_geometry}
             />
           ) : (
@@ -1396,68 +1408,97 @@ export default function InvestigationBoard({
             <h2>전체 Map</h2>
             <span>합성</span>
             <output>{composite.waferCount} Wafers</output>
-            <button
-              className="icon-button"
-              title="합성 Map 데이터 다운로드"
-              disabled={!composite.waferCount}
-              onClick={exportComposite}
-            >
-              <ArrowDownToLine size={14} />
-            </button>
-          </header>
-          <div className="board-map-label">동일 Die 좌표 · Flag / 관측 수</div>
-          <div className="board-map-stage">
-            {composite.waferCount ? (
-              <Chart
-                option={compositeMapOption}
-                mapNavigation
-                className="board-map-canvas"
-                label={`선택 ${composite.waferCount}개 Wafer 합성 Map`}
-                onSelect={(p) => selectDie([p.value[0], p.value[1]])}
-                onArea={selectRegion}
-              />
-            ) : (
-              <p className="board-empty">합성 대상 없음</p>
+            {mapMode === 'bin' && (
+              <button
+                className="icon-button"
+                title="합성 Map 데이터 다운로드"
+                disabled={!composite.waferCount}
+                onClick={exportComposite}
+              >
+                <ArrowDownToLine size={14} />
+              </button>
             )}
-          </div>
-          <div className="board-frequency">
-            <span>0</span>
-            {[0, 12, 37, 62, 100].map((n) => (
-              <i key={n} style={{ background: frequencyColor(n) }} />
-            ))}
-            <span>100%</span>
-            <input
-              type="range"
-              aria-label="합성 Map 최소 Flag 빈도"
-              title="최소 Flag 빈도"
-              min={0}
-              max={100}
-              step={5}
-              value={threshold}
-              onChange={(event) => setThreshold(+event.target.value)}
+          </header>
+          {mapModeControls('전체 Map 종류')}
+          {mapMode === 'bin' ? (
+            <>
+              <div className="board-map-label">
+                동일 Die 좌표 · Flag / 관측 수
+              </div>
+              <div className="board-map-stage">
+                {composite.waferCount ? (
+                  <Chart
+                    option={compositeMapOption}
+                    mapNavigation
+                    className="board-map-canvas"
+                    label={`선택 ${composite.waferCount}개 Wafer 합성 Map`}
+                    onSelect={(p) => selectDie([p.value[0], p.value[1]])}
+                    onArea={selectRegion}
+                  />
+                ) : (
+                  <p className="board-empty">합성 대상 없음</p>
+                )}
+              </div>
+              <div className="board-frequency">
+                <span>0</span>
+                {[0, 12, 37, 62, 100].map((n) => (
+                  <i key={n} style={{ background: frequencyColor(n) }} />
+                ))}
+                <span>100%</span>
+                <input
+                  type="range"
+                  aria-label="합성 Map 최소 Flag 빈도"
+                  title="최소 Flag 빈도"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={threshold}
+                  onChange={(event) => setThreshold(+event.target.value)}
+                />
+                <output>{threshold}%</output>
+              </div>
+              <div
+                className="board-image-findings"
+                aria-label="합성 Map 분석 내용"
+                aria-live="polite"
+              >
+                <p>
+                  {region ? '선택 영역' : '전체 Map'} · {compositeRegion.length}{' '}
+                  좌표
+                </p>
+                <p>
+                  Flag {compositeFlags}/{regionObservations} 관측 · 2장 이상
+                  반복 {compositeRegion.filter((row) => row.flags >= 2).length}{' '}
+                  좌표
+                </p>
+                <small>합성 계산 · 미관측은 분모 제외</small>
+              </div>
+              <footer aria-live="polite">
+                {selectedDie
+                  ? `Die (${selectedDie.x},${selectedDie.y}) · ${selectedDie.flags}/${selectedDie.observed} (${selectedDie.percent.toFixed(0)}%)`
+                  : `${composite.dies.filter((row) => row.flags > 0).length} Flag 좌표 · 정렬 미검증`}
+              </footer>
+            </>
+          ) : !selectedMaps.length ? (
+            <p className="board-empty">선택한 Wafer 없음</p>
+          ) : mapMode === 'overlay' ? (
+            <BoardOverlay
+              key={selectedMapKey}
+              wafers={selectedMaps}
+              aggregate
+              geometry={workspace.wafer_geometry}
+              vectorScale={vectorScale}
+              onVectorScale={setVectorScale}
             />
-            <output>{threshold}%</output>
-          </div>
-          <div
-            className="board-image-findings"
-            aria-label="합성 Map 분석 내용"
-            aria-live="polite"
-          >
-            <p>
-              {region ? '선택 영역' : '전체 Map'} · {compositeRegion.length}{' '}
-              좌표
-            </p>
-            <p>
-              Flag {compositeFlags}/{regionObservations} 관측 · 2장 이상 반복{' '}
-              {compositeRegion.filter((row) => row.flags >= 2).length} 좌표
-            </p>
-            <small>합성 계산 · 미관측은 분모 제외</small>
-          </div>
-          <footer aria-live="polite">
-            {selectedDie
-              ? `Die (${selectedDie.x},${selectedDie.y}) · ${selectedDie.flags}/${selectedDie.observed} (${selectedDie.percent.toFixed(0)}%)`
-              : `${composite.dies.filter((row) => row.flags > 0).length} Flag 좌표 · 정렬 미검증`}
-          </footer>
+          ) : (
+            <MetrologyMap
+              key={`${mapMode}:${selectedMapKey}`}
+              wafers={selectedMaps}
+              aggregate
+              metric={mapMode}
+              geometry={workspace.wafer_geometry}
+            />
+          )}
         </section>
         <section
           className="board-panel board-distribution"

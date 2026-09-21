@@ -52,6 +52,7 @@ type ChartProps = {
   label: string;
   className?: string;
   mapNavigation?: boolean;
+  syncGroup?: string;
 };
 export function Chart({
   option,
@@ -61,6 +62,7 @@ export function Chart({
   label,
   className = '',
   mapNavigation = false,
+  syncGroup,
 }: ChartProps) {
   const [mapMode, setMapMode] = useState<'select' | 'pan'>(
     onArea ? 'select' : 'pan',
@@ -123,6 +125,14 @@ export function Chart({
       renderer: 'canvas',
     });
     instance.current = chart;
+    if (syncGroup) {
+      chart.group = syncGroup;
+      echarts.connect(syncGroup);
+      chart.on('globalcursortaken', (event: any) => {
+        if (mapNavigation && event.key === 'brush')
+          setMapMode(event.brushOption?.brushType ? 'select' : 'pan');
+      });
+    }
     chart.on('click', (params) => handler.current?.(params));
     const zr = chart.getZr();
     const rememberBrushModifier = (event: any) => {
@@ -173,6 +183,7 @@ export function Chart({
       cancelAnimationFrame(resizeFrame);
       zr.off('mousedown', rememberBrushModifier);
       chart.dispose();
+      if (syncGroup) echarts.disconnect(syncGroup);
       instance.current = null;
     };
   }, []);

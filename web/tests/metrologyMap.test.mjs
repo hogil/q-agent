@@ -5,6 +5,7 @@ import {
   interpolateAt,
   interpolateBarycentric,
   interpolateWaferGrid,
+  compositeMetrologyMaps,
   makeMetrologyFixture,
   metricColor,
   metricRange,
@@ -69,6 +70,8 @@ test('normalizes CD and signed overlay values against stable metric domains', ()
   assert.equal(normalizeMetricValue('overlay-y', 100), 1);
   assert.equal(normalizeMetricValue('overlay-magnitude', 0), 0);
   assert.equal(normalizeMetricValue('overlay-magnitude', 100), 1);
+  assert.equal(normalizeMetricValue('thk', 480), 0);
+  assert.equal(normalizeMetricValue('thk', 520), 1);
 });
 
 test('uses deterministic distinct seeds for full lot and wafer tuples', () => {
@@ -79,6 +82,23 @@ test('uses deterministic distinct seeds for full lot and wafer tuples', () => {
   assert.notDeepEqual(first.points, otherWafer.points);
   assert.match(first.sourceLabel, /SYNTHETIC fixture/);
   assert.equal(first.unit, 'nm');
+});
+
+test('provides a deterministic THK field distinct from CD on the same fixture', () => {
+  const cd = makeMetrologyFixture('LOT-A', 'W01', 'cd');
+  const thk = makeMetrologyFixture('LOT-A', 'W01', 'thk');
+  assert.deepEqual(
+    cd.points.map((point) => [point.x, point.y]),
+    thk.points.map((point) => [point.x, point.y]),
+  );
+  assert.notDeepEqual(
+    cd.points.map((point) => point.value),
+    thk.points.map((point) => point.value),
+  );
+  assert.ok(
+    thk.points.every((point) => point.value >= 480 && point.value <= 520),
+  );
+  assert.deepEqual(metricRange('thk'), [480, 520]);
 });
 
 test('uses continuous colors within fixed scales and clamps beyond their limits', () => {
@@ -153,4 +173,121 @@ test('reports measured min, median, max, and count', () => {
     ]),
     { min: 1, median: 2, max: 3, n: 3 },
   );
+});
+
+function compositeFixture(lotId, waferId, metric, points, radius = 4) {
+  return {
+    lotId,
+    waferId,
+    metric,
+    unit: 'nm',
+    radius,
+    points,
+    sourceLabel: 'SYNTHETIC fixture | no actual data | no causality claim',
+  };
+}
+
+test('composites per-wafer interpolated cells and preserves missing denominators', () => {
+  const square = [
+    { x: -3, y: -3, value: 0 },
+    { x: 3, y: -3, value: 6 },
+    { x: 3, y: 3, value: 12 },
+    { x: -3, y: 3, value: 6 },
+  ];
+  const triangle = [
+    { x: -3, y: -3, value: 10 },
+    { x: 3, y: -3, value: 16 },
+    { x: -3, y: 3, value: 16 },
+  ];
+  const result = compositeMetrologyMaps(
+    [
+      compositeFixture('LOT-A', 'W01', 'cd', square),
+      compositeFixture('LOT-A', 'W02', 'cd', triangle),
+    ],
+    4,
+    2,
+  );
+  assert.equal(result.waferCount, 2);
+  assert.equal(result.measurementCount, 7);
+  const center = result.grid.find((point) => point.x === 0 && point.y === 0);
+  assert.deepEqual(center, {
+    x: 0,
+    y: 0,
+    value: 11,
+    kind: 'estimated',
+    contributors: 2,
+  });
+  const upperRight = result.grid.find(
+    (point) => point.x === 2 && point.y === 2,
+  );
+  assert.deepEqual(upperRight, {
+    x: 2,
+    y: 2,
+    value: 10,
+    kind: 'estimated',
+    contributors: 1,
+  });
+  assert.equal(
+    result.grid.some((point) => point.x === 4 && point.y === 0),
+    false,
+  );
+});
+
+test('composite validation rejects duplicate wafers, mixed metadata, and invalid geometry', () => {
+  const fixture = compositeFixture('LOT-A', 'W01', 'cd', [
+    { x: -1, y: -1, value: 1 },
+    { x: 1, y: -1, value: 2 },
+    { x: 0, y: 1, value: 3 },
+  ]);
+  assert.deepEqual(compositeMetrologyMaps([]), {
+    grid: [],
+    waferCount: 0,
+    measurementCount: 0,
+  });
+  assert.throws(
+    () => compositeMetrologyMaps([fixture, fixture], 4),
+    /Duplicate/,
+  );
+  assert.throws(
+    () =>
+      compositeMetrologyMaps(
+        [fixture, { ...fixture, waferId: 'W02', metric: 'thk' }],
+        4,
+      ),
+    /one metric/,
+  );
+  assert.throws(
+    () =>
+      compositeMetrologyMaps(
+        [fixture, { ...fixture, waferId: 'W02', unit: 'um' }],
+        4,
+      ),
+    /one unit/,
+  );
+  assert.throws(
+    () =>
+      compositeMetrologyMaps(
+        [fixture, { ...fixture, waferId: 'W02', radius: 5 }],
+        4,
+      ),
+    /radius/,
+  );
+  assert.throws(() => compositeMetrologyMaps([], 0), /positive finite/);
+  assert.throws(() => compositeMetrologyMaps([], 4, 0), /positive finite/);
+});
+
+test('uses JSON tuple keys for distinct lot and wafer identities', () => {
+  const points = [
+    { x: -1, y: -1, value: 1 },
+    { x: 1, y: -1, value: 2 },
+    { x: 0, y: 1, value: 3 },
+  ];
+  const result = compositeMetrologyMaps(
+    [
+      compositeFixture('LOT', '\u0000W', 'cd', points),
+      compositeFixture('LOT\u0000', 'W', 'cd', points),
+    ],
+    4,
+  );
+  assert.equal(result.waferCount, 2);
 });

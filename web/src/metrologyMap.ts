@@ -2,6 +2,7 @@ import { Delaunay } from 'd3-delaunay';
 
 export type MetrologyMetric =
   | 'cd'
+  | 'thk'
   | 'overlay-x'
   | 'overlay-y'
   | 'overlay-magnitude';
@@ -36,6 +37,7 @@ export const METRIC_CONFIG: Record<
   MetricScale & { label: string }
 > = {
   cd: { label: 'CD', min: 94, max: 110, kind: 'sequential' },
+  thk: { label: 'THK', min: 480, max: 520, kind: 'sequential' },
   'overlay-x': { label: 'Overlay X', min: -2.4, max: 2.4, kind: 'diverging' },
   'overlay-y': { label: 'Overlay Y', min: -2.4, max: 2.4, kind: 'diverging' },
   'overlay-magnitude': {
@@ -88,6 +90,7 @@ export function metrologySeed(lotId: string, waferId: string): number {
 
 type SyntheticField = {
   cd: number;
+  thk: number;
   overlayX: number;
   overlayY: number;
 };
@@ -106,6 +109,11 @@ function syntheticFieldValue(
       2.8 * Math.sin(angle * 2 + phase * 6.28) +
       1.2 * Math.cos(y / 4.5 - phase * 3) +
       0.8 * radius,
+    thk:
+      500 +
+      8.5 * Math.sin(x / 5.5 - phase * 4.5) +
+      5.25 * Math.cos(y / 6.5 + phase * 2.5) +
+      2.2 * radius,
     overlayX:
       1.05 * Math.sin(x / 5 + phase * 4) - 0.42 * Math.cos(y / 4 - phase * 2),
     overlayY:
@@ -118,6 +126,7 @@ export function metricValue(
   metric: MetrologyMetric,
 ): number {
   if (metric === 'cd') return field.cd;
+  if (metric === 'thk') return field.thk;
   if (metric === 'overlay-x') return field.overlayX;
   if (metric === 'overlay-y') return field.overlayY;
   return Math.hypot(field.overlayX, field.overlayY);
@@ -303,6 +312,88 @@ export function interpolateWaferGrid(
     }
   }
   return cells;
+}
+
+export type CompositeMetrologyMap = {
+  grid: (InterpolatedPoint & { contributors: number })[];
+  waferCount: number;
+  measurementCount: number;
+};
+
+function validateCompositeInputs(
+  fixtures: readonly MetrologyFixture[],
+  radius: number,
+  step: number,
+): void {
+  if (!Number.isFinite(radius) || radius <= 0)
+    throw new Error('Wafer radius must be a positive finite value');
+  if (!Number.isFinite(step) || step <= 0)
+    throw new Error('Grid step must be a positive finite value');
+  if (fixtures.length === 0) return;
+
+  const first = fixtures[0];
+  const keys = new Set<string>();
+  for (const fixture of fixtures) {
+    const key = JSON.stringify([fixture.lotId, fixture.waferId]);
+    if (keys.has(key)) throw new Error('Duplicate lot/wafer fixture');
+    keys.add(key);
+    if (fixture.metric !== first.metric)
+      throw new Error('Composite fixtures must use one metric');
+    if (fixture.unit !== first.unit)
+      throw new Error('Composite fixtures must use one unit');
+    if (
+      !Number.isFinite(fixture.radius) ||
+      fixture.radius <= 0 ||
+      Math.abs(fixture.radius - radius) > 1e-9
+    )
+      throw new Error('Fixture radius must match the composite radius');
+  }
+}
+
+export function compositeMetrologyMaps(
+  fixtures: MetrologyFixture[],
+  radius = METROLOGY_RADIUS,
+  step = 1,
+): CompositeMetrologyMap {
+  validateCompositeInputs(fixtures, radius, step);
+  if (fixtures.length === 0)
+    return { grid: [], waferCount: 0, measurementCount: 0 };
+
+  const sums = new Map<
+    string,
+    { x: number; y: number; sum: number; contributors: number }
+  >();
+  let measurementCount = 0;
+  for (const fixture of fixtures) {
+    const measured = sanitizeMeasuredPoints(fixture.points);
+    measurementCount += measured.length;
+    for (const point of interpolateWaferGrid(measured, radius, step)) {
+      const key = `${point.x},${point.y}`;
+      const cell = sums.get(key);
+      if (cell) {
+        cell.sum += point.value;
+        cell.contributors += 1;
+      } else {
+        sums.set(key, {
+          x: point.x,
+          y: point.y,
+          sum: point.value,
+          contributors: 1,
+        });
+      }
+    }
+  }
+
+  const grid = [...sums.values()]
+    .sort((left, right) => left.y - right.y || left.x - right.x)
+    .map((cell) => ({
+      x: cell.x,
+      y: cell.y,
+      value: cell.sum / cell.contributors,
+      kind: 'estimated' as const,
+      contributors: cell.contributors,
+    }));
+  return { grid, waferCount: fixtures.length, measurementCount };
 }
 
 export function waferOutline(radius = METROLOGY_RADIUS): [number, number][] {
