@@ -2,6 +2,27 @@
 
 질문을 받아 DB를 조회하고, 근거를 검토한 뒤 답하는 Agent입니다.
 
+## 화면
+
+2026-09-22 실행 화면(1920 × 1080)입니다. 모든 사고·생산·Map 데이터는 합성이며 SEM은 AI 생성 이미지입니다. 실제 사내 데이터를 공개한 화면이 아닙니다.
+
+![Q-Agent 통합 분석 화면: 이상 목록, Trend, Map, SEM, 설비 상태와 LLM 답변](docs/images/workbench.png)
+
+로컬 LLM의 Router → Tool → Judge → Answer 실행을 완료한 화면입니다. SEM 물리 정렬이 미검증이므로 원인을 확정하지 않은 **부분 답변**을 표시합니다. 사내 시스템 SQL 표시는 합성 SQLite 연결 결과이며 운영 DB 연결을 뜻하지 않습니다.
+
+<details>
+<summary>CD·THK Point / Edge 프로파일 확대 화면</summary>
+
+측정 Point scatter와 반경별 평균선으로 중심부터 Edge까지의 변화를 확인합니다. 아래 CD 예시와 같은 컨트롤을 THK에도 제공합니다.
+
+![CD Map과 Radius 기준 Edge 프로파일](docs/images/edge-profile.png)
+
+Point 순서 모드에서는 측정점과 연결선을 함께 표시합니다. Map과 프로파일의 Point 선택은 서로 연결됩니다.
+
+![CD Map과 측정 Point 순서별 scatter 및 꺾은선](docs/images/point-profile.png)
+
+</details>
+
 ## 먼저 볼 곳은 세 군데
 
 | 할 일 | 볼 곳 |
