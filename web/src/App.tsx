@@ -53,6 +53,7 @@ import { HistoryView, InformWorkspace } from './Sources';
 import { modules } from './modules';
 import ReviewView from './ReviewView';
 import EngineeringWorkspace from './EngineeringWorkspace';
+import AnalysisReport from './AnalysisReport';
 import {
   clearReviewDraft,
   loadReviewDraft,
@@ -105,6 +106,7 @@ function Modal({
 
 export default function App() {
   const isChat = new URLSearchParams(location.search).get('view') === 'chat';
+  const [showStartupReport, setShowStartupReport] = useState(() => !location.search);
   const [bootstrap, setBootstrap] = useState<Bootstrap | null>(null);
   const [roomId, setRoomId] = useState('');
   const [room, setRoom] = useState<Room | null>(null);
@@ -208,6 +210,10 @@ export default function App() {
       .then((data) => {
         if (!active) return;
         setBootstrap(data);
+        if (showStartupReport && data.startup_report) {
+          setRoomId(data.startup_report.room_id);
+          return;
+        }
         let previous = new URLSearchParams(location.search).get('room');
         try {
           previous ||= storage?.getItem('q-agent-room') || null;
@@ -257,8 +263,10 @@ export default function App() {
           /* Optional last room preference. */
         }
         const url = new URL(location.href);
-        url.searchParams.set('room', roomId);
-        history.replaceState(null, '', url);
+        if (!showStartupReport || !bootstrap?.startup_report) {
+          url.searchParams.set('room', roomId);
+          history.replaceState(null, '', url);
+        }
         restoreReview(roomId, data.incident.incident_number);
       })
       .catch((e) => {
@@ -621,6 +629,19 @@ export default function App() {
       }
     : null;
 
+  if (showStartupReport && bootstrap?.startup_report) {
+    const report = bootstrap.startup_report;
+    return <AnalysisReport report={report} workspace={workspace}
+      onBoard={() => {
+        setShowStartupReport(false);
+        navigate('trend');
+        const url = new URL(location.href);
+        url.searchParams.set('room', report.room_id);
+        history.replaceState(null, '', url);
+      }}
+      onChat={() => location.assign(`/?view=chat&room=${encodeURIComponent(report.room_id)}`)} />;
+  }
+
   return (
     <div
       className={`app-shell ${isChat ? 'chat-view' : 'workbench-view'} ${!isChat && tab === 'trend' ? 'board-view' : ''} ${planCollapsed ? 'plan-collapsed' : ''} ${boardToolsOpen ? 'board-tools-open' : ''}`}
@@ -813,6 +834,16 @@ export default function App() {
               <Settings2 size={18} />
             </button>
             <span className="topbar-divider" />
+            {bootstrap?.startup_report && (
+              <button
+                className="icon-button"
+                title="첫 화면 분석 결과"
+                disabled={!room}
+                onClick={() => { if (persistReview()) location.assign('/'); }}
+              >
+                <FileText size={18} />
+              </button>
+            )}
             <button
               className="outline-button screen-switch"
               disabled={!room}

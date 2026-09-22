@@ -109,6 +109,69 @@ class WorkbenchLLMTests(unittest.TestCase):
         self.assertFalse(captured["settings"].data["meetings"]["enabled"])
         self.assertTrue(all(not item["enabled"] for item in captured["settings"].data["image_tools"].values()))
 
+    def test_startup_report_is_saved_llm_analysis_not_latest_chat(self):
+        self.assertIsNone(self.app.bootstrap()["startup_report"])
+        with patch.object(workbench_module, "run_agent", return_value=self._agent_result("Saved analysis")):
+            result = self.app.analysis(self.room_id, {
+                "content": "분석", "sources": ["incident"], "context": self.context,
+            })
+        self.app._append_messages(self.room_id, "follow up", [], "Later chat", [])
+        report = self.app.bootstrap()["startup_report"]
+        self.assertEqual(report["room_id"], self.room_id)
+        self.assertEqual(report["summary"], "Saved analysis")
+        self.assertEqual(report["images"], [])
+        self.assertEqual(result["analysis"]["answer_message_id"], result["messages"][-1]["id"])
+        self.assertTrue(report["synthetic"])
+
+    def test_startup_report_requires_original_message_and_matching_incident(self):
+        with patch.object(workbench_module, "run_agent", return_value=self._agent_result()):
+            result = self.app.analysis(self.room_id, {
+                "content": "분석", "sources": ["incident"], "context": self.context,
+            })
+        self.app.update_room(self.room_id, {"incident_number": "SYN-2026-02"})
+        self.assertIsNone(self.app.bootstrap()["startup_report"])
+        self.app.update_room(self.room_id, {"incident_number": "SYN-2026-01"})
+        with self.app._db() as db:
+            db.execute("DELETE FROM messages WHERE id=?", (result["messages"][-1]["id"],))
+        self.assertIsNone(self.app.bootstrap()["startup_report"])
+
+    def test_failed_analysis_does_not_become_startup_report(self):
+        with patch.object(workbench_module, "run_agent", return_value=self._agent_result(status="unavailable")):
+            with self.assertRaises(WorkbenchError):
+                self.app.analysis(self.room_id, {"content": "분석", "sources": ["incident"], "context": self.context})
+        self.assertIsNone(self.app.bootstrap()["startup_report"])
+
+    def test_report_images_are_bound_to_queried_assets_and_historical_references(self):
+        self.app.raw_data = {"SYN-2026-01": {"sem_assets": [
+            {"id": "SEM-A", "lotId": "LOT-A", "waferId": "W01", "src": "/assets/a.png",
+             "description": "Synthetic image", "provenance": "synthetic"},
+            {"id": "SEM-B", "lotId": "LOT-B", "waferId": "W02", "src": "/assets/b.png",
+             "description": "Other image", "provenance": "synthetic"},
+        ]}}
+        events = [
+            {"event": "tool_result", "source": "get_engineering_snapshot", "result": {"sections": {
+                "trend": {"stats": {"signal": {"unit": "degC", "onset_summary": {"delta": {"value": 0.2}}}}},
+                "maps": {"records": [{"incident_number": "HIST-1", "sem": {"id": "HIST-SEM-1",
+                    "src": "/assets/history.png", "occurred_at": "2025-01-01", "description": "Historical synthetic"}}]},
+            }}},
+            {"event": "tool_result", "source": "compare_sem_images", "result": {
+                "status": "INCOMPARABLE", "findings": ["Alignment not verified"],
+                "provenance": {"validated_asset_metadata": [
+                    {"asset_id": "SEM-A", "lot_id": "LOT-A", "wafer_id": "W01",
+                     "item": self.context["item"], "step": self.context["step"]},
+                    {"asset_id": "SEM-B", "lot_id": "WRONG-LOT", "wafer_id": "W02",
+                     "item": self.context["item"], "step": self.context["step"]},
+                ]},
+            }},
+        ]
+        report = self.app._analysis_report(self._agent_result(events=events), self.context)
+        self.assertEqual([row["id"] for row in report["images"]], ["SEM-A", "HIST-SEM-1"])
+        self.assertEqual(report["images"][1]["kind"], "historical")
+        self.assertEqual(report["trend"][0]["onset_summary"]["delta"]["value"], 0.2)
+        self.assertEqual(report["image_findings"][0]["status"], "INCOMPARABLE")
+        empty = self.app._analysis_report(self._agent_result(), self.context)
+        self.assertEqual(empty["images"], [])
+
     def test_validated_inspection_plan_is_displayed_with_synthetic_disclaimer(self):
         plan = [
             {"kind": "historical_match", "target": "SYN-2025-09 사고", "basis": "동일 Etch 단계와 장비군", "comparison": "원인 코드와 재발 패턴 대조", "evidence_ids": ["evidence-1"]},

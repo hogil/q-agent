@@ -96,6 +96,29 @@ export type Bootstrap = {
   incidents: Incident[];
   rooms: RoomSummary[];
   release: string;
+  startup_report?: AnalysisReportData | null;
+};
+
+export type AnalysisReportData = {
+  room_id: string;
+  title: string;
+  incident_number: string;
+  completed_at: string;
+  status: string;
+  synthetic: true;
+  context: import('./engineeringAnalysis').AnalysisContext;
+  summary: string;
+  limitations: string[];
+  trace: { role: string; model: string; step: number }[];
+  inspection_plan: { kind: string; target: string; basis: string; comparison: string; evidence_ids: string[] }[];
+  images: { id: string; kind: string; label: string; src: string; description: string; time: string; provenance: string }[];
+  trend: { unit: string; onset_summary: {
+    timestamp: string | null;
+    before: { mean: number | null; count: number };
+    after: { mean: number | null; count: number };
+    delta: { value: number; unit: string } | null;
+  } }[];
+  image_findings: { status: string; model: string; findings: string[]; limitations: string[] }[];
 };
 
 export async function api<T>(

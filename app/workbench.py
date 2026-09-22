@@ -384,7 +384,30 @@ class Workbench:
     def bootstrap(self):
         return {"synthetic": True, **self.llm_status(),
                 "incidents": self._incidents(), "rooms": [_summary(row) for row in self._rooms()],
-                "release": self.release}
+                "release": self.release, "startup_report": self._startup_report()}
+
+    def _startup_report(self):
+        # Bind the report to its saved analysis message, never a later chat reply.
+        with self.lock, self._db() as db:
+            rows = db.execute("""SELECT a.runtime, a.context, a.updated_at, r.id, r.title,
+                r.incident_number FROM analysis_scopes a JOIN rooms r ON r.id=a.room_id
+                WHERE a.incident_number=r.incident_number ORDER BY a.updated_at DESC, r.id DESC""").fetchall()
+            for row in rows:
+                runtime = json.loads(row["runtime"])
+                report = runtime.get("report")
+                if (runtime.get("mode") != "llm" or not runtime.get("llm_connected")
+                        or runtime.get("status") not in ("answered", "partial") or not report):
+                    continue
+                message = db.execute("SELECT content FROM messages WHERE id=? AND room_id=? AND role='assistant'",
+                                     (runtime.get("answer_message_id"), row["id"])).fetchone()
+                if not message or not message["content"].strip():
+                    continue
+                return {**report, "room_id": row["id"], "title": row["title"],
+                        "incident_number": row["incident_number"], "context": json.loads(row["context"]),
+                        "completed_at": row["updated_at"], "status": runtime["status"],
+                        "trace": runtime.get("trace", []), "limitations": runtime.get("limitations", []),
+                        "synthetic": True}
+        return None
 
     def llm_status(self):
         profiles = {role: self.settings.model_profile(role)["deployment"]
@@ -787,6 +810,7 @@ class Workbench:
                    "enterprise": enterprise_result,
                    "llm_metrics": [{"role": event["role"], **event["metrics"]} for event in events
                                    if event["event"] in ("llm_output", "llm_metrics") and event.get("metrics")]}
+        runtime["report"] = self._analysis_report(result, context)
         answer = result["answer"]
         labels = {"historical_match": "과거 사고 매칭", "check": "점검 권고", "eds_followup": "EDS 후속 확인"}
         for row in result.get("inspection_plan", []):
@@ -800,6 +824,41 @@ class Workbench:
                    if enterprise_result else "\n\n[합성 데이터 · LLM 생성 답변]")
         refs = [self._ref("data", context["incident_number"], incident["incident_id"], context["incident_number"])]
         return answer, refs, runtime
+
+    def _analysis_report(self, result, context):
+        report = {"summary": result["answer"], "inspection_plan": result.get("inspection_plan", []),
+                  "images": [], "trend": [], "image_findings": []}
+        record = (self.raw_data or {}).get(context["incident_number"], {})
+        assets = {asset["id"]: asset for asset in record.get("sem_assets", [])}
+        images = {}
+        for event in result.get("events", []):
+            if event.get("event") != "tool_result":
+                continue
+            data = event.get("result", {})
+            if event.get("source") == "get_engineering_snapshot":
+                sections = data.get("sections", {})
+                report["trend"] = list(sections.get("trend", {}).get("stats", {}).values())
+                for ref in sections.get("maps", {}).get("records", []):
+                    sem = ref.get("sem", {})
+                    if sem.get("src"):
+                        images[sem["id"]] = {"id": sem["id"], "src": sem["src"], "kind": "historical",
+                            "label": ref["incident_number"], "description": sem["description"],
+                            "time": sem["occurred_at"], "provenance": "조회된 과거 합성 참조 · 이미지 유사도 확정 아님"}
+            elif event.get("source") == "compare_sem_images":
+                report["image_findings"].append({"status": data.get("status"),
+                    "model": data.get("model"), "findings": data.get("findings", []),
+                    "limitations": data.get("limitations", [])})
+                for metadata in data.get("provenance", {}).get("validated_asset_metadata", []):
+                    asset = assets.get(metadata.get("asset_id"))
+                    if (asset and asset["lotId"] == metadata.get("lot_id")
+                            and asset["waferId"] == metadata.get("wafer_id")
+                            and metadata.get("item") == context["item"]
+                            and metadata.get("step") == context["step"]):
+                        images[asset["id"]] = {"id": asset["id"], "src": asset["src"], "kind": "comparison",
+                            "label": f"{asset['lotId']} / {asset['waferId']}", "description": asset["description"],
+                            "time": metadata.get("acquired_at"), "provenance": asset["provenance"]}
+        report["images"] = sorted(images.values(), key=lambda image: image["kind"] == "historical")[:6]
+        return report
 
     def analysis_metadata(self, room_id):
         with self.lock:
@@ -1021,6 +1080,7 @@ class Workbench:
         assistant = {"id": "msg-" + uuid.uuid4().hex, "role": "assistant",
                      "content": answer,
                      "created_at": _now(), "attachments": answer_attachments}
+        analysis = {**analysis, "answer_message_id": assistant["id"]}
         now = _now()
         with self.lock, self._db() as db:
             db.execute("BEGIN IMMEDIATE")
