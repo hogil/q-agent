@@ -148,6 +148,8 @@ class RoleClientTests(unittest.TestCase):
         self.assertNotIn('response_contract', payload)
         schema = options['response_format']['json_schema']['schema']
         self.assertEqual(list(schema['properties'])[:4], ['decision', 'stage', 'search_mode', 'plan'])
+        self.assertEqual(schema['properties']['intents']['maxItems'],
+                         len(schema['properties']['intents']['items']['enum']))
         variants = schema['properties']['plan']['items']['anyOf']
         find = next(v for v in variants if v['properties']['tool']['enum'] == ['find_incidents'])
         self.assertEqual(find['properties']['arguments']['properties']['city']['type'], 'string')
@@ -337,6 +339,7 @@ class RoleClientTests(unittest.TestCase):
         schema = self.create.call_args.kwargs['response_format']['json_schema']['schema']
         self.assertEqual(schema['properties']['verdict']['enum'], ['abstain'])
         self.assertEqual(schema['properties']['return_to']['enum'], ['answer'])
+        self.assertEqual(schema['properties']['issues']['minItems'], 1)
         self.make_client().call('answer', 'answer', {'judge': {'verdict': 'abstain'}}, [])
         schema = self.create.call_args.kwargs['response_format']['json_schema']['schema']
         self.assertEqual(schema['properties']['status']['enum'], ['partial', 'unavailable'])
@@ -347,6 +350,10 @@ class RoleClientTests(unittest.TestCase):
         schema = self.create.call_args.kwargs['response_format']['json_schema']['schema']
         self.assertEqual(schema['properties']['verdict']['enum'], ['abstain'])
         self.assertEqual(schema['properties']['return_to']['enum'], ['answer'])
+        self.assertEqual(schema['properties']['issues']['minItems'], 1)
+        self.make_client().call('judge', 'judge', {}, [])
+        schema = self.create.call_args.kwargs['response_format']['json_schema']['schema']
+        self.assertNotIn('minItems', schema['properties']['issues'])
 
     def test_missing_api_key_fails_at_initialization(self):
         with patch.dict('os.environ', {}, clear=True):

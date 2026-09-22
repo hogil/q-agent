@@ -384,9 +384,9 @@ class Workbench:
     def bootstrap(self):
         return {"synthetic": True, **self.llm_status(),
                 "incidents": self._incidents(), "rooms": [_summary(row) for row in self._rooms()],
-                "release": self.release, "startup_report": self._startup_report()}
+                "release": self.release, "default_room_id": self._default_room_id()}
 
-    def _startup_report(self):
+    def _default_room_id(self):
         # Bind the report to its saved analysis message, never a later chat reply.
         with self.lock, self._db() as db:
             rows = db.execute("""SELECT a.runtime, a.context, a.updated_at, r.id, r.title,
@@ -402,11 +402,7 @@ class Workbench:
                                      (runtime.get("answer_message_id"), row["id"])).fetchone()
                 if not message or not message["content"].strip():
                     continue
-                return {**report, "room_id": row["id"], "title": row["title"],
-                        "incident_number": row["incident_number"], "context": json.loads(row["context"]),
-                        "completed_at": row["updated_at"], "status": runtime["status"],
-                        "trace": runtime.get("trace", []), "limitations": runtime.get("limitations", []),
-                        "synthetic": True}
+                return row["id"]
         return None
 
     def llm_status(self):
@@ -804,7 +800,7 @@ class Workbench:
                                   else "사내 SQL 미연결: 조회용 DB 설정 필요")
         trace = [{"role": event["role"], "model": event["model"], "step": event["step"]}
                  for event in events if event["event"] == "llm_start"]
-        runtime = {"mode": "llm", "llm_connected": self.llm_connected, "steps": steps,
+        runtime = {"mode": "llm", "release": self.release, "llm_connected": self.llm_connected, "steps": steps,
                    "status": result["status"], "trace": trace, "tool_calls": result["tool_calls"],
                    "llm_calls": result["llm_calls"], "limitations": result.get("limitations", []),
                    "enterprise": enterprise_result,
@@ -826,10 +822,12 @@ class Workbench:
         return answer, refs, runtime
 
     def _analysis_report(self, result, context):
-        report = {"summary": result["answer"], "inspection_plan": result.get("inspection_plan", []),
-                  "images": [], "trend": [], "image_findings": []}
+        report = {"version": 2, "summary": result["answer"], "inspection_plan": result.get("inspection_plan", []),
+                  "images": [], "trend": [], "image_findings": [], "historical_cases": []}
         record = (self.raw_data or {}).get(context["incident_number"], {})
         assets = {asset["id"]: asset for asset in record.get("sem_assets", [])}
+        history = {asset["id"]: asset for asset in record.get("image_history", [])}
+        inform = {note["id"]: note for note in record.get("inform_notes", [])}
         images = {}
         for event in result.get("events", []):
             if event.get("event") != "tool_result":
@@ -839,6 +837,15 @@ class Workbench:
                 sections = data.get("sections", {})
                 report["trend"] = list(sections.get("trend", {}).get("stats", {}).values())
                 for ref in sections.get("maps", {}).get("records", []):
+                    case = copy.deepcopy(ref)
+                    note = inform.get(ref.get("inform_id"), {})
+                    case["title"] = note.get("title", ref["incident_number"])
+                    overlay = history.get(ref.get("overlay", {}).get("id"), {})
+                    if (overlay.get("modality") == "overlay" and overlay.get("step") == context["step"]
+                            and overlay.get("item") == context["item"]
+                            and overlay.get("incident_number") == ref["incident_number"]):
+                        case["overlay"]["vectors"] = copy.deepcopy(overlay.get("vectors", []))
+                    report["historical_cases"].append(case)
                     sem = ref.get("sem", {})
                     if sem.get("src"):
                         images[sem["id"]] = {"id": sem["id"], "src": sem["src"], "kind": "historical",

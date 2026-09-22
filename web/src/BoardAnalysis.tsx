@@ -18,7 +18,10 @@ import {
   type Bootstrap,
   type Room,
   type RoomSummary,
+  type AnalysisReportData,
+  type Workspace,
 } from './api';
+import AnalysisEvidence from './AnalysisEvidence';
 import './boardAnalysis.css';
 import {
   sameAnalysisContext as sameContext,
@@ -41,7 +44,10 @@ const sourceOptions = [
 type Analysis = {
   mode: 'demo' | 'llm';
   llm_connected: boolean;
+  release?: string;
   status?: string;
+  report?: AnalysisReportData;
+  answer_message_id?: string;
   enterprise?: {
     status: string;
     systems: {
@@ -138,6 +144,7 @@ export default function BoardAnalysis({
   roomId,
   autoKey,
   context,
+  workspace,
   onChange,
   attachments = [],
   notes = '',
@@ -148,6 +155,7 @@ export default function BoardAnalysis({
   roomId: string;
   autoKey: string;
   context: AnalysisContext;
+  workspace: Workspace;
   onChange: () => void;
   attachments?: Attachment[];
   notes?: string;
@@ -156,7 +164,7 @@ export default function BoardAnalysis({
   onOpenAttachment?: (item: Attachment) => void;
 }) {
   const [sources, setSources] = useState<string[]>(
-    sourceOptions.map(([id]) => id),
+    ['incident', 'trend', 'maps', 'sem', 'inform', 'changes'],
   );
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [runtime, setRuntime] = useState<Bootstrap | null>(null);
@@ -241,7 +249,7 @@ export default function BoardAnalysis({
     !!analysis &&
     (!sameContext(analysis.context, context) ||
       [...analysis.sources].sort().join() !== [...sources].sort().join());
-  const latest = messages
+  const latest = messages.find((message) => message.id === analysis?.answer_message_id) || messages
     .filter((message) => message.role === 'assistant')
     .at(-1);
   const currentProgress =
@@ -365,9 +373,7 @@ export default function BoardAnalysis({
                 request.requestContext.map_view?.kind === 'overlay'
                   ? '선택 Wafer의 Overlay도 비교 Tool로 확인해줘. '
                   : '') +
-                '선택 자료를 조회하고 기존 사고·Inform과 일치하는 근거와 차이를 설명해줘. ' +
-                '점검할 대상·이유·비교 방법과 현재 Lot/Wafer의 EDS 결과 유무를 적고, ' +
-                'EDS 결과가 없으면 결과 확보 후 확인할 항목을 제안해줘. 관측, 원인 후보, 미실행 점검 권고를 구분해줘.',
+                '관측 근거로 불량 의심 이유를 설명하고, 과거 사고의 불량 내용과 비교해 점검·EDS 확인 계획을 작성해줘.',
               sources: request.requestSources,
               context: request.requestContext,
             },
@@ -420,11 +426,12 @@ export default function BoardAnalysis({
 
   useEffect(() => {
     // The latest selection waits here while any run in this room is active.
-    if (loadedRoom !== roomId || effectiveBusy) return;
+    if (!runtime || loadedRoom !== roomId || effectiveBusy) return;
     const selectionKey = `${roomId}:${autoKey}`;
     if (autoStartedRef.current.has(selectionKey)) return;
     if (
       (analysis &&
+        (!runtime.llm_configured || (analysis.report?.version === 2 && analysis.release === runtime.release)) &&
         sameContext(analysis.context, context) &&
         sameSources(analysis.sources, sources)) ||
       currentProgress?.status === 'failed'
@@ -447,7 +454,7 @@ export default function BoardAnalysis({
       });
     }, 250);
     return () => window.clearTimeout(timer);
-  }, [loadedRoom, roomId, autoKey, effectiveBusy]);
+  }, [loadedRoom, roomId, autoKey, effectiveBusy, runtime?.llm_configured]);
 
   function downloadManualReview() {
     download(
@@ -678,9 +685,16 @@ export default function BoardAnalysis({
                     : '분석 완료'}{' '}
                 · {completedStepCount}개 조회 · {unavailableStepCount}개 미연결
               </div>
-              {!stale && (
-                <p className="board-analysis-answer">{latest?.content}</p>
-              )}
+              {!stale && (analysis.report ? (
+                <>
+                  <p className="board-analysis-answer board-analysis-summary">{analysis.report.summary}</p>
+                  <AnalysisEvidence report={analysis.report} context={context} workspace={workspace} />
+                  <details className="board-analysis-event-details">
+                    <summary>점검 권고 · EDS 후속 확인 · 전체 답변</summary>
+                    <p className="board-analysis-answer">{latest?.content}</p>
+                  </details>
+                </>
+              ) : <p className="board-analysis-answer">{latest?.content}</p>)}
               {enterpriseEvidence}
             </>
           ) : (
@@ -908,6 +922,8 @@ export default function BoardAnalysis({
               <article key={message.id} className={message.role}>
                 <strong>{message.role === 'user' ? '질문' : '답변'}</strong>
                 <p>{message.content}</p>
+                {message.id === analysis?.answer_message_id && analysis.report && !stale &&
+                  <AnalysisEvidence report={analysis.report} context={context} workspace={workspace} />}
               </article>
             ))}
           </div>

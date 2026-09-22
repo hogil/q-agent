@@ -49,6 +49,8 @@ class RoleClient:
             if 'available_topics' in payload:
                 schema['properties']['needs_skills']['items']['enum'] = list(payload['available_topics'])
             if structured_router:
+                intents = schema['properties']['intents']
+                intents['maxItems'] = len(intents['items']['enum'])
                 budget_remaining = payload.get('budget_remaining', 4)
                 if not isinstance(budget_remaining, int):
                     budget_remaining = 4
@@ -128,6 +130,8 @@ class RoleClient:
                         verdicts = [value for value in verdicts if value in ('pass', 'abstain')]
                         schema['properties']['return_to']['enum'] = ['answer']
                     schema['properties']['verdict']['enum'] = verdicts
+                    if 'pass' not in verdicts:
+                        schema['properties']['issues']['minItems'] = 1
                 if role == 'answer' and (payload.get('judge') or {}).get('verdict') == 'abstain':
                     schema['properties']['status']['enum'] = ['partial', 'unavailable']
                 if role == 'answer':

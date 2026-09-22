@@ -33,7 +33,7 @@ const views = [
   { key: 'residual', label: 'Res', color: '#bc5960' },
 ] as const;
 
-function vectorRenderer(color: string, gain: number): CustomSeriesRenderItem {
+export function vectorRenderer(color: string, gain: number): CustomSeriesRenderItem {
   return (_params, api) => {
     const x = Number(api.value(0)),
       y = Number(api.value(1));

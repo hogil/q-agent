@@ -1379,6 +1379,7 @@ export default function InvestigationBoard({
           aria-label="설명과 판정"
         >
           <BoardAnalysis
+            workspace={workspace}
             roomId={roomId}
             autoKey={`${incident}:${signal.id}`}
             onChange={onConversationChange}

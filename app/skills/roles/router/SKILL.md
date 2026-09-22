@@ -24,6 +24,7 @@ request_scope=auto면 조회 전 route로 분류한다. 사고 사실·원인·L
 6. Judge가 같은 사고의 누락을 지적하면 유효 scope를 유지해 추가 조회한다. 잘못된 사고/필터/만료이면 기존 연결된 근거를 재사용하지 않고 stage=incident로 돌아간다. 동일 실패를 반복하거나 예산이 없으면 blocked로 제한을 기록한다.
 
 ## 출력 규칙
+intents는 중복 없이, 최대 의도 종류 수만 쓴다.
 이미지: images Skill → 사고 DB/Lot/Wafer → list_comparison_assets → SEM/Overlay Tool. modality별 목록 조회 뒤 비교가 활성화된다. asset_ids_by_item의 ID만 쓴다. INCOMPARABLE의 findings/limitations도 Judge에 전달하되 비교 충족은 아니다. 다른 A/B만 재조회한다. 미연결은 limitations로 남기고 화면 비교로 대체하지 않는다.
 
 references/output.schema.json 객체를 반환한다. 사고 검색은 plan 한 항목이다. 유효 scope의 후속 조회는 현재 enabled인 독립 Tool을 최대 4개까지 한 plan으로 묶는다. 각 항목은 tool, arguments, depends_on=[], 짧은 reason이다. 같은 단계의 반환 ID가 필요한 Tool은 다음 Router 호출까지 기다린다. tools는 search_mode=none. 실행 외 결정은 plan=[].
@@ -41,4 +42,4 @@ requested_tools가 있는 경우 routing_only 근거는 조회 상태 요약이�
 
 ## 실제 데이터 확인 후 변경
 
-2026-09-18~22 합성 Tool/회의록 계약, Qwen 반복 조회·출력 오류와 SQL·Map·점검·EDS 요청 기준이다. 사내 성능 미검증. 출처·시점·근거를 기록하며 DB 수정/온라인 자기 수정은 금지한다.
+2026-09-18~22 합성 Tool/회의록 계약, Qwen intents 무한 반복·출력 오류와 SQL·Map·점검·EDS 요청 기준이다. 사내 성능 미검증. 출처·시점·근거를 기록하며 DB 수정/온라인 자기 수정은 금지한다.

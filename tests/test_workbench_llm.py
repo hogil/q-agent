@@ -109,37 +109,38 @@ class WorkbenchLLMTests(unittest.TestCase):
         self.assertFalse(captured["settings"].data["meetings"]["enabled"])
         self.assertTrue(all(not item["enabled"] for item in captured["settings"].data["image_tools"].values()))
 
-    def test_startup_report_is_saved_llm_analysis_not_latest_chat(self):
-        self.assertIsNone(self.app.bootstrap()["startup_report"])
+    def test_default_room_has_saved_analysis_not_only_chat(self):
+        self.assertIsNone(self.app.bootstrap()["default_room_id"])
         with patch.object(workbench_module, "run_agent", return_value=self._agent_result("Saved analysis")):
             result = self.app.analysis(self.room_id, {
                 "content": "분석", "sources": ["incident"], "context": self.context,
             })
         self.app._append_messages(self.room_id, "follow up", [], "Later chat", [])
-        report = self.app.bootstrap()["startup_report"]
-        self.assertEqual(report["room_id"], self.room_id)
+        self.assertEqual(self.app.bootstrap()["default_room_id"], self.room_id)
+        report = self.app.analysis_metadata(self.room_id)["analysis"]["report"]
         self.assertEqual(report["summary"], "Saved analysis")
         self.assertEqual(report["images"], [])
         self.assertEqual(result["analysis"]["answer_message_id"], result["messages"][-1]["id"])
-        self.assertTrue(report["synthetic"])
+        self.assertEqual(report["version"], 2)
+        self.assertEqual(result["analysis"]["release"], self.app.release)
 
-    def test_startup_report_requires_original_message_and_matching_incident(self):
+    def test_default_room_requires_original_message_and_matching_incident(self):
         with patch.object(workbench_module, "run_agent", return_value=self._agent_result()):
             result = self.app.analysis(self.room_id, {
                 "content": "분석", "sources": ["incident"], "context": self.context,
             })
         self.app.update_room(self.room_id, {"incident_number": "SYN-2026-02"})
-        self.assertIsNone(self.app.bootstrap()["startup_report"])
+        self.assertIsNone(self.app.bootstrap()["default_room_id"])
         self.app.update_room(self.room_id, {"incident_number": "SYN-2026-01"})
         with self.app._db() as db:
             db.execute("DELETE FROM messages WHERE id=?", (result["messages"][-1]["id"],))
-        self.assertIsNone(self.app.bootstrap()["startup_report"])
+        self.assertIsNone(self.app.bootstrap()["default_room_id"])
 
-    def test_failed_analysis_does_not_become_startup_report(self):
+    def test_failed_analysis_does_not_become_default_room(self):
         with patch.object(workbench_module, "run_agent", return_value=self._agent_result(status="unavailable")):
             with self.assertRaises(WorkbenchError):
                 self.app.analysis(self.room_id, {"content": "분석", "sources": ["incident"], "context": self.context})
-        self.assertIsNone(self.app.bootstrap()["startup_report"])
+        self.assertIsNone(self.app.bootstrap()["default_room_id"])
 
     def test_report_images_are_bound_to_queried_assets_and_historical_references(self):
         self.app.raw_data = {"SYN-2026-01": {"sem_assets": [
@@ -171,6 +172,30 @@ class WorkbenchLLMTests(unittest.TestCase):
         self.assertEqual(report["image_findings"][0]["status"], "INCOMPARABLE")
         empty = self.app._analysis_report(self._agent_result(), self.context)
         self.assertEqual(empty["images"], [])
+
+    def test_historical_overlay_uses_only_queried_reference_and_matching_scope(self):
+        vector = {"x": 1, "y": 2, "dx": 0.2, "dy": 0.3}
+        overlay = {"id": "OVL-1", "modality": "overlay", "incident_number": "HIST-1",
+                   "step": self.context["step"], "item": self.context["item"], "vectors": [vector]}
+        self.app.raw_data = {"SYN-2026-01": {
+            "image_history": [overlay, {**overlay, "id": "NOT-QUERIED"}],
+            "inform_notes": [{"id": "INFORM-1", "title": "Historical bridge review"}],
+        }}
+        events = [{"event": "tool_result", "source": "get_engineering_snapshot", "result": {
+            "sections": {"maps": {"records": [{"id": "REF-1", "incident_number": "HIST-1",
+                "inform_id": "INFORM-1", "overlay": {"id": "OVL-1"}}]}}}}]
+        report = self.app._analysis_report(self._agent_result(events=events), self.context)
+        self.assertEqual(len(report["historical_cases"]), 1)
+        case = report["historical_cases"][0]
+        self.assertEqual(case["title"], "Historical bridge review")
+        self.assertEqual(case["overlay"]["vectors"], [vector])
+        self.assertNotIn("vectors", events[0]["result"]["sections"]["maps"]["records"][0]["overlay"])
+        for field in ("step", "item", "incident_number", "modality"):
+            with self.subTest(field=field):
+                self.app.raw_data["SYN-2026-01"]["image_history"] = [{**overlay, field: "wrong"}]
+                invalid = self.app._analysis_report(self._agent_result(events=events), self.context)
+                self.assertNotIn("vectors", invalid["historical_cases"][0]["overlay"])
+        self.assertEqual(self.app._analysis_report(self._agent_result(), self.context)["historical_cases"], [])
 
     def test_validated_inspection_plan_is_displayed_with_synthetic_disclaimer(self):
         plan = [

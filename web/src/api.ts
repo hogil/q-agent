@@ -96,20 +96,12 @@ export type Bootstrap = {
   incidents: Incident[];
   rooms: RoomSummary[];
   release: string;
-  startup_report?: AnalysisReportData | null;
+  default_room_id?: string | null;
 };
 
 export type AnalysisReportData = {
-  room_id: string;
-  title: string;
-  incident_number: string;
-  completed_at: string;
-  status: string;
-  synthetic: true;
-  context: import('./engineeringAnalysis').AnalysisContext;
+  version: number;
   summary: string;
-  limitations: string[];
-  trace: { role: string; model: string; step: number }[];
   inspection_plan: { kind: string; target: string; basis: string; comparison: string; evidence_ids: string[] }[];
   images: { id: string; kind: string; label: string; src: string; description: string; time: string; provenance: string }[];
   trend: { unit: string; onset_summary: {
@@ -119,6 +111,15 @@ export type AnalysisReportData = {
     delta: { value: number; unit: string } | null;
   } }[];
   image_findings: { status: string; model: string; findings: string[]; limitations: string[] }[];
+  historical_cases: {
+    id: string; title: string; incident_number: string; date: string;
+    step: string; equipment: string; item: string; inform_id: string;
+    finding: string;
+    sem: { id: string; src?: string; description: string };
+    overlay: { id: string; description: string; vectors?: import('./overlayVectors').OverlayVectorPoint[] };
+    cd: { unit: string; measurements: { site: string; value: number }[] };
+    historical_eds: { yieldPct: number; bin3Pct: number; bin4Pct: number };
+  }[];
 };
 
 export async function api<T>(
