@@ -16,6 +16,7 @@ import agent
 from config_loader import DEFAULT_CONFIG, Settings, load_config
 from demo_data import generate
 from incident_tools import ToolError
+from prompt_contracts import validate_output
 from skill_loader import compile_prompt
 
 
@@ -229,7 +230,97 @@ class AgentContracts(unittest.TestCase):
                 self.assertEqual(payload['evidence_focus'][0]['observations'], {'value': 3.5})
                 self.assertEqual(payload['evidence_focus'][0]['evidence_id'], 'e2')
         for _, _, payload in client.calls[-2:]:
-            self.assertEqual(payload['evidence'][1]['result'], full)
+            projected = payload['evidence'][1]['result']
+            self.assertNotIn('observations', projected)
+            self.assertEqual({**projected, 'observations': payload['evidence_focus'][0]['observations']}, full)
+        self.assertEqual(result['evidence'][1]['result'], full)
+
+    def test_inspection_plan_is_validated_and_returned_without_execution(self):
+        def planned(payload):
+            row = {'target': 'synthetic wafer', 'basis': 'synthetic observation',
+                   'comparison': 'proposed comparison, not executed', 'evidence_ids': payload['evidence_ids']}
+            return {**answer(payload), 'inspection_plan': {
+                'historical_matches': [], 'checks': [row], 'eds_followup': row}}
+        result, client = self.run_script([self.lookup(), *self.finish_steps()[:-1], ('answer', planned)],
+                                         inspection_requested=True)
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertEqual(len(result['inspection_plan']), 2)
+        self.assertEqual(result['tool_calls'], 1)
+        self.assertTrue(client.calls[-1][2]['inspection_requested'])
+        self.assertTrue(all('inspection_requested' not in payload for _, _, payload in client.calls[:-1]))
+
+    def test_inspection_reference_ids_come_from_snapshot_evidence(self):
+        def planned(payload):
+            self.assertEqual(payload['historical_reference_evidence'], {'REF-1': ['e2']})
+            self.assertEqual(payload['verified_historical_reference_ids'], ['REF-1'])
+            row = {'target': 'synthetic wafer', 'basis': 'synthetic observation',
+                   'comparison': 'proposed comparison', 'evidence_ids': ['e2']}
+            return {**answer(payload), 'inspection_plan': {
+                'historical_matches': [{**row, 'target': 'REF-1'}],
+                'checks': [row], 'eds_followup': row}}
+        result, _ = self.run_script([
+            self.lookup(), ('router', plan(stage='tools', tool='get_engineering_snapshot')),
+            ('judge', judge), ('answer', planned)], inspection_requested=True,
+            engineering_query=Mock(return_value={'status': 'OK', 'sections': {'maps': {'records': [{'id': 'REF-1'}]}}}),
+            requested_tools=['find_incidents', 'get_engineering_snapshot'])
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertEqual(result['inspection_plan'][0]['target'], 'REF-1')
+
+    def test_inspection_contract_rejects_missing_empty_and_unknown_evidence(self):
+        context = {'evidence_ids': ['e1'], 'judge_verdict': 'pass', 'inspection_requested': True}
+        row = {'target': 'synthetic wafer', 'basis': 'observed change',
+               'comparison': 'compare before/after', 'evidence_ids': ['e1']}
+        valid = {**answer(context), 'inspection_plan': {
+            'historical_matches': [], 'checks': [row], 'eds_followup': row}}
+        self.assertTrue(validate_output('answer', valid, context))
+        with self.assertRaisesRegex(ValueError, 'HISTORICAL_COMPARISON_REQUIRED'):
+            validate_output('answer', valid, {**context, 'verified_historical_reference_ids': ['REF-1']})
+        historical = {'target': 'REF-1', 'basis': 'same step, not proven cause',
+                      'comparison': 'compare measurements', 'evidence_ids': ['e1']}
+        with_historical = {**valid, 'inspection_plan': {
+            **valid['inspection_plan'], 'historical_matches': [historical]}}
+        with self.assertRaisesRegex(ValueError, 'UNKNOWN_HISTORICAL_REFERENCE'):
+            validate_output('answer', with_historical, context)
+        self.assertTrue(validate_output('answer', with_historical,
+                                       {**context, 'historical_reference_evidence': {'REF-1': ['e1']}}))
+        self.assertTrue(validate_output('answer', {**valid, 'status': 'partial', 'limitations': ['EDS unavailable']},
+                                       {**context, 'judge_verdict': 'abstain'}))
+        self.assertTrue(validate_output('answer', {**answer(context), 'inspection_plan': None},
+                                        {**context, 'inspection_requested': False}))
+        self.assertTrue(validate_output('answer', {**answer(context)},
+                                        {**context, 'inspection_requested': False}))
+        self.assertTrue(validate_output('answer', {**answer(context), 'status': 'unavailable',
+                                                   'claims': [], 'limitations': ['No evidence']},
+                                        context))
+        cases = []
+        missing = copy.deepcopy(valid)
+        missing.pop('inspection_plan')
+        cases.append((missing, 'INSPECTION_PLAN_REQUIRED'))
+        missing_eds = copy.deepcopy(valid)
+        missing_eds['inspection_plan'].pop('eds_followup')
+        cases.append((missing_eds, 'REQUIRED'))
+        blank = copy.deepcopy(valid)
+        blank['inspection_plan']['checks'][0]['comparison'] = ' '
+        cases.append((blank, 'EMPTY_INSPECTION_FIELD'))
+        invented = copy.deepcopy(valid)
+        invented['inspection_plan']['checks'][0]['evidence_ids'] = ['fabricated']
+        cases.append((invented, 'UNKNOWN_EVIDENCE'))
+        too_many_checks = copy.deepcopy(valid)
+        too_many_checks['inspection_plan']['checks'] = [row] * 4
+        cases.append((too_many_checks, 'INSPECTION_KIND_LIMIT'))
+        too_many_historical = copy.deepcopy(with_historical)
+        too_many_historical['inspection_plan']['historical_matches'] = [historical] * 3
+        cases.append((too_many_historical, 'INSPECTION_KIND_LIMIT'))
+        unavailable = {**valid, 'status': 'unavailable', 'claims': [], 'limitations': ['No evidence']}
+        cases.append((unavailable, 'INSPECTION_PLAN_WITHOUT_REVIEWED_EVIDENCE'))
+        for output, error in cases:
+            with self.subTest(error=error), self.assertRaisesRegex(ValueError, error):
+                validate_output('answer', output, context)
+
+    def test_missing_requested_inspection_is_not_reported_as_answered(self):
+        result, _ = self.run_script([self.lookup(), *self.finish_steps()], inspection_requested=True)
+        self.assertEqual(result['status'], 'unavailable')
+        self.assertEqual(result['limitations'], ['INSPECTION_PLAN_REQUIRED'])
 
     def test_execute_skill_preflight_keeps_tool_validation(self):
         lookup = self.lookup()[1]

@@ -365,7 +365,9 @@ export default function BoardAnalysis({
                 request.requestContext.map_view?.kind === 'overlay'
                   ? '선택 Wafer의 Overlay도 비교 Tool로 확인해줘. '
                   : '') +
-                '선택 자료를 조회하고 근거, 원인 후보, 다음 확인 항목을 구분해 답해줘.',
+                '선택 자료를 조회하고 기존 사고·Inform과 일치하는 근거와 차이를 설명해줘. ' +
+                '점검할 대상·이유·비교 방법과 현재 Lot/Wafer의 EDS 결과 유무를 적고, ' +
+                'EDS 결과가 없으면 결과 확보 후 확인할 항목을 제안해줘. 관측, 원인 후보, 미실행 점검 권고를 구분해줘.',
               sources: request.requestSources,
               context: request.requestContext,
             },

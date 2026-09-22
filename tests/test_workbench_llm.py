@@ -102,11 +102,45 @@ class WorkbenchLLMTests(unittest.TestCase):
         self.assertEqual(captured["kwargs"]["selected"], [self.incident_id])
         self.assertEqual(captured["kwargs"]["request_scope"], "incident")
         self.assertEqual(captured["kwargs"]["as_of"], "2026-03-31")
+        self.assertTrue(captured["kwargs"]["inspection_requested"])
         self.assertEqual(captured["question"], "선택 사고번호: SYN-2026-01\n선택 사고의 원인을 확인해줘")
         self.assertEqual(captured["kwargs"]["context_data"]["selected_incident"], "SYN-2026-01")
         self.assertEqual(captured["kwargs"]["context_data"]["requested_sources"], ["incident", "trend"])
         self.assertFalse(captured["settings"].data["meetings"]["enabled"])
         self.assertTrue(all(not item["enabled"] for item in captured["settings"].data["image_tools"].values()))
+
+    def test_validated_inspection_plan_is_displayed_with_synthetic_disclaimer(self):
+        plan = [
+            {"kind": "historical_match", "target": "SYN-2025-09 사고", "basis": "동일 Etch 단계와 장비군", "comparison": "원인 코드와 재발 패턴 대조", "evidence_ids": ["evidence-1"]},
+            {"kind": "check", "target": "ETCH chamber 온도 로그", "basis": "현재 사고의 공정 조건 확인", "comparison": "사고 전후 평균과 허용 범위 비교", "evidence_ids": ["evidence-2"]},
+            {"kind": "eds_followup", "target": "EDS 전기 특성 결과", "basis": "후속 EDS 수신 필요", "comparison": "Fail bit 분포와 과거 매칭 사고 비교", "evidence_ids": ["evidence-3"]},
+        ]
+
+        with patch.object(workbench_module, "run_agent", return_value={
+            **self._agent_result(answer="근거 기반 분석 결과"),
+            "inspection_plan": plan,
+        }):
+            result = self.app.analysis(self.room_id, {
+                "content": "과거 사고와 점검 및 EDS 후속을 확인해줘",
+                "sources": ["incident"],
+                "context": self.context,
+            })
+
+        answer = result["messages"][-1]["content"]
+        self.assertIn("과거 사고 매칭", answer)
+        self.assertIn("대상: SYN-2025-09 사고", answer)
+        self.assertIn("근거: 동일 Etch 단계와 장비군", answer)
+        self.assertIn("비교·확인: 원인 코드와 재발 패턴 대조", answer)
+        self.assertIn("점검 권고", answer)
+        self.assertIn("대상: ETCH chamber 온도 로그", answer)
+        self.assertIn("근거: 현재 사고의 공정 조건 확인", answer)
+        self.assertIn("비교·확인: 사고 전후 평균과 허용 범위 비교", answer)
+        self.assertIn("EDS 후속 확인", answer)
+        self.assertIn("대상: EDS 전기 특성 결과", answer)
+        self.assertIn("근거: 후속 EDS 수신 필요", answer)
+        self.assertIn("비교·확인: Fail bit 분포와 과거 매칭 사고 비교", answer)
+        self.assertIn("synthetic fixture", answer)
+        self.assertIn("[합성 데이터 · LLM 생성 답변]", answer)
 
     def test_engineering_sources_are_read_by_tool_not_promoted_ui_context(self):
         self.app.raw_data = load_workbench_data({"raw_file": str(ROOT / "data/workbench/raw.example.json")}, ROOT)

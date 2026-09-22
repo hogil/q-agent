@@ -2,58 +2,12 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "verdict",
+    "coverage",
     "issues",
-    "return_to",
-    "coverage"
+    "verdict",
+    "return_to"
   ],
   "properties": {
-    "verdict": {
-      "type": "string",
-      "enum": [
-        "pass",
-        "revise",
-        "need_evidence",
-        "abstain"
-      ]
-    },
-    "issues": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": [
-          "evidence_ids",
-          "type",
-          "reason",
-          "next_action"
-        ],
-        "properties": {
-          "type": {
-            "type": "string"
-          },
-          "reason": {
-            "type": "string"
-          },
-          "evidence_ids": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "next_action": {
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
-      }
-    },
-    "return_to": {
-      "type": "string",
-      "enum": [
-        "router",
-        "answer"
-      ]
-    },
     "coverage": {
       "type": "array",
       "items": {
@@ -85,6 +39,52 @@
           }
         }
       }
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "evidence_ids",
+          "type",
+          "reason",
+          "next_action"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "evidence_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "next_action": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "revise",
+        "need_evidence",
+        "abstain"
+      ]
+    },
+    "return_to": {
+      "type": "string",
+      "enum": [
+        "router",
+        "answer"
+      ]
     }
   }
 }

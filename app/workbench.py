@@ -657,7 +657,8 @@ class Workbench:
         try:
             if self.llm_status()["llm_configured"]:
                 answer, answer_attachments, runtime = self._llm_answer(
-                    room_id, content, sources, context, include_previous_answers="context" not in body)
+                    room_id, content, sources, context, include_previous_answers="context" not in body,
+                    inspection_requested=True)
             else:
                 data = self._workspace(room["incident_number"], include_meetings="meetings" in sources)
                 answer, answer_attachments, steps = self._analysis_answer(data, sources, context)
@@ -676,7 +677,7 @@ class Workbench:
             with self.lock:
                 self.running_rooms.discard(room_id)
 
-    def _llm_answer(self, room_id, content, sources, context, include_previous_answers=True):
+    def _llm_answer(self, room_id, content, sources, context, include_previous_answers=True, inspection_requested=False):
         # UI context and earlier messages are unverified input, never tool evidence.
         incident = self._incident_map()[context["incident_number"]]
         history = [{"role": message["role"], "content": message["content"][:600]}
@@ -745,6 +746,7 @@ class Workbench:
         result = run_agent(Settings(config, self.settings.source_files), question, actor=self.actor,
                            selected=[incident["incident_id"]], request_scope="incident", as_of=self.cutoff,
                            requested_tools=requested_tools, related_search="related" in sources,
+                           inspection_requested=inspection_requested,
                            context_data=payload, engineering_query=engineering_query if engineering or enterprise else None,
                            emit=lambda event: self._analysis_event(room_id, event))
         events = result.get("events", [])
@@ -786,6 +788,12 @@ class Workbench:
                    "llm_metrics": [{"role": event["role"], **event["metrics"]} for event in events
                                    if event["event"] in ("llm_output", "llm_metrics") and event.get("metrics")]}
         answer = result["answer"]
+        labels = {"historical_match": "과거 사고 매칭", "check": "점검 권고", "eds_followup": "EDS 후속 확인"}
+        for row in result.get("inspection_plan", []):
+            answer += (f"\n\n{labels[row['kind']]}\n대상: {row['target']}\n근거: {row['basis']}"
+                       f"\n비교·확인: {row['comparison']}")
+        if result.get("inspection_plan"):
+            answer += "\n\n점검·EDS 확인은 미실행 권고이며, 조치 완료나 현재 불량 확정이 아닙니다."
         if result.get("limitations"):
             answer += "\n\n제한 사항:\n" + "\n".join(result["limitations"])
         answer += ("\n\n[합성 사고 데이터 + SQL 조회 · 출처별 synthetic 표시 확인 · LLM 생성 답변]"

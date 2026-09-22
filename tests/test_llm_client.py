@@ -261,6 +261,8 @@ class RoleClientTests(unittest.TestCase):
         client.call('answer', 'answer', {'evidence_ids': ['e7']}, [])
         output = self.create.call_args.kwargs['response_format']
         self.assertEqual(output['type'], 'json_schema')
+        self.assertEqual(list(output['json_schema']['schema']['properties']),
+                         ['claims', 'inspection_plan', 'answer', 'limitations', 'status'])
         self.assertEqual(output['json_schema']['schema']['properties']['claims']['items']
                          ['properties']['evidence_ids']['items']['enum'], ['e7'])
         client.call('judge', 'judge', {'evidence_ids': ['e2'], 'requirements': ['current question']}, [])
@@ -268,9 +270,54 @@ class RoleClientTests(unittest.TestCase):
         self.assertEqual(rows['requirement']['enum'], ['current question'])
         self.assertEqual(rows['evidence_ids']['items']['enum'], ['e2'])
         properties = self.create.call_args.kwargs['response_format']['json_schema']['schema']['properties']
+        self.assertEqual(list(properties), ['coverage', 'issues', 'verdict', 'return_to'])
         self.assertEqual(properties['coverage']['minItems'], 1)
         self.assertEqual(properties['coverage']['maxItems'], 1)
         self.assertEqual(properties['issues']['items']['properties']['evidence_ids']['items']['enum'], ['e2'])
+
+    def test_inspection_schema_keeps_required_key_nullable_for_general_answers(self):
+        self.settings.data['models']['text']['structured_outputs'] = True
+        self.create.return_value = completion(content='{}', tool_call=False)
+        client = self.make_client()
+        for requested in (False, True):
+            client.call('answer', 'answer', {'inspection_requested': requested, 'evidence_ids': ['e2']}, [])
+            schema = self.create.call_args.kwargs['response_format']['json_schema']['schema']
+            self.assertIn('inspection_plan', schema['required'])
+            self.assertEqual(set(schema['required']), set(schema['properties']))
+            inspection = schema['properties']['inspection_plan']
+            self.assertEqual(inspection['type'], ['object', 'null'])
+            self.assertEqual(inspection['required'], ['historical_matches', 'checks', 'eds_followup'])
+            self.assertEqual(inspection['properties']['checks']['minItems'], 1)
+            self.assertEqual(inspection['properties']['checks']['maxItems'], 3)
+            self.assertEqual(inspection['properties']['historical_matches']['minItems'], 0)
+            self.assertEqual(inspection['properties']['historical_matches']['maxItems'], 2)
+            for key in ('historical_matches', 'checks'):
+                self.assertEqual(inspection['properties'][key]['items']['properties']
+                                 ['evidence_ids']['items']['enum'], ['e2'])
+            self.assertEqual(inspection['properties']['eds_followup']['properties']
+                             ['evidence_ids']['items']['enum'], ['e2'])
+
+    def test_inspection_reference_targets_are_bound_to_queried_ids(self):
+        self.settings.data['models']['text']['structured_outputs'] = True
+        self.create.return_value = completion(content='{}', tool_call=False)
+        for references, verified, historical_min, historical_max in (
+                ({}, [], 0, 0), ({'REF-1': ['e2']}, [], 0, 2),
+                ({'REF-1': ['e2']}, ['REF-1'], 1, 2)):
+            self.make_client().call('answer', 'answer', {
+                'inspection_requested': True, 'evidence_ids': ['e2'],
+                'historical_reference_evidence': references,
+                'verified_historical_reference_ids': verified}, [])
+            inspection = self.create.call_args.kwargs['response_format']['json_schema']['schema']['properties']['inspection_plan']
+            self.assertEqual(inspection['properties']['historical_matches']['minItems'], historical_min)
+            self.assertEqual(inspection['properties']['historical_matches']['maxItems'], historical_max)
+            self.assertNotIn('kind', inspection['properties']['checks']['items']['properties'])
+            self.assertEqual(inspection['properties']['checks']['items']['properties']
+                             ['evidence_ids']['items']['enum'], ['e2'])
+            self.assertEqual(inspection['properties']['eds_followup']['properties']
+                             ['evidence_ids']['items']['enum'], ['e2'])
+            if references:
+                self.assertEqual(inspection['properties']['historical_matches']['items']['properties']
+                                 ['target']['enum'], ['REF-1'])
 
     def test_disabled_or_non_api_model_fails_at_initialization(self):
         for enabled, mode in ((False, 'api'), (True, 'local')):

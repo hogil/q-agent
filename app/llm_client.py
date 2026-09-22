@@ -130,6 +130,23 @@ class RoleClient:
                     schema['properties']['verdict']['enum'] = verdicts
                 if role == 'answer' and (payload.get('judge') or {}).get('verdict') == 'abstain':
                     schema['properties']['status']['enum'] = ['partial', 'unavailable']
+                if role == 'answer':
+                    # The business plan is optional via null, not a missing strict-schema key.
+                    schema['required'].append('inspection_plan')
+                    plan = schema['properties']['inspection_plan']['properties']
+                    plan['checks'].update(minItems=1, maxItems=3)
+                    plan['historical_matches'].update(minItems=0, maxItems=2)
+                    if payload.get('evidence_ids'):
+                        for row in (plan['historical_matches']['items'], plan['checks']['items'], plan['eds_followup']):
+                            row['properties']['evidence_ids']['items']['enum'] = list(payload['evidence_ids'])
+                    if 'historical_reference_evidence' in payload:
+                        references = payload['historical_reference_evidence']
+                        if references:
+                            plan['historical_matches']['items']['properties']['target']['enum'] = list(references)
+                            if payload.get('verified_historical_reference_ids'):
+                                plan['historical_matches']['minItems'] = 1
+                        else:
+                            plan['historical_matches']['maxItems'] = 0
                 options['response_format'] = {'type': 'json_schema', 'json_schema': {
                     'name': role + '_output', 'strict': True, 'schema': schema}}
         # Count the complete request, including function schemas; this is not a token budget.

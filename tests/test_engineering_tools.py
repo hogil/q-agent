@@ -86,6 +86,22 @@ class EngineeringToolsTests(unittest.TestCase):
         self.assertEqual(reference["overlay"]["id"], "SYN-HIST-OVL-RADIAL")
         self.assertEqual(reference["cd"]["unit"], "nm")
         self.assertEqual(reference["cd"]["measurements"][0]["value"], 45.2)
+        self.assertEqual(reference["historical_eds"], {
+            "edsAt": "2025-11-11T06:00:00Z", "yieldPct": 89.8,
+            "bin3Pct": 8.4, "bin4Pct": 1.8,
+            "historical_record_id": "SYN-HIST-MET-001",
+            "lotId": "SYN-HIST-MET-LOT-001", "waferId": "SYN-HIST-MET-W01",
+        })
+        self.assertEqual(reference["metadata_match_basis"]["scope_match_fields"],
+                         ["step", "item", "equipment"])
+        self.assertEqual(reference["metadata_match_basis"]["reference_join_fields"],
+                         ["historical_record_id", "lotId", "waferId"])
+        self.assertIn("historical_record_id", reference["metadata_match_basis"]["links"])
+        self.assertFalse(reference["metadata_match_basis"]["image_similarity_verified"])
+        unfiltered = self.tool(("maps",), equipment="").query(
+            "actor", [self.incident_id], "2026-03-31")
+        self.assertEqual(unfiltered["sections"]["maps"]["records"][0]["metadata_match_basis"]["scope_match_fields"],
+                         ["step", "item"])
         self.assertTrue(reference["synthetic"])
         self.assertIn("STORED_REFERENCES_ONLY", maps["limitations"])
         self.assertIn("NO_IMAGE_MODEL_ANALYSIS", maps["limitations"])
@@ -113,6 +129,13 @@ class EngineeringToolsTests(unittest.TestCase):
             EngineeringTools(raw, self.map, self.context(), ["maps"]).query(
                 "actor", [self.incident_id], "2026-03-31")
 
+    def test_maps_reject_historical_pair_that_does_not_match_reference(self):
+        raw = copy.deepcopy(self.raw)
+        raw[self.number]["historical_records"][0]["waferId"] = "different-wafer"
+        with self.assertRaisesRegex(ToolError, "INVALID_ENGINEERING_MAP_REFERENCE"):
+            EngineeringTools(raw, self.map, self.context(), ["maps"]).query(
+                "actor", [self.incident_id], "2026-03-31")
+
     def test_trend_reports_deterministic_before_after_onset_delta(self):
         result = self.tool(("trend",)).query("actor", [self.incident_id], "2026-03-31")
         stats = result["sections"]["trend"]["stats"][self.signal["id"]]
@@ -129,7 +152,7 @@ class EngineeringToolsTests(unittest.TestCase):
         self.assertAlmostEqual(onset["delta"]["value"], onset["after"]["mean"] - onset["before"]["mean"])
 
     def test_production_prioritizes_onset_state_and_reports_truncation(self):
-        result = self.tool(("production",), equipment="").query(
+        result = self.tool(("production",), equipment="", recipe="").query(
             "actor", [self.incident_id], "2026-03-31")
         states = result["sections"]["production"]["equipmentStates"]
         self.assertEqual(states["count"], 18)
@@ -147,6 +170,50 @@ class EngineeringToolsTests(unittest.TestCase):
         self.assertEqual({row['state'] for row in focus['equipment_events']}, {'DOWN', 'PM'})
         for row in focus['equipment_events']:
             self.assertIn(row, result['sections']['production']['equipmentStates']['rows'])
+
+    def test_production_reports_selected_fab_and_explicit_current_eds_absence(self):
+        result = self.tool(("production",), equipment="", recipe="").query(
+            "actor", [self.incident_id], "2026-03-31")
+        production = result["sections"]["production"]
+        self.assertEqual(production["fab"]["count"], 2)
+        self.assertEqual(production["fab"]["rows"], self.record["engineering"]["fab"][:2])
+        self.assertEqual(production["current_eds"]["status"], "not_available_in_snapshot")
+        self.assertEqual(production["current_eds"]["verification"], "pending_verification")
+        self.assertEqual(production["current_eds"]["rows"]["count"], 0)
+        self.assertEqual(production["current_eds"]["selected_fab_count"], 2)
+        self.assertEqual(production["current_eds"]["interpretation"], "not_proven_failure_or_normal")
+        self.assertIsNone(production["current_eds"]["source"])
+        self.assertEqual(result["observations"]["current_fab"], production["fab"])
+        self.assertEqual(result["observations"]["current_eds"], production["current_eds"])
+
+    def test_future_yield_shaped_row_does_not_claim_current_eds_available(self):
+        raw = copy.deepcopy(self.raw)
+        raw[self.number]["engineering"]["yields"] = [{
+            "lotId": "SYN-LOT-09-01", "waferId": "W02",
+            "measuredAt": "2026-04-01T00:00:00Z", "yieldPct": 91.0,
+        }]
+        result = EngineeringTools(raw, self.map, self.context(equipment=""), ["production"]).query(
+            "actor", [self.incident_id], "2026-03-31")
+        current_eds = result["sections"]["production"]["current_eds"]
+        self.assertEqual(current_eds["status"], "not_available_in_snapshot")
+        self.assertEqual(current_eds["rows"]["rows"], [])
+        self.assertIn("CURRENT_EDS_SOURCE_NOT_IMPLEMENTED", current_eds["limitations"])
+
+    def test_production_empty_fab_scope_has_no_current_eds_rows(self):
+        result = self.tool(("production",), **{
+            "from": "2027-01-01", "to": "2027-01-02", "equipment": "",
+        }).query("actor", [self.incident_id], "2027-01-02")
+        production = result["sections"]["production"]
+        self.assertEqual(production["fab"]["count"], 0)
+        self.assertEqual(production["current_eds"]["status"], "no_current_fab")
+        self.assertEqual(production["current_eds"]["selected_fab_count"], 0)
+        self.assertEqual(production["current_eds"]["verification"], "not_applicable_no_current_fab")
+        self.assertEqual(production["current_eds"]["rows"]["rows"], [])
+
+    def test_production_source_is_required_for_current_fab_eds_observations(self):
+        result = self.tool(("trend",)).query("actor", [self.incident_id], "2026-03-31")
+        self.assertNotIn("production", result["sections"])
+        self.assertNotIn("current_eds", result["observations"])
 
     def test_exact_xy_rectangles_exclude_gap_and_compute_stats(self):
         target = next(trace for trace in self.record["trend_fleets"][self.signal["id"]] if trace["highlighted"])

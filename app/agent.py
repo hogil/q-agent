@@ -11,17 +11,19 @@ from incident_tools import IncidentTools, ToolError
 from llm_client import LLMError, RoleClient
 from meeting_tools import MeetingTools
 from image_tools import ImageTools
-from prompt_contracts import structure, validate_output
+from prompt_contracts import inspection_rows, structure, validate_output
 from runtime_factory import open_incident_tools
 from skill_loader import compile_prompt, read_role_reference
 
 
 def run(settings, question, actor, request_scope='incident', topics=None, selected=None, emit=None, as_of=None,
-        context_data=None, engineering_query=None, requested_tools=(), related_search=True):
+        context_data=None, engineering_query=None, requested_tools=(), related_search=True, inspection_requested=False):
     if not isinstance(question, str) or not question.strip() or len(question) > 12000:
         raise ValueError('QUESTION_REQUIRED_OR_TOO_LONG')
     if not actor or not actor.strip() or request_scope not in ('auto', 'incident', 'independent'):
         raise ValueError('ACTOR_AND_VALID_REQUEST_SCOPE_REQUIRED')
+    if type(inspection_requested) is not bool:
+        raise ValueError('INVALID_INSPECTION_REQUEST')
     as_of = as_of or datetime.now(ZoneInfo(settings.data['runtime']['timezone'])).date().isoformat()
     if not isinstance(as_of, str) or date.fromisoformat(as_of).isoformat() != as_of:
         raise ValueError('AS_OF_ISO_DATE_REQUIRED')
@@ -33,6 +35,7 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
     state = {'scope_id': None, 'incident_checked': False, 'scope_valid': False,
              'budget_remaining': limits['max_tool_calls'], 'code_gate': 'PASS',
              'requirements': [question], 'request_scope': request_scope, 'judge': None,
+             'inspection_requested': inspection_requested,
              'last_error': None, 'as_of': as_of, 'incident_evidence_complete': False,
              'completed_tool': None, 'completed_tool_arguments': None,
              'lot_lookup_complete': False, 'wafer_lookup_complete': False}
@@ -63,7 +66,22 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                 'llm_calls': calls, 'tool_calls': limits['max_tool_calls'] - state['budget_remaining']}
 
     def context():
+        references = {}
+        verified = []
+        for entry in evidence:
+            if entry['source'] == 'get_engineering_snapshot':
+                rows = entry['result'].get('sections', {}).get('maps', {}).get('records', [])
+                key = 'id'
+                verified.extend(row[key] for row in rows)
+            elif entry['source'] == 'search_related_incidents':
+                rows, key = entry['result'].get('items', []), 'incident_number'
+            else:
+                continue
+            for row in rows:
+                references.setdefault(row[key], []).append(entry['id'])
         return {**state, 'available_tools': catalog, 'evidence_ids': [item['id'] for item in evidence],
+                'historical_reference_evidence': references,
+                'verified_historical_reference_ids': list(dict.fromkeys(verified)),
                 'mapped_fields': [k for k, v in settings.data['tables']['incident']['columns'].items() if v],
                 'skills_root': settings.data['paths']['skills_root'],
                 'registry_file': settings.data['paths']['registry_file']}
@@ -152,6 +170,11 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                    'available_tools': advertised_tools(),
                    'mapped_fields': context()['mapped_fields'],
                    'loaded_topics': prompt['topics'], 'available_topics': prompt['available_topics']}
+        if role != 'answer':
+            payload.pop('inspection_requested')
+        else:
+            payload['historical_reference_evidence'] = context()['historical_reference_evidence']
+            payload['verified_historical_reference_ids'] = context()['verified_historical_reference_ids']
         payload['pending_requested_tools'] = sorted(requested_tools - {entry['source'] for entry in evidence})
         payload['review_rounds_remaining'] = max(0, limits['max_answer_revisions'] - revisions)
         payload['incomparable_evidence_ids'] = [entry['id'] for entry in evidence
@@ -160,6 +183,11 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
         if context_data is not None:
             payload['context_data_unverified'] = context_data
         if role in ('judge', 'answer'):
+            # Keep observations once in evidence_focus; canonical Tool evidence stays intact.
+            payload['evidence'] = [
+                {**entry, 'result': {key: value for key, value in entry['result'].items()
+                                     if key != 'observations'}}
+                if entry['source'] == 'get_engineering_snapshot' else entry for entry in evidence]
             payload['evidence_focus'] = [
                 {'evidence_id': entry['id'], 'source': entry['source'],
                  'observations': entry['result'].get('observations'),
@@ -305,7 +333,8 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                 answer, _ = ask('answer')
                 validate_output('answer', answer, {**context(), 'judge_verdict': judge['verdict']})
                 return finish(answer['status'], answer=answer['answer'], claims=answer['claims'],
-                              limitations=answer['limitations'], judge=judge)
+                              limitations=answer['limitations'], judge=judge,
+                              inspection_plan=inspection_rows(answer.get('inspection_plan')))
 
             while calls < limits['max_agent_steps']:
                 call_id = None

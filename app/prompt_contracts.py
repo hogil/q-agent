@@ -10,6 +10,14 @@ from skill_loader import read_role_reference
 ROOT = Path(__file__).resolve().parent
 
 
+def inspection_rows(plan):
+    if plan is None:
+        return []
+    return ([{'kind': 'historical_match', **row} for row in plan['historical_matches']]
+            + [{'kind': 'check', **row} for row in plan['checks']]
+            + [{'kind': 'eds_followup', **plan['eds_followup']}])
+
+
 def structure(value, schema, path='$'):
     supported={'type','enum','required','properties','additionalProperties','items','minimum','description','title','$schema'}
     if set(schema)-supported:raise ValueError('UNSUPPORTED_SCHEMA_KEYWORD')
@@ -97,5 +105,24 @@ def validate_output(role, output, context):
             ids.append(claim['claim_id'])
             if not claim['evidence_ids'] or not set(claim['evidence_ids']).issubset(context.get('evidence_ids',[])):raise ValueError('UNKNOWN_EVIDENCE')
         if len(ids)!=len(set(ids)):raise ValueError('DUPLICATE_CLAIM_ID')
+        inspections=inspection_rows(output.get('inspection_plan'))
+        if len(inspections)>6:raise ValueError('INSPECTION_PLAN_TOO_LONG')
+        if inspections and (verdict not in ('pass','abstain') or output['status']=='unavailable'):
+            raise ValueError('INSPECTION_PLAN_WITHOUT_REVIEWED_EVIDENCE')
+        if context.get('inspection_requested') and output['status'] in ('answered','partial'):
+            kinds={row['kind'] for row in inspections}
+            if not {'check','eds_followup'}.issubset(kinds):raise ValueError('INSPECTION_PLAN_REQUIRED')
+            verified=set(context.get('verified_historical_reference_ids',[]))
+            if verified and not any(row['kind']=='historical_match' and row['target'] in verified for row in inspections):
+                raise ValueError('HISTORICAL_COMPARISON_REQUIRED')
+        if sum(row['kind']=='check' for row in inspections)>3 or sum(row['kind']=='historical_match' for row in inspections)>2:
+            raise ValueError('INSPECTION_KIND_LIMIT')
+        for row in inspections:
+            if any(not row[key].strip() for key in ('target','basis','comparison')):raise ValueError('EMPTY_INSPECTION_FIELD')
+            if not row['evidence_ids'] or not set(row['evidence_ids']).issubset(context.get('evidence_ids',[])):
+                raise ValueError('UNKNOWN_EVIDENCE')
+            if row['kind']=='historical_match':
+                reference=context.get('historical_reference_evidence',{}).get(row['target'],[])
+                if not set(reference).intersection(row['evidence_ids']):raise ValueError('UNKNOWN_HISTORICAL_REFERENCE')
     else:raise ValueError('UNKNOWN_ROLE')
     return True

@@ -2,15 +2,12 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "answer",
     "claims",
+    "answer",
     "limitations",
     "status"
   ],
   "properties": {
-    "answer": {
-      "type": "string"
-    },
     "claims": {
       "type": "array",
       "items": {
@@ -36,6 +33,52 @@
         },
         "additionalProperties": false
       }
+    },
+    "inspection_plan": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["historical_matches", "checks", "eds_followup"],
+      "properties": {
+        "historical_matches": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["target", "basis", "comparison", "evidence_ids"],
+            "properties": {
+              "target": {"type": "string"}, "basis": {"type": "string"},
+              "comparison": {"type": "string"},
+              "evidence_ids": {"type": "array", "items": {"type": "string"}}
+            }
+          }
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["target", "basis", "comparison", "evidence_ids"],
+            "properties": {
+              "target": {"type": "string"}, "basis": {"type": "string"},
+              "comparison": {"type": "string"},
+              "evidence_ids": {"type": "array", "items": {"type": "string"}}
+            }
+          }
+        },
+        "eds_followup": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["target", "basis", "comparison", "evidence_ids"],
+          "properties": {
+            "target": {"type": "string"}, "basis": {"type": "string"},
+            "comparison": {"type": "string"},
+            "evidence_ids": {"type": "array", "items": {"type": "string"}}
+          }
+        }
+      }
+    },
+    "answer": {
+      "type": "string"
     },
     "limitations": {
       "type": "array",

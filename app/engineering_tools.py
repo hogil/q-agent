@@ -236,13 +236,7 @@ class EngineeringTools:
                                 "selected": _summary(selected_values, _UNITS.get(metric)),
                                 "baseline": _summary(baseline_values, _UNITS.get(metric)),
                                 "group_stats": group_stats, "onset_summary": onset_summary}
-        pairs = {(row["lot_id"], row["wafer_id"]) for row in self.context["wafers"]}
-        fab_rows = [row for row in engineering.get("fab", [])
-                    if self._in_time_scope(row.get("timestamp"), as_of)
-                    and (not pairs or (row.get("lotId"), row.get("waferId")) in pairs)
-                    and row.get("step") == self.context["step"]
-                    and (not self.context["equipment"] or row.get("equipment") == self.context["equipment"])
-                    and (not self.context.get("recipe") or row.get("recipe") == self.context["recipe"])]
+        fab_rows = self._fab_rows(record, as_of)
         return {"signals": copy.deepcopy(signals[:MAX_ROWS]), "trend_fleets": fleets,
                 "engineering_trend": _copy_rows(trend_rows), "fab": _copy_rows(fab_rows),
                 "stats": stats, "signal_count": len(signal_ids)}
@@ -283,6 +277,7 @@ class EngineeringTools:
 
     def _production(self, record, as_of):
         engineering = record["engineering"]
+        fab_rows = self._fab_rows(record, as_of)
         wip = [row for row in engineering.get("wip", [])
                if row.get("step") == self.context["step"]
                and (not self.context["equipment"] or row.get("equipment") == self.context["equipment"])
@@ -315,6 +310,16 @@ class EngineeringTools:
             if clipped:
                 downtime.append(clipped)
         return {"wip": _copy_rows(wip), "wip_by_step_equipment_recipe": _copy_rows(list(groups.values()), MAX_WIP_GROUPS),
+                "fab": _copy_rows(fab_rows),
+                "current_eds": {"status": "not_available_in_snapshot" if fab_rows else "no_current_fab",
+                                "verification": "pending_verification" if fab_rows else "not_applicable_no_current_fab",
+                                "source": None,
+                                "snapshot_field": "engineering.yields",
+                                "rows": _copy_rows([]),
+                                "selected_fab_count": len(fab_rows),
+                                "basis": "current_eds_source_not_implemented_in_snapshot",
+                                "interpretation": "not_proven_failure_or_normal",
+                                "limitations": ["CURRENT_EDS_SOURCE_NOT_IMPLEMENTED"]},
                 "equipmentStates": _bounded_intervals(states, selected_states), "downtime": _copy_rows(downtime),
                 "detection_window": {"from": window_start.isoformat().replace("+00:00", "Z"),
                                      "to": window_end.isoformat().replace("+00:00", "Z"),
@@ -394,6 +399,9 @@ class EngineeringTools:
         informs = {row.get("id"): row for row in record.get("inform_notes", []) if isinstance(row, dict)}
         historical = {row.get("id"): row for row in record.get("historical_records", []) if isinstance(row, dict)}
         prior_cutoff = min(as_of, self.context["_from_time"])
+        scope_match_fields = ["step", "item"]
+        if self.context["equipment"]:
+            scope_match_fields.append("equipment")
         output = []
         for row in references:
             self._validate_map_record(row, history, informs, historical)
@@ -409,6 +417,7 @@ class EngineeringTools:
                 continue
             sem_ref = history[row["sem"]["image_history_id"]]
             overlay_ref = history[row["overlay"]["image_history_id"]]
+            historical_row = historical[row["historical_record_id"]]
             sem = {"id": sem_ref["id"], "occurred_at": sem_ref["occurred_at"],
                    "description": sem_ref["description"]}
             if sem_ref.get("src"):
@@ -419,6 +428,19 @@ class EngineeringTools:
                            "inform_id": row["inform_id"],
                            "historical_record_id": row["historical_record_id"],
                            "incident_number": row["incident_number"], "sem": sem,
+                           "historical_eds": {"edsAt": historical_row["edsAt"],
+                                              "yieldPct": historical_row["yieldPct"],
+                                              "bin3Pct": historical_row["bin3Pct"],
+                                              "bin4Pct": historical_row["bin4Pct"],
+                                              "historical_record_id": historical_row["id"],
+                                              "lotId": historical_row["lotId"],
+                                              "waferId": historical_row["waferId"]},
+                           "metadata_match_basis": {"scope_match_fields": scope_match_fields,
+                                                     "reference_join_fields": ["historical_record_id", "lotId", "waferId"],
+                                                     "links": ["inform_id", "historical_record_id", "sem.image_history_id",
+                                                               "overlay.image_history_id"],
+                                                     "temporal": "inform/image/historical EDS timestamps on or before reference date",
+                                                     "image_similarity_verified": False},
                            "cd": copy.deepcopy(row["cd"]),
                            "overlay": {"id": overlay_ref["id"], "occurred_at": overlay_ref["occurred_at"],
                                        "vector_count": len(overlay_ref["vectors"]),
@@ -428,8 +450,17 @@ class EngineeringTools:
         limited = output[:MAX_ROWS]
         return {"records": limited, "count": len(output), "truncated": len(output) > len(limited),
                 "truncated_count": max(0, len(output) - len(limited)),
-                "limitations": ["STORED_REFERENCES_ONLY", "NO_IMAGE_MODEL_ANALYSIS",
-                                "CORRELATION_NOT_CAUSATION"]}
+                 "limitations": ["STORED_REFERENCES_ONLY", "NO_IMAGE_MODEL_ANALYSIS",
+                                 "CORRELATION_NOT_CAUSATION"]}
+
+    def _fab_rows(self, record, as_of):
+        pairs = {(row["lot_id"], row["wafer_id"]) for row in self.context["wafers"]}
+        return [row for row in record["engineering"].get("fab", [])
+                if self._in_time_scope(row.get("timestamp"), as_of)
+                and (not pairs or (row.get("lotId"), row.get("waferId")) in pairs)
+                and row.get("step") == self.context["step"]
+                and (not self.context["equipment"] or row.get("equipment") == self.context["equipment"])
+                and (not self.context.get("recipe") or row.get("recipe") == self.context["recipe"])]
 
     def _validate_map_record(self, row, history, informs, historical):
         if not isinstance(row, dict):
@@ -519,6 +550,8 @@ class EngineeringTools:
                 if row["state"] in ("DOWN", "PM")
                 and _parse_time(row["start"]) < self.context["_to_time"]
                 and _parse_time(row["end"]) > self.context["_from_time"]]
+            observations["current_fab"] = copy.deepcopy(sections["production"]["fab"])
+            observations["current_eds"] = copy.deepcopy(sections["production"]["current_eds"])
         if "maps" in sections:
             observations["historical_references"] = copy.deepcopy(sections["maps"]["records"])
         return {"status": "OK", "synthetic": True, "sections": sections,
