@@ -153,7 +153,11 @@ def load_workbench(path: str | Path, *, raw_file=None, agent_overlay=None) -> di
     if (not isinstance(server, dict) or set(server) != {"port"}
             or type(server["port"]) is not int or not 1 <= server["port"] <= 65535):
         raise WorkbenchError("server.port must be between 1 and 65535")
-    sources = {"raw_file": str(Path(raw_file).expanduser().resolve())} if raw_file is not None else raw.get("sources")
+    sources = dict(raw.get("sources") or {})
+    if raw_file is not None:
+        sources["raw_file"] = str(Path(raw_file).expanduser().resolve())
+    if not sources:
+        sources = None
     try:
         raw_data = load_workbench_data(sources, config_path.parent)
     except ValueError as exc:
@@ -173,8 +177,8 @@ def load_workbench(path: str | Path, *, raw_file=None, agent_overlay=None) -> di
         raise WorkbenchError("cutoff must be YYYY-MM-DD") from None
     base = _path(demo["base_config"], config_path.parent)
     overlay = _path(demo["overlay"], config_path.parent)
-    if base.name != "config.yaml" or overlay.name != "demo.yaml":
-        raise WorkbenchError("synthetic workbench requires config.yaml plus demo.yaml")
+    if base.name != "config.yaml" or overlay.name not in {"demo.yaml", "engineering-demo.yaml"}:
+        raise WorkbenchError("synthetic workbench requires config.yaml plus a supported demo overlay")
     try:
         settings = load_config(base, overlay)
         overlay_path = str(Path(agent_overlay).expanduser().resolve()) if agent_overlay is not None else raw.get("agent_overlay")
@@ -216,7 +220,12 @@ def load_workbench(path: str | Path, *, raw_file=None, agent_overlay=None) -> di
         raise WorkbenchError("partial synthetic data exists; refusing to overwrite it")
     if not any(existing):
         try:
-            generate(settings, profile="basic")
+            if sources and sources.get("scenario_file"):
+                from engineering_demo import load_scenarios
+                scenarios = load_scenarios(_path(sources["scenario_file"], config_path.parent))
+                generate(settings, profile="engineering", engineering_raw=raw_data, scenarios=scenarios)
+            else:
+                generate(settings, profile="basic")
         except (OSError, ValueError, FileExistsError) as exc:
             raise WorkbenchError(f"synthetic data generation failed: {type(exc).__name__}") from None
     registry = json.loads(Path(data["paths"]["registry_file"]).read_text(encoding="utf-8"))

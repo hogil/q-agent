@@ -1,5 +1,5 @@
 {
-  "release": "quality-demo-0.58",
+  "release": "quality-demo-0.59",
   "files": {
     "skills/core/SKILL.md": "75be1efa7e5a383ec084c2a6e3f5e906ffba7cb3a659719921d7641433dbfb74",
     "skills/core/references/react.md": "c44d96d46ab4ef93ec5f66fbe458838554dd647c1039450623a140356d06ed98",
@@ -37,12 +37,12 @@
     "skills/schema/wafer-schema/SKILL.md": "e8a5f185d1a8d111c8f6490408c4a67038a44463ff69b38d4d4cecdf15fc4c0e",
     "skills/schema/wafer-schema/references/columns.json": "a53e3b4387abe203545aa56662be04e19765a54d4020c922724a8df6e3aa414c",
     "domain-data/README.md": "a71133988f6e5d858891d9a5beb9d7a317a1ac0b5cdb345cc36f70a1df024cc3",
-    "skill_registry.json": "5ebeed9c95d3c667abdf28031f01518681c76e796dfd8ffff2906397ff088a3b",
+    "skill_registry.json": "2640854b705b777ce866176227e568207374a5b9260f33f91089e04465c30afb",
     "incident_tools.py": "253315ef5e4053af22c8f6f69617abf190d52f1493e70c47bb844e991098f672",
     "incident_filters.py": "bc10eed273d0ca59487fb582d6ba85e51f32de433001c399ab8f65943508084e",
     "terminology.py": "33e7e35520653a3f0751d690855d70b2de99ba86b9351d1e1c48548ddff722b1",
     "prompt_contracts.py": "1bf95d6717d907e005428a9001b701ff4be64c693843c92147a26397cc0ecabf",
-    "skill_loader.py": "9d2ecfa319f66e143afbc7faeacf8f9d5e941eab27c49dd8560b437cef1280fb",
+    "skill_loader.py": "28be10f37ca9f96d1f24e53a0858d644a37352524e89182bf9d60ba5b4456e00",
     "config_loader.py": "ee9f905cd3920c5b2585eacec833dd45b1fc591fdcc3584116fccc307c8a919c",
     "runtime_factory.py": "72122ec281b8dc9fbdf48444b9fa551c7740dade51a13be9cc053bd629592c34",
     "run_agent.py": "0cb45b19546aa84d419975bf56c29149c42bccaba5f233572482a376d7637ed8",
@@ -53,7 +53,8 @@
     "image_tools.py": "30b3a183b87c4bd47e190db9b232e900e6b05a5b35cf5ff6dbb30b491eec3dff",
     "engineering_tools.py": "c86a8f4d24fe02fec6fa3b3d499cd6ba9761e3b5a789e28ff684d29935aaef1b",
     "enterprise_tools.py": "7d2e7ce1e05045dab1736d5b93a210e402de0abb5836b37f7d434f7fbb5df216",
-    "demo_data.py": "24388ba61024a9f5cc4c468de4083aaf390b12cc9106cdf58f0befba363d3e23",
+    "demo_data.py": "3ba3dfc12a7e4160ae35d765e3282878fa964c7d73f3a67aa5357171c21f543e",
+    "engineering_demo.py": "e510d1a720d52ddab13572833b2c30321d6858dee4c4e15e2f24198d5bd9c939",
     "golden.py": "dac13edce02bdfeaafcfb0ce831adfb93156778ead1bdffef42167567192c31d"
   }
 }

@@ -440,9 +440,9 @@ def _publish(staged: Path, outputs: list[tuple[Path, str]]) -> None:
         raise
 
 
-def generate(settings: Any, profile: str = "basic") -> dict[str, Any]:
+def generate(settings: Any, profile: str = "basic", *, engineering_raw=None, scenarios=None) -> dict[str, Any]:
     """Create demo/test data and return absolute output paths and fixture counts."""
-    if profile not in ("basic", "hard"):
+    if profile not in ("basic", "hard", "engineering"):
         raise ValueError("unknown demo data profile: " + str(profile))
     environment = settings.data.get("environment")
     if environment not in _ENVIRONMENTS:
@@ -480,7 +480,27 @@ def generate(settings: Any, profile: str = "basic") -> dict[str, Any]:
         lot_rows = _lot_rows(incident_rows)
         wafer_rows = _wafer_rows(lot_rows)
         meeting_rows = _meeting_rows()
-        golden_rows = _goldens()
+        golden_rows = [] if profile == "engineering" else _goldens()
+    if profile == "engineering":
+        if not engineering_raw or not scenarios:
+            raise ValueError("engineering profile requires validated raw data and scenarios")
+        from engineering_demo import linked_rows
+        history, historical_lots, historical_wafers, reviews = linked_rows(engineering_raw, incident_rows, scenarios)
+        for row in incident_rows:
+            record = engineering_raw.get(row["incident_number"])
+            if record:
+                items = list(dict.fromkeys(ref["item"] for ref in record.get("defect_references", [])))
+                row.update(title="공정·이미지 종합 분석 " + row["incident_number"],
+                           incident_detail="합성 현재 조사 대상: " + ", ".join(items),
+                           analysis_detail="\n".join(
+                               f"{item}: {scenarios['cases'][item]['hypothesis']}; "
+                               f"반대 근거: {scenarios['cases'][item]['counterevidence']}" for item in items),
+                           confirmed_cause=None, corrective_action="점검 권고 단계; 미실행",
+                           verification=None, remaining="현재 EDS 대기; 과거 원인을 현재 원인으로 단정하지 않음")
+        incident_rows.extend(history)
+        lot_rows.extend(historical_lots)
+        wafer_rows.extend(historical_wafers)
+        meeting_rows.extend(reviews)
     stage_parent = root if root.exists() else root.parent
     stage_parent.mkdir(parents=True, exist_ok=True)
     stage = Path(tempfile.mkdtemp(prefix=".demo-data-", dir=stage_parent))

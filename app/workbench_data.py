@@ -512,8 +512,8 @@ def load_workbench_data(sources: object, base_dir: str | Path) -> dict[str, dict
         return None
     if not isinstance(sources, dict):
         _fail("sources must be an object")
-    if set(sources) != {"raw_file"}:
-        _fail("sources may only contain raw_file")
+    if "raw_file" not in sources or set(sources) - {"raw_file", "scenario_file"}:
+        _fail("sources may only contain raw_file and optional scenario_file")
     raw_file = sources["raw_file"]
     if not isinstance(raw_file, str) or not raw_file.strip():
         _fail("sources.raw_file must be a local path")
@@ -543,7 +543,14 @@ def load_workbench_data(sources: object, base_dir: str | Path) -> dict[str, dict
     incidents = _object(root["incidents"], "incidents")
     if not incidents:
         _fail("incidents must not be empty")
-    return {
+    records = {
         _string(number, "incident number"): _validate_incident(number, record)
         for number, record in incidents.items()
     }
+    if "scenario_file" in sources:
+        from engineering_demo import enrich_raw, load_scenarios
+        scenario_path = Path(_string(sources["scenario_file"], "scenario_file")).expanduser()
+        if not scenario_path.is_absolute():
+            scenario_path = Path(base_dir) / scenario_path
+        records = enrich_raw(records, load_scenarios(scenario_path))
+    return records

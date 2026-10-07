@@ -2,9 +2,9 @@
 config_version: 1
 demo:
   base_config: config.yaml
-  overlay: demo.yaml
+  overlay: engineering-demo.yaml
 chat:
-  sqlite_file: ../var/data/workbench/conversations.sqlite
+  sqlite_file: ../var/data/workbench-v2/conversations.sqlite
   history_limit: 40
 cutoff: 2026-03-31
 static_root: ../web/dist
@@ -12,6 +12,7 @@ server:
   port: 8787
 sources:
   raw_file: ../data/workbench/raw.example.json
+  scenario_file: ../data/workbench/scenarios.json
 # Synthetic 300mm wafer assumption for the demo; not verified real data.
 wafer_geometry:
   radius_mm: 150

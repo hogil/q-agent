@@ -1,0 +1,5 @@
+environment: demo
+paths:
+  data_root: ../var/data/engineering-demo-v2
+meetings:
+  enabled: true
