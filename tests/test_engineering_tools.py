@@ -62,6 +62,20 @@ class EngineeringToolsTests(unittest.TestCase):
         with self.assertRaisesRegex(ToolError, "INCIDENT_SCOPE_MISMATCH"):
             self.tool().query("actor", [self.incident_id, "second-id"], "2026-03-31")
 
+    def test_saved_maps_are_scoped_and_summary_matches_original_points(self):
+        result = self.tool(("maps",), equipment="", recipe="").query("actor", [self.incident_id], "2026-03-31")
+        assets = result["sections"]["maps"]["assets"]
+        self.assertTrue(assets)
+        pairs = {(w["lot_id"], w["wafer_id"]) for w in self.context()["wafers"]}
+        for asset in assets:
+            self.assertIn((asset["lot_id"], asset["wafer_id"]), pairs)
+            self.assertEqual(len(asset["sha256"]), 64)
+            self.assertAlmostEqual(asset["summary"]["cd"]["mean"],
+                sum(p["value"] for p in asset["cd"]) / len(asset["cd"]), places=5)
+            self.assertIn("current EDS unavailable", asset["summary"]["eds_bin_status"])
+        future = self.tool(("maps",)).query("actor", [self.incident_id], "2020-01-01")
+        self.assertEqual(future["sections"]["maps"]["assets"], [])
+
     def test_as_of_excludes_future_inform_and_changes(self):
         result = self.tool().query("actor", [self.incident_id], "2026-03-27")
         for row in result["sections"]["inform"]["rows"]:
@@ -164,6 +178,8 @@ class EngineeringToolsTests(unittest.TestCase):
     def test_focus_observations_preserve_actual_state_and_source_values(self):
         result = self.tool(("trend", "production", "maps")).query("actor", [self.incident_id], "2026-03-31")
         focus = result["observations"]
+        self.assertEqual(focus["selected_signal"], [{key: self.signal[key]
+                         for key in ("id", "item", "title", "metric", "step")}])
         self.assertEqual(focus["trend_onset"][self.signal["id"]],
                          result["sections"]["trend"]["stats"][self.signal["id"]]["onset_summary"])
         self.assertEqual(focus["historical_references"], result["sections"]["maps"]["records"])

@@ -73,7 +73,9 @@ SPEC = {
     'runtime': dict(timezone=str, default_page_size=int, max_page_size=int,
                     max_scope_incidents=int, scope_ttl_seconds=int, max_tool_calls=int,
                     max_parallel_tools=int, max_retries=int, max_answer_revisions=int,
-                    max_agent_steps=int, max_context_characters=int, prompt_examples=bool),
+                    max_agent_steps=int, max_context_characters=int, prompt_examples=bool,
+                    conversation_memory=dict(candidate_messages=int, recent_turns=int, recalled_turns=int,
+                                             router_characters=int, review_characters=int)),
 }
 
 
@@ -315,6 +317,16 @@ def validate_values(data):
     if data['actions']['require_approval'] is not True:
         raise ConfigError('actions.require_approval must remain true')
     rt = data['runtime']
+    memory = rt['conversation_memory']
+    for key, lower, upper in (('candidate_messages', 2, 1000), ('recent_turns', 1, 10),
+                              ('recalled_turns', 0, 10), ('router_characters', 1024, 20000),
+                              ('review_characters', 1024, 40000)):
+        if not lower <= memory[key] <= upper:
+            raise ConfigError(f'runtime.conversation_memory.{key}: value in {lower}..{upper} required')
+    if memory['router_characters'] > memory['review_characters']:
+        raise ConfigError('runtime.conversation_memory: router budget exceeds review budget')
+    if 2 * (memory['recent_turns'] + memory['recalled_turns']) > memory['candidate_messages']:
+        raise ConfigError('runtime.conversation_memory: candidate_messages must cover selected turns')
     for key in ('default_page_size', 'max_page_size', 'max_scope_incidents', 'max_tool_calls', 'max_parallel_tools', 'max_agent_steps', 'max_context_characters'):
         if rt[key] < 1:
             raise ConfigError(f'runtime.{key}: positive value required')

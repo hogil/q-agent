@@ -15,9 +15,12 @@ export type SemAsset = {
   id: string;
   lotId: string;
   waferId: string;
+  item?: string;
   src: string;
   provenance: string;
   description: string;
+  pattern?: string;
+  analysis_mode?: 'classifier' | 'visual_only';
 };
 
 export function filterSemWafers(rows: readonly FabRow[], query: string): FabRow[] {
@@ -87,10 +90,16 @@ export function semRecord(
   workspace: Workspace,
   lotId: string,
   waferId: string,
-) {
-  if (workspace.raw) return workspace.raw.sem_assets.find(
-    (asset) => asset.lotId === lotId && asset.waferId === waferId,
-  ) || null;
+  item?: string,
+): SemAsset | null {
+  if (workspace.raw) {
+    const matches = workspace.raw.sem_assets.filter(
+      (asset) => asset.lotId === lotId && asset.waferId === waferId,
+    );
+    if (!item) return matches.length === 1 ? matches[0] : null;
+    return matches.find((asset) => asset.item === item)
+      || matches.find((asset) => !asset.item) || null;
+  }
   const owners = [...workspace.wafers].sort(
     (a, b) =>
       a.lot_id.localeCompare(b.lot_id) || a.wafer_id.localeCompare(b.wafer_id),

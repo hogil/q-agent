@@ -16,6 +16,7 @@ import {
   DataZoomComponent,
   BrushComponent,
   LegendComponent,
+  VisualMapComponent,
 } from 'echarts/components';
 import type { TooltipComponentOption } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
@@ -47,6 +48,7 @@ echarts.use([
   DataZoomComponent,
   BrushComponent,
   LegendComponent,
+  VisualMapComponent,
   CanvasRenderer,
 ]);
 

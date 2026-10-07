@@ -1,4 +1,116 @@
 {
+  "synthetic-sem-pillars-v2.png": {
+    "synthetic": true,
+    "generator": "built-in image_gen",
+    "date": "2026-09-22",
+    "prompt": "Use case: scientific-educational. Create ONE square synthetic grayscale top-down SEM-style image of an orthogonal array of solid circular semiconductor pillars, about 9 by 9. These are RAISED SOLID DOTS, not holes: light grey solid top faces, brighter thin edge rims and dark narrow edge shading on a dark grey substrate. Some pillar diameters vary slightly and a few are oval; all remain separate on a regular lattice. Very different visual from vertical lines or dark contact holes. Fine SEM grain, inspectable edges, straight-on top view, no tilted perspective, no dramatic lighting. No particles, no text, no scale bars, no collage. Synthetic uncalibrated illustration for software demo, not genuine microscope evidence.",
+    "limitations": "Uncalibrated synthetic illustration; Item association is a demo assignment, not a process/defect relationship. Reused across demo wafers. No verified registration or dimensional measurements; visual descriptors only, classifier disabled."
+  },
+  "synthetic-sem-pillars-reference-v2.png": {
+    "synthetic": true,
+    "generator": "built-in image_gen",
+    "date": "2026-09-22",
+    "prompt": "Use case: precise-object-edit. Edit the supplied synthetic SEM-like pillar array into its uniform comparison reference: all 9 by 9 solid pillars have equal medium diameter and circular top outlines. Keep each grid center, image framing, grayscale tones, fine texture and appearance otherwise unchanged. No text, no scale bar, no annotations. Synthetic uncalibrated illustration, not real microscopy.",
+    "limitations": "Uncalibrated synthetic illustration; Item association is a demo assignment, not a process/defect relationship. Reused across demo wafers. No verified registration or dimensional measurements; visual descriptors only, classifier disabled."
+  },
+  "synthetic-sem-lineends-v2.png": {
+    "synthetic": true,
+    "generator": "built-in image_gen",
+    "date": "2026-09-22",
+    "prompt": "Use case: scientific-educational. ONE square synthetic grayscale top-down SEM-style field of staggered SHORT HORIZONTAL resist bars, not full-height parallel lines. Arrange 8 rows of finite bars with rounded ends; 4 bars per row, brick-like staggered layout. Dark substrate, midgrey bar tops, bright edge rims and fine SEM texture. Several opposing bar tips in middle have pulled back, making tip-to-tip gaps 25 percent wider; a few short bars modestly shorter. Intact bars, no bridge, no particles. Visible pattern character is line ends and tip-to-tip spacing, very different from grating, circular holes or dot arrays. Straight-down flat viewpoint, no diagram lines, no labels, no scale bars, no collage. Uncalibrated synthetic software illustration, no real microscopy.",
+    "limitations": "Uncalibrated synthetic illustration; Item association is a demo assignment, not a process/defect relationship. Reused across demo wafers. No verified registration or dimensional measurements; visual descriptors only, classifier disabled."
+  },
+  "synthetic-sem-lineends-reference-v2.png": {
+    "synthetic": true,
+    "generator": "built-in image_gen",
+    "date": "2026-09-22",
+    "prompt": "Use case: precise-object-edit. Use the supplied synthetic SEM short-bar array as edit target. Make the reference counterpart: regularize the lengths of the short horizontal bars and restore the widened tip gaps near the center to the ordinary repeated tip spacing. Keep the staggered rows, overall pattern identity, approximate bar thickness, frame, SEM grayscale tones and grain. No text, scale bar or annotations. Uncalibrated synthetic illustration, not actual metrology.",
+    "limitations": "Uncalibrated synthetic illustration; Item association is a demo assignment, not a process/defect relationship. Reused across demo wafers. No verified registration or dimensional measurements; visual descriptors only, classifier disabled."
+  },
+  "synthetic-sem-corners-v2.png": {
+    "synthetic": true,
+    "generator": "built-in image_gen",
+    "date": "2026-09-22",
+    "prompt": "Use case: scientific-educational. ONE square grayscale synthetic SEM-style top-down image of dense Manhattan semiconductor interconnect patterns made of nested right-angle L-shaped traces and some T-junctions. Repeat 4 by 4 small routing cells with alternating orientations, midgrey solid metal lines and thin bright SEM edge rims on dark grey substrate, fine realistic grain. Several inside corners are visibly rounded and one or two bends locally narrowed, but no broken wires or bridging. Must look like angular logic routing, not long parallel grating or circular holes. Straight-down uncalibrated educational micrograph-like illustration; no labels, no scale bar, no annotations, no diagram arrows, no collage.",
+    "limitations": "Uncalibrated synthetic illustration; Item association is a demo assignment, not a process/defect relationship. Reused across demo wafers. No verified registration or dimensional measurements; visual descriptors only, classifier disabled."
+  },
+  "synthetic-sem-corners-reference-v2.png": {
+    "synthetic": true,
+    "generator": "built-in image_gen",
+    "date": "2026-09-22",
+    "prompt": "Use case: precise-object-edit. Edit the supplied synthetic angular routing SEM-style illustration into a comparison reference: preserve the same routing topology and layout, but make line widths uniform, restore narrowed segments and make inside corners consistently tighter and less rounded. Preserve frame, grayscale, SEM texture. No text, labels or scale bar. An uncalibrated synthetic software-demo image, not real device evidence.",
+    "limitations": "Uncalibrated synthetic illustration; Item association is a demo assignment, not a process/defect relationship. Reused across demo wafers. No verified registration or dimensional measurements; visual descriptors only, classifier disabled."
+  },
+  "synthetic-sem-slots-v2.png": {
+    "synthetic": true,
+    "generator": "built-in image_gen",
+    "date": "2026-09-22",
+    "prompt": "Use case: scientific-educational. ONE square synthetic grayscale top-down SEM-style image of elongated SLOT CONTACT holes: about 7 columns by 6 rows of vertical capsule-shaped dark openings, aspect ratio approximately 3:1. Bright narrow raised-looking edge emission rims on flat medium grey substrate, fine grain, no perspective. Most slot centers form a regular array. A few slots have uneven width and bulged or tapered ends, giving visible shape variation but no missing or merged holes. Make these unmistakably long oval/capsule holes, not circular holes or positive bright solid bars. Full-frame micrograph-like educational illustration, uncalibrated synthetic, no text, scale bar, labels, colored outlines or collage.",
+    "limitations": "Uncalibrated synthetic illustration; Item association is a demo assignment, not a process/defect relationship. Reused across demo wafers. No verified registration or dimensional measurements; visual descriptors only, classifier disabled."
+  },
+  "synthetic-sem-slots-reference-v2.png": {
+    "synthetic": true,
+    "generator": "built-in image_gen",
+    "date": "2026-09-22",
+    "prompt": "Use case: precise-object-edit. Edit the supplied synthetic SEM-style slot-contact array to a uniform reference. Preserve the exact array layout and centers, dark open slots, substrate texture and grayscale. Make each vertical capsule opening the same length and width with straight parallel sides and matching rounded ends. Remove bulges, tapered widths and asymmetry. No text or scale bar or annotations. Synthetic uncalibrated illustration only.",
+    "limitations": "Uncalibrated synthetic illustration; Item association is a demo assignment, not a process/defect relationship. Reused across demo wafers. No verified registration or dimensional measurements; visual descriptors only, classifier disabled."
+  },
+  "synthetic-sem-serpentine-v2.png": {
+    "synthetic": true,
+    "generator": "built-in image_gen",
+    "date": "2026-09-22",
+    "prompt": "Use case: scientific-educational. ONE square grayscale synthetic top-down SEM-style image of three side-by-side semiconductor serpentine meander test traces. Each trace repeatedly runs horizontally back and forth through tight 180-degree hairpin U bends, about 10 turns from top to bottom. Thin mid-grey conductive lines, bright thin edge rims, dark textured substrate, fine SEM grain. Some U bends have slightly tighter gaps and subtle local narrowing, but every meander is continuous and adjacent runs never touch. Unmistakable repeated U-turn routing, not simple grating, isolated bars or contact holes. Straight-down flat view, inspectable full frame, no labels, no scale bar, no colored annotations or collage. Uncalibrated synthetic software illustration only.",
+    "limitations": "Uncalibrated synthetic illustration; Item association is a demo assignment, not a process/defect relationship. Reused across demo wafers. No verified registration or dimensional measurements; visual descriptors only, classifier disabled."
+  },
+  "synthetic-sem-serpentine-reference-v2.png": {
+    "synthetic": true,
+    "generator": "built-in image_gen",
+    "date": "2026-09-22",
+    "prompt": "Use case: precise-object-edit. Make a uniform reference counterpart of the provided synthetic SEM serpentine illustration. Keep the three continuous meander paths, same frame and grayscale SEM-style texture. Regularize run-to-run spacing, trace width and U-bend radius so repeated turns are consistent; remove local necking and tight-gap variation. Keep all paths continuous and separate. No text, scale bar, annotations or collage. Synthetic uncalibrated visual only, not actual measurement.",
+    "limitations": "Uncalibrated synthetic illustration; Item association is a demo assignment, not a process/defect relationship. Reused across demo wafers. No verified registration or dimensional measurements; visual descriptors only, classifier disabled."
+  },
+  "synthetic-sem-thin-v2.png": {
+    "synthetic": true,
+    "generator": "built-in image_gen",
+    "date": "2026-09-22",
+    "prompt": "Use case: scientific-educational. Asset type: synthetic SEM-style bitmap for a semiconductor analysis demo, not real microscope evidence. Create ONE square grayscale top-down micrograph-like field, no collage, no labels, no text, no scale bar. Show 16 long continuous mostly vertical parallel semiconductor resist lines, dark trenches and bright narrow edge rims, subtle realistic fine SEM noise on dark grey substrate, clearly resolved edges. Most lines have similar widths. Three lines have localized gentle necking: much thinner across a smooth extended segment but never broken; one line is uniformly narrower. Keep every line separate, no bridges, no particles, no catastrophic defects. Uncalibrated illustrative pattern, not quantitative metrology. Full-bleed tightly framed straight-on top view, consistent focus and lighting, 1024x1024.",
+    "limitations": "Uncalibrated synthetic illustration, reused across demo wafers. No measured CD, LER/LWR, contact diameter, physical registration, incident match or defect verdict. Existing bridge/open classifier is disabled for these assets."
+  },
+  "synthetic-sem-wavy-v2.png": {
+    "synthetic": true,
+    "generator": "built-in image_gen",
+    "date": "2026-09-22",
+    "prompt": "Use case: scientific-educational. Asset type: synthetic SEM-style image for a semiconductor demo, not real microscope data. ONE square grayscale top-down field of 15 continuous thin parallel photoresist lines running vertically. The centerline paths undulate with gentle irregular long-wavelength bends; several neighbors meander together, others slightly differently, with fine short-scale edge roughness. Nominal widths relatively uniform; lines remain separated and continuous. Visibly wavy and irregular, NOT perfect sinusoidal traces and not ruler-straight. Bright narrow SEM edge rims, mid-grey line interiors and dark grey trenches, fine realistic grain. Full-bleed straight top view, no perspective, no labels, no text, no scale bars, no collage, no particles, no bridge/open defects. Illustrative uncalibrated visual only.",
+    "limitations": "Uncalibrated synthetic illustration, reused across demo wafers. No measured CD, LER/LWR, contact diameter, physical registration, incident match or defect verdict. Existing bridge/open classifier is disabled for these assets."
+  },
+  "synthetic-sem-alternating-v2.png": {
+    "synthetic": true,
+    "generator": "built-in image_gen",
+    "date": "2026-09-22",
+    "prompt": "Use case: scientific-educational. ONE square synthetic grayscale SEM-like top-down image of parallel continuous vertical lithography lines. The salient feature is alternating geometry, paired unequal lines: repeating thick line then thin line (approximately 1.8 to 1 width ratio), also narrow gap within each pair and wide gap between adjacent pairs. 8 pairs, 16 lines across field. All lines continuous and separate, mostly straight with tiny natural edge roughness. Must visibly communicate unequal line widths and alternating narrow-wide spaces, not an evenly spaced uniform grating. Mid-grey line interiors, white-grey thin edge emission and charcoal trenches, fine SEM-style noise; sharp straight-on top view full bleed. No bridges, no breaks, no particles, no labels, no numbers, no scale bar, no collage. Uncalibrated synthetic illustrative image for software demo, not genuine microscope evidence.",
+    "limitations": "Uncalibrated synthetic illustration, reused across demo wafers. No measured CD, LER/LWR, contact diameter, physical registration, incident match or defect verdict. Existing bridge/open classifier is disabled for these assets."
+  },
+  "synthetic-sem-contact-v2.png": {
+    "synthetic": true,
+    "generator": "built-in image_gen",
+    "date": "2026-09-22",
+    "prompt": "Use case: scientific-educational. ONE square synthetic SEM-style grayscale top-down image of a semiconductor contact-hole array for a software demo, NOT genuine microscope data. Approximately 9 by 9 circular holes on a regular orthogonal grid in a flat mid-grey textured surface. Dark hole interiors, bright thin edge-emission rims, subtle fine grain, sharp focus, straight-down view not tilted. Hole centers remain on-grid; diameters noticeably vary from small to large among neighbors, a few openings are slightly elliptical with irregular rims. Most are round. All holes are open and separate, no missing holes and no merging. Difference is local contact size/roundness non-uniformity, not particles or bridges. Fill the frame, no labels, no text, no scale bar, no panel layout, no colored annotations. Uncalibrated illustrative visual.",
+    "limitations": "Uncalibrated synthetic illustration, reused across demo wafers. No measured CD, LER/LWR, contact diameter, physical registration, incident match or defect verdict. Existing bridge/open classifier is disabled for these assets."
+  },
+  "synthetic-sem-contact-reference-v2.png": {
+    "synthetic": true,
+    "generator": "built-in image_gen",
+    "date": "2026-09-22",
+    "prompt": "Use case: precise-object-edit. Edit target: the supplied synthetic SEM-style contact-hole illustration. Create the uniform reference counterpart. Change only hole geometry: every hole should now have the same diameter, approximately the median size in the reference, and be circular. Preserve the 9 by 9 grid positions, framing, grayscale tones, substrate texture, lighting and SEM grain. Every hole stays open and separate. No extra holes, labels, scale bar, text, arrows or collage. Keep this an uncalibrated synthetic illustration, not real measurement evidence.",
+    "limitations": "Uncalibrated synthetic illustration, reused across demo wafers. No measured CD, LER/LWR, contact diameter, physical registration, incident match or defect verdict. Existing bridge/open classifier is disabled for these assets."
+  },
+  "synthetic-sem-line-reference-v2.png": {
+    "synthetic": true,
+    "generator": "built-in image_gen",
+    "date": "2026-09-22",
+    "prompt": "Use case: precise-object-edit. Edit target: supplied synthetic SEM-style line image. Make its uniform reference counterpart. Change only line geometry: remove every locally necked segment and make all line widths equal to the common width of the original. Keep same number and positions of vertical lines, consistent original pitch, identical full-frame composition, grayscale substrate and SEM-like texture. Continuous separate straight lines with slight fine edge roughness; no bridges or particles. No labels, no scale bar, no numbers, no collage. Synthetic uncalibrated scientific illustration only.",
+    "limitations": "Uncalibrated synthetic illustration, reused across demo wafers. No measured CD, LER/LWR, contact diameter, physical registration, incident match or defect verdict. Existing bridge/open classifier is disabled for these assets."
+  },
   "synthetic-sem-open-v1.png": {
     "synthetic": true,
     "generator": "built-in image_gen",

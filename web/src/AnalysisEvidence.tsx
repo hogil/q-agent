@@ -1,58 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowUpRight, X, ZoomIn } from 'lucide-react';
 import type { AnalysisReportData, Workspace } from './api';
 import type { AnalysisContext } from './engineeringAnalysis';
-import { Chart } from './charts';
-import { vectorRenderer } from './BoardOverlay';
-import { waferOutline } from './metrologyMap';
-import type { OverlayVectorPoint } from './overlayVectors';
 import { documentUrl } from './investigationData';
-
-function OverlayEvidence({
-  points,
-  label,
-}: {
-  points: OverlayVectorPoint[];
-  label: string;
-}) {
-  const option = useMemo(
-    () => ({
-      animation: false,
-      grid: { left: 6, right: 6, top: 6, bottom: 6 },
-      xAxis: { type: 'value', min: -16, max: 16, show: false },
-      yAxis: { type: 'value', min: -16, max: 16, show: false },
-      tooltip: {
-        trigger: 'item',
-        renderMode: 'richText',
-        formatter: (p: { value: number[] }) =>
-          `X ${p.value[0]}, Y ${p.value[1]} (normalized)\ndX ${p.value[2]?.toFixed(3)}, dY ${p.value[3]?.toFixed(3)} (원본값)`,
-      },
-      series: [
-        {
-          type: 'line',
-          data: waferOutline(16),
-          symbol: 'none',
-          silent: true,
-          lineStyle: { color: '#c0cec5', width: 1 },
-        },
-        {
-          type: 'custom',
-          renderItem: vectorRenderer('#297b70', 0.45),
-          data: points.map((p) => [p.x, p.y, p.dx, p.dy, 0, 1]),
-        },
-      ],
-    }),
-    [points],
-  );
-  return <Chart option={option} label={label} className="agent-evidence-map" />;
-}
+import AnalysisMaps from './AnalysisMaps';
 
 type Media = {
   id: string;
   label: string;
   description: string;
   src?: string;
-  points?: OverlayVectorPoint[];
 };
 
 export default function AnalysisEvidence({
@@ -71,7 +28,7 @@ export default function AnalysisEvidence({
   }, [preview]);
   const current = report.images.filter((image) => {
     const asset = workspace.raw?.sem_assets.find(
-      (row) => row.id === image.id && row.src === image.src,
+      (row) => row.id === image.id && row.src === image.src && (!row.item || row.item === context.item),
     );
     return (
       asset &&
@@ -98,20 +55,11 @@ export default function AnalysisEvidence({
               },
             ]
           : []),
-        ...(item.overlay.vectors?.length
-          ? [
-              {
-                id: item.overlay.id,
-                points: item.overlay.vectors,
-                label: '과거 Overlay · Raw',
-                description: item.overlay.description,
-              },
-            ]
-          : []),
       ]),
   ];
   return (
     <section className="agent-evidence" aria-label="현재 선택과 과거 사고 근거">
+      {workspace.synthetic && <AnalysisMaps key={context.item} context={context} report={report} />}
       {!!media.length && (
         <div className="agent-evidence-media">
           {media.map((item) => (
@@ -121,11 +69,7 @@ export default function AnalysisEvidence({
                 aria-label={`${item.label} 확대`}
                 onClick={() => setPreview(item)}
               >
-                {item.src ? (
-                  <img src={item.src} alt={item.description} />
-                ) : (
-                  <OverlayEvidence points={item.points!} label={item.label} />
-                )}
+                <img src={item.src} alt={item.description} />
                 <ZoomIn className="agent-evidence-zoom" size={12} />
               </button>
               <figcaption>{item.label}</figcaption>
@@ -215,11 +159,7 @@ export default function AnalysisEvidence({
               <X size={18} />
             </button>
           </header>
-          {preview.src ? (
-            <img src={preview.src} alt={preview.description} />
-          ) : (
-            <OverlayEvidence points={preview.points!} label={preview.label} />
-          )}
+          <img src={preview.src} alt={preview.description} />
           <p>{preview.description}</p>
           <small>{preview.id} · 합성 자료</small>
         </dialog>

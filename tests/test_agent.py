@@ -16,8 +16,33 @@ import agent
 from config_loader import DEFAULT_CONFIG, Settings, load_config
 from demo_data import generate
 from incident_tools import ToolError
-from prompt_contracts import validate_output
+from prompt_contracts import structure, validate_output
 from skill_loader import compile_prompt
+from conversation_memory import select_turns
+
+
+class SchemaBoundsTests(unittest.TestCase):
+    def test_map_prompt_compaction_preserves_identity_and_summary_not_coordinates(self):
+        original = {'source': 'get_engineering_snapshot', 'result': {'sections': {'maps': {'assets': [{
+            'id': 'map-1', 'sha256': 'digest', 'summary': {'cd': {'mean': 42}},
+            'cd': [{'x': 1, 'y': 2, 'value': 42}], 'overlay': [], 'thk': [], 'eds_bin': [],
+        }]}}}}
+        compact = agent.map_prompt_evidence(original)
+        asset = compact['result']['sections']['maps']['assets'][0]
+        self.assertEqual(asset, {'id': 'map-1', 'sha256': 'digest', 'summary': {'cd': {'mean': 42}}})
+        self.assertEqual(len(original['result']['sections']['maps']['assets'][0]['cd']), 1)
+
+    def test_array_and_string_bounds_preserve_type_validation(self):
+        schema = {'type': 'array', 'minItems': 1, 'maxItems': 2,
+                  'items': {'type': 'string', 'minLength': 2, 'maxLength': 4}}
+        structure(['CD', 'SEM'], schema)
+        structure(['가나다라'], schema)
+        for value, error in (([], 'MINITEMS'), (['CD'] * 3, 'MAXITEMS'),
+                             (['x'], 'MINLENGTH'), (['abcde'], 'MAXLENGTH'), ([4], 'TYPE')):
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, error):
+                structure(value, schema)
+        with self.assertRaisesRegex(ValueError, 'UNSUPPORTED_SCHEMA_KEYWORD'):
+            structure('x', {'type': 'string', 'unknownKeyword': True})
 
 
 def plan(decision='execute', stage='incident', tool=None, arguments=None, search_mode='none'):
@@ -132,6 +157,19 @@ class AgentContracts(unittest.TestCase):
         self.assertTrue(query.call_args.kwargs['incident_ids'])
         self.assertEqual(result['evidence'][-1]['source'], 'get_engineering_snapshot')
         self.assertEqual(client.calls[-1][2]['evidence'][-1]['result']['sections']['trend']['count'], 4)
+
+    def test_requested_tool_workflow_advertises_only_retrievable_schema_topics(self):
+        query = Mock(return_value={'status': 'OK', 'sections': {}})
+        result, client = self.run_script([
+            self.lookup(), ('router', plan(stage='tools', tool='get_engineering_snapshot')),
+            ('judge', judge), ('answer', answer)],
+            engineering_query=query, requested_tools=['find_incidents', 'get_engineering_snapshot'])
+        self.assertEqual(result['status'], 'answered', result)
+        for _, _, payload in client.calls:
+            self.assertIn('incident_search', payload['available_topics'])
+            self.assertIn('lots', payload['available_topics'])
+            self.assertNotIn('documents', payload['available_topics'])
+            self.assertNotIn('trends', payload['available_topics'])
 
     def test_related_search_keeps_scope_and_cannot_bypass_incident_gate(self):
         related = ('router', plan(stage='tools', tool='search_related_incidents', arguments={'terms': ['SYN']}))
@@ -373,6 +411,29 @@ class AgentContracts(unittest.TestCase):
         self.assertEqual(result['llm_calls'], 5)
         self.assertEqual(client.calls[2][2]['last_error'], 'ROUTER_FUNCTION_CALL_REQUIRED')
         self.assertEqual(client.calls[2][2]['evidence_ids'], ['e1'])
+
+    def test_chat_memory_is_role_bounded_unverified_and_not_accumulated_in_router_history(self):
+        messages = []
+        for index in range(10):
+            messages.extend([{'id': f'u{index}', 'role': 'user', 'content': 'SEM synthetic question ' * 200},
+                             {'id': f'a{index}', 'role': 'assistant', 'content': 'OLD_UNVERIFIED_CLAIM ' * 300}])
+        turns = select_turns(messages, 'SEM', self.settings.data['runtime']['conversation_memory'])
+        result, client = self.run_script([self.lookup(), *self.finish_steps()], conversation_turns=turns,
+                                         context_data={'selected_incident': 'SYN-2026-01'})
+        self.assertEqual(result['status'], 'answered', result)
+        sizes = {}
+        for role, _, payload in client.calls:
+            memory = payload['context_data_unverified']['previous_messages_unverified']
+            size = len(json.dumps(memory, ensure_ascii=False, separators=(',', ':')))
+            self.assertLessEqual(size, 2400 if role == 'router' else 4800)
+            sizes[role] = size
+            self.assertEqual(payload['requirements'], ['synthetic contract question'])
+        self.assertLess(sizes['router'], sizes['answer'])
+        self.assertNotIn('OLD_UNVERIFIED_CLAIM', json.dumps(result['evidence']))
+        self.assertNotIn('OLD_UNVERIFIED_CLAIM', json.dumps(client.histories))
+        starts = [event for event in result['events'] if event['event'] == 'llm_start']
+        self.assertTrue(all(event['conversation_memory']['messages'] for event in starts))
+        self.assertEqual(result['llm_calls'], 4)
 
     def test_duplicate_completed_incident_search_goes_to_judge_and_answer(self):
         result, client = self.run_script([self.lookup(), self.lookup(), ('judge', judge), ('answer', answer)])

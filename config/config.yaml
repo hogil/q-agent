@@ -279,3 +279,9 @@ runtime:
   max_agent_steps: 24
   max_context_characters: 120000
   prompt_examples: false
+  conversation_memory:
+    candidate_messages: 80
+    recent_turns: 1
+    recalled_turns: 2
+    router_characters: 2400
+    review_characters: 4800

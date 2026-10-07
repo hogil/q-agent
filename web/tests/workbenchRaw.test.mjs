@@ -56,7 +56,7 @@ test('uses raw.example locally with seven signals, explicit patterns, and raw tr
     makeEquipmentTrace(data, data.signals[0], 'SYN-EQP-01'),
     raw.comparison_traces[data.signals[0].id]['SYN-EQP-01'],
   );
-  assert.equal(semRecord(workspace, 'SYN-LOT-09-01', 'W01').id, 'SYN-SEM-01');
+  assert.equal(semRecord(workspace, 'SYN-LOT-09-01', 'W01', 'SYN-TEMP').id, 'SYN-SEM-01');
   assert.equal(raw.defect_references[0].historical_record_id, 'SYN-HIST-MET-001');
   assert.equal(raw.defect_references[0].sem.image_history_id, 'SYN-HIST-SEM-BRIDGE');
   assert.equal(raw.inform_notes[0].id, 'SYN-INFORM-HIST-DEFECT-1');
@@ -85,13 +85,48 @@ test('every synthetic Fab wafer has a registered SEM asset with varied examples'
   for (const record of Object.values(fixture.incidents)) {
     const workspace = workspaceWithRaw(record);
     const paths = new Set();
-    for (const row of record.engineering.fab) {
-      const asset = semRecord(workspace, row.lotId, row.waferId);
-      assert.ok(asset, `${row.lotId}/${row.waferId}`);
-      assert.ok(readFileSync(new URL(`../public${asset.src}`, import.meta.url)).length > 0);
-      paths.add(asset.src);
+    for (const signal of record.engineering.signals) {
+      for (const row of record.engineering.fab) {
+        const asset = semRecord(workspace, row.lotId, row.waferId, signal.item);
+        assert.ok(asset, `${signal.item}/${row.lotId}/${row.waferId}`);
+        assert.equal(asset.item, signal.item);
+        assert.ok(readFileSync(new URL(`../public${asset.src}`, import.meta.url)).length > 0);
+        paths.add(asset.src);
+      }
     }
-    assert.ok(paths.size >= 3);
+    assert.ok(paths.size >= 5);
+  }
+});
+
+test('new SEM pattern assets are varied, versioned and outside the old classifier domain', () => {
+  const provenance = JSON.parse(readFileSync(new URL('../public/assets/provenance.json', import.meta.url), 'utf8'));
+  const families = new Set();
+  for (const record of Object.values(fixture.incidents)) {
+    for (const asset of record.sem_assets.filter((asset) => asset.src.endsWith('-v2.png'))) {
+      families.add(asset.src);
+      assert.equal(asset.analysis_mode, 'visual_only');
+      assert.equal(asset.revision, 'synthetic-item-patterns-v3');
+      assert.ok(asset.pattern);
+      const meta = provenance[asset.src.split('/').at(-1)];
+      assert.equal(meta.synthetic, true);
+      assert.ok(meta.prompt.length > 100);
+    }
+  }
+  assert.equal(families.size, 16);
+  assert.match(raw.sem_assets[0].src, /thin-v2/);
+  assert.match(raw.sem_assets[1].src, /line-reference-v2/);
+});
+
+test('seven items resolve different SEM families for the same wafer, never a different item', () => {
+  for (const record of Object.values(fixture.incidents)) {
+    const workspace = workspaceWithRaw(record);
+    const wafer = record.engineering.fab[0];
+    const assets = record.engineering.signals.map(({ item }) => semRecord(workspace, wafer.lotId, wafer.waferId, item));
+    assert.equal(assets.length, 7);
+    assert.equal(new Set(assets.map((asset) => asset.pattern)).size, 7);
+    assert.equal(new Set(assets.map((asset) => asset.src)).size, 7);
+    assert.equal(semRecord(workspace, wafer.lotId, wafer.waferId, 'unknown'), null);
+    assert.equal(semRecord(workspace, wafer.lotId, wafer.waferId), null);
   }
 });
 

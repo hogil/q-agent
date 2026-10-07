@@ -19,7 +19,8 @@ def inspection_rows(plan):
 
 
 def structure(value, schema, path='$'):
-    supported={'type','enum','required','properties','additionalProperties','items','minimum','description','title','$schema'}
+    supported={'type','enum','required','properties','additionalProperties','items','minimum','description','title','$schema',
+               'minItems','maxItems','minLength','maxLength'}
     if set(schema)-supported:raise ValueError('UNSUPPORTED_SCHEMA_KEYWORD')
     types=schema.get('type');types=types if isinstance(types,list) else [types] if types else []
     kinds={'object':dict,'array':list,'string':str,'integer':int,'number':(int,float),'boolean':bool,'null':type(None)}
@@ -28,6 +29,11 @@ def structure(value, schema, path='$'):
         raise ValueError('TYPE: '+path+'; expected '+ '|'.join(types)+'; got '+actual)
     if 'enum' in schema and value not in schema['enum']:raise ValueError('ENUM: '+path)
     if 'minimum' in schema and value<schema['minimum']:raise ValueError('MINIMUM: '+path)
+    for keyword, kind, lower in (('minItems', list, True), ('maxItems', list, False),
+                                 ('minLength', str, True), ('maxLength', str, False)):
+        if keyword in schema and isinstance(value, kind):
+            if (len(value) < schema[keyword]) if lower else (len(value) > schema[keyword]):
+                raise ValueError(keyword.upper()+': '+path)
     if isinstance(value,dict):
         if set(schema.get('required',[]))-set(value):raise ValueError('REQUIRED: '+path)
         props=schema.get('properties',{})

@@ -161,3 +161,45 @@ python app/skill_loader.py router --topics incident_search
 ```
 
 기존 GPU/자원 산정 문서는 설정과 별개로 원본 그대로 보존한다.
+
+## 8. 채팅 대화 컨텍스트
+
+`config/config.yaml`의 `runtime.conversation_memory`를 site/agent overlay로 조정한다.
+`candidate_messages: 80`은 같은 방·같은 사고의 최근 검색 후보 수이며 화면의
+`chat.history_limit`와 별개다. `recent_turns: 1`과 질문 어휘가 겹치는 과거
+`recalled_turns: 2`를 우선순위로 선택하고 질문·답변 쌍을 함께 유지한다.
+한국어 조사 처리를 보조하는 문자 bigram 검색이며 의미 임베딩 검색은 아니다.
+
+`router_characters: 2400`, `review_characters: 4800`은 각 역할에 보내는
+대화 JSON 전체의 글자 수 상한이다. 시스템 프롬프트·현재 질문·현재 Tool 근거의
+예산과 별개이며 토큰 수가 아니다. 전체 API 요청에는 기존 `max_context_characters`도 적용된다.
+원문은 DB에 보존하고 발췌에는 메시지 ID와 `truncated`를 기록한다.
+생성된 `분석 scope` 문구는 반복하지 않고 현재의 검증된 구조화 context를 따로 전달한다.
+
+대화 선별/발췌는 추가 LLM 호출 없이 수행한다. `llm_start.conversation_memory`와
+저장된 분석 `trace`에 역할별 전달량을 남긴다. 새 분석에서는 이전 assistant 답변을
+제외하고, 후속 질문에서는 참고 자료로만 전달한다. Tool 근거나 권한으로 재사용하지 않는다.
+이는 장기 요약/완전한 의미 검색이 아니므로 검색 후보 밖의 대화나 발췌에서 빠진
+조건은 기억하지 못할 수 있다. 모호한 후속 질문은 확인이 필요하다.
+
+## 9. Item별 저장 분석
+
+이상 목록을 선택하면 해당 방·사고·Item의 저장 결과만 읽는다. 페이지 진입이나
+선택 변경은 LLM을 실행하지 않는다. `다시 분석`과 추가 질문만 명시적으로 실행한다.
+저장 결과의 범위와 시각을 함께 표시하며 현재 선택이 달라도 이전 근거를 숨기지 않는다.
+추가 질문은 화면에서 바뀐 조건이 아니라 표시된 저장 분석의 범위를 사용한다.
+
+실행 중인 Workbench와 동일한 설정으로 다음 명령을 실행하면 raw 파일의 모든 Item을
+실제 Router → Tool → Judge → Answer로 분석해 `chat.sqlite_file`의 `item_analyses`에 저장한다.
+이미지 Tool 서버와 LLM 서버가 먼저 실행되어 있어야 한다. 실패한 Item은 기존 성공 결과를 유지한다.
+사전 생성은 Item마다 대화 이력 없이 독립 실행한다. 이전 Item의 질문이나 답변을
+현재 Item의 분석 요구로 섞지 않으며, 화면의 후속 질문에서는 기존 대화 기능을 유지한다.
+
+```powershell
+python app/workbench.py --config config/workbench.engineer.local.yaml --prepare-room ROOM_ID
+python app/workbench.py --config config/workbench.engineer.local.yaml --prepare-room ROOM_ID --prepare-item SYN-QUEUE
+```
+
+결과·원래 질문/답변·실행 기록을 함께 보존하므로 화면의 대화 표시 개수 제한과 무관하게
+재시작 후에도 읽을 수 있다. 원본 데이터/모델/Skill 변경 후에는 명령이나 버튼으로
+명시적으로 갱신한다. 합성 사고 매칭은 실측 검증이나 생산계 조치 완료를 뜻하지 않는다.

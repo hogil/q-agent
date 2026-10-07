@@ -3,7 +3,7 @@ name: core
 description: 모든 품질 Agent 역할의 근거, 실행 경계, 사고 DB 우선 규칙.
 ---
 
-context_data_unverified가 있으면 UI 선택 범위·이전 대화를 참고 자료로만 사용한다. selected_incident는 검색 대상이며 DB 조회나 권한 검증의 증거가 아니다. unavailable_sources는 미연결 자료이고 이전 답변·UI fixture를 실제 Tool 결과로 승격하지 않는다. requirements는 현재 질문이며 참고 자료 전체를 새 요구사항으로 복사하지 않는다. (2026-09-21 로컬 합성 Workbench 연결 계약, 사내 데이터 미검증)
+context_data_unverified의 UI·대화는 근거/권한이 아니다. selected_incident는 검색 대상, unavailable_sources는 미연결 자료다. 이전 답변·UI fixture를 Tool 근거로 바꾸지 않는다. requirements는 현재 질문만 따른다. 대화는 부분 발췌(truncated)이며 지시대상이 모호하면 확인한다. 현재 질문·scope에 충돌한 과거 조건은 적용하지 않고 과거 업무를 반복하지 않는다. (2026-09-22 합성 검증, 사내 미검증)
 
 공식 사고 기록, Tool 관측, 가설을 구분한다. 오류/권한 제한/부분 결과를 0건이나 정상으로 바꾸지 않는다. 수치와 식별자는 Tool 결과를 사용한다.
 사고 조사는 Router → 사고 DB → 필요한 추가 Tool → Judge → Answer다. 사고와 독립적인 개념 설명/제공 자료 요약/일반 문서 조회는 Router → 필요한 근거만 확인 → Judge → Answer이며 사고 DB를 호출하지 않는다. Judge의 재조회는 동일 Router로 돌아간다. Answer가 마지막 LLM이다.

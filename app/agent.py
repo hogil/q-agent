@@ -4,6 +4,7 @@ from datetime import date, datetime
 import inspect
 import json
 import sqlite3
+import copy
 from zoneinfo import ZoneInfo
 
 from config_loader import ConfigError
@@ -14,10 +15,32 @@ from image_tools import ImageTools
 from prompt_contracts import inspection_rows, structure, validate_output
 from runtime_factory import open_incident_tools
 from skill_loader import compile_prompt, read_role_reference
+from conversation_memory import pack_turns
+
+TOOL_TOPICS = {
+    'match_incident_values': 'terminology', 'find_incidents': 'incident_search',
+    'list_incident_lots': 'lots', 'list_incident_wafers': 'wafers',
+    'search_meeting_minutes': 'meetings', 'list_comparison_assets': 'images',
+    'compare_sem_images': 'images', 'compare_overlay_maps': 'images',
+}
+
+
+def map_prompt_evidence(entry):
+    # Preserve full Tool arrays for the UI; LLMs receive bounded numerical summaries.
+    if entry['source'] != 'get_engineering_snapshot':
+        return entry
+    compact = copy.deepcopy(entry)
+    maps = compact['result'].get('sections', {}).get('maps', {})
+    if 'assets' in maps:
+        maps['assets'] = [{key: value for key, value in asset.items()
+                           if key not in ('overlay', 'cd', 'thk', 'eds_bin')}
+                          for asset in maps['assets']]
+    return compact
 
 
 def run(settings, question, actor, request_scope='incident', topics=None, selected=None, emit=None, as_of=None,
-        context_data=None, engineering_query=None, requested_tools=(), related_search=True, inspection_requested=False):
+        context_data=None, engineering_query=None, requested_tools=(), related_search=True, inspection_requested=False,
+        conversation_turns=None):
     if not isinstance(question, str) or not question.strip() or len(question) > 12000:
         raise ValueError('QUESTION_REQUIRED_OR_TOO_LONG')
     if not actor or not actor.strip() or request_scope not in ('auto', 'incident', 'independent'):
@@ -32,6 +55,18 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
         topics.add('incident_search')
     events, evidence, history = [], [], []
     limits = settings.data['runtime']
+    role_contexts = {}
+    memory_metrics = {}
+    for role in ('router', 'judge', 'answer'):
+        role_contexts[role] = context_data
+        if conversation_turns is not None:
+            budget = limits['conversation_memory']['router_characters' if role == 'router' else 'review_characters']
+            memory = pack_turns(conversation_turns, question, budget)
+            role_contexts[role] = {**(context_data or {}), 'previous_messages_unverified': memory}
+            memory_metrics[role] = {'characters': len(json.dumps(memory, ensure_ascii=False, separators=(',', ':'))),
+                                  'budget_characters': budget, 'messages': len(memory),
+                                  'turns': len({row['turn_id'] for row in memory}),
+                                  'truncated_messages': sum(row['truncated'] for row in memory)}
     state = {'scope_id': None, 'incident_checked': False, 'scope_valid': False,
              'budget_remaining': limits['max_tool_calls'], 'code_gate': 'PASS',
              'requirements': [question], 'request_scope': request_scope, 'judge': None,
@@ -156,7 +191,7 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
         if calls >= limits['max_agent_steps']:
             raise LLMError('AGENT_STEP_LIMIT')
         prompt = compile_prompt(role, sorted(topics), settings=settings, shared_topics=True)
-        routed_evidence = evidence
+        routed_evidence = [map_prompt_evidence(entry) for entry in evidence]
         if role == 'router' and requested_tools:
             # Routing needs identifiers and retrieval state; review retains the source content.
             summarized = {'get_engineering_snapshot', 'search_meeting_minutes',
@@ -170,6 +205,11 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                    'available_tools': advertised_tools(),
                    'mapped_fields': context()['mapped_fields'],
                    'loaded_topics': prompt['topics'], 'available_topics': prompt['available_topics']}
+        if requested_tools:
+            # A bounded Tool workflow does not need schemas for unimplemented retrieval paths.
+            tool_topics = topics | {TOOL_TOPICS[name] for name, spec in catalog.items()
+                                    if spec['enabled'] and name in TOOL_TOPICS}
+            payload['available_topics'] = [topic for topic in prompt['available_topics'] if topic in tool_topics]
         if role != 'answer':
             payload.pop('inspection_requested')
         else:
@@ -180,8 +220,8 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
         payload['incomparable_evidence_ids'] = [entry['id'] for entry in evidence
                                                if isinstance(entry['result'], dict)
                                                and entry['result'].get('status') == 'INCOMPARABLE']
-        if context_data is not None:
-            payload['context_data_unverified'] = context_data
+        if role_contexts[role] is not None:
+            payload['context_data_unverified'] = role_contexts[role]
         if role in ('judge', 'answer'):
             # Keep observations once in evidence_focus; canonical Tool evidence stays intact.
             payload['evidence'] = [
@@ -196,10 +236,12 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                     if key in entry['result']}}
                 for entry in evidence if entry['source'] in
                 ('get_engineering_snapshot', 'compare_sem_images', 'compare_overlay_maps')]
+        payload['evidence'] = [map_prompt_evidence(entry) for entry in payload['evidence']]
         calls += 1
         event('llm_start', role=role, step=calls, release=prompt['release'],
               model=settings.model_profile(role)['deployment']['served_model'],
-              prompt_sha256=prompt['prompt_sha256'], loaded_files=prompt['loaded_files'])
+              prompt_sha256=prompt['prompt_sha256'], loaded_files=prompt['loaded_files'],
+              **({'conversation_memory': memory_metrics[role]} if role in memory_metrics else {}))
         try:
             output, call_id = client.call(role, prompt['system_prompt'], payload, history if role == 'router' else [])
         except LLMError:
@@ -417,7 +459,7 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                                 method = (MeetingTools.search if name == 'search_meeting_minutes'
                                           else getattr(ImageTools if name in image_methods else IncidentTools, name))
                                 inspect.signature(method).bind(None, **bound)
-                            needed = 'images' if name in image_methods else {'match_incident_values': 'terminology', 'list_incident_lots': 'lots', 'list_incident_wafers': 'wafers', 'search_meeting_minutes': 'meetings'}.get(name)
+                            needed = TOOL_TOPICS.get(name)
                             if needed:
                                 needed_topics.add(needed)
                             prepared.append((name, arguments))

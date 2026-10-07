@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import copy
 import math
+import hashlib
+import json
 from datetime import date, datetime, time, timedelta, timezone
 
 from incident_tools import ToolError
@@ -453,6 +455,24 @@ class EngineeringTools:
                  "limitations": ["STORED_REFERENCES_ONLY", "NO_IMAGE_MODEL_ANALYSIS",
                                  "CORRELATION_NOT_CAUSATION"]}
 
+    def _map_assets(self, record, as_of):
+        pairs = {(row["lotId"], row["waferId"]) for row in self._fab_rows(record, as_of)}
+        assets = []
+        for raw in record.get("map_assets", []):
+            if ((raw["lot_id"], raw["wafer_id"]) not in pairs or raw["step"] != self.context["step"]
+                    or not self._in_time_scope(raw["timestamp"], as_of)):
+                continue
+            asset = copy.deepcopy(raw)
+            asset["sha256"] = hashlib.sha256(json.dumps(raw, sort_keys=True).encode()).hexdigest()
+            asset["summary"] = {
+                "overlay_magnitude": _summary([math.hypot(p["dx"], p["dy"]) for p in raw["overlay"]], "nm"),
+                "cd": _summary([p["value"] for p in raw["cd"]], "nm"),
+                "thk": _summary([p["value"] for p in raw["thk"]], "nm"),
+                "eds_bin_status": "synthetic_preview_only; current EDS unavailable",
+            }
+            assets.append(asset)
+        return assets[:MAX_ROWS]
+
     def _fab_rows(self, record, as_of):
         pairs = {(row["lot_id"], row["wafer_id"]) for row in self.context["wafers"]}
         return [row for row in record["engineering"].get("fab", [])
@@ -533,6 +553,7 @@ class EngineeringTools:
                 limitations.extend(sections[source].get("limitations", []))
             elif source == "maps":
                 sections[source] = self._maps(record, as_of_value)
+                sections[source]["assets"] = self._map_assets(record, as_of_value)
                 limitations.extend(sections[source].get("limitations", []))
         scope = {key: copy.deepcopy(value) for key, value in self.context.items() if not key.startswith("_")}
         scope.update({"incident_ids": list(incident_ids), "as_of": as_of})
@@ -542,6 +563,9 @@ class EngineeringTools:
                                       "step": self.context["step"], "equipment": self.context["equipment"]}}
         observations = {}
         if "trend" in sections:
+            observations["selected_signal"] = [
+                {key: signal[key] for key in ("id", "item", "title", "metric", "step")}
+                for signal in sections["trend"]["signals"]]
             observations["trend_onset"] = {key: value["onset_summary"]
                                            for key, value in sections["trend"]["stats"].items()}
         if "production" in sections:

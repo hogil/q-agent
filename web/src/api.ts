@@ -100,6 +100,13 @@ export type Bootstrap = {
 };
 
 export type AnalysisReportData = {
+  map_assets?: {
+    id: string; lot_id: string; wafer_id: string; step: string; timestamp: string; provenance: string; sha256: string;
+    overlay: import('./overlayVectors').OverlayVectorPoint[];
+    cd: { x: number; y: number; value: number }[];
+    thk: { x: number; y: number; value: number }[];
+    eds_bin: { x: number; y: number; bin: number }[];
+  }[];
   version: number;
   summary: string;
   inspection_plan: { kind: string; target: string; basis: string; comparison: string; evidence_ids: string[] }[];

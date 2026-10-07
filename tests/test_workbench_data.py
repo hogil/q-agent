@@ -68,6 +68,22 @@ class WorkbenchDataTests(unittest.TestCase):
         self.assertIsNone(load_workbench_data(None, self.root))
         self.assertIsNone(load_workbench_data({}, self.root))
 
+    def test_sem_item_scope_and_duplicate_keys(self):
+        payload = valid_payload()
+        record = payload["incidents"]["SYN-1"]
+        record["sem_assets"][0]["item"] = "ITEM-1"
+        path = self.write(payload)
+        self.assertEqual(load_workbench_data({"raw_file": path.name}, self.root)["SYN-1"]["sem_assets"][0]["item"], "ITEM-1")
+        record["sem_assets"].append({**record["sem_assets"][0], "id": "sem-duplicate"})
+        self.write(payload)
+        with self.assertRaisesRegex(ValueError, "item/lot/wafer keys must be unique"):
+            load_workbench_data({"raw_file": path.name}, self.root)
+        record["sem_assets"].pop()
+        record["sem_assets"][0]["item"] = "outside"
+        self.write(payload)
+        with self.assertRaisesRegex(ValueError, "outside the engineering item scope"):
+            load_workbench_data({"raw_file": path.name}, self.root)
+
     def test_shared_historical_records_validate_timestamps_and_values(self):
         payload = valid_payload()
         row = {"id": "hist-1", "lotId": "past-lot", "waferId": "W01",

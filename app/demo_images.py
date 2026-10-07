@@ -255,6 +255,9 @@ class DemoImageService:
             revision = raw_asset.get("revision", "synthetic-asset-v1")
             coordinate = raw_asset.get("coordinate_system", raw_asset.get("coordinateSystem", "synthetic-wafer-xy"))
             acquisition = raw_asset.get("acquisition", "synthetic-acquisition-v1")
+            analysis_mode = raw_asset.get("analysis_mode", "classifier")
+            if analysis_mode not in ("classifier", "visual_only"):
+                raise ToolError("INVALID_IMAGE_ASSET")
             step = raw_asset.get("step", fab_row.get("step"))
             equipment = raw_asset.get("equipment", fab_row.get("equipment"))
             for value in (revision, coordinate, acquisition, step, equipment):
@@ -273,6 +276,7 @@ class DemoImageService:
                 "acquired_at": acquired_at,
                 "revision": revision,
                 "_src": src,
+                "_analysis_mode": analysis_mode,
                 "_vectors": self._raw_vectors(record, raw_asset),
                 "_number": number,
             })
@@ -658,6 +662,24 @@ class DemoImageService:
         for field in ("step", "coordinate_system", "acquisition"):
             if assets[0][field] != assets[1][field]:
                 raise ToolError("IMAGE_COMPARISON_INCOMPATIBLE")
+
+        # New illustration families are outside the line-connectivity model's domain.
+        if modality == "sem" and any(asset["_analysis_mode"] == "visual_only" for asset in assets):
+            first, second = (self._image_metrics(asset) for asset in assets)
+            return {
+                "request_id": request_id, "model": model,
+                "model_version": "sem-visual-descriptors-v1",
+                "item": item, "modality": modality,
+                "asset_ids": asset_ids, "asset_revisions": revisions,
+                "status": "INCOMPARABLE", "alignment_verified": False, "similarity": None,
+                "findings": self._sem_findings(first, second),
+                "limitations": [
+                    "visual-only synthetic illustration; bridge/open classifier and historical ranking skipped for unsupported pattern families",
+                    "pixel descriptors are computed, but CD, LER/LWR, pitch and contact diameter are not measured",
+                    "physical scale, registration and design targets are unverified; no defect, incident-match or causal verdict",
+                ],
+                "artifact_ids": [],
+            }
 
         model_data = self._model(modality)
         if modality == "sem":

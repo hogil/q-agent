@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "app"))
@@ -84,6 +85,37 @@ class DemoImageServiceTests(unittest.TestCase):
         self.assertEqual(first["status"], "INCOMPARABLE")
         self.assertTrue(any("frontend/server synthetic-common-grid-v2" in finding for finding in first["findings"]))
         self.assertTrue(any("exact_coordinate_matches=44" in finding for finding in first["findings"]))
+
+    def test_visual_only_patterns_skip_classifier_and_historical_ranking(self):
+        self.raw["SYN-1"]["sem_assets"][0]["analysis_mode"] = "visual_only"
+        with patch.object(self.service, "_model", side_effect=AssertionError("classifier must not load")), \
+                patch.object(self.service, "_historical_findings", side_effect=AssertionError("ranking must not run")):
+            result = self.service.compare({
+                **self.payload(), "request_id": "visual-only", "model": SEM_MODEL,
+                "asset_ids": ["SYN-A", "SYN-B"], "asset_revisions": ["synthetic-asset-v1"] * 2,
+            })
+        self.assertEqual(result["status"], "INCOMPARABLE")
+        self.assertEqual(result["model_version"], "sem-visual-descriptors-v1")
+        self.assertIsNone(result["similarity"])
+        self.assertTrue(any("edge_fraction" in line for line in result["findings"]))
+        self.assertFalse(any("class=" in line for line in result["findings"]))
+        self.assertTrue(any("classifier and historical ranking skipped" in line for line in result["limitations"]))
+
+    def test_invalid_analysis_mode_is_rejected(self):
+        self.raw["SYN-1"]["sem_assets"][0]["analysis_mode"] = "unknown"
+        with self.assertRaisesRegex(ToolError, "INVALID_IMAGE_ASSET"):
+            self.service.assets(self.payload())
+
+    def test_sem_assets_are_scoped_by_item_even_on_the_same_wafer(self):
+        first = self.raw["SYN-1"]["sem_assets"][0]
+        first["item"] = "ITEM-1"
+        self.raw["SYN-1"]["sem_assets"][1]["item"] = "ITEM-1"
+        self.raw["SYN-1"]["sem_assets"].append({**first, "id": "SYN-C", "item": "ITEM-2"})
+        self.assertEqual([a["asset_id"] for a in self.service.assets(self.payload())["assets"]], ["SYN-A", "SYN-B"])
+        self.assertEqual([a["asset_id"] for a in self.service.assets({**self.payload(), "item": "ITEM-2"})["assets"]], ["SYN-C"])
+        with self.assertRaisesRegex(ToolError, "IMAGE_ASSET_UNKNOWN"):
+            self.service.compare({**self.payload(), "request_id": "wrong-item", "model": SEM_MODEL,
+                                  "asset_ids": ["SYN-A", "SYN-C"], "asset_revisions": ["synthetic-asset-v1"] * 2})
 
     def overlay_request(self):
         assets = self.service.assets(self.payload("overlay"))["assets"][:2]

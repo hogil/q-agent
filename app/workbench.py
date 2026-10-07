@@ -34,6 +34,7 @@ from detection_workflow import DetectionWorkflow  # noqa: E402
 from workbench_data import load_workbench_data  # noqa: E402
 from engineering_tools import EngineeringTools  # noqa: E402
 from enterprise_tools import EnterpriseTools  # noqa: E402
+from conversation_memory import select_turns  # noqa: E402
 
 
 MAX_BODY = 64 * 1024
@@ -306,6 +307,13 @@ class Workbench:
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 );
+            CREATE TABLE IF NOT EXISTS item_analyses (
+                    room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+                    incident_number TEXT NOT NULL,
+                    item TEXT NOT NULL,
+                    payload TEXT NOT NULL,
+                    PRIMARY KEY (room_id, incident_number, item)
+                );
             """)
             columns = {row["name"] for row in db.execute("PRAGMA table_info(analysis_scopes)")}
             if "steps" not in columns:
@@ -389,6 +397,23 @@ class Workbench:
     def _default_room_id(self):
         # Bind the report to its saved analysis message, never a later chat reply.
         with self.lock, self._db() as db:
+            # A recently used, partly prepared room must not hide the complete demo.
+            for room in db.execute("SELECT id, incident_number FROM rooms ORDER BY updated_at DESC").fetchall():
+                signals = (self.raw_data or {}).get(room["incident_number"], {}).get("engineering", {}).get("signals", [])
+                expected = {signal["item"] for signal in signals}
+                prepared = set()
+                for cached in db.execute("SELECT item, payload FROM item_analyses WHERE room_id=? AND incident_number=?",
+                                         (room["id"], room["incident_number"])).fetchall():
+                    analysis = json.loads(cached["payload"]).get("analysis") or {}
+                    if (analysis.get("status") in ("answered", "partial")
+                            and analysis.get("mode") == "llm" and analysis.get("llm_connected")
+                            and analysis.get("report", {}).get("summary")
+                            and analysis.get("context", {}).get("item") == cached["item"]
+                            and db.execute("SELECT 1 FROM messages WHERE id=? AND room_id=? AND role='assistant' AND trim(content)<>''",
+                                           (analysis.get("answer_message_id"), room["id"])).fetchone()):
+                        prepared.add(cached["item"])
+                if expected and expected.issubset(prepared):
+                    return room["id"]
             rows = db.execute("""SELECT a.runtime, a.context, a.updated_at, r.id, r.title,
                 r.incident_number FROM analysis_scopes a JOIN rooms r ON r.id=a.room_id
                 WHERE a.incident_number=r.incident_number ORDER BY a.updated_at DESC, r.id DESC""").fetchall()
@@ -571,7 +596,7 @@ class Workbench:
         self._analysis_event(room_id, {"event": "scope_validated"})
 
     def _analysis_event(self, room_id, event):
-        allowed = ("event", "role", "model", "step", "source", "error", "status", "metrics")
+        allowed = ("event", "role", "model", "step", "source", "error", "status", "metrics", "conversation_memory")
         item = {key: event[key] for key in allowed if key in event}
         item["time"] = _now()
         if event.get("event") == "tool_result":
@@ -590,6 +615,9 @@ class Workbench:
             run = self.analysis_runs.get(room_id)
             if run and run["status"] == "running":
                 run["events"] = [*run["events"], item][-200:]
+        if getattr(self, "preparation_output", False) and event.get("event") in (
+                "llm_start", "tool_result", "validation_or_tool_error", "run_error"):
+            print(json.dumps(item, ensure_ascii=False), flush=True)
 
     def _finish_analysis_run(self, room_id, error=None):
         with self.lock:
@@ -665,11 +693,19 @@ class Workbench:
             answer_attachments = []
         return self._append_messages(room_id, content, attachments, answer, answer_attachments, room=room)
 
-    def analysis(self, room_id, body):
+    def analysis(self, room_id, body, *, use_history=True):
         with self.lock:
             self._require_idle(room_id)
             room = self._room(room_id)
             scope = self._analysis_scope(room_id)
+            if isinstance(body, dict) and "item" in body:
+                if set(body) != {"content", "item"} or not isinstance(body["item"], str):
+                    raise WorkbenchError("item follow-up requires content and item only")
+                saved = self.analysis_metadata(room_id, body["item"])["analysis"]
+                if saved is None:
+                    raise WorkbenchError("saved Item analysis not found")
+                scope = {**saved, "incident_number": saved["context"]["incident_number"]}
+                body = {"content": body["content"]}
             content, sources, context = self._analysis_request(room, scope, body)
             self.running_rooms.add(room_id)
             self._begin_analysis_run(room_id, sources, context)
@@ -677,7 +713,7 @@ class Workbench:
             if self.llm_status()["llm_configured"]:
                 answer, answer_attachments, runtime = self._llm_answer(
                     room_id, content, sources, context, include_previous_answers="context" not in body,
-                    inspection_requested=True)
+                    inspection_requested=True, use_history=use_history)
             else:
                 data = self._workspace(room["incident_number"], include_meetings="meetings" in sources)
                 answer, answer_attachments, steps = self._analysis_answer(data, sources, context)
@@ -696,14 +732,24 @@ class Workbench:
             with self.lock:
                 self.running_rooms.discard(room_id)
 
-    def _llm_answer(self, room_id, content, sources, context, include_previous_answers=True, inspection_requested=False):
+    def _llm_answer(self, room_id, content, sources, context, include_previous_answers=True, inspection_requested=False,
+                    use_history=True):
         # UI context and earlier messages are unverified input, never tool evidence.
         incident = self._incident_map()[context["incident_number"]]
-        history = [{"role": message["role"], "content": message["content"][:600]}
-                   for message in self.room(room_id)["messages"][-8:]
-                   if (include_previous_answers or message["role"] != "assistant")
-                   and any(ref.get("incident_number") == context["incident_number"]
-                          for ref in message["attachments"])]
+        memory_limits = self.settings.data["runtime"]["conversation_memory"]
+        with self._db() as db:
+            rows = db.execute("""SELECT m.* FROM messages m WHERE room_id=? AND EXISTS (
+                SELECT 1 FROM json_each(m.attachments) ref
+                WHERE json_extract(ref.value, '$.incident_number')=?)
+                ORDER BY m.created_at DESC, m.rowid DESC LIMIT ?""",
+                (room_id, context["incident_number"], memory_limits["candidate_messages"])).fetchall()
+        messages = [self._message(row) for row in reversed(rows)]
+        for message in messages:
+            if message["role"] == "user":
+                # This generated suffix is already supplied as structured current UI context.
+                message["content"] = message["content"].partition("\n분석 scope: ")[0]
+        conversation_turns = (select_turns(messages, content, memory_limits, include_previous_answers)
+                              if use_history else [])
         image_config = {name: {"enabled": self.settings.data["image_tools"][name]["enabled"] and source in sources
                               and (name != "overlay" or context.get("map_view", {}).get("kind", "overlay") == "overlay")}
                         for name, source in (("sem", "sem"), ("overlay", "maps"))
@@ -741,7 +787,7 @@ class Workbench:
                          if image_config[name]["enabled"])
         payload = {"incident_data_synthetic": True,
                    "selected_incident": context["incident_number"], "ui_context_unverified": context,
-                   "requested_sources": sources, "previous_messages_unverified": history,
+                   "requested_sources": sources,
                    "unavailable_sources": [source for source in sources if source not in available],
                    "map_model_capabilities": {"cd": "not_connected", "bin": "not_connected",
                                               "failbit": "not_connected", "thk": "not_connected",
@@ -766,6 +812,7 @@ class Workbench:
                            selected=[incident["incident_id"]], request_scope="incident", as_of=self.cutoff,
                            requested_tools=requested_tools, related_search="related" in sources,
                            inspection_requested=inspection_requested,
+                           conversation_turns=conversation_turns,
                            context_data=payload, engineering_query=engineering_query if engineering or enterprise else None,
                            emit=lambda event: self._analysis_event(room_id, event))
         events = result.get("events", [])
@@ -798,7 +845,8 @@ class Workbench:
                 step["detail"] = ("; ".join(f"{s['system']} / {s['view']}: {s['status']} ({s['row_count']})"
                                             for s in enterprise_result["systems"]) if enterprise_result
                                   else "사내 SQL 미연결: 조회용 DB 설정 필요")
-        trace = [{"role": event["role"], "model": event["model"], "step": event["step"]}
+        trace = [{"role": event["role"], "model": event["model"], "step": event["step"],
+                  **({"conversation_memory": event["conversation_memory"]} if "conversation_memory" in event else {})}
                  for event in events if event["event"] == "llm_start"]
         runtime = {"mode": "llm", "release": self.release, "llm_connected": self.llm_connected, "steps": steps,
                    "status": result["status"], "trace": trace, "tool_calls": result["tool_calls"],
@@ -823,7 +871,7 @@ class Workbench:
 
     def _analysis_report(self, result, context):
         report = {"version": 2, "summary": result["answer"], "inspection_plan": result.get("inspection_plan", []),
-                  "images": [], "trend": [], "image_findings": [], "historical_cases": []}
+                  "images": [], "trend": [], "image_findings": [], "historical_cases": [], "map_assets": []}
         record = (self.raw_data or {}).get(context["incident_number"], {})
         assets = {asset["id"]: asset for asset in record.get("sem_assets", [])}
         history = {asset["id"]: asset for asset in record.get("image_history", [])}
@@ -835,6 +883,7 @@ class Workbench:
             data = event.get("result", {})
             if event.get("source") == "get_engineering_snapshot":
                 sections = data.get("sections", {})
+                report["map_assets"] = copy.deepcopy(sections.get("maps", {}).get("assets", []))
                 report["trend"] = list(sections.get("trend", {}).get("stats", {}).values())
                 for ref in sections.get("maps", {}).get("records", []):
                     case = copy.deepcopy(ref)
@@ -867,15 +916,66 @@ class Workbench:
         report["images"] = sorted(images.values(), key=lambda image: image["kind"] == "historical")[:6]
         return report
 
-    def analysis_metadata(self, room_id):
+    def analysis_metadata(self, room_id, item=None):
         with self.lock:
             room = self._room(room_id)
+            if item is not None:
+                with self._db() as db:
+                    row = db.execute("SELECT payload FROM item_analyses WHERE room_id=? AND incident_number=? AND item=?",
+                                     (room_id, room["incident_number"], item)).fetchone()
+                if row:
+                    return json.loads(row["payload"])
             scope = self._analysis_scope(room_id)
-            if scope is None or scope["incident_number"] != room["incident_number"]:
+            if (scope is None or scope["incident_number"] != room["incident_number"]
+                    or (item is not None and scope["context"]["item"] != item)):
                 return {"analysis": None}
             return {"analysis": {"mode": "demo", "llm_connected": False, **scope["runtime"],
                                   "sources": scope["sources"], "context": scope["context"],
                                   "steps": scope["steps"]}}
+
+    def prepare_analyses(self, room_id, items=None):
+        """Explicit offline preparation; opening a dashboard never calls this."""
+        room = self._room(room_id)
+        if not self.llm_status()["llm_configured"]:
+            raise WorkbenchError("preparation requires a configured LLM")
+        record = (self.raw_data or {}).get(room["incident_number"], {})
+        data = record.get("engineering", {})
+        signals = data.get("signals", [])
+        if not signals or not data.get("trend"):
+            raise WorkbenchError("preparation requires raw signals and trend data")
+        if items and set(items) - {signal["item"] for signal in signals}:
+            raise WorkbenchError("unknown preparation Item")
+        outcomes = []
+        for signal in signals:
+            if items and signal["item"] not in items:
+                continue
+            pairs = [{"lot_id": row["lotId"], "wafer_id": row["waferId"]}
+                     for row in data["fab"] if row["step"] == signal["step"]]
+            pairs = list({(row["lot_id"], row["wafer_id"]): row for row in pairs}.values())
+            times = sorted(row["timestamp"] for row in data["trend"])
+            context = {"incident_number": room["incident_number"], "item": signal["item"],
+                       "step": signal["step"], "equipment": signal["equipment"], "recipe": "",
+                       "from": times[0], "to": times[-1], "wafers": pairs,
+                       "sem_wafers": pairs[:2], "map_view": {"kind": "overlay", "overlay": "raw"},
+                       "map_comparison": {"a": pairs, "b": pairs[:1]},
+                       "trend_selection": {"range_selected": False, "value_range": None, "regions": []}}
+            print(f"PREPARING {signal['item']}", flush=True)
+            try:
+                result = self.analysis(room_id, {
+                    "context": context, "sources": list(ANALYSIS_SOURCES),
+                    "content": (f"{signal['item']} ({signal['title']})의 합성 데이터를 분석해줘. "
+                                "사고 DB와 Trend, 설비 상태, 사내 SQL, Inform, 회의록을 조회하고 "
+                                "SEM A/B와 Overlay를 Tool로 비교해줘. 과거 사고 참조의 번호와 불량 내용을 "
+                                "현재 관측과 비교하고, 일치점과 차이점, 점검 대상 및 EDS 후속 확인을 설명해줘. "
+                                "이미지의 시각적 차이를 원인 확정이나 실측 CD로 단정하지 마. "
+                                "답변은 6문장 내외로 요약하고, 같은 사고나 점검을 반복하지 마.")},
+                    use_history=False)
+                outcomes.append({"item": signal["item"], "status": result["analysis"]["status"]})
+                print(f"SAVED {signal['item']} {result['analysis']['status']}", flush=True)
+            except Exception as exc:
+                outcomes.append({"item": signal["item"], "status": "failed", "error": str(exc)})
+                print(f"FAILED {signal['item']}: {exc}", flush=True)
+        return outcomes
 
     def _analysis_scope(self, room_id):
         with self.lock, self._db() as db:
@@ -1087,7 +1187,7 @@ class Workbench:
         assistant = {"id": "msg-" + uuid.uuid4().hex, "role": "assistant",
                      "content": answer,
                      "created_at": _now(), "attachments": answer_attachments}
-        analysis = {**analysis, "answer_message_id": assistant["id"]}
+        analysis = {**analysis, "answer_message_id": assistant["id"], "saved_at": assistant["created_at"]}
         now = _now()
         with self.lock, self._db() as db:
             db.execute("BEGIN IMMEDIATE")
@@ -1109,6 +1209,13 @@ class Workbench:
                 db.execute("INSERT INTO messages VALUES (?,?,?,?,?,?)", (item["id"], room_id, item["role"],
                              item["content"], item["created_at"], json.dumps(item["attachments"], ensure_ascii=False)))
             db.execute("UPDATE rooms SET updated_at=? WHERE id=?", (now, room_id))
+            run = copy.deepcopy(self.analysis_runs.get(room_id))
+            if run:
+                run.update(status="completed", finished_at=now)
+            saved = {"analysis": analysis, "messages": [user, assistant], "run": run}
+            db.execute("""INSERT INTO item_analyses VALUES (?,?,?,?)
+                ON CONFLICT(room_id, incident_number, item) DO UPDATE SET payload=excluded.payload""",
+                (room_id, context["incident_number"], context["item"], json.dumps(saved, ensure_ascii=False)))
             db.commit()
         return {"messages": [user, assistant], "room": _summary(self._room(room_id)), "analysis": analysis}
 
@@ -1266,7 +1373,11 @@ class Handler(BaseHTTPRequestHandler):
                 if len(values) > 1 or (values and not values[0]):
                     raise WorkbenchError("invalid before cursor")
                 return self.app.room(room_id, values[0] if values else None)
-            if len(parts) == 4 and parts[3] == "analysis" and method == "GET": return self.app.analysis_metadata(room_id)
+            if len(parts) == 4 and parts[3] == "analysis" and method == "GET":
+                values = parse_qs(urlsplit(self.path).query, keep_blank_values=True).get("item", [])
+                if len(values) > 1 or (values and not values[0]):
+                    raise WorkbenchError("invalid item query")
+                return self.app.analysis_metadata(room_id, values[0] if values else None)
             if len(parts) == 5 and parts[3:] == ["analysis", "progress"] and method == "GET": return self.app.analysis_progress(room_id)
             if len(parts) == 3 and method == "PATCH": return self.app.update_room(room_id, self._read())
             if len(parts) == 3 and method == "DELETE": return self.app.delete_room(room_id)
@@ -1336,8 +1447,18 @@ def main(argv=None):
     parser.add_argument("--config", default=str(REPO_ROOT / "config/workbench.yaml"))
     parser.add_argument("--raw-file")
     parser.add_argument("--agent-overlay")
+    parser.add_argument("--prepare-room", help="Run and persist every Item analysis for an existing room, then exit")
+    parser.add_argument("--prepare-item", action="append", help="Limit explicit preparation to this Item (repeatable)")
     args = parser.parse_args(argv)
     try:
+        if args.prepare_item and not args.prepare_room:
+            raise WorkbenchError("--prepare-item requires --prepare-room")
+        if args.prepare_room:
+            app = Workbench(load_workbench(args.config, raw_file=args.raw_file, agent_overlay=args.agent_overlay))
+            app.preparation_output = True
+            outcomes = app.prepare_analyses(args.prepare_room, args.prepare_item)
+            print(json.dumps(outcomes, ensure_ascii=False), flush=True)
+            return 1 if any(row["status"] == "failed" for row in outcomes) else 0
         server = create_server(args.config, args.port, raw_file=args.raw_file, agent_overlay=args.agent_overlay)
     except (WorkbenchError, ConfigError) as exc:
         parser.exit(2, f"WORKBENCH_ERROR: {exc}\n")
@@ -1351,4 +1472,4 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

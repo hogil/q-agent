@@ -1530,7 +1530,7 @@ export default function InvestigationBoard({
                     <option value={pairKey(row)} key={pairKey(row)}>
                       {row.lotId} / {row.waferId} ·{' '}
                       {row.timestamp.slice(11, 16)}
-                      {semRecord(workspace, row.lotId, row.waferId)
+                      {semRecord(workspace, row.lotId, row.waferId, signal.item)
                         ? ' · SEM 등록'
                         : ' · SEM 없음'}
                     </option>
@@ -1636,7 +1636,7 @@ export default function InvestigationBoard({
                     <td>{row.equipment}</td>
                     <td>{time(row.timestamp)}</td>
                     <td>
-                      {semRecord(workspace, row.lotId, row.waferId)
+                      {semRecord(workspace, row.lotId, row.waferId, signal.item)
                         ? '등록'
                         : '없음'}
                     </td>

@@ -9,6 +9,7 @@ import app.workbench as workbench_module
 from app.config_loader import Settings, merge
 from app.workbench import Workbench, WorkbenchError, load_workbench
 from app.workbench_data import load_workbench_data
+from app.conversation_memory import pack_turns
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -123,6 +124,82 @@ class WorkbenchLLMTests(unittest.TestCase):
         self.assertEqual(result["analysis"]["answer_message_id"], result["messages"][-1]["id"])
         self.assertEqual(report["version"], 2)
         self.assertEqual(result["analysis"]["release"], self.app.release)
+
+    def test_complete_item_room_precedes_recent_partial_room(self):
+        for item in ("A", "B"):
+            with patch.object(workbench_module, "run_agent", return_value=self._agent_result(item)):
+                self.app.analysis(self.room_id, {"content": "analyze", "sources": ["incident"],
+                    "context": {**self.context, "item": item}})
+        newer = self.app.create_room("incomplete", "SYN-2026-01")["id"]
+        with patch.object(workbench_module, "run_agent", return_value=self._agent_result("A")):
+            self.app.analysis(newer, {"content": "analyze", "sources": ["incident"],
+                "context": {**self.context, "item": "A"}})
+        self.app.raw_data = {"SYN-2026-01": {"engineering": {"signals": [{"item": item} for item in ("A", "B")]}}}
+        self.assertEqual(self.app._default_room_id(), self.room_id)
+
+    def test_report_retains_tool_map_arrays_without_regenerating(self):
+        maps = [{"id": "map-1", "cd": [{"x": 1, "y": 2, "value": 99}], "sha256": "source-hash"}]
+        result = self._agent_result(events=[{"event": "tool_result", "source": "get_engineering_snapshot",
+            "result": {"sections": {"maps": {"assets": maps}}}}])
+        report = self.app._analysis_report(result, self.context)
+        self.assertEqual(report["map_assets"], maps)
+        report["map_assets"][0]["cd"][0]["value"] = 0
+        self.assertEqual(maps[0]["cd"][0]["value"], 99)
+
+    def test_item_results_survive_switch_restart_and_failure(self):
+        contexts = [self.context, {**self.context, "item": "SYN-QUEUE"}]
+        for context in contexts:
+            with patch.object(workbench_module, "run_agent", return_value=self._agent_result(context["item"])):
+                self.app.analysis(self.room_id, {"content": "analyze", "sources": ["incident"], "context": context})
+        restarted = Workbench({"settings": self.app.settings, "cutoff": self.app.cutoff,
+            "static_root": self.app.static_root, "chat_db": self.app.chat_db,
+            "history_limit": 1, "release": self.app.release})
+        with patch.object(workbench_module, "run_agent", side_effect=AssertionError("GET must not run LLM")):
+            for context in contexts:
+                saved = restarted.analysis_metadata(self.room_id, context["item"])
+                self.assertEqual(saved["analysis"]["report"]["summary"], context["item"])
+                self.assertIn(context["item"], saved["messages"][-1]["content"])
+                self.assertEqual(saved["run"]["status"], "completed")
+                self.assertTrue(saved["analysis"]["saved_at"])
+            self.assertIsNone(restarted.analysis_metadata(self.room_id, "MISSING")["analysis"])
+        with patch.object(workbench_module, "run_agent", return_value=self._agent_result(status="unavailable")):
+            with self.assertRaises(WorkbenchError):
+                restarted.analysis(self.room_id, {"content": "retry", "sources": ["incident"], "context": self.context})
+        self.assertEqual(restarted.analysis_metadata(self.room_id, "SYN-TEMP")["analysis"]["report"]["summary"], "SYN-TEMP")
+        restarted.update_room(self.room_id, {"incident_number": "SYN-2026-02"})
+        self.assertIsNone(restarted.analysis_metadata(self.room_id, "SYN-TEMP")["analysis"])
+
+    def test_item_followup_uses_selected_saved_scope_not_last_item(self):
+        for item in ("SYN-TEMP", "SYN-QUEUE"):
+            with patch.object(workbench_module, "run_agent", return_value=self._agent_result(item)):
+                self.app.analysis(self.room_id, {"content": "analyze", "sources": ["incident"],
+                    "context": {**self.context, "item": item}})
+        with patch.object(workbench_module, "run_agent", return_value=self._agent_result("follow-up")) as run:
+            result = self.app.analysis(self.room_id, {"content": "check again", "item": "SYN-TEMP"})
+        self.assertEqual(result["analysis"]["context"]["item"], "SYN-TEMP")
+        self.assertEqual(run.call_args.kwargs["context_data"]["ui_context_unverified"]["item"], "SYN-TEMP")
+        self.assertEqual(self.app.analysis_metadata(self.room_id, "SYN-QUEUE")["analysis"]["report"]["summary"], "SYN-QUEUE")
+        with self.assertRaises(WorkbenchError):
+            self.app.analysis(self.room_id, {"content": "check", "item": "MISSING"})
+
+    def test_explicit_preparation_binds_equipment_and_continues_after_failure(self):
+        self.app.raw_data = {"SYN-2026-01": {"engineering": {
+            "signals": [{"item": item, "title": item, "step": "ETCH", "equipment": "EQP-1"}
+                        for item in ("A", "B")],
+            "trend": [{"timestamp": self.context["from"]}, {"timestamp": self.context["to"]}],
+            "fab": [{"lotId": "LOT-1", "waferId": "W01", "step": "ETCH"}],
+        }}}
+        with patch.object(self.app, "analysis", side_effect=[WorkbenchError("failed"),
+                {"analysis": {"status": "answered"}}]) as analyze, patch("builtins.print"):
+            results = self.app.prepare_analyses(self.room_id)
+        self.assertEqual([row["status"] for row in results], ["failed", "answered"])
+        self.assertEqual(analyze.call_count, 2)
+        for call in analyze.call_args_list:
+            self.assertEqual(call.args[1]["context"]["equipment"], "EQP-1")
+            self.assertIn("enterprise", call.args[1]["sources"])
+            self.assertFalse(call.kwargs["use_history"])
+        with self.assertRaises(WorkbenchError):
+            self.app.prepare_analyses(self.room_id, ["UNKNOWN"])
 
     def test_default_room_requires_original_message_and_matching_incident(self):
         with patch.object(workbench_module, "run_agent", return_value=self._agent_result()):
@@ -330,6 +407,7 @@ class WorkbenchLLMTests(unittest.TestCase):
 
         def fake_run(settings, question, **kwargs):
             captured["context"] = kwargs["context_data"]
+            captured["history"] = pack_turns(kwargs["conversation_turns"], question, 2400)
             return self._agent_result()
 
         with patch.object(workbench_module, "run_agent", side_effect=fake_run):
@@ -339,7 +417,7 @@ class WorkbenchLLMTests(unittest.TestCase):
                 "context": self.context,
             })
 
-        history = captured["context"]["previous_messages_unverified"]
+        history = captured["history"]
         history_text = " ".join(item["content"] for item in history)
         self.assertIn("current incident note", history_text)
         self.assertNotIn("current answer", history_text)
@@ -348,7 +426,39 @@ class WorkbenchLLMTests(unittest.TestCase):
         with patch.object(workbench_module, "run_agent", side_effect=fake_run):
             self.app.analysis(self.room_id, {"content": "continue with the previous answer"})
         self.assertTrue(any(row['role'] == 'assistant'
-                            for row in captured['context']['previous_messages_unverified']))
+                            for row in captured['history']))
+
+    def test_memory_query_is_room_scoped_independent_of_display_page_and_excludes_generated_scope(self):
+        self.app.history_limit = 2
+        other_room = self.app.create_room('separate room', 'SYN-2026-01')['id']
+        ref = self.app._ref('data', 'current', 'current', 'SYN-2026-01')
+        self.app._append_messages(self.room_id, 'SEM point comparison\n분석 scope: DUPLICATE_SCOPE', [ref],
+                                  'Compare registered points', [ref])
+        self.app._append_messages(other_room, 'SEM PRIVATE_OTHER_ROOM', [ref], 'OTHER_ROOM_ANSWER', [ref])
+        for index in range(8):
+            self.app._append_messages(self.room_id, f'queue {index}', [ref], 'Production status', [ref])
+        captured = {}
+
+        def fake_run(settings, question, **kwargs):
+            captured['turns'] = kwargs['conversation_turns']
+            return self._agent_result()
+
+        with patch.object(workbench_module, 'run_agent', side_effect=fake_run):
+            self.app.analysis(self.room_id, {'content': 'SEM point comparison',
+                                            'sources': ['incident'], 'context': self.context})
+        text = json.dumps(captured['turns'])
+        self.assertIn('SEM point comparison', text)
+        self.assertNotIn('DUPLICATE_SCOPE', text)
+        self.assertNotIn('PRIVATE_OTHER_ROOM', text)
+        self.assertNotIn('OTHER_ROOM_ANSWER', text)
+
+    def test_offline_analysis_does_not_reuse_other_item_questions(self):
+        ref = self.app._ref('data', 'previous', 'previous', 'SYN-2026-01')
+        self.app._append_messages(self.room_id, 'Analyze another Item', [ref], 'Old conclusion', [ref])
+        with patch.object(workbench_module, 'run_agent', return_value=self._agent_result()) as run:
+            self.app.analysis(self.room_id, {'content': 'Analyze this Item',
+                                            'sources': ['incident'], 'context': self.context}, use_history=False)
+        self.assertEqual(run.call_args.kwargs['conversation_turns'], [])
 
     def test_checked_image_tools_remain_enabled_and_results_are_reported(self):
         self.app.settings = Settings(merge(self.app.settings.data, {

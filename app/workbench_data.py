@@ -316,7 +316,7 @@ def _validate_inform_notes(value: object, signal_scopes: set[tuple[str, str]]) -
     _unique(ids, "inform note ids")
 
 
-def _validate_sem_assets(value: object, fab_pairs: set[tuple[str, str]]) -> None:
+def _validate_sem_assets(value: object, fab_pairs: set[tuple[str, str]], items: set[str]) -> None:
     assets = _array(value, "sem_assets")
     ids = []
     asset_pairs = set()
@@ -327,6 +327,14 @@ def _validate_sem_assets(value: object, fab_pairs: set[tuple[str, str]]) -> None
                 _fail(f"sem_assets[{index}].{key} is required")
             _string(item[key], f"sem_assets[{index}].{key}")
         source = item["src"]
+        if item.get("analysis_mode", "classifier") not in ("classifier", "visual_only"):
+            _fail(f"sem_assets[{index}].analysis_mode must be classifier or visual_only")
+        if "pattern" in item:
+            _string(item["pattern"], f"sem_assets[{index}].pattern")
+        if "item" in item:
+            _string(item["item"], f"sem_assets[{index}].item")
+            if item["item"] not in items:
+                _fail(f"sem_assets[{index}].item is outside the engineering item scope")
         parsed = urlsplit(source)
         parts = source.split("/")
         if parsed.scheme or parsed.netloc or not source.startswith("/assets/") or ".." in parts or "\\" in source or "//" in source[1:]:
@@ -335,10 +343,10 @@ def _validate_sem_assets(value: object, fab_pairs: set[tuple[str, str]]) -> None
         if pair not in fab_pairs:
             _fail(f"sem_assets[{index}] is outside the engineering wafer scope")
         ids.append(item["id"])
-        asset_pairs.add(pair)
+        asset_pairs.add((item.get("item"), *pair))
     _unique(ids, "SEM asset ids")
     if len(asset_pairs) != len(assets):
-        _fail("SEM asset lot/wafer pairs must be unique")
+        _fail("SEM asset item/lot/wafer keys must be unique")
 
 
 def _validate_image_history(value: object) -> None:
@@ -438,7 +446,7 @@ def _validate_defect_references(value: object, inform_notes: list[dict], image_h
 def _validate_incident(incident_number: str, record: object) -> dict:
     item = _object(record, f"incidents.{incident_number}")
     required = {"engineering", "trend_fleets", "comparison_traces", "inform_notes", "sem_assets"}
-    if not required.issubset(item) or set(item) - required - {"historical_records", "image_history", "defect_references"}:
+    if not required.issubset(item) or set(item) - required - {"historical_records", "image_history", "defect_references", "map_assets"}:
         _fail(f"incidents.{incident_number} must contain engineering, trend_fleets, comparison_traces, inform_notes and sem_assets")
     engineering = _object(item["engineering"], f"incidents.{incident_number}.engineering")
     signal_scopes = _validate_engineering(engineering)
@@ -446,7 +454,27 @@ def _validate_incident(incident_number: str, record: object) -> dict:
     _validate_comparison_traces(item["comparison_traces"], engineering["signals"])
     _validate_inform_notes(item["inform_notes"], signal_scopes)
     fab_pairs = {(row["lotId"], row["waferId"]) for row in engineering["fab"]}
-    _validate_sem_assets(item["sem_assets"], fab_pairs)
+    for asset in _array(item.get("map_assets", []), "map_assets"):
+        _object(asset, "map_assets entry")
+        for field in ("id", "lot_id", "wafer_id", "step", "provenance"):
+            _string(asset.get(field), "map_assets." + field)
+        _timestamp(asset.get("timestamp"), "map_assets.timestamp")
+        if (asset["lot_id"], asset["wafer_id"]) not in fab_pairs or "synthetic" not in asset["provenance"]:
+            _fail("map_assets must be registered synthetic wafers")
+        for kind, fields in (("overlay", ("x", "y", "dx", "dy")), ("cd", ("x", "y", "value")),
+                             ("thk", ("x", "y", "value")), ("eds_bin", ("x", "y", "bin"))):
+            points = _array(asset.get(kind), "map_assets." + kind)
+            if not points or len(points) > 2000:
+                _fail("map_assets require 1..2000 points per map")
+            for point in points:
+                _object(point, "map_assets point")
+                for field in fields:
+                    _finite(point.get(field), "map_assets." + kind + "." + field)
+                if kind == "eds_bin" and (type(point["bin"]) is not int or point["bin"] < 0):
+                    _fail("map_assets bin must be a nonnegative integer")
+            _unique([(p["x"], p["y"]) for p in points], "map coordinates")
+    _unique([asset["id"] for asset in item.get("map_assets", [])], "map asset ids")
+    _validate_sem_assets(item["sem_assets"], fab_pairs, {signal["item"] for signal in engineering["signals"]})
     if "image_history" in item:
         _validate_image_history(item["image_history"])
     historical_records = []

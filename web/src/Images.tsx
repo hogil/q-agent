@@ -11,6 +11,7 @@ import {
 import { OverlayChart, WaferChart, type Die } from './charts';
 import { MapView, incidentSeed } from './Views';
 import type { ViewProps } from './Views';
+import { semRecord } from './investigationData';
 
 export default function Images(props: ViewProps & { initialMode?: string }) {
   const [mode] = useState(
@@ -24,6 +25,17 @@ export default function Images(props: ViewProps & { initialMode?: string }) {
   const [opacity, setOpacity] = useState(65);
   const [showA, setShowA] = useState(true);
   const [showB, setShowB] = useState(true);
+  const [semId, setSemId] = useState('');
+  const [semItemId, setSemItemId] = useState('');
+  const semItems = [...new Set(props.workspace.raw?.engineering.signals.map((signal) => signal.item) || [])];
+  const semItem = semItems.includes(semItemId) ? semItemId : semItems[0];
+  const semAssets = props.workspace.raw?.sem_assets.filter((asset) => !asset.item || asset.item === semItem) ?? props.workspace.wafers.flatMap((wafer) => {
+    const asset = semRecord(props.workspace, wafer.lot_id, wafer.wafer_id, semItem);
+    return asset ? [asset] : [];
+  });
+  const semAsset = semAssets.find((asset) => asset.id === semId)
+    || semAssets.find((asset) => asset.lotId === props.initialWafer?.lotId && asset.waferId === props.initialWafer?.waferId)
+    || semAssets[0];
   const seed = incidentSeed(props.workspace);
   return (
     <div className="image-workspace">
@@ -165,6 +177,28 @@ export default function Images(props: ViewProps & { initialMode?: string }) {
                 </div>
               )}
               <div className="image-toolbar">
+                {!!semItems.length && <select
+                  aria-label="SEM Item"
+                  value={semItem}
+                  style={{ maxWidth: '30%', minWidth: 0 }}
+                  onChange={(event) => { setSemItemId(event.target.value); setSemId(''); setZoom(1); }}
+                >
+                  {semItems.map((item) => <option key={item} value={item}>{item}</option>)}
+                </select>}
+                <select
+                  aria-label="SEM Lot/Wafer 패턴"
+                  value={semAsset?.id || ''}
+                  disabled={!semAssets.length}
+                  style={{ maxWidth: 'min(440px, 50%)', minWidth: 0 }}
+                  onChange={(event) => { setSemId(event.target.value); setZoom(1); }}
+                >
+                  {!semAssets.length && <option value="">SEM 미등록</option>}
+                  {semAssets.map((asset) => (
+                    <option key={asset.id} value={asset.id}>
+                      {asset.lotId} / {asset.waferId} · {asset.pattern || asset.description}
+                    </option>
+                  ))}
+                </select>
                 <label>
                   <input
                     type="checkbox"
@@ -204,19 +238,19 @@ export default function Images(props: ViewProps & { initialMode?: string }) {
                   className="sem-image-stage"
                   style={{ '--image-zoom': zoom } as CSSProperties}
                 >
-                  <img
-                    src="/assets/synthetic-sem.png"
-                    alt="실제 측정이 아닌 AI 생성 반도체 line-space 합성 SEM 이미지"
-                  />
-                  {roi && (
+                  {semAsset ? <img
+                    src={semAsset.src}
+                    alt={`합성 SEM · ${semAsset.description}`}
+                  /> : <p>SEM 미등록</p>}
+                  {roi && semAsset && (
                     <button
                       className="sem-roi"
                       title="합성 검토 영역 첨부"
                       onClick={() =>
                         props.attach({
                           kind: 'image',
-                          id: 'synthetic-sem-roi-01',
-                          label: '합성 SEM · 검토 영역 01',
+                          id: `sem:${semAsset.id}:roi`,
+                          label: `${semAsset.lotId}/${semAsset.waferId} · 합성 SEM ROI`,
                         })
                       }
                     >
@@ -228,15 +262,16 @@ export default function Images(props: ViewProps & { initialMode?: string }) {
               <div className="selection-bar">
                 <div>
                   <span className="eyebrow">IMAGE SOURCE</span>
-                  <strong>synthetic-sem.png</strong>
+                  <strong>{semAsset?.pattern || semAsset?.description || 'SEM 미등록'}</strong>
                 </div>
                 <button
                   className="outline-button"
+                  disabled={!semAsset}
                   onClick={() =>
-                    props.attach({
+                    semAsset && props.attach({
                       kind: 'image',
-                      id: 'synthetic-sem',
-                      label: 'AI 생성 합성 SEM',
+                      id: `sem:${semAsset.id}`,
+                      label: `${semAsset.lotId}/${semAsset.waferId} · ${semAsset.pattern || '합성 SEM'}`,
                     })
                   }
                 >

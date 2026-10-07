@@ -22,6 +22,7 @@ import {
   type Workspace,
 } from './api';
 import AnalysisEvidence from './AnalysisEvidence';
+import { analysisBrief } from './analysisBrief';
 import './boardAnalysis.css';
 import {
   sameAnalysisContext as sameContext,
@@ -42,6 +43,7 @@ const sourceOptions = [
   ['changes', '변경 이력'],
 ] as const;
 type Analysis = {
+  saved_at?: string;
   mode: 'demo' | 'llm';
   llm_connected: boolean;
   release?: string;
@@ -87,6 +89,7 @@ type ProgressRun = {
   error?: string;
 };
 type ProgressResponse = { run: ProgressRun | null };
+type SavedAnalysis = { analysis: Analysis | null; messages?: Room['messages']; run?: ProgressRun | null };
 type Response = {
   messages: Room['messages'];
   room: RoomSummary;
@@ -186,7 +189,8 @@ export default function BoardAnalysis({
   const progressRef = useRef<ProgressRun | null>(null);
   const generationRef = useRef(0);
   const requestRef = useRef(0);
-  const autoStartedRef = useRef(new Set<string>());
+  const savedCache = useRef(new Map<string, SavedAnalysis>());
+  const outputRef = useRef<HTMLDivElement>(null);
   roomRef.current = roomId;
   autoKeyRef.current = autoKey;
   contextRef.current = context;
@@ -198,38 +202,46 @@ export default function BoardAnalysis({
   const resultsPanelId = `${tabBase}-results-panel`;
   const reviewPanelId = `${tabBase}-review-panel`;
   useEffect(() => {
+    let active = true;
+    api<Bootstrap>('/bootstrap')
+      .then((result) => { if (active) setRuntime(result); })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, [roomId]);
+  useEffect(() => {
     mounted.current = true;
     ++generationRef.current;
     let active = true;
     setLoadedRoom('');
+    setPanelTab('results');
+    if (outputRef.current) outputRef.current.scrollTop = 0;
     setBusy(false);
     busyRef.current = false;
     progressRef.current = null;
     setProgress(null);
-    setAnalysis(null);
-    setMessages([]);
+    const cacheKey = `${roomId}:${autoKey}`;
+    const cached = savedCache.current.get(cacheKey);
+    setAnalysis(cached?.analysis || null);
+    setMessages(cached?.messages || []);
+    if (cached?.analysis) setSources(cached.analysis.sources);
     setError('');
-    autoStartedRef.current.clear();
-    api<Bootstrap>('/bootstrap')
-      .then((result) => {
-        if (active) setRuntime(result);
-      })
-      .catch((e) => {
-        if (active) setError(String(e));
-      });
     Promise.all([
-      api<{ analysis: Analysis | null }>(`/rooms/${roomId}/analysis`),
+      api<SavedAnalysis>(`/rooms/${roomId}/analysis?item=${encodeURIComponent(context.item)}`),
       api<ProgressResponse>(`/rooms/${roomId}/analysis/progress`),
-      api<Room>(`/rooms/${roomId}`),
     ])
-      .then(([analysisResult, progressResult, roomResult]) => {
+      .then(async ([analysisResult, progressResult]) => {
+        if (!analysisResult.messages && analysisResult.analysis) {
+          analysisResult.messages = (await api<Room>(`/rooms/${roomId}`)).messages;
+        }
         if (!active) return;
+        savedCache.current.set(cacheKey, analysisResult);
         setAnalysis(analysisResult.analysis);
         if (analysisResult.analysis)
           setSources(analysisResult.analysis.sources);
-        progressRef.current = progressResult.run;
-        setProgress(progressResult.run);
-        setMessages(roomResult.messages);
+        const run = progressResult.run?.status === 'running' ? progressResult.run : analysisResult.run || null;
+        progressRef.current = run;
+        setProgress(run);
+        setMessages(analysisResult.messages || []);
         setLoadedRoom(roomId);
       })
       .catch((e) => {
@@ -241,7 +253,10 @@ export default function BoardAnalysis({
       busyRef.current = false;
       mounted.current = false;
     };
-  }, [roomId]);
+  }, [roomId, autoKey]);
+  useEffect(() => {
+    if (outputRef.current) outputRef.current.scrollTop = 0;
+  }, [roomId, autoKey, loadedRoom]);
   useEffect(() => {
     if (expanded) dialog.current?.showModal();
   }, [expanded]);
@@ -249,13 +264,15 @@ export default function BoardAnalysis({
     !!analysis &&
     (!sameContext(analysis.context, context) ||
       [...analysis.sources].sort().join() !== [...sources].sort().join());
+  const brief = analysis?.report ? analysisBrief(analysis.report, analysis.context) : null;
   const latest = messages.find((message) => message.id === analysis?.answer_message_id) || messages
     .filter((message) => message.role === 'assistant')
     .at(-1);
   const currentProgress =
     progress &&
-    sameContext(progress.context, context) &&
-    sameSources(progress.sources, sources)
+    (progress.status === 'completed' && analysis
+      ? sameContext(progress.context, analysis.context)
+      : sameContext(progress.context, context) && sameSources(progress.sources, sources))
       ? progress
       : null;
   const remoteBusy = progress?.status === 'running';
@@ -292,18 +309,17 @@ export default function BoardAnalysis({
       const next = result.run;
       if (next?.status === 'completed') {
         const [stored, room] = await Promise.all([
-          api<{ analysis: Analysis | null }>(`/rooms/${roomId}/analysis`),
+          api<SavedAnalysis>(`/rooms/${roomId}/analysis?item=${encodeURIComponent(contextRef.current.item)}`),
           api<Room>(`/rooms/${roomId}`),
         ]);
         if (!isCurrent()) return;
         if (
           stored.analysis &&
           sameContext(stored.analysis.context, next.context) &&
-          sameContext(stored.analysis.context, contextRef.current) &&
-          sameSources(stored.analysis.sources, sourcesRef.current)
+          stored.analysis.context.item === contextRef.current.item
         ) {
           setAnalysis(stored.analysis);
-          setMessages(room.messages);
+          setMessages(stored.messages || room.messages);
           onChange();
         }
       }
@@ -346,7 +362,6 @@ export default function BoardAnalysis({
       roomRef.current === runRoomId &&
       generationRef.current === generation;
     ++requestRef.current;
-    autoStartedRef.current.add(`${roomId}:${request.key}`);
     busyRef.current = true;
     setBusy(true);
     setError('');
@@ -357,7 +372,7 @@ export default function BoardAnalysis({
         `/rooms/${roomId}/analysis`,
         'POST',
         request.followup
-          ? { content: request.content || '' }
+          ? { content: request.content || '', item: request.requestContext.item }
           : {
               content:
                 `현재 선택된 이상 항목 ${request.requestContext.item}을 분석해줘. ` +
@@ -380,9 +395,9 @@ export default function BoardAnalysis({
       );
       if (!isCurrent()) return;
       if (
-        request.key === autoKeyRef.current &&
-        sameContext(result.analysis.context, contextRef.current)
+        request.key === autoKeyRef.current
       ) {
+        savedCache.current.set(`${roomId}:${request.key}`, result);
         setAnalysis(result.analysis);
         setSources(result.analysis.sources);
       }
@@ -409,52 +424,16 @@ export default function BoardAnalysis({
   }
 
   function run(followup = false) {
-    if (effectiveBusy || (followup && (!draft.trim() || !analysis || stale)))
+    if (effectiveBusy || (followup && (!draft.trim() || !analysis)))
       return;
     void execute({
       followup,
       key: autoKey,
-      requestContext: context,
-      requestSources: sources,
+      requestContext: followup && analysis ? analysis.context : context,
+      requestSources: followup && analysis ? analysis.sources : sources,
       content: followup ? draft.trim() : undefined,
     });
   }
-
-  useEffect(() => {
-    autoStartedRef.current.clear();
-  }, [roomId, autoKey]);
-
-  useEffect(() => {
-    // The latest selection waits here while any run in this room is active.
-    if (!runtime || loadedRoom !== roomId || effectiveBusy) return;
-    const selectionKey = `${roomId}:${autoKey}`;
-    if (autoStartedRef.current.has(selectionKey)) return;
-    if (
-      (analysis &&
-        (!runtime.llm_configured || (analysis.report?.version === 2 && analysis.release === runtime.release)) &&
-        sameContext(analysis.context, context) &&
-        sameSources(analysis.sources, sources)) ||
-      currentProgress?.status === 'failed'
-    ) {
-      autoStartedRef.current.add(selectionKey);
-      return;
-    }
-    const timer = window.setTimeout(() => {
-      if (
-        !mounted.current ||
-        roomRef.current !== roomId ||
-        autoKeyRef.current !== autoKey
-      )
-        return;
-      void execute({
-        followup: false,
-        key: autoKey,
-        requestContext: contextRef.current,
-        requestSources: sourcesRef.current,
-      });
-    }, 250);
-    return () => window.clearTimeout(timer);
-  }, [loadedRoom, roomId, autoKey, effectiveBusy, runtime?.llm_configured]);
 
   function downloadManualReview() {
     download(
@@ -484,23 +463,23 @@ export default function BoardAnalysis({
       <input
         aria-label="분석 후 추가 질문"
         placeholder={
-          stale ? '조건 변경 · 다시 분석 필요' : '같은 분석에 추가 질문'
+          stale ? '저장된 분석 범위에 추가 질문' : '같은 분석에 추가 질문'
         }
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         maxLength={12000}
-        disabled={effectiveBusy || !analysis || stale}
+        disabled={effectiveBusy || !analysis}
       />
       <button
         className="icon-button"
         title="추가 질문 보내기"
-        disabled={effectiveBusy || !draft.trim() || !analysis || stale}
+        disabled={effectiveBusy || !draft.trim() || !analysis}
       >
         <Send size={14} />
       </button>
     </form>
   );
-  const enterpriseEvidence = analysis?.sources.includes('enterprise') && !stale && !effectiveBusy && !error && (
+  const enterpriseEvidence = analysis?.sources.includes('enterprise') && !effectiveBusy && !error && (
     <details className="board-enterprise-evidence">
       <summary>사내 시스템 SQL · {analysis.enterprise?.status || '미연결'}</summary>
       {analysis.enterprise?.systems.map((system) => (
@@ -619,12 +598,13 @@ export default function BoardAnalysis({
             ) : (
               <Play size={12} />
             )}
-            {effectiveBusy ? '분석 중' : stale ? '현재 조건 분석' : '분석 실행'}
+            {effectiveBusy ? '분석 중' : analysis ? '다시 분석' : '분석 실행'}
           </button>
         )}
       </div>
       {panelTab === 'results' ? (
         <div
+          ref={outputRef}
           id={resultsPanelId}
           role="tabpanel"
           aria-labelledby={resultsTabId}
@@ -671,37 +651,68 @@ export default function BoardAnalysis({
               </span>
             </section>
           )}
-          {failedCurrentRun ? (
+          {failedCurrentRun && (
             <p className="board-analysis-failure" role="alert">
               {progressError || error || '분석이 완료되지 않았습니다.'}
             </p>
-          ) : effectiveBusy || error ? null : analysis ? (
+          )}
+          {analysis ? (
             <>
               <div className="board-analysis-status">
                 {stale
-                  ? '이전 조건 결과 · 현재 선택과 불일치'
+                  ? '저장 분석 · 현재 선택과 범위 다름'
                   : analysis.status === 'partial'
                     ? '부분 답변'
-                    : '분석 완료'}{' '}
+                    : '저장 분석'}{' '}
                 · {completedStepCount}개 조회 · {unavailableStepCount}개 미연결
+                {analysis.saved_at && <time dateTime={analysis.saved_at}> · {new Date(analysis.saved_at).toLocaleString()}</time>}
               </div>
-              {!stale && (analysis.report ? (
+              <details className="board-analysis-event-details">
+                <summary>저장 범위 · {analysis.context.item} · {analysis.context.wafers.length} Wafers</summary>
+                <p>{analysis.context.step} · {analysis.context.equipment || '전체 설비'} · {analysis.context.recipe || '전체 Recipe'}</p>
+                <p>{analysis.context.from} ~ {analysis.context.to}</p>
+              </details>
+              {analysis.report ? (
                 <>
-                  <p className="board-analysis-answer board-analysis-summary">{analysis.report.summary}</p>
-                  <AnalysisEvidence report={analysis.report} context={context} workspace={workspace} />
+                  {brief && (
+                    <section className="board-risk-brief" aria-label={`${analysis.context.item} 저장 위험 검토`}>
+                      <h3>{analysis.context.item} · 불량 위험 검토</h3>
+                      <h4>현재 위험 근거</h4>
+                      {brief.observations.length
+                        ? brief.observations.map((text, i) => <p key={i}>{text}</p>)
+                        : <p>저장된 Trend 수치가 없습니다. 아래 LLM 답변의 근거 범위를 확인해야 합니다.</p>}
+                      <h4>유사 사고 후보</h4>
+                      {brief.comparisons.length ? brief.comparisons.map((row) => (
+                        <p key={row.id}><strong>{row.id}</strong><br />{row.text}</p>
+                      )) : <p>현재 Item·Step과 연결된 과거 사고가 저장되어 있지 않습니다.</p>}
+                      <h4>우선 점검</h4>
+                      {brief.checks.length ? brief.checks.map((row, i) => (
+                        <p key={i}><strong>{row.target}</strong> · {row.comparison}<br /><span>근거: {row.basis}</span></p>
+                      )) : <p>저장된 점검 권고가 없습니다.</p>}
+                      {brief.eds.map((row, i) => <p key={i}><strong>EDS 확인</strong> · {row.comparison}</p>)}
+                      <small>합성 데이터의 저장 근거 · 이미지 유사도와 현재 불량 확정은 미검증</small>
+                    </section>
+                  )}
+                  <AnalysisEvidence report={analysis.report} context={analysis.context} workspace={workspace} />
+                  <details className="board-analysis-event-details">
+                    <summary>저장된 LLM 답변</summary>
+                    <p className="board-analysis-answer board-analysis-summary">{analysis.report.summary}</p>
+                  </details>
                   <details className="board-analysis-event-details">
                     <summary>점검 권고 · EDS 후속 확인 · 전체 답변</summary>
                     <p className="board-analysis-answer">{latest?.content}</p>
                   </details>
                 </>
-              ) : <p className="board-analysis-answer">{latest?.content}</p>)}
+              ) : <p className="board-analysis-answer">{latest?.content}</p>}
               {enterpriseEvidence}
             </>
-          ) : (
+          ) : effectiveBusy ? null : (
             <p>
-              {runtime?.llm_configured
-                ? '분석 대기 · 합성 DB'
-                : '분석 대기 · LLM 미연결'}
+              {loadedRoom !== roomId && !error
+                ? '저장 분석 불러오는 중'
+                : runtime?.llm_configured
+                  ? '저장된 Item 분석 없음 · 합성 DB'
+                  : '저장된 Item 분석 없음 · LLM 미연결'}
             </p>
           )}
           {currentProgress && (
@@ -870,7 +881,6 @@ export default function BoardAnalysis({
             </details>
           )}
           {analysis &&
-            !stale &&
             !failedCurrentRun &&
             !effectiveBusy &&
             !error && (
@@ -922,8 +932,8 @@ export default function BoardAnalysis({
               <article key={message.id} className={message.role}>
                 <strong>{message.role === 'user' ? '질문' : '답변'}</strong>
                 <p>{message.content}</p>
-                {message.id === analysis?.answer_message_id && analysis.report && !stale &&
-                  <AnalysisEvidence report={analysis.report} context={context} workspace={workspace} />}
+                {message.id === analysis?.answer_message_id && analysis.report &&
+                  <AnalysisEvidence report={analysis.report} context={analysis.context} workspace={workspace} />}
               </article>
             ))}
           </div>

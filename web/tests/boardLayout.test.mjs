@@ -20,7 +20,7 @@ const sum = (values) => values.reduce((a, b) => a + b, 0);
 
 test('new spatial layout has separate persistence and rejects incomplete or old dimensions', () => {
   const original = defaultLayout();
-  assert.equal(layoutStorageKey, 'qagent:board-layout:v6');
+  assert.equal(layoutStorageKey, 'qagent:board-layout:v7');
   assert.deepEqual(
     parseLayout(JSON.stringify({ version: layoutVersion, ...original })),
     original,
@@ -29,7 +29,7 @@ test('new spatial layout has separate persistence and rejects incomplete or old 
     null,
     '{',
     '{}',
-    ...[1, 2, 3, 4, 5].map((version) => JSON.stringify({ version, ...original })),
+    ...[1, 2, 3, 4, 5, 6].map((version) => JSON.stringify({ version, ...original })),
     JSON.stringify({ version: layoutVersion, ...original, rows: [-1, 1, 1] }),
     JSON.stringify({ version: layoutVersion, ...original, workspace: [0.5] }),
     JSON.stringify({
@@ -61,6 +61,7 @@ test('investigation order gives every panel one place and a two-row analysis are
 
 test('migrates v4 current layout while preserving every other boundary', () => {
   assert.deepEqual(previousLayoutStorageKeys, [
+    'qagent:board-layout:v6',
     'qagent:board-layout:v5',
     'qagent:board-layout:v4',
     'qagent:board-layout:v3',
@@ -87,6 +88,13 @@ test('migrates v4 current layout while preserving every other boundary', () => {
     parseLayout(JSON.stringify({ version: layoutVersion, ...migrated })),
     migrated,
   );
+});
+
+test('v6 default rows give SEM more height while preserving customized rows', () => {
+  const old = { ...defaultLayout(), version: 6, rows: [0.4, 0.33, 0.27] };
+  assert.deepEqual(migrateLayout(JSON.stringify(old)).rows, defaultLayout().rows);
+  const custom = { ...old, rows: [0.3, 0.4, 0.3] };
+  assert.deepEqual(migrateLayout(JSON.stringify(custom)).rows, custom.rows);
 });
 
 test('migrates v3 wafer-list space while preserving every other boundary', () => {

@@ -10,6 +10,7 @@
   "properties": {
     "claims": {
       "type": "array",
+      "maxItems": 6,
       "items": {
         "type": "object",
         "required": [
@@ -22,7 +23,8 @@
             "type": "string"
           },
           "text": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 140
           },
           "evidence_ids": {
             "type": "array",
@@ -78,12 +80,15 @@
       }
     },
     "answer": {
-      "type": "string"
+      "type": "string",
+      "maxLength": 800
     },
     "limitations": {
       "type": "array",
+      "maxItems": 6,
       "items": {
-        "type": "string"
+        "type": "string",
+        "maxLength": 180
       }
     },
     "status": {

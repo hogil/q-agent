@@ -126,6 +126,9 @@ export function SourcePreview({
   const syntheticImage =
     item.kind === 'image' &&
     ['synthetic-sem', 'synthetic-sem-roi-01'].includes(item.id);
+  const semAsset = item.kind === 'image' && item.incident_number === workspace.incident.incident_number
+    ? workspace.raw?.sem_assets.find((asset) => item.id === `sem:${asset.id}` || item.id === `sem:${asset.id}:roi`)
+    : undefined;
   return (
     <article className="evidence-preview">
       <div className="evidence-preview-heading">
@@ -167,12 +170,12 @@ export function SourcePreview({
             <span>{source.source}</span>
           </div>
         </>
-      ) : syntheticImage ? (
+      ) : syntheticImage || semAsset ? (
         <>
           <img
             className="evidence-image"
-            src="/assets/synthetic-sem.png"
-            alt="AI 생성 합성 SEM, 실제 측정 근거 아님"
+            src={semAsset?.src || '/assets/synthetic-sem.png'}
+            alt={semAsset?.description || 'AI 생성 합성 SEM, 실제 측정 근거 아님'}
           />
           <p className="evidence-limitation">
             AI 생성 이미지 · 실측값 및 사고 관계 미검증

@@ -32,8 +32,8 @@ response_contract.transport가 function_call이면 submit_plan에 전체 객체�
 미지정 선택 인자는 생략한다. null/빈 문자열/빈 배열 placeholder는 금지한다. city/line/title/incident_number는 문자열, fields는 논리 컬럼명 배열이다. last_error이면 tools.json에 맞춰 전체 계획을 수정해 다시 제출한다. 명시 조건을 삭제해 검색 범위를 넓히거나 최종 답변으로 대체하지 않는다.
 find_incidents의 최상위 filters는 arguments.filters와 같고 생략 시 {}다. 사고번호는 arguments.incident_number에 넣고 sql_exact를 쓴다. title/fields도 별도 arguments다. 조건별 예시는 references/conditions.md를 따른다.
 비활성 Tool은 limitations, Skill은 load_skills, 확인은 clarify, 근거 수집 완료는 ready_for_judge다. 물리명/SQL/미조회 ID를 발명하지 않는다. Adapter의 논리 키만 쓴다.
-Trend·생산·Inform·변경 이력·사내 SQL은 사고 조회 뒤 get_engineering_snapshot({})으로 읽는다. SQL은 서버 설정의 View/컬럼과 선택 범위를 사용한다. SQL문·접속정보를 만들지 않는다. 출처·누락을 유지하며 UI 조건은 근거가 아니다.
-Trend 또는 CD/SEM/Overlay/Bin/Failbit Map 문의 모두 현재 범위 조회 → 관련 정보 → Judge 순서다. 유사 사고는 search_related_incidents(terms)로 조회한다. terms는 질문/조회 결과의 공정·결함·계측 용어이며 후보는 확정 관계가 아니다. 미구현 Map 모델은 unavailable로 남긴다.
+Trend·생산·Inform·변경·사내 SQL은 get_engineering_snapshot({})으로 조회한다. 별도 documents/trends Skill은 불필요하다. needs_skills는 available_topics 안의 필요한 Schema만 요청한다. SQL문·접속정보를 만들지 않으며 출처·누락을 유지한다.
+Trend/Map 문의는 현재 범위 → 관련 정보 → Judge 순서다. search_related_incidents의 terms는 질문/조회 결과의 공정·결함 용어 1~6개, 각 2~80자다. 후보는 확정 관계가 아니며 미구현 모델은 unavailable이다.
 기존 사고와 비교해 점검·EDS 확인을 요청하면 선택된 자료에서 현재 Fab 범위, 과거 불량 참조와 완료 EDS, 설비·변경 이력을 수집한다. 현재 결과 부재를 과거 EDS로 채우지 않으며 없는 EDS Tool을 만들지 않는다. 사고 검색 0건과 별도 Inform의 연결된 과거 참조를 구분해 Judge에 전달한다.
 execute는 clarification=null, needs_skills=[]다. 같은 Lot/Wafer Tool은 계획당 한 번만, 다음 페이지는 반환된 next_offset 확인 후 요청한다. Item과 Step을 혼동하지 않는다.
 Lot/Wafer의 PARTIAL은 등록 범위 미확정일 수 있다. next_offset=null이면 같은 페이지를 반복하지 말고 한계를 유지한 채 후속 Tool로 진행한다.
@@ -42,4 +42,4 @@ requested_tools가 있는 경우 routing_only 근거는 조회 상태 요약이�
 
 ## 실제 데이터 확인 후 변경
 
-2026-09-18~22 합성 Tool/회의록 계약, Qwen intents 무한 반복·출력 오류와 SQL·Map·점검·EDS 요청 기준이다. 사내 성능 미검증. 출처·시점·근거를 기록하며 DB 수정/온라인 자기 수정은 금지한다.
+2026-09-22 합성 Qwen의 검색어 한도/불필요한 Skill 로드 오류를 Tool 계약에 맞췄다. 사내 미검증. DB 수정/온라인 자기 수정 금지.
