@@ -32,6 +32,10 @@ def open_incident_tools(settings):
                 deadline[0] = time.monotonic() + data['database']['query_timeout_seconds']
                 return super().find_incidents(*args, **kwargs)
 
+            def summarize_incidents(self, *args, **kwargs):
+                deadline[0] = time.monotonic() + data['database']['query_timeout_seconds']
+                return super().summarize_incidents(*args, **kwargs)
+
             def list_incident_lots(self, *args, **kwargs):
                 deadline[0] = time.monotonic() + data['database']['query_timeout_seconds']
                 return super().list_incident_lots(*args, **kwargs)

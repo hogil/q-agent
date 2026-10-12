@@ -1,5 +1,5 @@
 {
-  "release": "quality-demo-0.59",
+  "release": "quality-demo-0.60",
   "purpose": "on-prem application Skill sources; not personal ChatGPT skill installation",
   "base": [
     "core"
@@ -21,7 +21,8 @@
       "schema/lot-schema"
     ],
     "statistics": [
-      "schema/incident-schema"
+      "schema/incident-schema",
+      "rules/statistics"
     ],
     "documents": [
       "schema/incident-document-schema",

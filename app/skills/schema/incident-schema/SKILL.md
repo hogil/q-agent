@@ -20,7 +20,7 @@ find_incidents의 fields에 필요한 논리 컬럼을 지정하면 기본 목�
 
 ## 통계
 
-집계는 aggregate_incidents 등 검증된 코드/SQL로 수행한다. 전체 조회 모집단과 상위 N개 표시를 구분한다.
+집계는 statistics Skill을 따른다. 전체 모집단과 상위 N개 표시를 구분한다.
 고유 사고는 distinct incident_id, 사고별 Lot 관계는 incident_id+lot_key, 고유 Lot는 검증된 lot_key 기준이다.
 다중세대 포함 사고 합계는 고유 사고보다 클 수 있다. 영향 수량은 실제 배분 값만 사용한다. 모르는 수량은 0이나 균등 배분으로 바꾸지 않는다.
 불량률은 같은 대상·기간·단위의 분모가 필요하다. FAB Out 분류 미등록은 정상 판정이 아니다.

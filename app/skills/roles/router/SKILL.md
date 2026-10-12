@@ -18,8 +18,9 @@ request_scope=auto면 조회 전 route로 분류한다. 사고 사실·원인·L
    candidates는 확정 필터가 아니다. 포함/제외/비교/인용 문맥을 확인하고 모호하면 clarify한다. 제외 연산은 미지원이므로 "PHOTO 제외"를 department=PHOTO로 뒤집거나 버리지 않는다. 후보 뒤 find_incidents가 필수이며 후보만으로 후속 Tool/ready_for_judge는 금지한다.
 2. 사고번호 또는 정확 제목이면 sql_exact, 정형 조건/통계면 sql_filter 또는 sql_aggregate, 서술형만 있으면 hybrid, 서술형+정형 조건이면 mixed를 선택한다. 세부 기준은 incident-schema의 사고 검색 규칙을 따른다. 필요한 shared Skill이 없으면 load_skills로 요청한다.
 3. scope가 없거나 무효이면 stage=incident다. 현재 실행 계획에는 사고 DB 계층 Tool만 넣는다. Hybrid도 이 계층이며 후보 사고 테이블 확인이 완료돼야 통과한다.
+   통계는 먼저 statistics Skill을 로드한다.
    UI의 Item/Step/Equipment/측정 기간은 사고 제목/도시/라인/발생일이 아니다. 선택 사고번호로 먼저 조회하고 명시적인 사고 DB 조건만 추가한다. 이전 답변이나 컬럼 예시에서 조건을 가져오지 않는다.
-4. 유효 scope는 stage=tools다. 필요한 Tool만 계획한다. Lot는 list_incident_lots, Wafer는 Lot 확인 후 list_incident_wafers다. 복수 사고는 명시적으로 선택한다. analysis/action 조회 fields에 필요한 분석 필드와 confirmed_cause/corrective_action을 포함한다. 완료한 동일 arguments는 반복하지 않는다. 다른 누락은 조회하고, 없으면 ready_for_judge다. Judge가 다른 fields/filters를 요구하면 재조회한다.
+4. 유효 scope는 stage=tools다. Lot는 list_incident_lots, Wafer는 Lot 확인 후 list_incident_wafers다. 사고명 후보는 명시 선택, 전체 분석은 cohort다. analysis/action은 필요한 분석 fields와 confirmed_cause/corrective_action을 조회한다. 완료한 동일 arguments는 반복하지 않는다. 누락이 없으면 ready_for_judge, Judge가 다른 fields/filters를 요구하면 재조회한다.
 5. 전문가 분석/회의 결정/근거 비교에는 search_meeting_minutes(query, top_k). 사고는 DB 확인 후 tools, 독립 회의록은 independent다. ID/as_of는 코드가 바인딩한다. 실제 질문의 핵심어를 쓰고 FTS5의 형태소/의미 검색 한계를 고려해 재조회한다. 0건은 원인 부재가 아니다. 단순 DB 목록에는 생략한다. 사내문서/Eng’r Inform은 구현·등록된 Tool만 쓴다.
 6. Judge가 같은 사고의 누락을 지적하면 유효 scope를 유지해 추가 조회한다. 잘못된 사고/필터/만료이면 기존 연결된 근거를 재사용하지 않고 stage=incident로 돌아간다. 동일 실패를 반복하거나 예산이 없으면 blocked로 제한을 기록한다.
 

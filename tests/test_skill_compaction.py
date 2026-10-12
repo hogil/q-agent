@@ -11,6 +11,15 @@ from skill_loader import compact_schema, compile_prompt
 
 
 class SkillCompactionTests(unittest.TestCase):
+    def test_statistics_contract_is_loaded_only_for_statistics_topic(self):
+        settings = load_config(ROOT / 'config/config.yaml', ROOT / 'config/demo.yaml')
+        plain = compile_prompt('router', ['incident_search'], settings=settings)
+        statistics = compile_prompt('router', ['incident_search', 'statistics'], settings=settings)
+        self.assertFalse(any('rules/statistics' in path for path in plain['loaded_files']))
+        self.assertTrue(any('rules/statistics' in path for path in statistics['loaded_files']))
+        self.assertIn('comparison_period', statistics['system_prompt'])
+        self.assertNotIn('comparison_period', plain['system_prompt'])
+
     def test_all_schema_values_round_trip_without_changing_source(self):
         count = 0
         for path in (ROOT / 'app/skills/schema').rglob('*.json'):

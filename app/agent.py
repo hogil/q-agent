@@ -18,7 +18,7 @@ from skill_loader import compile_prompt, read_role_reference
 from conversation_memory import pack_turns
 
 TOOL_TOPICS = {
-    'match_incident_values': 'terminology', 'find_incidents': 'incident_search',
+    'match_incident_values': 'terminology', 'find_incidents': 'incident_search', 'summarize_incidents': 'statistics',
     'list_incident_lots': 'lots', 'list_incident_wafers': 'wafers',
     'search_meeting_minutes': 'meetings', 'list_comparison_assets': 'images',
     'compare_sem_images': 'images', 'compare_overlay_maps': 'images',
@@ -73,7 +73,7 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
              'inspection_requested': inspection_requested,
              'last_error': None, 'as_of': as_of, 'incident_evidence_complete': False,
              'completed_tool': None, 'completed_tool_arguments': None,
-             'lot_lookup_complete': False, 'wafer_lookup_complete': False}
+             'lot_lookup_complete': False, 'wafer_lookup_complete': False, 'detail_scope_valid': True}
     if request_scope == 'independent':
         evidence.append({'id': 'input-1', 'source': 'user_supplied_unverified', 'result': question})
     calls = 0
@@ -129,6 +129,8 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                 spec['enabled'] = False
             if request_scope == 'incident' and not state['scope_valid'] and spec['stage'] == 'tools':
                 spec['enabled'] = False
+            if not state['detail_scope_valid'] and spec['stage'] == 'tools':
+                spec['enabled'] = False
             if name in {'list_incident_wafers', 'list_comparison_assets', 'compare_sem_images', 'compare_overlay_maps'} and not lot_checked:
                 spec['enabled'] = False
             if name == 'list_incident_lots' and state['lot_lookup_complete']:
@@ -177,7 +179,7 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
 
     def invalidate_scope(keep_pending=False):
         nonlocal lot_checked
-        state.update(scope_id=None, scope_valid=False, incident_checked=False, judge=None)
+        state.update(scope_id=None, scope_valid=False, incident_checked=False, judge=None, detail_scope_valid=True)
         state.update(incident_evidence_complete=False, completed_tool=None, completed_tool_arguments=None)
         state.update(lot_lookup_complete=False, wafer_lookup_complete=False)
         evidence.clear()
@@ -261,7 +263,7 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
             paths = settings.data['paths']
             all_tools = read_role_reference('router', 'tools.json', paths['skills_root'], paths['registry_file'])
             image_methods = {'list_comparison_assets', 'compare_sem_images', 'compare_overlay_maps'}
-            implemented = {'match_incident_values', 'find_incidents', 'list_incident_lots', 'list_incident_wafers', 'search_meeting_minutes', 'get_engineering_snapshot', 'search_related_incidents'} | image_methods
+            implemented = {'match_incident_values', 'find_incidents', 'summarize_incidents', 'list_incident_lots', 'list_incident_wafers', 'search_meeting_minutes', 'get_engineering_snapshot', 'search_related_incidents'} | image_methods
             if set(all_tools) - implemented:
                 raise ValueError('UNIMPLEMENTED_TOOL_IN_CATALOG')
 
@@ -298,7 +300,7 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                     raise ToolError('CALLER_IDENTITY_ARGUMENT_FORBIDDEN')
                 if request_scope == 'auto' or name not in catalog or not catalog[name]['enabled']:
                     raise ToolError('TOOL_UNAVAILABLE')
-                if request_scope == 'incident' and name not in ('find_incidents', 'match_incident_values') and not state['scope_valid']:
+                if request_scope == 'incident' and name not in ('find_incidents', 'summarize_incidents', 'match_incident_values') and not state['scope_valid']:
                     raise ToolError('INCIDENT_SCOPE_REQUIRED')
                 if (name == 'list_incident_wafers' or name in image_methods) and not lot_checked:
                     raise ToolError('LOT_LOOKUP_REQUIRED')
@@ -319,11 +321,18 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                     result = getattr(images, name)(actor, state['scope_id'], as_of=as_of, **arguments)
                 elif name == 'match_incident_values':
                     result = db.match_incident_values(actor, question)
+                elif name == 'summarize_incidents':
+                    if selected:
+                        raise ToolError('AGGREGATE_CANNOT_USE_SELECTED_INCIDENTS')
+                    invalidate_scope(keep_pending=True)
+                    result = db.summarize_incidents(actor, as_of=as_of, **arguments)
+                    state.update(scope_id=result['scope_id'], incident_checked=True, scope_valid=True,
+                                 detail_scope_valid=result['scope_complete'])
                 elif name == 'find_incidents':
                     # A new search invalidates previous evidence, even if it fails.
                     invalidate_scope(keep_pending=True)
                     result = db.find_incidents(actor, **arguments)
-                    if len(result['data']) > 1 and not selected:
+                    if len(result['data']) > 1 and not selected and arguments.get('scope_mode') != 'cohort':
                         result = {**result, 'requires_selection': True, 'status': 'NEEDS_SELECTION'}
                     if selected:
                         selection = db.select_incidents(actor, result['scope_id'], selected)
@@ -374,6 +383,10 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                     return None
                 answer, _ = ask('answer')
                 validate_output('answer', answer, {**context(), 'judge_verdict': judge['verdict']})
+                if len(evidence) == 1 and evidence[0]['source'] == 'summarize_incidents' and answer['status'] in ('answered', 'partial'):
+                    from incident_statistics import render_statistics
+                    answer = {**answer, **render_statistics(evidence[0])}
+                    event('statistics_answer_rendered', evidence_id=evidence[0]['id'])
                 return finish(answer['status'], answer=answer['answer'], claims=answer['claims'],
                               limitations=answer['limitations'], judge=judge,
                               inspection_plan=inspection_rows(answer.get('inspection_plan')))
@@ -430,12 +443,19 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                             if step['depends_on']:
                                 raise ValueError('BATCH_REQUIRES_INDEPENDENT_TOOLS')
                             if name == 'find_incidents':
+                                if arguments.get('scope_mode') == 'cohort' and not set(output['intents']) & {'statistics', 'analysis'}:
+                                    raise ValueError('COHORT_REQUIRES_ANALYSIS_OR_STATISTICS_INTENT')
                                 arguments = add_analysis_fields(arguments, output['intents'])
                                 structure(arguments, catalog[name]['parameters'], f'$.plan[{index}].arguments')
                                 if output['filters'] != arguments.get('filters', {}):
                                     raise ValueError('FILTER_PLAN_MISMATCH: copy arguments.filters to top-level filters; '
                                                      'use {} when arguments.filters is omitted. Keep query conditions in arguments.')
-                            duplicate = ((name == 'find_incidents' and fingerprint(arguments) in completed_find_fingerprints)
+                            if name == 'summarize_incidents':
+                                if 'statistics' not in output['intents']:
+                                    raise ValueError('STATISTICS_INTENT_REQUIRED')
+                                if output['filters'] != arguments.get('filters'):
+                                    raise ValueError('FILTER_PLAN_MISMATCH')
+                            duplicate = ((name in ('find_incidents', 'summarize_incidents') and (name, fingerprint(arguments)) in completed_find_fingerprints)
                                          or (name in repeat_guarded_tools and fingerprint(arguments) in completed_tool_fingerprints[name]))
                             if len(batch) > 1 and (duplicate or not ready[name]['enabled']):
                                 raise ValueError('BATCH_TOOL_NOT_READY: ' + name)
@@ -451,9 +471,9 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                             bound = {'actor': actor, **arguments}
                             if name == 'match_incident_values':
                                 bound['question'] = question
-                            elif name not in ('find_incidents', 'search_meeting_minutes'):
+                            elif name not in ('find_incidents', 'summarize_incidents', 'search_meeting_minutes'):
                                 bound['scope_id'] = state['scope_id']
-                            if name in image_methods or name == 'search_related_incidents':
+                            if name in image_methods or name in ('search_related_incidents', 'summarize_incidents'):
                                 bound['as_of'] = as_of
                             if name != 'get_engineering_snapshot':
                                 method = (MeetingTools.search if name == 'search_meeting_minutes'
@@ -479,10 +499,10 @@ def run(settings, question, actor, request_scope='incident', topics=None, select
                         for name, arguments in prepared:
                             result = invoke(name, **arguments)
                             status = result['result'].get('status')
-                            if name == 'find_incidents':
+                            if name in ('find_incidents', 'summarize_incidents'):
                                 state['incident_evidence_complete'] = state['scope_valid'] and status in ('OK', 'NO_MATCH')
                                 if state['incident_evidence_complete']:
-                                    completed_find_fingerprints.add(fingerprint(arguments))
+                                    completed_find_fingerprints.add((name, fingerprint(arguments)))
                                     state['completed_tool'] = name
                                     state['completed_tool_arguments'] = arguments
                             elif name in repeat_guarded_tools and status in ('OK', 'INCOMPARABLE', 'PARTIAL', 'NO_MATCH'):

@@ -12,7 +12,22 @@
         "city": {"type": "string"}, "line": {"type": "string"},
         "title_match": {"type": "string", "enum": ["exact", "contains"]},
         "filters": {"type": "object"},
-        "fields": {"type": "array", "items": {"type": "string"}}
+        "fields": {"type": "array", "items": {"type": "string"}},
+        "scope_mode": {"type": "string", "enum": ["candidates", "cohort"]}
+      }
+    }
+  },
+  "summarize_incidents": {
+    "enabled": true, "stage": "incident", "search_modes": ["sql_aggregate"],
+    "parameters": {
+      "type": "object", "additionalProperties": false, "required": ["filters"],
+      "properties": {
+        "filters": {"type": "object"},
+        "group_by": {"type": "array", "minItems": 1, "maxItems": 3,
+          "items": {"type": "string", "enum": ["department", "city", "line", "product_generations", "fab_out_failure_codes"]}},
+        "comparison_period": {"type": "object", "additionalProperties": false, "required": ["gte", "lt"],
+          "properties": {"gte": {"type": "string"}, "lt": {"type": "string"}}},
+        "top_k": {"type": "integer", "minimum": 1}
       }
     }
   },

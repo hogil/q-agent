@@ -130,6 +130,58 @@ class AgentContracts(unittest.TestCase):
     def finish_steps(stage='tools'):
         return [('router', plan('ready_for_judge', stage)), ('judge', judge), ('answer', answer)]
 
+    def test_statistics_runs_before_judge_without_candidate_selection(self):
+        aggregate = plan(tool='summarize_incidents', arguments={
+            'filters': {'department': 'SYNTH-QA'}, 'group_by': ['product_generations'], 'top_k': 1},
+            search_mode='sql_aggregate')
+        aggregate['intents'] = ['statistics']
+        aggregate['filters'] = aggregate['plan'][0]['arguments']['filters']
+        result, client = self.run_script([('router', aggregate), *self.finish_steps()])
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertEqual([row['source'] for row in result['evidence']], ['summarize_incidents'])
+        self.assertEqual(result['evidence'][0]['result']['total_incidents'], 9)
+        self.assertEqual([row[0] for row in client.calls], ['router', 'router', 'judge', 'answer'])
+
+    def test_explicit_analysis_cohort_allows_followup_tools(self):
+        lookup = plan(tool='find_incidents', arguments={
+            'filters': {'department': 'SYNTH-QA'}, 'scope_mode': 'cohort'}, search_mode='sql_filter')
+        lookup['intents'] = ['analysis']
+        lookup['filters'] = lookup['plan'][0]['arguments']['filters']
+        result, _ = self.run_script([('router', lookup),
+            ('router', plan(stage='tools', tool='list_incident_lots')), *self.finish_steps()])
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertEqual(len(result['evidence'][0]['result']['data']), 9)
+        self.assertEqual(result['evidence'][1]['source'], 'list_incident_lots')
+
+    def test_statistics_large_population_disables_detail_tools(self):
+        self.settings.data['runtime']['max_scope_incidents'] = 2
+        aggregate = plan(tool='summarize_incidents', arguments={'filters': {'department': 'SYNTH-QA'}},
+                         search_mode='sql_aggregate')
+        aggregate['intents'] = ['statistics']
+        aggregate['filters'] = aggregate['plan'][0]['arguments']['filters']
+        result, client = self.run_script([('router', aggregate), *self.finish_steps()])
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertFalse(client.calls[1][2]['available_tools']['list_incident_lots']['enabled'])
+        self.assertEqual(result['evidence'][0]['result']['total_incidents'], 9)
+
+    def test_statistics_answer_cannot_repeat_invented_model_numbers(self):
+        aggregate = plan(tool='summarize_incidents', arguments={'filters': {'department': 'SYNTH-QA'}},
+                         search_mode='sql_aggregate')
+        aggregate['intents'] = ['statistics']
+        aggregate['filters'] = aggregate['plan'][0]['arguments']['filters']
+        def wrong_answer(payload):
+            response = answer(payload)
+            response.update(answer='사고가 999건이다.')
+            response['claims'][0]['text'] = '사고가 999건이다.'
+            return response
+        result, _ = self.run_script([('router', aggregate), ('router', plan('ready_for_judge', 'tools')),
+                                    ('judge', judge), ('answer', wrong_answer)])
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertIn('9건', result['answer'])
+        self.assertNotIn('999', result['answer'])
+        self.assertNotIn('999', result['claims'][0]['text'])
+        self.assertTrue(any(row['event'] == 'statistics_answer_rendered' for row in result['events']))
+
     def test_auto_full_sequence_and_role_order(self):
         self.settings.data['runtime']['prompt_examples'] = True
         steps = [('router', plan('route')), self.lookup(),
@@ -635,7 +687,9 @@ class AgentContracts(unittest.TestCase):
             ready['list_incident_wafers']['enabled'] = False
             self.assertEqual(payload['available_tools'], ready)
             if role == 'router':
-                self.assertIn(json.dumps(catalog, ensure_ascii=False, separators=(',', ':')), prompt)
+                prompt_catalog = copy.deepcopy(catalog)
+                prompt_catalog['summarize_incidents'].pop('parameters')
+                self.assertIn(json.dumps(prompt_catalog, ensure_ascii=False, separators=(',', ':')), prompt)
 
     def test_requested_sources_are_collected_before_judge_without_repeating_completed_tools(self):
         steps = [self.lookup(), ('router', plan('ready_for_judge', 'tools')),

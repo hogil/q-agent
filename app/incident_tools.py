@@ -94,7 +94,10 @@ class IncidentTools:
                 'source_ref':{'logical_entity':'incident'},
                 'note':'Value mentions are candidates, not selected filters or incident evidence. Review negation, quotations and ambiguity before searching. No scope is issued.'}
 
-    def find_incidents(self,actor,incident_number=None,city=None,title=None,line=None,title_match='exact',filters=None,fields=None):
+    def find_incidents(self,actor,incident_number=None,city=None,title=None,line=None,title_match='exact',filters=None,fields=None,scope_mode='candidates'):
+        if scope_mode not in ('candidates','cohort'):raise ToolError('INVALID_SCOPE_MODE')
+        if scope_mode=='cohort' and (incident_number is not None or title is not None or filters and set(filters)&{'incident_number','title_terms'}):
+            raise ToolError('COHORT_CANNOT_RESOLVE_IDENTITY_CANDIDATES')
         if all(value is None for value in (incident_number,city,title,line,filters)):raise ToolError('FILTER_REQUIRED')
         if title_match not in ('exact','contains'):raise ToolError('INVALID_TITLE_MATCH')
         for value in (incident_number,city,title,line):
@@ -125,9 +128,13 @@ class IncidentTools:
         if len(rows)>self.m['limits']['max_scope_incidents']:raise ToolError('SCOPE_TOO_LARGE: use server-side query scope')
         now=time.monotonic()
         self.scopes={key:value for key,value in self.scopes.items() if value['expires_at']>now}
-        selection_required=(title is not None or filters is not None) and len(rows)>1
+        selection_required=scope_mode!='cohort' and (title is not None or filters is not None) and len(rows)>1
         scope=secrets.token_hex(12);self.scopes[scope]={'actor':actor,'ids':tuple(r['incident_id'] for r in rows),'expires_at':now+self.scope_ttl_seconds,'requires_selection':selection_required}
-        return {'status':'NEEDS_SELECTION' if selection_required else ('OK' if rows else 'NO_MATCH'),'scope_id':scope,'data':rows,'requires_selection':selection_required,'mapping_version':self.m['mapping_version']}
+        return {'status':'NEEDS_SELECTION' if selection_required else ('OK' if rows else 'NO_MATCH'),'scope_id':scope,'data':rows,'requires_selection':selection_required,'scope_mode':scope_mode,'mapping_version':self.m['mapping_version']}
+
+    def summarize_incidents(self, actor, filters, group_by=None, comparison_period=None, top_k=None, as_of=None):
+        from incident_statistics import summarize
+        return summarize(self, actor, filters, group_by, comparison_period, top_k, as_of)
 
     def search_related_incidents(self, actor, scope_id, terms, as_of):
         from datetime import date, timedelta
@@ -180,6 +187,7 @@ class IncidentTools:
             self.scopes.pop(scope_id,None)
             raise ToolError('INCIDENT_LOOKUP_REQUIRED_OR_SCOPE_EXPIRED')
         if scope['actor']!=actor:raise ToolError('SCOPE_ACTOR_MISMATCH')
+        if scope.get('summary_only'):raise ToolError('SUMMARY_ONLY_SCOPE: narrow filters for detail retrieval')
         if scope.get('requires_selection') and not allow_candidates:raise ToolError('INCIDENT_SELECTION_REQUIRED')
         return scope
 
