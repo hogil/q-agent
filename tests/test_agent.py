@@ -22,6 +22,145 @@ from conversation_memory import select_turns
 
 
 class SchemaBoundsTests(unittest.TestCase):
+    def test_mes_catalog_candidate_limitation_requires_a_cited_candidate_response(self):
+        limitation = agent.MES_CATALOG_CANDIDATE_LIMITATION
+        candidate = {'id': 'e-mes', 'source': 'search_mes_reference', 'result': {'items': [
+            {'scope_relation': 'catalog_candidate'}]}}
+        current = {'id': 'e-current', 'source': 'search_mes_reference', 'result': {'items': [
+            {'scope_relation': 'current_scope'}]}}
+
+        candidate_only = {'status': 'answered', 'claims': [{'evidence_ids': ['e-mes']}], 'limitations': []}
+        system_limitations = agent.mes_catalog_candidate_system_limitations(candidate_only, [candidate])
+        self.assertEqual(system_limitations, [limitation])
+        self.assertEqual(candidate_only['limitations'], [])
+
+        mixed_response = {'id': 'e-mixed', 'source': 'search_mes_reference', 'result': {'items': [
+            {'scope_relation': 'current_scope'}, {'scope_relation': 'catalog_candidate'}]}}
+        mixed = {'status': 'partial', 'claims': [{'evidence_ids': ['e-mixed']}], 'limitations': []}
+        self.assertEqual(agent.mes_catalog_candidate_system_limitations(mixed, [mixed_response]), [limitation])
+
+        uncited = {'status': 'answered', 'claims': [{'evidence_ids': ['e-other']}], 'limitations': []}
+        self.assertEqual(agent.mes_catalog_candidate_system_limitations(uncited, [candidate]), [])
+        current_only = {'status': 'answered', 'claims': [{'evidence_ids': ['e-current']}], 'limitations': []}
+        self.assertEqual(agent.mes_catalog_candidate_system_limitations(current_only, [current]), [])
+
+    def test_mes_catalog_candidate_limitation_preserves_and_deduplicates_without_mutation(self):
+        limitation = agent.MES_CATALOG_CANDIDATE_LIMITATION
+        answer = {'status': 'answered', 'claims': [{'evidence_ids': ['e-mes']}],
+                  'limitations': ['existing limitation', limitation]}
+        original = copy.deepcopy(answer)
+        evidence = [{'id': 'e-mes', 'source': 'search_mes_reference', 'result': {'items': [
+            {'scope_relation': 'catalog_candidate'}]}}]
+
+        result = agent.mes_catalog_candidate_system_limitations(answer, evidence)
+
+        self.assertEqual(result, [limitation])
+        self.assertEqual(answer, original)
+        self.assertEqual(evidence[0]['result']['items'], [{'scope_relation': 'catalog_candidate'}])
+
+    def test_mes_catalog_candidate_limitation_preserves_six_llm_limitations(self):
+        original_limitations = [f'synthetic limitation {index}' for index in range(6)]
+        answer = {'status': 'answered', 'claims': [{'evidence_ids': ['e-mes']}],
+                  'limitations': original_limitations.copy()}
+        evidence = [{'id': 'e-mes', 'source': 'search_mes_reference', 'result': {'items': [
+            {'scope_relation': 'catalog_candidate'}]}}]
+
+        result = agent.mes_catalog_candidate_system_limitations(answer, evidence)
+
+        self.assertEqual(answer['limitations'], original_limitations)
+        self.assertEqual(len(answer['limitations']), 6)
+        self.assertEqual(result, [agent.MES_CATALOG_CANDIDATE_LIMITATION])
+        self.assertEqual(answer['limitations'], original_limitations)
+
+    def test_document_retrieval_caveats_follow_cited_evidence_without_mutation(self):
+        truncated = {'id': 'e-truncated', 'source': 'search_engineer_notes',
+                     'result': {'source_reported_truncated': True}}
+        unknown = {'id': 'e-unknown', 'source': 'search_internal_documents',
+                   'result': {'source_reported_truncated': None}}
+        not_truncated = {'id': 'e-complete', 'source': 'search_internal_documents',
+                         'result': {'source_reported_truncated': False}}
+        truncated_caveat = agent.DOCUMENT_RESULTS_SOURCE_REPORTED_TRUNCATED_LIMITATION
+        unknown_caveat = agent.DOCUMENT_RETRIEVAL_COMPLETENESS_UNKNOWN_LIMITATION
+        nontruncated_caveat = agent.DOCUMENT_SOURCE_NONTRUNCATION_LIMITATION
+        acl_caveat = agent.DOCUMENT_ACCESS_CONTROL_UNVERIFIED_LIMITATION
+
+        cited = {'status': 'answered', 'claims': [{'evidence_ids': ['e-truncated']}],
+                 'limitations': ['existing limitation']}
+        original = copy.deepcopy(cited)
+        self.assertEqual(agent.document_retrieval_system_limitations(cited, [truncated]),
+                         [truncated_caveat, acl_caveat])
+        self.assertEqual(cited, original)
+        self.assertEqual(agent.document_retrieval_system_limitations(
+            {'claims': [{'evidence_ids': ['other']}]}, [truncated]), [])
+
+        # A no-match result still receives the caveat when the Answer cites its evidence id.
+        no_match = {'status': 'answered', 'claims': [{'evidence_ids': ['e-unknown']}]}
+        self.assertEqual(agent.document_retrieval_system_limitations(no_match, [unknown]),
+                         [unknown_caveat, acl_caveat])
+        self.assertEqual(agent.document_retrieval_system_limitations(
+            {'claims': [{'evidence_ids': ['e-complete']}]}, [not_truncated]),
+            [nontruncated_caveat, acl_caveat])
+        self.assertEqual(agent.document_retrieval_system_limitations(
+            {'claims': [{'evidence_ids': ['e-truncated', 'e-unknown', 'e-complete']}]},
+            [truncated, unknown, not_truncated]),
+            [truncated_caveat, nontruncated_caveat, unknown_caveat, acl_caveat])
+
+    def test_document_retrieval_caveat_defaults_missing_metadata_to_unknown(self):
+        legacy = {'id': 'e-legacy', 'source': 'search_engineer_notes', 'result': {}}
+        self.assertEqual(agent.document_retrieval_system_limitations(
+            {'claims': [{'evidence_ids': ['e-legacy']}]}, [legacy]),
+            [agent.DOCUMENT_RETRIEVAL_COMPLETENESS_UNKNOWN_LIMITATION,
+             agent.DOCUMENT_ACCESS_CONTROL_UNVERIFIED_LIMITATION])
+
+    def test_document_system_caveats_do_not_consume_six_llm_limitations(self):
+        limitations = [f'synthetic limitation {index}' for index in range(6)]
+        answer_value = {'status': 'answered', 'claims': [{'evidence_ids': ['e-doc']}],
+                        'limitations': limitations.copy()}
+        evidence = [{'id': 'e-doc', 'source': 'search_engineer_notes',
+                     'result': {'source_reported_truncated': True}}]
+        system_limitations = list(dict.fromkeys(
+            agent.mes_catalog_candidate_system_limitations(answer_value, evidence)
+            + agent.document_retrieval_system_limitations(answer_value, evidence)))
+        self.assertEqual(answer_value['limitations'], limitations)
+        self.assertEqual(system_limitations, [agent.DOCUMENT_RESULTS_SOURCE_REPORTED_TRUNCATED_LIMITATION,
+                                             agent.DOCUMENT_ACCESS_CONTROL_UNVERIFIED_LIMITATION])
+
+    def test_lookup_chain_requires_contiguous_unique_scope_consistent_pages(self):
+        def page(offset, lot_id, next_offset, total=2, scope_id='scope-1', status='PARTIAL'):
+            return ({'offset': offset}, {
+                'status': status, 'scope_id': scope_id, 'offset': offset,
+                'total_memberships': total, 'next_offset': next_offset,
+                'items': [{'incident_id': 'incident-1', 'lot_id': lot_id}],
+            })
+
+        complete = [page(0, 'lot-1', 1), page(1, 'lot-2', None)]
+        self.assertTrue(agent.lookup_chain_finished('list_incident_lots', complete, 'scope-1'))
+        self.assertFalse(agent.lookup_chain_finished('list_incident_lots', [complete[0], page(2, 'lot-2', None)],
+                                                      'scope-1'))
+        self.assertFalse(agent.lookup_chain_finished('list_incident_lots', [complete[0], page(1, 'lot-1', None)],
+                                                      'scope-1'))
+        self.assertFalse(agent.lookup_chain_finished('list_incident_lots', [complete[0], page(1, 'lot-2', None, 3)],
+                                                      'scope-1'))
+        self.assertFalse(agent.lookup_chain_finished('list_incident_lots', [complete[0], page(1, 'lot-2', None,
+                                                                                           scope_id='scope-2')],
+                                                      'scope-1'))
+        missing_offset = page(1, 'lot-2', None)[1]
+        del missing_offset['offset']
+        self.assertFalse(agent.lookup_chain_finished('list_incident_lots', [complete[0],
+            ({'offset': 1}, missing_offset)], 'scope-1'))
+        no_match = ({'offset': 0}, {'status': 'NO_MATCH', 'items': [], 'total_memberships': 0,
+                                   'next_offset': None})
+        partial_empty = ({'offset': 0}, {'status': 'PARTIAL', 'items': [], 'total_memberships': 0,
+                                         'next_offset': None})
+        empty_ok = ({'offset': 0}, {'status': 'OK', 'items': [], 'total_memberships': 0,
+                                    'next_offset': None})
+        self.assertTrue(agent.lookup_chain_finished('list_incident_lots', [no_match], 'scope-1'))
+        self.assertTrue(agent.lookup_chain_finished('list_incident_lots', [partial_empty], 'scope-1'))
+        self.assertFalse(agent.lookup_chain_finished('list_incident_lots', [empty_ok], 'scope-1'))
+        no_match_pages = [page(0, 'lot-1', 1, status='NO_MATCH'),
+                          page(1, 'lot-2', None, status='NO_MATCH')]
+        self.assertFalse(agent.lookup_chain_finished('list_incident_lots', no_match_pages, 'scope-1'))
+
     def test_map_prompt_compaction_preserves_identity_and_summary_not_coordinates(self):
         original = {'source': 'get_engineering_snapshot', 'result': {'sections': {'maps': {'assets': [{
             'id': 'map-1', 'sha256': 'digest', 'summary': {'cd': {'mean': 42}},
@@ -112,8 +251,11 @@ class AgentContracts(unittest.TestCase):
         data['paths'].update(data_root=str(root), golden_file=str(root / 'golden.jsonl'))
         data['database']['sqlite_file'] = str(root / 'incidents.sqlite')
         data['meetings']['sqlite_file'] = str(root / 'meetings.sqlite')
+        data['mes_reference']['synthetic_sqlite']['filter_columns'] = {'__test_disabled': '__test_disabled'}
+        data['mes_reference']['synthetic_sqlite']['filter_columns'] = {'__test_disabled': '__test_disabled'}
         self.settings = Settings(data, ())
         generate(self.settings)
+        self.use_temporary_skill_lock()
 
     def run_script(self, steps, **kwargs):
         client = ScriptedClient(steps)
@@ -141,6 +283,302 @@ class AgentContracts(unittest.TestCase):
         self.assertEqual([row['source'] for row in result['evidence']], ['summarize_incidents'])
         self.assertEqual(result['evidence'][0]['result']['total_incidents'], 9)
         self.assertEqual([row[0] for row in client.calls], ['router', 'router', 'judge', 'answer'])
+
+    def test_mes_reference_filters_reach_scoped_callback(self):
+        self.settings.data['mes_reference'].update(enabled=True, allowed_kinds=['product'], top_k=3)
+        self.settings.data['mes_reference']['synthetic_sqlite']['filter_columns'] = {'department': 'department'}
+        captured = {}
+
+        def callback(**kwargs):
+            captured.update(kwargs)
+            return {'status': 'NO_MATCH', 'items': [], 'truncated': False, 'candidate_count': 0,
+                    'incident_ids': kwargs['incident_ids'], 'as_of': kwargs['as_of'],
+                    'limitations': []}
+
+        args = {'kind': 'product', 'query': 'widget', 'filters': {'department': 'SYNTH-QA'}}
+        steps = [self.lookup(), ('router', plan(stage='tools', tool='list_incident_lots')),
+                 ('router', plan(stage='tools', tool='search_mes_reference', arguments=args)), *self.finish_steps()]
+        result, _ = self.run_script(steps, mes_reference_query=callback)
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertEqual(captured['filters'], {'department': 'SYNTH-QA'})
+        self.assertEqual(captured['actor'], 'tester')
+        self.assertEqual(captured['incident_ids'], [result['evidence'][0]['result']['data'][0]['incident_id']])
+        self.assertEqual(captured['as_of'], '2026-03-31')
+
+    def test_cited_mes_catalog_candidate_adds_answer_limitation(self):
+        self.settings.data['mes_reference'].update(enabled=True, allowed_kinds=['product'], top_k=3)
+        self.settings.data['mes_reference']['synthetic_sqlite']['filter_columns'] = {'department': 'department'}
+
+        def callback(**kwargs):
+            return {'status': 'OK', 'items': [{
+                'kind': 'product', 'record_id': 'SYN-REF-1', 'version': 'v1',
+                'name': 'Synthetic reference', 'source_ref': 'synthetic://SYN-REF-1',
+                'applicability': 'candidate', 'scope_relation': 'catalog_candidate',
+                'incident_ids': [], 'available_at': '2026-03-30',
+                'effective_from': None, 'effective_to': None,
+            }], 'truncated': False, 'candidate_count': 1,
+                'incident_ids': kwargs['incident_ids'], 'as_of': kwargs['as_of'], 'limitations': []}
+
+        answer_with_six_limitations = lambda payload: {
+            **answer(payload), 'limitations': [f'synthetic limitation {index}' for index in range(6)]}
+        steps = [self.lookup(), ('router', plan(stage='tools', tool='list_incident_lots')),
+                 ('router', plan(stage='tools', tool='search_mes_reference',
+                                 arguments={'kind': 'product', 'query': 'synthetic reference'})),
+                 ('router', plan('ready_for_judge', 'tools')), ('judge', judge),
+                 ('answer', answer_with_six_limitations)]
+        result, _ = self.run_script(steps, mes_reference_query=callback)
+
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertEqual(result['limitations'], [f'synthetic limitation {index}' for index in range(6)])
+        self.assertEqual(result['system_limitations'], [agent.MES_CATALOG_CANDIDATE_LIMITATION])
+        self.assertEqual(result['claims'][0]['evidence_ids'], ['e1', 'e2', 'e3'])
+
+    def test_mes_reference_router_catalog_is_trusted_and_only_advertised_when_enabled(self):
+        self.use_temporary_skill_lock()
+        self.settings.data['mes_reference'].update(enabled=True, allowed_kinds=['product', 'equipment'], top_k=3)
+        self.settings.data['mes_reference']['synthetic_sqlite']['filter_columns'] = {
+            'department': 'PHYSICAL_SENTINEL_COLUMN', 'line': 'ANOTHER_PHYSICAL_SENTINEL'}
+        callback = Mock(return_value={'status': 'NO_MATCH', 'items': [], 'truncated': False,
+                                      'candidate_count': 0, 'incident_ids': [],
+                                      'as_of': '2026-03-31', 'limitations': []})
+        # Repeat routing carries untrusted context, which cannot alter configured metadata.
+        steps = [('router', plan('execute', 'incident', tool='find_incidents',
+                                 arguments={'incident_number': 'SYN-2026-01'}, search_mode='sql_exact')),
+                 ('router', plan('ready_for_judge', 'incident')),
+                 ('judge', judge), ('answer', answer)]
+        result, client = self.run_script(steps, mes_reference_query=callback,
+                                         context_data={'allowed_kinds': ['attacker'],
+                                                       'allowed_filter_keys': ['forged']})
+        self.assertIn(result['status'], ('answered', 'partial'))
+        router_payloads = [payload for role, _, payload in client.calls if role == 'router']
+        payload = router_payloads[1]
+        self.assertEqual(payload['mes_reference_catalog'], {
+            'allowed_kinds': ['product', 'equipment'], 'allowed_filter_keys': ['department', 'line']})
+        serialized = json.dumps(payload)
+        self.assertNotIn('PHYSICAL_SENTINEL', serialized)
+        self.assertNotIn('ANOTHER_PHYSICAL_SENTINEL', serialized)
+        self.assertEqual(payload['mes_reference_catalog']['allowed_kinds'], ['product', 'equipment'])
+        self.assertEqual(payload['mes_reference_catalog']['allowed_filter_keys'], ['department', 'line'])
+
+        self.settings.data['mes_reference']['enabled'] = False
+        result, client = self.run_script([('router', plan('execute', 'incident', tool='find_incidents',
+                                                          arguments={'incident_number': 'SYN-2026-01'},
+                                                          search_mode='sql_exact')),
+                                          ('router', plan('ready_for_judge', 'incident')),
+                                          ('judge', judge), ('answer', answer)],
+                                         mes_reference_query=callback)
+        self.assertNotIn('mes_reference_catalog', client.calls[1][2])
+        self.assertFalse(client.calls[1][2]['available_tools']['search_mes_reference']['enabled'])
+
+    def test_mes_reference_router_catalog_missing_callback_and_malformed_filter_config(self):
+        self.use_temporary_skill_lock()
+        self.settings.data['mes_reference'].update(enabled=True, allowed_kinds=['product'], top_k=3)
+        self.settings.data['mes_reference']['synthetic_sqlite']['filter_columns'] = {'valid': 'PHYSICAL_SENTINEL'}
+        _, client = self.run_script([('router', plan('execute', 'incident', tool='find_incidents',
+                                                     arguments={'incident_number': 'SYN-2026-01'},
+                                                     search_mode='sql_exact')),
+                                     ('router', plan('ready_for_judge', 'incident')),
+                                     ('judge', judge), ('answer', answer)])
+        self.assertNotIn('mes_reference_catalog', client.calls[1][2])
+
+    def test_mes_reference_router_catalog_omitted_for_non_mapping_synthetic_config(self):
+        self.use_temporary_skill_lock()
+        self.settings.data['mes_reference'].update(enabled=True, allowed_kinds=['product'], top_k=3)
+        callback = Mock(return_value={})
+        for malformed in (None, ['filter_columns']):
+            with self.subTest(synthetic_sqlite=malformed):
+                self.settings.data['mes_reference']['synthetic_sqlite'] = malformed
+                _, client = self.run_script([('router', plan('execute', 'incident', tool='find_incidents',
+                                                             arguments={'incident_number': 'SYN-2026-01'},
+                                                             search_mode='sql_exact')),
+                                             ('router', plan('ready_for_judge', 'incident')),
+                                             ('judge', judge), ('answer', answer)],
+                                            mes_reference_query=callback)
+                self.assertNotIn('mes_reference_catalog', client.calls[1][2])
+
+    def test_mes_reference_filters_reject_invalid_and_unmapped_keys(self):
+        self.settings.data['mes_reference'].update(enabled=True, allowed_kinds=['product'], top_k=3)
+        self.settings.data['mes_reference']['synthetic_sqlite']['filter_columns'] = {'department': 'department'}
+        callback = Mock(return_value={})
+        invalid_filters = [
+            {}, {'bad-key': 'x'}, {'department': ' padded '}, {'department': ''},
+            {'department': 'x' * 129}, {f'k{i}': 'x' for i in range(6)},
+        ]
+        for filters, expected_error in [(value, 'INVALID_MES_REFERENCE_FILTERS') for value in invalid_filters] + [
+                ({'unknown': 'x'}, 'MES_REFERENCE_FILTER_UNAVAILABLE')]:
+            with self.subTest(filters=filters):
+                args = {'kind': 'product', 'query': 'widget', 'filters': filters}
+                bad_request = ('router', plan(stage='tools', tool='search_mes_reference', arguments=args))
+                steps = [self.lookup(), ('router', plan(stage='tools', tool='list_incident_lots')),
+                         bad_request, bad_request, bad_request,
+                         ('router', {**plan('blocked', 'tools'), 'limitations': ['invalid filter']})]
+                result, _ = self.run_script(steps, mes_reference_query=callback)
+                errors = [event.get('error') for event in result['events']
+                          if event['event'] == 'validation_or_tool_error']
+                self.assertTrue(errors)
+                callback.assert_not_called()
+
+        self.settings.data['mes_reference']['synthetic_sqlite']['filter_columns'] = None
+        args = {'kind': 'product', 'query': 'widget', 'filters': {'department': 'SYNTH-QA'}}
+        bad_request = ('router', plan(stage='tools', tool='search_mes_reference', arguments=args))
+        result, _ = self.run_script([self.lookup(), ('router', plan(stage='tools', tool='list_incident_lots')),
+                                     bad_request, bad_request, bad_request,
+                                     ('router', {**plan('blocked', 'tools'), 'limitations': ['unmapped filters']})],
+                                    mes_reference_query=callback)
+        errors = [event.get('error') for event in result['events']
+                  if event['event'] == 'validation_or_tool_error']
+        self.assertIn('MES_REFERENCE_FILTER_UNAVAILABLE', errors)
+        callback.assert_not_called()
+
+    def test_mes_reference_legacy_callback_without_filters_and_fail_closed_with_filters(self):
+        self.settings.data['mes_reference'].update(enabled=True, allowed_kinds=['product'], top_k=3)
+        self.settings.data['mes_reference']['synthetic_sqlite']['filter_columns'] = {'department': 'department'}
+        calls = []
+
+        def legacy(*, kind, actor, incident_ids, as_of, query, top_k):
+            calls.append((kind, actor, incident_ids, as_of, query, top_k))
+            return {'status': 'NO_MATCH', 'items': [], 'truncated': False, 'candidate_count': 0,
+                    'incident_ids': incident_ids, 'as_of': as_of, 'limitations': []}
+
+        no_filters = [self.lookup(), ('router', plan(stage='tools', tool='list_incident_lots')),
+                      ('router', plan(stage='tools', tool='search_mes_reference', arguments={'kind': 'product', 'query': 'widget'})),
+                      *self.finish_steps()]
+        result, _ = self.run_script(no_filters, mes_reference_query=legacy)
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertEqual(len(calls), 1)
+
+        calls.clear()
+        bad_request = ('router', plan(stage='tools', tool='search_mes_reference', arguments={
+            'kind': 'product', 'query': 'widget', 'filters': {'department': 'SYNTH-QA'}}))
+        with_filters = [self.lookup(), ('router', plan(stage='tools', tool='list_incident_lots')),
+                        bad_request, bad_request, bad_request,
+                        ('router', {**plan('blocked', 'tools'), 'limitations': ['legacy callback cannot filter']})]
+        result, _ = self.run_script(with_filters, mes_reference_query=legacy)
+        self.assertEqual(result['status'], 'unavailable', result)
+        self.assertEqual(calls, [])
+
+    def test_mes_reference_request_cannot_override_code_bound_scope(self):
+        self.settings.data['mes_reference'].update(enabled=True, allowed_kinds=['product'], top_k=3)
+        self.settings.data['mes_reference']['synthetic_sqlite']['filter_columns'] = {'department': 'department'}
+        callback = Mock()
+        for key, value in (('actor', 'attacker'), ('scope_id', 'forged'),
+                           ('incident_ids', ['forged']), ('as_of', '2099-01-01')):
+            with self.subTest(argument=key):
+                args = {'kind': 'product', 'query': 'widget', key: value}
+                bad_request = ('router', plan(stage='tools', tool='search_mes_reference', arguments=args))
+                steps = [self.lookup(), ('router', plan(stage='tools', tool='list_incident_lots')),
+                         bad_request, bad_request, bad_request,
+                         ('router', {**plan('blocked', 'tools'), 'limitations': ['caller identity override']})]
+                result, _ = self.run_script(steps, mes_reference_query=callback)
+                self.assertEqual(result['status'], 'unavailable', result)
+                callback.assert_not_called()
+
+    def test_final_scope_reports_only_current_find_evidence(self):
+        self.use_temporary_skill_lock()
+        matched, _ = self.run_script([self.lookup(), *self.finish_steps()], incident_number='SYN-2026-01')
+        self.assertEqual(matched['final_scope']['incident_lookup_status'], 'OK')
+        self.assertEqual(len(matched['final_scope']['confirmed']['incident_ids']), 1)
+        self.assertEqual(matched['final_scope']['request']['incident_number'], 'SYN-2026-01')
+
+        missing = plan(tool='find_incidents', arguments={'incident_number': 'SYN-DOES-NOT-EXIST'},
+                       search_mode='sql_exact')
+        no_match, _ = self.run_script([('router', missing), *self.finish_steps()],
+                                      incident_number='SYN-DOES-NOT-EXIST')
+        self.assertEqual(no_match['final_scope']['incident_lookup_status'], 'NO_MATCH')
+        self.assertEqual(no_match['final_scope']['confirmed']['incident_ids'], [])
+
+    def test_final_scope_ambiguity_failure_and_independent_are_unconfirmed(self):
+        self.use_temporary_skill_lock()
+        ambiguous = plan(tool='find_incidents', arguments={'city': 'SYNTH-CITY'}, search_mode='sql_filter')
+        result, _ = self.run_script([('router', ambiguous)], request_scope='incident')
+        self.assertEqual(result['final_scope']['incident_lookup_status'], 'NEEDS_SELECTION')
+        self.assertEqual(result['final_scope']['confirmed']['incident_ids'], [])
+        self.assertIsNone(result['final_scope']['request']['incident_number'])
+        self.assertEqual(result['final_scope']['wafer_page_collection']['status'], 'NOT_QUERIED')
+
+        independent = [('router', plan('route', 'independent')),
+                       ('router', plan(stage='independent', tool='search_meeting_minutes',
+                                       arguments={'query': '교정'})),
+                       *self.finish_steps('independent')]
+        result, _ = self.run_script(independent, request_scope='auto')
+        self.assertEqual(result['final_scope']['incident_lookup_status'], 'NOT_QUERIED')
+        self.assertEqual(result['final_scope']['confirmed']['incident_ids'], [])
+
+    def test_final_scope_keeps_partial_wafer_pages_and_source_metadata_separate(self):
+        self.use_temporary_skill_lock()
+        steps = [self.lookup(),
+                 ('router', plan(stage='tools', tool='list_incident_lots')),
+                 ('router', plan(stage='tools', tool='list_incident_wafers',
+                                 arguments={'page_size': 1, 'offset': 0})),
+                 *self.finish_steps()]
+        result, _ = self.run_script(steps)
+        self.assertEqual(result['status'], 'answered', result)
+        wafer_scope = result['final_scope']['wafer_page_collection']
+        self.assertEqual(wafer_scope['status'], 'QUERIED')
+        self.assertEqual(wafer_scope['result_status'], 'PARTIAL')
+        self.assertEqual(wafer_scope['source_completeness'], 'unknown')
+        self.assertTrue(wafer_scope['wafer_scope'])
+
+    def test_final_scope_marks_failed_incident_lookup_without_confirmation(self):
+        self.use_temporary_skill_lock()
+        with patch.object(agent.IncidentTools, 'find_incidents', side_effect=ToolError('SYNTHETIC_LOOKUP_FAILURE')):
+            result, _ = self.run_script([self.lookup()] * 3, request_scope='incident')
+        self.assertEqual(result['final_scope']['incident_lookup_status'], 'FAILED')
+        self.assertEqual(result['final_scope']['confirmed']['incidents'], [])
+
+    def test_final_scope_expired_during_finish_fails_closed(self):
+        original_scope = agent.IncidentTools._scope
+        calls = {'count': 0}
+
+        def expire_on_final_check(tool, actor, scope_id):
+            calls['count'] += 1
+            if calls['count'] > 1:
+                raise ToolError('SCOPE_EXPIRED')
+            return original_scope(tool, actor, scope_id)
+
+        with patch.object(agent.IncidentTools, '_scope', expire_on_final_check):
+            result, _ = self.run_script([self.lookup(), *self.finish_steps()])
+        scope = result['final_scope']
+        self.assertEqual(scope['scope_status'], 'EXPIRED')
+        self.assertFalse(scope['scope_valid'])
+        self.assertEqual(scope['confirmed']['incidents'], [])
+        self.assertIn('SCOPE_EXPIRED', result['limitations'])
+
+    def test_final_scope_mismatched_membership_fails_closed(self):
+        original_find = agent.IncidentTools.find_incidents
+
+        def omit_evidence_row(tool, actor, **arguments):
+            result = original_find(tool, actor, **arguments)
+            result['data'] = []
+            return result
+
+        with patch.object(agent.IncidentTools, 'find_incidents', omit_evidence_row):
+            result, _ = self.run_script([self.lookup(), *self.finish_steps()])
+        scope = result['final_scope']
+        self.assertEqual(scope['scope_status'], 'UNAVAILABLE')
+        self.assertFalse(scope['scope_valid'])
+        self.assertEqual(scope['confirmed']['incidents'], [])
+        self.assertIn('SCOPE_EVIDENCE_MISMATCH', result['limitations'])
+
+    def test_final_scope_missing_evidence_after_cutoff_fails_closed(self):
+        self.use_temporary_skill_lock()
+        original_review = agent.review_evidence
+
+        def reject_find_evidence(evidence, as_of, timezone):
+            if evidence and evidence[0].get('source') == 'find_incidents':
+                return {'issues': [{'type': 'after_cutoff'}]}
+            return original_review(evidence, as_of, timezone)
+
+        with patch.object(agent, 'review_evidence', side_effect=reject_find_evidence):
+            result, _ = self.run_script([self.lookup()] * 3, request_scope='incident')
+
+        self.assertEqual(result['status'], 'unavailable')
+        self.assertEqual(result['final_scope']['incident_lookup_status'], 'OK')
+        self.assertEqual(result['final_scope']['scope_status'], 'UNAVAILABLE')
+        self.assertFalse(result['final_scope']['scope_valid'])
+        self.assertEqual(result['final_scope']['confirmed']['incidents'], [])
+        self.assertEqual(result['evidence'], [])
+        self.assertIn('SCOPE_EVIDENCE_MISSING', result['limitations'])
 
     def test_explicit_analysis_cohort_allows_followup_tools(self):
         lookup = plan(tool='find_incidents', arguments={
@@ -290,6 +728,85 @@ class AgentContracts(unittest.TestCase):
         result, _ = self.run_script([self.lookup(), ('router', batch)])
         self.assertEqual(result['tool_calls'], 1)
         self.assertIn('BATCH_PAGINATION', result['limitations'][0])
+
+    def test_lot_lookup_finishes_after_contiguous_pages(self):
+        self.use_temporary_skill_lock()
+        steps = [self.lookup()]
+        steps.extend(('router', plan(stage='tools', tool='list_incident_lots',
+                                     arguments={'page_size': 1, 'offset': offset}))
+                     for offset in range(3))
+        steps.extend(self.finish_steps())
+        result, client = self.run_script(steps)
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertEqual([entry['result']['offset'] for entry in result['evidence'][1:]], [0, 1, 2])
+        self.assertTrue(client.calls[4][2]['lot_lookup_complete'])
+        self.assertFalse(client.calls[4][2]['available_tools']['list_incident_lots']['enabled'])
+
+    def test_single_page_lookup_retains_completion_and_strict_planner_gate(self):
+        self.use_temporary_skill_lock()
+        result, client = self.run_script([self.lookup(),
+            ('router', plan(stage='tools', tool='list_incident_lots')),
+            *self.finish_steps()])
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertTrue(client.calls[2][2]['lot_lookup_complete'])
+        self.assertFalse(client.calls[2][2]['planner_lot_pages_complete'])
+
+    def test_wafer_lookup_finishes_pagination_while_preserving_partial_source_status(self):
+        self.use_temporary_skill_lock()
+        steps = [self.lookup()]
+        steps.extend(('router', plan(stage='tools', tool='list_incident_lots',
+                                     arguments={'page_size': 1, 'offset': offset}))
+                     for offset in range(3))
+        steps.extend(('router', plan(stage='tools', tool='list_incident_wafers',
+                                     arguments={'page_size': 1, 'offset': offset}))
+                     for offset in range(8))
+        steps.extend(self.finish_steps())
+        result, client = self.run_script(steps)
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertTrue(client.calls[12][2]['wafer_lookup_complete'])
+        self.assertFalse(client.calls[12][2]['available_tools']['list_incident_wafers']['enabled'])
+        self.assertFalse(client.calls[12][2]['planner_lot_pages_complete'])
+        self.assertFalse(client.calls[12][2]['planner_wafer_pages_complete'])
+        wafer_results = [entry['result'] for entry in result['evidence']
+                         if entry['source'] == 'list_incident_wafers']
+        self.assertEqual([page['offset'] for page in wafer_results], list(range(8)))
+        self.assertTrue(all(page['status'] == 'PARTIAL' for page in wafer_results))
+        self.assertTrue(all(page['coverage'] for page in wafer_results))
+
+    def test_unfiltered_wafer_chain_restarts_after_filtered_chain(self):
+        self.use_temporary_skill_lock()
+        self.settings.data['runtime']['max_tool_calls'] = 20
+        steps = [self.lookup()]
+        steps.extend(('router', plan(stage='tools', tool='list_incident_lots',
+                                     arguments={'page_size': 1, 'offset': offset}))
+                     for offset in range(3))
+        steps.extend(('router', plan(stage='tools', tool='list_incident_wafers', arguments={
+            'lot_ids': ['SYN-LOT-01-01'], 'page_size': 1, 'offset': offset})) for offset in range(2))
+        steps.extend(('router', plan(stage='tools', tool='list_incident_wafers',
+                                     arguments={'page_size': 1, 'offset': offset}))
+                     for offset in range(8))
+        steps.extend(self.finish_steps())
+        result, client = self.run_script(steps)
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertFalse(client.calls[6][2]['wafer_lookup_complete'])
+        self.assertTrue(client.calls[14][2]['wafer_lookup_complete'])
+        self.assertEqual([entry['arguments'].get('lot_ids') for entry in result['evidence']
+                          if entry['source'] == 'list_incident_wafers'][:2],
+                         [['SYN-LOT-01-01'], ['SYN-LOT-01-01']])
+
+    def test_new_incident_scope_resets_completed_pagination(self):
+        self.use_temporary_skill_lock()
+        steps = [self.lookup()]
+        steps.extend(('router', plan(stage='tools', tool='list_incident_lots',
+                                     arguments={'page_size': 1, 'offset': offset}))
+                     for offset in range(3))
+        steps.extend([self.lookup('SYN-2026-02'), *self.finish_steps()])
+        result, client = self.run_script(steps)
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertTrue(client.calls[4][2]['lot_lookup_complete'])
+        self.assertFalse(client.calls[5][2]['lot_lookup_complete'])
+        self.assertEqual([entry['source'] for entry in result['evidence']], ['find_incidents'])
+        self.assertEqual(result['final_scope']['confirmed']['incidents'][0]['incident_number'], 'SYN-2026-02')
 
     def test_batch_runtime_failure_keeps_evidence_and_stops_remaining_tools(self):
         self.settings.data['runtime']['max_retries'] = 0
@@ -619,6 +1136,23 @@ class AgentContracts(unittest.TestCase):
         self.assertEqual(observation['status'], 'NO_MATCH')
         self.assertEqual(observation['incident_ids'], [])
 
+    def test_final_zero_match_uses_code_response_without_judge_or_answer(self):
+        result, client = self.run_script([self.lookup('SYN-2026-99'),
+                                         ('router', plan('ready_for_judge', 'tools'))])
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertIn('0건', result['answer'])
+        self.assertEqual([row[0] for row in client.calls], ['router', 'router'])
+        self.assertEqual(result['lookup_conditions'], {'incident_number': 'SYN-2026-99'})
+
+    def test_scope_mismatch_from_engineering_callback_is_not_evidence(self):
+        self.settings.data['runtime']['max_retries'] = 0
+        callback = Mock(return_value={'status': 'OK', 'scope': {'incident_ids': ['wrong']}, 'sections': {}})
+        result, _ = self.run_script([self.lookup(), ('router', plan(stage='tools', tool='get_engineering_snapshot'))],
+                                    engineering_query=callback)
+        self.assertEqual(result['status'], 'unavailable')
+        self.assertIn('ENGINEERING_EVIDENCE_SCOPE_MISMATCH', result['limitations'])
+        self.assertNotIn('get_engineering_snapshot', [row['source'] for row in result['evidence']])
+
     def test_meeting_failure_cannot_be_cleared_by_formatting(self):
         steps = [self.lookup(),
                  ('router', plan(stage='tools', tool='search_meeting_minutes', arguments={'query': 'SYN'})),
@@ -661,9 +1195,10 @@ class AgentContracts(unittest.TestCase):
         for item in result['evidence'][-1]['result']['items']:
             self.assertNotIn(item['text'], history_text)
 
-    def test_payload_keeps_tool_availability_but_not_duplicate_schemas(self):
+    def test_payload_keeps_tool_availability_and_router_prompt_only_has_enabled_schemas(self):
         self.settings.data['value_matching']['enabled'] = False
         self.settings.data['meetings']['enabled'] = False
+        self.settings.data['synthetic_action_planner']['enabled'] = False
         result, client = self.run_script([self.lookup(), *self.finish_steps()])
         self.assertEqual(result['status'], 'answered', result)
         catalog = agent.read_role_reference('router', 'tools.json',
@@ -676,6 +1211,14 @@ class AgentContracts(unittest.TestCase):
         expected['list_comparison_assets']['enabled'] = False
         expected['compare_sem_images']['enabled'] = False
         expected['compare_overlay_maps']['enabled'] = False
+        expected['search_engineer_notes']['enabled'] = False
+        expected['search_internal_documents']['enabled'] = False
+        expected['search_mes_reference']['enabled'] = False
+        expected['get_platform_evidence']['enabled'] = False
+        expected['search_platform_history']['enabled'] = False
+        expected['plan_synthetic_action_evidence'].update(
+            enabled=False, configured=False, runtime_injected=False,
+            phase_gate='incident_scope_and_complete_lot_wafer_lookup_required')
         expected['compare_sem_images']['asset_ids_by_item'] = {}
         expected['compare_overlay_maps']['asset_ids_by_item'] = {}
         for role, prompt, payload in client.calls:
@@ -687,9 +1230,17 @@ class AgentContracts(unittest.TestCase):
             ready['list_incident_wafers']['enabled'] = False
             self.assertEqual(payload['available_tools'], ready)
             if role == 'router':
-                prompt_catalog = copy.deepcopy(catalog)
-                prompt_catalog['summarize_incidents'].pop('parameters')
-                self.assertIn(json.dumps(prompt_catalog, ensure_ascii=False, separators=(',', ':')), prompt)
+                lines = prompt.splitlines()
+                header = next(index for index, line in enumerate(lines)
+                              if line.startswith('[skills/') and line.endswith('/references/tools.json]'))
+                body = []
+                for line in lines[header + 1:]:
+                    if line.startswith('['):
+                        break
+                    body.append(line)
+                prompt_catalog = json.loads('\n'.join(body))
+                enabled = {name for name, spec in ready.items() if spec['enabled']}
+                self.assertEqual(set(prompt_catalog), enabled)
 
     def test_requested_sources_are_collected_before_judge_without_repeating_completed_tools(self):
         steps = [self.lookup(), ('router', plan('ready_for_judge', 'tools')),
@@ -714,6 +1265,7 @@ class AgentContracts(unittest.TestCase):
         self.assertEqual([role for role, _, _ in client.calls], ['router', 'router', 'router', 'judge', 'answer'])
 
     def test_explicit_complete_lot_filter_finishes_wafer_lookup_not_impact_validation(self):
+        self.use_temporary_skill_lock()
         for lots, complete in ((['SYN-LOT-01-01', 'SYN-LOT-01-02', 'SYN-LOT-01-03'], True),
                                (['SYN-LOT-01-01'], False)):
             with self.subTest(lots=lots):
@@ -816,6 +1368,76 @@ class AgentContracts(unittest.TestCase):
                 self.assertEqual(result['evidence'][-1]['result']['query_match']['strategy'], 'all_terms')
                 self.assertEqual(result['evidence'][-1]['result']['incident_ids'], ['synthetic-pk-2026-01'])
                 self.assertEqual(result['tool_calls'], 3)
+
+    def test_invalid_timestamp_tool_result_is_dropped_and_requires_successful_requery(self):
+        invalid = {'status': 'OK', 'items': [{'chunk_id': 'invalid-chunk', 'meeting_id': 'm1',
+                   'version': 'v1', 'meeting_date': '', 'text': 'synthetic private text'}],
+                   'retrieval_method': 'synthetic', 'as_of': '2026-03-31', 'incident_ids': None}
+        valid = {'status': 'OK', 'items': [{'chunk_id': 'valid-chunk', 'meeting_id': 'm1',
+                 'version': 'v1', 'meeting_date': None, 'text': 'synthetic accepted text'}],
+                 'retrieval_method': 'synthetic', 'as_of': '2026-03-31', 'incident_ids': None}
+        steps = [self.lookup(),
+                 ('router', plan(stage='tools', tool='search_meeting_minutes', arguments={'query': 'bad'})),
+                 ('router', plan(stage='tools', tool='search_meeting_minutes', arguments={'query': 'bad'})),
+                 ('router', plan('ready_for_judge', 'tools')), ('judge', judge), ('answer', answer)]
+        with patch.object(agent.MeetingTools, 'search', side_effect=[invalid, valid]) as search:
+            result, client = self.run_script(steps)
+
+        roles = [role for role, *_ in client.calls]
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertEqual(search.call_count, 2)
+        self.assertEqual(roles, ['router', 'router', 'router', 'router', 'judge', 'answer'])
+        self.assertEqual([entry['result']['items'][0]['chunk_id'] for entry in result['evidence']
+                          if entry['source'] == 'search_meeting_minutes'], ['valid-chunk'])
+        errors = [event.get('error') for event in result['events']
+                  if event['event'] == 'validation_or_tool_error']
+        self.assertIn('EVIDENCE_TIMESTAMP_INVALID', errors)
+        self.assertNotIn('synthetic private text', json.dumps(client.histories))
+        self.assertNotIn('invalid-chunk', json.dumps(result['evidence']))
+
+    def test_invalid_timestamp_failure_survives_different_or_failed_requery(self):
+        invalid = {'status': 'OK', 'items': [{'chunk_id': 'invalid-chunk', 'meeting_id': 'm1',
+                   'version': 'v1', 'meeting_date': '', 'text': 'synthetic private text'}],
+                   'retrieval_method': 'synthetic', 'as_of': '2026-03-31', 'incident_ids': None}
+        for retry_query, retry_result in (('different', {'status': 'NO_MATCH', 'items': [],
+                                                'retrieval_method': 'synthetic', 'as_of': '2026-03-31',
+                                                'incident_ids': None}),
+                                          ('same', invalid)):
+            with self.subTest(retry_query=retry_query):
+                steps = [self.lookup(),
+                         ('router', plan(stage='tools', tool='search_meeting_minutes', arguments={'query': 'same'})),
+                         ('router', plan(stage='tools', tool='search_meeting_minutes',
+                                         arguments={'query': retry_query})),
+                         ('router', plan('ready_for_judge', 'tools')),
+                         ('router', {**plan('blocked', 'tools'), 'limitations': ['must requery safely']}),]
+                with patch.object(agent.MeetingTools, 'search', side_effect=[invalid, retry_result]):
+                    result, client = self.run_script(steps)
+
+                self.assertEqual(result['status'], 'unavailable', result)
+                self.assertNotIn('judge', [role for role, *_ in client.calls])
+                errors = [event.get('error') for event in result['events']
+                          if event['event'] == 'validation_or_tool_error']
+                self.assertIn('EVIDENCE_TIMESTAMP_INVALID', errors)
+
+    def test_missing_timestamp_remains_unknown_and_is_accepted(self):
+        for timestamp in ('missing', None):
+            with self.subTest(timestamp=timestamp):
+                item = {'chunk_id': 'missing-time', 'meeting_id': 'm1', 'version': 'v1',
+                        'text': 'synthetic text'}
+                if timestamp is None:
+                    item['meeting_date'] = None
+                result_payload = {'status': 'OK', 'items': [item], 'retrieval_method': 'synthetic',
+                                  'as_of': '2026-03-31', 'incident_ids': None}
+                steps = [self.lookup(),
+                         ('router', plan(stage='tools', tool='search_meeting_minutes', arguments={'query': 'missing'})),
+                         ('router', plan('ready_for_judge', 'tools')), ('judge', judge), ('answer', answer)]
+                with patch.object(agent.MeetingTools, 'search', return_value=result_payload):
+                    result, client = self.run_script(steps)
+
+                self.assertEqual(result['status'], 'answered', result)
+                self.assertEqual([role for role, *_ in client.calls],
+                                 ['router', 'router', 'router', 'judge', 'answer'])
+                self.assertEqual(result['evidence'][-1]['result']['items'][0]['chunk_id'], 'missing-time')
 
     def test_selected_scope_never_admits_other_incident_minutes(self):
         step = ('router', plan(tool='find_incidents', arguments={'city': 'SYNTH-CITY'}, search_mode='sql_filter'))
@@ -1115,6 +1737,156 @@ class AgentContracts(unittest.TestCase):
             self.assertEqual(result['status'], 'unavailable', result)
             self.assertEqual(result['tool_calls'], 2)
             compare_mock.assert_not_called()
+
+    def use_temporary_skill_lock(self):
+        lock_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(lock_dir.cleanup)
+        self.settings.data['paths']['skill_lock_file'] = str(Path(lock_dir.name) / 'release.lock.json')
+        import skill_loader
+        skill_loader.freeze(settings=self.settings)
+
+    def test_non_platform_review_skips_platform_builders(self):
+        self.use_temporary_skill_lock()
+        import platform_facts
+        import investigation_plans
+        with patch.object(platform_facts, 'build_platform_facts', wraps=platform_facts.build_platform_facts) as facts, \
+             patch.object(investigation_plans, 'build_investigations', wraps=investigation_plans.build_investigations) as investigations:
+            result, client = self.run_script([self.lookup(), *self.finish_steps()])
+
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertEqual([role for role, *_ in client.calls], ['router', 'router', 'judge', 'answer'])
+        self.assertEqual([entry['id'] for entry in result['evidence']], ['e1'])
+        self.assertEqual(facts.call_count, 0)
+        self.assertEqual(investigations.call_count, 0)
+
+    def test_platform_tool_preserves_role_payload_facts_and_evidence_with_bounded_builds(self):
+        self.use_temporary_skill_lock()
+        self.settings.data['platform'] = {'enabled': True}
+        synthetic_result = {
+            'status': 'OK', 'synthetic': True,
+            'sections': {'measure': {'status': 'OK', 'count': 1, 'rows': []}},
+            'summaries': {'measure': [{'item': 'SYN-MEASURE', 'samples': 10,
+                                       'outside_limits': 2, 'unit': 'um', 'mean': 1.5}]},
+            'tabular_analysis': {'status': 'OK', 'chip_count': 10, 'feature_count': 2,
+                                 'source_feature_count': 2, 'dummy_feature_count': 0,
+                                 'flagged_chip_count': 1},
+            'cross_modal_alignment': {'chip_counts': {'legacy_measure_out_of_spec': 0}},
+            'model_observations': [], 'map_analysis': {},
+        }
+        def platform_answer(payload):
+            return {'status': 'answered', 'answer': 'fixed synthetic response', 'claims': [], 'limitations': [],
+                    'selected_fact_ids': [fact['fact_id'] for fact in payload['platform_facts']],
+                    'ranked_investigation_ids': [item['id'] for item in payload['platform_investigations']]}
+
+        steps = [self.lookup(),
+                 ('router', plan(stage='tools', tool='list_incident_lots')),
+                 ('router', plan(stage='tools', tool='get_platform_evidence')),
+                 ('router', plan('ready_for_judge', 'tools')),
+                 ('judge', judge), ('answer', platform_answer)]
+        import platform_facts
+        import investigation_plans
+        with patch.object(agent.IncidentTools, 'get_platform_evidence', return_value=synthetic_result), \
+             patch.object(agent, 'RoleClient', return_value=ScriptedClient(steps)) as client_factory, \
+             patch.object(platform_facts, 'build_platform_facts', wraps=platform_facts.build_platform_facts) as facts, \
+             patch.object(investigation_plans, 'build_investigations', wraps=investigation_plans.build_investigations) as investigations:
+            client = client_factory.return_value
+            result = agent.run(self.settings, 'synthetic contract question', 'tester', as_of='2026-03-31')
+
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertEqual([role for role, *_ in client.calls], ['router', 'router', 'router', 'router', 'judge', 'answer'])
+        self.assertEqual([(entry['id'], entry['source']) for entry in result['evidence']], [
+            ('e1', 'find_incidents'), ('e2', 'list_incident_lots'), ('e3', 'get_platform_evidence')])
+        fact_ids = [fact['fact_id'] for fact in result['platform_facts']]
+        self.assertTrue(fact_ids)
+        self.assertTrue(all(fact['evidence_ids'] in (['e2'], ['e3']) for fact in result['platform_facts']))
+        self.assertTrue(any(fact['evidence_ids'] == ['e3'] for fact in result['platform_facts']))
+        judge_payload = client.calls[4][2]
+        answer_payload = client.calls[5][2]
+        self.assertEqual(judge_payload['evidence_ids'], ['e1', 'e2', 'e3'])
+        self.assertEqual(answer_payload['evidence_ids'], ['e1', 'e2', 'e3'])
+        self.assertNotIn('platform_facts', client.calls[0][2])
+        self.assertNotIn('platform_investigations', client.calls[0][2])
+        self.assertEqual([fact['fact_id'] for fact in judge_payload['platform_facts']], fact_ids)
+        self.assertEqual([fact['fact_id'] for fact in answer_payload['platform_facts']], fact_ids)
+        self.assertEqual([item['id'] for item in judge_payload['platform_investigations']],
+                         [item['id'] for item in answer_payload['platform_investigations']])
+        first_fact = next(fact for fact in result['platform_facts']
+                          if fact['fact_id'] == result['claims'][0]['claim_id'])
+        self.assertEqual(result['claims'][0]['evidence_ids'], first_fact['evidence_ids'])
+        self.assertEqual(facts.call_count, 4)
+        self.assertEqual(investigations.call_count, 4)
+
+    def test_platform_tools_are_hidden_when_platform_is_disabled(self):
+        self.use_temporary_skill_lock()
+        self.settings.data['platform'] = {'enabled': False}
+        result, client = self.run_script([
+            self.lookup(), ('router', {**plan('blocked', 'tools'), 'limitations': ['stop after scope check']})])
+
+        self.assertEqual(result['status'], 'unavailable', result)
+        available = client.calls[1][2]['available_tools']
+        self.assertFalse(available['get_platform_evidence']['enabled'])
+        self.assertFalse(available['search_platform_history']['enabled'])
+
+    def test_enabled_platform_tools_require_incident_then_lot_scope(self):
+        self.use_temporary_skill_lock()
+        self.settings.data['platform'] = {'enabled': True}
+        steps = [self.lookup(), ('router', plan(stage='tools', tool='list_incident_lots')),
+                 ('router', {**plan('blocked', 'tools'), 'limitations': ['inspect enabled catalog']})]
+        result, client = self.run_script(steps)
+
+        self.assertEqual(result['status'], 'unavailable', result)
+        before_incident = client.calls[0][2]['available_tools']
+        after_incident_before_lot = client.calls[1][2]['available_tools']
+        after_lot = client.calls[2][2]['available_tools']
+        self.assertFalse(before_incident['get_platform_evidence']['enabled'])
+        self.assertFalse(before_incident['search_platform_history']['enabled'])
+        self.assertFalse(after_incident_before_lot['get_platform_evidence']['enabled'])
+        self.assertFalse(after_incident_before_lot['search_platform_history']['enabled'])
+        self.assertTrue(after_lot['get_platform_evidence']['enabled'])
+        self.assertTrue(after_lot['search_platform_history']['enabled'])
+
+    def test_platform_history_receives_only_selected_incident_scope(self):
+        self.use_temporary_skill_lock()
+        self.settings.data['platform'] = {'enabled': True}
+        observed = {}
+        def history(db, actor, scope_id, as_of, top_k=5):
+            observed.update(actor=actor, ids=list(db._scope(actor, scope_id)['ids']), as_of=as_of, top_k=top_k)
+            return {'status': 'NO_MATCH', 'items': [], 'scope': {'incident_ids': observed['ids'], 'as_of': as_of},
+                    'candidate_count': 0, 'truncated': False, 'limitations': []}
+        steps = [self.lookup(), ('router', plan(stage='tools', tool='list_incident_lots')),
+                 ('router', plan(stage='tools', tool='search_platform_history', arguments={'top_k': 3})),
+                 ('router', plan('ready_for_judge', 'tools')), ('judge', judge), ('answer', answer)]
+        with patch.object(agent.IncidentTools, 'search_platform_history', autospec=True, side_effect=history):
+            result, client = self.run_script(steps)
+
+        self.assertEqual(result['status'], 'answered', result)
+        self.assertEqual(observed, {'actor': 'tester', 'ids': [result['evidence'][0]['result']['data'][0]['incident_id']],
+                                    'as_of': '2026-03-31', 'top_k': 3})
+        history_entry = next(entry for entry in result['evidence'] if entry['source'] == 'search_platform_history')
+        self.assertEqual(history_entry['id'], 'e3')
+        self.assertEqual(history_entry['result']['scope']['incident_ids'], observed['ids'])
+
+    def test_platform_history_rejects_multi_incident_scope(self):
+        self.use_temporary_skill_lock()
+        self.settings.data['platform'] = {'enabled': True}
+        cohort = plan(tool='find_incidents', arguments={
+            'filters': {'department': 'SYNTH-QA'}, 'scope_mode': 'cohort'}, search_mode='sql_filter')
+        cohort['intents'] = ['analysis']
+        cohort['filters'] = cohort['plan'][0]['arguments']['filters']
+        steps = [
+            ('router', cohort),
+            ('router', plan(stage='tools', tool='list_incident_lots')),
+            ('router', plan(stage='tools', tool='search_platform_history')),
+            ('router', {**plan('blocked', 'tools'), 'limitations': ['single incident scope required']}),
+        ]
+        with patch('platform_tools.PlatformTools.__init__',
+                   autospec=True, side_effect=lambda self, settings, tool: setattr(self, 'tool', tool)):
+            result, _ = self.run_script(steps)
+
+        self.assertEqual(result['status'], 'unavailable', result)
+        errors = [event.get('error') for event in result['events']
+                  if event['event'] == 'validation_or_tool_error']
+        self.assertIn('PLATFORM_HISTORY_REQUIRES_SINGLE_INCIDENT', errors)
 
 
 if __name__ == '__main__':

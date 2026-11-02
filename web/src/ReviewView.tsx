@@ -9,7 +9,7 @@ import {
   X,
 } from 'lucide-react';
 import { download, type Attachment, type Workspace } from './api';
-import { Empty } from './Views';
+import EmptyState from './EmptyState';
 import { makeEngineeringData, matchFabYield } from './engineeringData';
 import {
   correlationSummary,
@@ -274,7 +274,7 @@ export default function ReviewView({
         </button>
       </div>
       {!item ? (
-        <Empty
+        <EmptyState
           title="선택된 근거 없음"
           detail="현재 검토 목록이 비어 있습니다."
         />

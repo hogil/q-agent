@@ -49,6 +49,7 @@ class WorkbenchLLMTests(unittest.TestCase):
             }
         })
         config["settings"] = Settings(data, config["settings"].source_files)
+        self.config = config
         self.app = Workbench(config)
         self.room_id = self.app.create_room("LLM test", "SYN-2026-01")["id"]
         workspace = self.app.workspace("SYN-2026-01")
@@ -82,6 +83,8 @@ class WorkbenchLLMTests(unittest.TestCase):
             "tool_calls": 1,
             "llm_calls": 3,
             "limitations": ["synthetic fixture"],
+            "final_scope": {"incident_lookup_status": "OK",
+                            "confirmed": {"incident_ids": ["SYN-2026-01"]}},
         }
 
     def test_llm_bridge_scopes_incident_and_disables_unchecked_sources(self):
@@ -109,6 +112,86 @@ class WorkbenchLLMTests(unittest.TestCase):
         self.assertEqual(captured["kwargs"]["context_data"]["requested_sources"], ["incident", "trend"])
         self.assertFalse(captured["settings"].data["meetings"]["enabled"])
         self.assertTrue(all(not item["enabled"] for item in captured["settings"].data["image_tools"].values()))
+        self.assertNotIn("plan_synthetic_action_evidence", captured["kwargs"]["requested_tools"])
+
+    def test_llm_bridge_passes_only_explicit_synthetic_action_callbacks(self):
+        planner = lambda scoped: scoped
+        lease_provider = lambda conn: {"revision": "synthetic-test", "as_of": "2026-03-31T00:00:00Z"}
+        config = dict(self.config)
+        enabled_data = merge(self.config["settings"].data, {
+            "synthetic_action_planner": {"enabled": True},
+        })
+        config["settings"] = Settings(enabled_data, self.config["settings"].source_files)
+        app = Workbench(config, synthetic_action_planner=planner,
+                        snapshot_lease_provider=lease_provider)
+        captured = {}
+
+        def fake_run(settings, question, **kwargs):
+            captured["settings"] = settings
+            captured.update(kwargs)
+            return self._agent_result(events=[
+                {"event": "tool_result", "source": "plan_synthetic_action_evidence",
+                 "id": "evidence-1", "result": {"status": "OK", "execution_granted": False}},
+                {"event": "llm_output", "role": "answer", "model": "mock-model", "step": 3},
+            ])
+
+        with patch.object(workbench_module, "run_agent", side_effect=fake_run):
+            result = app.analysis(self.room_id, {
+                "content": "선택 사고 확인", "sources": ["incident", "action_evidence"], "context": self.context,
+            })
+
+        self.assertIs(captured["synthetic_action_planner"], planner)
+        self.assertIs(captured["snapshot_lease_provider"], lease_provider)
+        self.assertTrue(captured["settings"].data["synthetic_action_planner"]["enabled"])
+        self.assertIn("plan_synthetic_action_evidence", captured["requested_tools"])
+        action_step = next(step for step in result["analysis"]["steps"] if step["source"] == "action_evidence")
+        self.assertEqual(action_step["status"], "completed")
+        self.assertIn("proposal-only", action_step["detail"])
+        self.assertIn("no action was executed", action_step["detail"])
+        self.assertEqual(result["analysis"]["report"]["synthetic_action_evidence"], [
+            {"evidence_id": "evidence-1", "result": {"status": "OK", "execution_granted": False}},
+        ])
+        self.assertIn("실제 조치나 HOLD/RELEASE는 실행되지 않았습니다.", result["messages"][-1]["content"])
+
+    def test_action_evidence_is_unavailable_without_enabled_planner_and_callbacks(self):
+        with patch.object(workbench_module, "run_agent") as run:
+            with self.assertRaisesRegex(WorkbenchError, "action_evidence is unavailable"):
+                self.app.analysis(self.room_id, {
+                    "content": "합성 조치 evidence 확인",
+                    "sources": ["incident", "action_evidence"], "context": self.context,
+                })
+        run.assert_not_called()
+        progress = self.app.analysis_progress(self.room_id)["run"]
+        self.assertEqual(progress["status"], "failed")
+        self.assertIn("action_evidence is unavailable", progress["error"])
+
+    def test_action_evidence_requires_enabled_setting_and_both_callbacks(self):
+        planner = lambda scoped: scoped
+        lease_provider = lambda conn: {"revision": "synthetic-test", "as_of": "2026-03-31T00:00:00Z"}
+        enabled_config = dict(self.config)
+        enabled_data = merge(self.config["settings"].data, {"synthetic_action_planner": {"enabled": True}})
+        enabled_config["settings"] = Settings(enabled_data, self.config["settings"].source_files)
+        invalid_apps = [
+            Workbench(self.config, synthetic_action_planner=planner,
+                      snapshot_lease_provider=lease_provider),
+            Workbench(enabled_config, synthetic_action_planner=planner),
+            Workbench(enabled_config, snapshot_lease_provider=lease_provider),
+        ]
+        for app in invalid_apps:
+            with self.subTest(planner=callable(app.synthetic_action_planner),
+                              lease=callable(app.snapshot_lease_provider),
+                              enabled=app.settings.data.get("synthetic_action_planner", {}).get("enabled")):
+                with patch.object(workbench_module, "run_agent") as run:
+                    with self.assertRaisesRegex(WorkbenchError, "action_evidence is unavailable"):
+                        app.analysis(self.room_id, {
+                            "content": "합성 조치 evidence 확인",
+                            "sources": ["incident", "action_evidence"], "context": self.context,
+                        })
+                run.assert_not_called()
+
+    def test_workbench_callback_injection_defaults_to_none(self):
+        self.assertIsNone(self.app.synthetic_action_planner)
+        self.assertIsNone(self.app.snapshot_lease_provider)
 
     def test_default_room_has_saved_analysis_not_only_chat(self):
         self.assertIsNone(self.app.bootstrap()["default_room_id"])
@@ -388,6 +471,135 @@ class WorkbenchLLMTests(unittest.TestCase):
                                            'sources': ['incident', 'related', 'maps'],
                                            'context': {**self.context, 'map_view': {'kind': 'cd', 'overlay': 'raw'}}})
 
+    def test_explicit_retrieval_sources_inject_trusted_callbacks_and_return_evidence(self):
+        self.app.settings.data['retrieval']['engineer_notes']['enabled'] = True
+        self.app.settings.data['retrieval']['internal_documents']['enabled'] = True
+        self.app.settings.data['mes_reference']['enabled'] = True
+        self.app.settings.data['mes_reference']['allowed_kinds'] = ['recipe']
+        document_query = lambda **kwargs: None
+        mes_query = lambda **kwargs: None
+        statuses = {'engineer_notes': ['released'], 'internal_documents': ['released']}
+        app = Workbench(self.config, document_query=document_query,
+                        document_allowed_statuses=statuses, mes_reference_query=mes_query)
+        room_id = app.create_room('retrieval', 'SYN-2026-01')['id']
+        captured = {}
+
+        def fake_run(settings, question, **kwargs):
+            captured.update(kwargs)
+            results = [
+                {'event': 'tool_result', 'source': 'search_engineer_notes',
+                 'result': {'status': 'OK', 'items': [{'title': 'note'}]}},
+                {'event': 'tool_result', 'source': 'search_internal_documents',
+                 'result': {'status': 'NO_MATCH', 'items': []}},
+                {'event': 'tool_result', 'source': 'search_mes_reference',
+                 'result': {'status': 'OK', 'items': [{'id': 'ref'}]}},
+            ]
+            return self._agent_result(events=self._agent_result()['events'] + results)
+
+        with patch.object(workbench_module, 'run_agent', side_effect=fake_run):
+            response = app.analysis(room_id, {
+                'content': '문서와 MES 기준 확인',
+                'sources': ['incident', 'engineer_note_search', 'internal_document_search', 'mes_reference_search'],
+                'context': self.context})
+        self.assertEqual(captured['requested_tools'], [
+            'find_incidents', 'search_engineer_notes', 'search_internal_documents', 'search_mes_reference'])
+        self.assertIs(captured['document_query'], document_query)
+        self.assertIs(captured['mes_reference_query'], mes_query)
+        self.assertEqual(captured['document_allowed_statuses'], statuses)
+        steps = {step['source']: step for step in response['analysis']['steps']}
+        self.assertEqual([steps[source]['status'] for source in (
+            'engineer_note_search', 'internal_document_search', 'mes_reference_search')],
+            ['completed', 'completed', 'completed'])
+        evidence = response['analysis']['report']['retrieval_evidence']
+        self.assertEqual([item['source'] for item in evidence], [
+            'search_engineer_notes', 'search_internal_documents', 'search_mes_reference'])
+
+    def test_retrieval_sources_are_not_requested_without_explicit_selection_or_configuration(self):
+        captured = {}
+
+        def fake_run(settings, question, **kwargs):
+            captured.update(kwargs)
+            return self._agent_result()
+
+        with patch.object(workbench_module, 'run_agent', side_effect=fake_run):
+            self.app.analysis(self.room_id, {'content': '사고만 확인', 'sources': ['incident'],
+                                             'context': self.context})
+            self.assertNotIn('search_engineer_notes', captured['requested_tools'])
+            self.assertNotIn('search_internal_documents', captured['requested_tools'])
+            self.assertNotIn('search_mes_reference', captured['requested_tools'])
+            self.assertIsNone(captured['document_query'])
+            self.assertIsNone(captured['mes_reference_query'])
+
+            response = self.app.analysis(self.room_id, {
+                'content': '문서 검색', 'sources': ['incident', 'engineer_note_search'],
+                'context': self.context})
+        self.assertNotIn('search_engineer_notes', captured['requested_tools'])
+        self.assertEqual(response['analysis']['steps'][1]['status'], 'unavailable')
+        self.assertIn('trusted callback', response['analysis']['steps'][1]['detail'])
+
+    def test_create_server_forwards_retrieval_callbacks_as_trusted_runtime_dependencies(self):
+        document_query = lambda **kwargs: None
+        mes_query = lambda **kwargs: None
+        statuses = {'engineer_notes': ['released']}
+        server = workbench_module.create_server(
+            self.config_path, port=0, document_query=document_query,
+            document_allowed_statuses=statuses, mes_reference_query=mes_query)
+        try:
+            self.assertIs(server.app.document_query, document_query)
+            self.assertIs(server.app.mes_reference_query, mes_query)
+            self.assertEqual(server.app.document_allowed_statuses, statuses)
+        finally:
+            server.server_close()
+
+    def test_retrieval_sources_without_llm_are_explicitly_unavailable(self):
+        self.app.settings.data['models']['text']['enabled'] = False
+        self.app.settings.data['retrieval']['engineer_notes']['enabled'] = True
+        self.app.settings.data['retrieval']['internal_documents']['enabled'] = True
+        self.app.settings.data['mes_reference']['enabled'] = True
+        self.app.settings.data['mes_reference']['allowed_kinds'] = ['recipe']
+        self.app.document_query = lambda **kwargs: self.fail('document callback must not run without LLM')
+        self.app.document_allowed_statuses = {
+            'engineer_notes': ['released'], 'internal_documents': ['released']}
+        self.app.mes_reference_query = lambda **kwargs: self.fail('MES callback must not run without LLM')
+        response = self.app.analysis(self.room_id, {
+            'content': '문서와 MES 기준 확인',
+            'sources': ['incident', 'engineer_note_search', 'internal_document_search', 'mes_reference_search'],
+            'context': self.context})
+        self.assertEqual(response['analysis']['mode'], 'demo')
+        steps = {step['source']: step for step in response['analysis']['steps']}
+        for source in ('engineer_note_search', 'internal_document_search', 'mes_reference_search'):
+            self.assertEqual(steps[source]['status'], 'unavailable')
+            self.assertIn('LLM is not configured; retrieval Tool was not called', steps[source]['detail'])
+
+    def test_invalid_retrieval_allowlists_are_not_silently_passed_as_valid(self):
+        self.app.settings.data['retrieval']['engineer_notes']['enabled'] = True
+        self.app.settings.data['mes_reference']['enabled'] = True
+        self.app.settings.data['mes_reference']['allowed_kinds'] = ['recipe', 'recipe']
+        document_query = lambda **kwargs: None
+        mes_query = lambda **kwargs: None
+        app = Workbench(self.config, document_query=document_query,
+                        document_allowed_statuses={'engineer_notes': ['released', 'released']},
+                        mes_reference_query=mes_query)
+        room_id = app.create_room('invalid retrieval config', 'SYN-2026-01')['id']
+        captured = {}
+
+        def fake_run(settings, question, **kwargs):
+            captured.update(kwargs)
+            return self._agent_result()
+
+        with patch.object(workbench_module, 'run_agent', side_effect=fake_run):
+            response = app.analysis(room_id, {
+                'content': '문서와 MES 기준 확인',
+                'sources': ['incident', 'engineer_note_search', 'mes_reference_search'],
+                'context': self.context})
+        self.assertNotIn('search_engineer_notes', captured['requested_tools'])
+        self.assertNotIn('search_mes_reference', captured['requested_tools'])
+        self.assertIsNone(captured['document_query'])
+        self.assertIsNone(captured['mes_reference_query'])
+        steps = {step['source']: step for step in response['analysis']['steps']}
+        self.assertIn('allowlist is invalid', steps['engineer_note_search']['detail'])
+        self.assertIn('allowed kinds are invalid', steps['mes_reference_search']['detail'])
+
     def test_prior_history_is_unverified_and_filtered_to_current_incident(self):
         self.app._append_messages(
             self.room_id,
@@ -513,10 +725,34 @@ class WorkbenchLLMTests(unittest.TestCase):
         self.assertTrue(runtime["llm_connected"])
         self.assertEqual([item["role"] for item in runtime["trace"]], ["router", "judge", "answer"])
         self.assertEqual(runtime["status"], "answered")
+        self.assertEqual(runtime["final_scope"]["incident_lookup_status"], "OK")
+        self.assertEqual(runtime["final_scope"]["confirmed"]["incident_ids"], ["SYN-2026-01"])
         saved = self.app.analysis_metadata(self.room_id)["analysis"]
         self.assertEqual(saved["mode"], "llm")
         self.assertTrue(saved["llm_connected"])
         self.assertEqual(saved["trace"], runtime["trace"])
+
+    def test_system_limitations_are_persisted_and_displayed_once(self):
+        caveat = "인용된 MES 결과에 사고 연관성이 확인되지 않은 기준정보 후보가 포함되어 있습니다."
+        model_limitations = [f"model limitation {index}" for index in range(6)]
+        result_data = self._agent_result()
+        result_data["limitations"] = model_limitations
+        result_data["system_limitations"] = [caveat]
+
+        with patch.object(workbench_module, "run_agent", return_value=result_data):
+            result = self.app.analysis(self.room_id, {
+                "content": "시스템 한계 표시 확인",
+                "sources": ["incident"],
+                "context": self.context,
+            })
+
+        runtime = result["analysis"]
+        body = result["messages"][-1]["content"]
+        self.assertEqual(runtime["limitations"], model_limitations)
+        self.assertEqual(runtime["system_limitations"], [caveat])
+        self.assertEqual(body.count(caveat), 1)
+        for limitation in model_limitations:
+            self.assertIn(limitation, body)
 
     def test_unavailable_or_invalid_llm_does_not_fallback_or_write(self):
         bad_results = (

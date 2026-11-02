@@ -49,6 +49,7 @@
           },
           "depends_on": {
             "type": "array",
+            "maxItems": 0,
             "items": {
               "type": "integer",
               "minimum": 0

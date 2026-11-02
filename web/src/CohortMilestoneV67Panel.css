@@ -1,0 +1,19 @@
+.cohort-v67 { border-color: #536a82; }
+.cohort-v67-heading { align-items: center; }
+.cohort-v67-intro { color: #bdcad7; margin: 0 0 1rem; }
+.cohort-v67-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .9rem; }
+.cohort-v67-grid > article { min-width: 0; }
+.cohort-v67-pair { display: flex; justify-content: space-between; gap: 1rem; padding: .4rem 0; border-top: 1px solid #344456; }
+.cohort-v67-pair span, .cohort-v67-grid small { color: #bdcad7; }
+.cohort-v67-pair strong { text-align: right; }
+.cohort-v67-failed { border-color: #7b5b54; }
+.cohort-v67-history { margin-top: 1rem; padding: .8rem 1rem; border: 1px solid #344456; border-radius: .7rem; color: #bdcad7; }
+.cohort-v67-history summary { cursor: pointer; font-weight: 650; }
+.cohort-v67-final { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .7rem; margin-top: 1rem; padding: 1rem; border-radius: .7rem; background: #1e2b38; }
+.cohort-v67-final span { color: #bdcad7; }
+@media (max-width: 720px) {
+  .cohort-v67-grid { grid-template-columns: 1fr; }
+  .cohort-v67-final { grid-template-columns: 1fr; }
+  .cohort-v67-pair { flex-direction: column; gap: .25rem; }
+  .cohort-v67-pair strong { text-align: left; }
+}

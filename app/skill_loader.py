@@ -4,6 +4,7 @@ python skill_loader.py router --topics terminology,lots
 """
 import argparse,json,hashlib
 from pathlib import Path
+from skill_graph import resolve_topics
 P=Path(__file__).resolve().parent
 
 def digest(path):
@@ -19,7 +20,12 @@ def release_files(root,settings=None):
   for f in sorted(paths[key].rglob('*'),key=lambda f:f.relative_to(paths[key]).as_posix()):
    if f.is_file():files[label+'/'+f.relative_to(paths[key]).as_posix()]=f
  files['skill_registry.json']=paths['registry_file']
- for name in ['incident_tools.py','incident_statistics.py','incident_filters.py','terminology.py','prompt_contracts.py','skill_loader.py','config_loader.py','runtime_factory.py','run_agent.py','agent.py','llm_client.py','conversation_memory.py','meeting_tools.py','image_tools.py','engineering_tools.py','enterprise_tools.py','demo_data.py','engineering_demo.py','golden.py']:
+ for name in ['incident_tools.py','incident_statistics.py','incident_filters.py','terminology.py','prompt_contracts.py','skill_loader.py','config_loader.py','runtime_factory.py','run_agent.py','agent.py','action_scope_bridge.py','synthetic_sqlite_action_lease.py','synthetic_action_contract.py','llm_client.py','conversation_memory.py','evidence_review.py','document_evidence_contract.py','fbm_search_contract.py','mes_reference_contract.py','mes_reference_sqlite.py','meeting_tools.py','image_tools.py','engineering_tools.py','enterprise_tools.py','demo_data.py','engineering_demo.py','golden.py','platform_tools.py','platform_demo.py','platform_models.py','train_platform_models.py','column_profile.py','tabular_analysis.py','tabular_demo.py','map_analysis.py']:
+  files[name]=root/name
+ files['platform_facts.py']=root/'platform_facts.py'
+ files['investigation_plans.py']=root/'investigation_plans.py'
+ for name in ('skill_graph.py','context_manager.py','recovery_policy.py',
+              'team_graph.py','team_ledger.py','team_executor.py','team_cli.py'):
   files[name]=root/name
  return files
 def freeze(root=P,settings=None):
@@ -41,7 +47,7 @@ def compact_schema(document):
  return {**document,'column_fields':fields,
          'columns':{name:[value[field] for field in fields] for name,value in columns.items()}}
 
-def compile_prompt(role,topics,root=P,settings=None,shared_topics=False):
+def compile_prompt(role,topics,root=P,settings=None,shared_topics=False,tool_names=None,include_schema_json=True,platform_review=False,context_phase='initial',omit_examples=False,omit_embedded_output_schema=False):
  paths=locations(root,settings)
  lock=json.loads(paths['skill_lock_file'].read_text(encoding='utf-8'));reg=json.loads(paths['registry_file'].read_text(encoding='utf-8'))
  files=release_files(root,settings)
@@ -49,25 +55,34 @@ def compile_prompt(role,topics,root=P,settings=None,shared_topics=False):
  for name,expected in lock['files'].items():
   if digest(files[name])!=expected:raise ValueError('RELEASE_CONTENT_CHANGED: '+name)
  if lock['release']!=reg['release']:raise ValueError('RELEASE_VERSION_MISMATCH')
- if role not in reg['roles']:raise ValueError('UNKNOWN_ROLE')
- if shared_topics:
-  online=set().union(*(set(values) for values in reg['role_allowed_topics'].values()))
-  if any(topic not in reg['topics'] or topic not in online for topic in topics):raise ValueError('TOPIC_NOT_ALLOWED')
-  topics=[topic for topic in topics if topic in reg['role_allowed_topics'][role]]
- if any(topic not in reg['role_allowed_topics'][role] for topic in topics):raise ValueError('TOPIC_NOT_ALLOWED')
+ if context_phase not in ('initial','continuation','fallback','disabled'):raise ValueError('INVALID_CONTEXT_PHASE')
+ if (omit_examples or omit_embedded_output_schema) and context_phase!='continuation':raise ValueError('CONTEXT_OMISSION_REQUIRES_CONTINUATION')
+ requested_topics=list(topics)
+ topics=resolve_topics(reg,role,requested_topics,shared_topics=shared_topics)
+ requested_topics=sorted(set(requested_topics))
  names=reg['base'][:]
- for topic in sorted(set(topics)):
+ for topic in topics:
   names.extend(reg['topics'][topic])
  names.append(reg['roles'][role]);names=list(dict.fromkeys(names))
+ if platform_review and role in reg.get('platform_review_roles',{}):
+  names=reg['platform_review_base']+[reg['platform_review_roles'][role]]
+  topics=['platform']
  parts=[];loaded=[];entities=[]
  for name in names:
   folder=paths['skills_root']/name;files=[folder/'SKILL.md']+sorted((folder/'references').glob('*'))
   for f in files:
-   if f.name=='examples.md' and (settings is None or not settings.data['runtime']['prompt_examples']):continue
+   if f.name=='investigation-recipes.json':continue
+   if not include_schema_json and name.startswith('schema/') and f.suffix=='.json':continue
+   if f.name=='examples.md' and (omit_examples or settings is None or not settings.data['runtime']['prompt_examples']):continue
+   if f.name=='output.schema.json' and omit_embedded_output_schema:continue
    label='skills/'+f.relative_to(paths['skills_root']).as_posix()
    content=f.read_text(encoding='utf-8')
    if f.suffix=='.json':
     document=json.loads(content)
+    if f.name=='tools.json' and tool_names is not None:
+     document={key:value for key,value in document.items() if key in tool_names}
+    if 'logical_sources' in document:
+     document={**document,'logical_sources':{key:compact_schema(value) for key,value in document['logical_sources'].items()}}
     if f.name=='tools.json' and 'statistics' not in topics:
      document={name:({key:value for key,value in spec.items() if key!='parameters'} if name=='summarize_incidents' else spec)
                for name,spec in document.items()}
@@ -88,7 +103,7 @@ def compile_prompt(role,topics,root=P,settings=None,shared_topics=False):
   parts.append('[runtime/schema-mapping]\nUse logical field names in Tool arguments. Empty physical column mappings are unavailable. Connection settings are managed by the Adapter.\n'+json.dumps(context,ensure_ascii=False,separators=(',',':')))
  prompt='\n\n'.join(parts)
  if len(prompt)>reg['max_prompt_characters']:raise ValueError(f'PROMPT_BUDGET_EXCEEDED: {role} {topics}: {len(prompt)} > {reg["max_prompt_characters"]}; choose narrower topics; do not silently truncate rules')
- return {'role':role,'release':lock['release'],'topics':sorted(set(topics)),'available_topics':reg['role_allowed_topics'][role],'loaded_files':loaded,'prompt_sha256':hashlib.sha256(prompt.encode()).hexdigest(),'system_prompt':prompt,'model_profile':settings.model_profile(role) if settings else {'status':'RUNTIME_CONFIG_NOT_ATTACHED'},'config_hash':settings.config_hash if settings else None}
+ return {'role':role,'release':lock['release'],'topics':sorted(set(topics)),'requested_topics':requested_topics,'dependency_order':topics,'context_phase':context_phase,'requires_transport_schema':bool(omit_embedded_output_schema),'available_topics':reg['role_allowed_topics'][role],'loaded_files':loaded,'prompt_sha256':hashlib.sha256(prompt.encode()).hexdigest(),'system_prompt':prompt,'model_profile':settings.model_profile(role) if settings else {'status':'RUNTIME_CONFIG_NOT_ATTACHED'},'config_hash':settings.config_hash if settings else None}
 
 if __name__=='__main__':
  from config_loader import add_config_arguments,load_config,ConfigError

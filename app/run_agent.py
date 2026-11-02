@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from config_loader import ConfigError, DEFAULT_CONFIG, Settings, load_config, read_config
+from runtime_factory import open_synthetic_mes_reference
 from skill_loader import compile_prompt
 
 
@@ -70,6 +71,7 @@ def main():
     parser.add_argument('--role', choices=('router', 'judge', 'answer'), default='router')
     parser.add_argument('--topics', default='incident_search', help='Comma-separated registered topics')
     parser.add_argument('--question', help='Question for --mode run')
+    parser.add_argument('--incident-number', help='Bind an explicitly selected incident; do not infer extra lookup filters')
     parser.add_argument('--actor', help='Local caller identifier; not authentication or ACL')
     parser.add_argument('--request-scope', choices=('auto', 'incident', 'independent'), default='auto')
     parser.add_argument('--as-of', help='Meeting availability cutoff YYYY-MM-DD; default is today in runtime.timezone')
@@ -144,7 +146,9 @@ def main():
             import sys
             from agent import run
             emit = (lambda event: print(json.dumps(event, ensure_ascii=False), file=sys.stderr, flush=True)) if args.trace else None
-            result = run(settings, args.question, args.actor, args.request_scope, topics, args.select_incident, emit, as_of=args.as_of)
+            result = run(settings, args.question, args.actor, args.request_scope, topics, args.select_incident, emit,
+                         as_of=args.as_of, incident_number=args.incident_number,
+                         mes_reference_query=open_synthetic_mes_reference(settings))
             print(json.dumps(result, ensure_ascii=False, indent=2))
             return 2 if result['status'] == 'unavailable' else 0
         roles = ('router', 'judge', 'answer') if args.mode == 'check' else (args.role,)

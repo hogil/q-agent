@@ -142,6 +142,8 @@ models:
   text:
     # true: schema-constrained Router plans and Judge/Answer JSON; false: native Router function calls.
     structured_outputs: false
+    # Reasoning model APIs may require max_completion_tokens instead of max_tokens.
+    token_limit_parameter: max_tokens
     enabled: false
     mode: api
     base_url: http://127.0.0.1:8000/v1
@@ -195,17 +197,22 @@ roles:
     model: text
     temperature: 0.0
     max_output_tokens: 1200
+    # Empty: omit the API option. Set low only for a server/model that supports it.
+    reasoning_effort: ''
   answer:
     model: text
     temperature: 0.0
     max_output_tokens: 3000
+    reasoning_effort: ''
   judge:
     model: text
     temperature: 0.0
     max_output_tokens: 1200
+    reasoning_effort: ''
 retrieval:
   internal_documents:
     enabled: false
+    require_content_kind: false
     endpoint: ''
     api_key_env: QAGENT_INTERNAL_RAG_KEY
     index_name: SET_EXISTING_INDEX
@@ -219,6 +226,7 @@ retrieval:
     timeout_seconds: 30
   engineer_notes:
     enabled: false
+    require_content_kind: false
     endpoint: ''
     api_key_env: QAGENT_ENGINEER_RAG_KEY
     index_name: SET_EXISTING_INDEX
@@ -251,6 +259,30 @@ enterprise:
   max_rows: 40
   max_window_days: 31
   sources: []
+mes_reference:
+  enabled: false
+  top_k: 10
+  allowed_kinds: []
+  synthetic_sqlite:
+    enabled: false
+    database_file: ''
+    table: synthetic_mes_reference
+    timezone: Asia/Seoul
+    columns:
+      kind: kind
+      record_id: record_id
+      version: version
+      name: name
+      source_ref: source_ref
+      available_at: available_at
+      effective_from: effective_from
+      effective_to: effective_to
+      applicability: applicability
+      incident_ids: incident_ids
+    filter_columns: {}
+fbm_search:
+  enabled: false
+  top_k: 10
 actions:
   enabled: false
   endpoint: ''
@@ -258,7 +290,25 @@ actions:
   timeout_seconds: 30
   require_approval: true
 
+# 합성 전용 조치 근거 planner. callback과 snapshot lease는 trusted runtime injection이 필요합니다.
+synthetic_action_planner:
+  enabled: false
+
 # 질문에 등장한 실제 DB 값으로 WHERE 컬럼 후보를 찾습니다. 전체 값 목록은 LLM에 보내지 않습니다.
+model_lab:
+  enabled: false
+  source_root: ''
+  python: ''
+  base_config: ''
+  overlay: ''
+  stderr_file: ''
+  timeout_seconds: 120
+
+cohort_research:
+  enabled: false
+  artifact_root: ''
+  manifest_path: ''
+
 value_matching:
   enabled: true
   fields: [city, department, line, line_code, line_alias, product_generations, fab_out_failure_codes]
@@ -279,6 +329,12 @@ runtime:
   max_agent_steps: 24
   max_context_characters: 120000
   prompt_examples: false
+  team_execution:
+    enabled: false
+    max_workers: 3
+    max_parallel_tasks: 3
+    max_shared_calls: 12
+    deadline_seconds: 30
   conversation_memory:
     candidate_messages: 80
     recent_turns: 1

@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   ScatterChart,
   ClipboardCheck,
+  Layers3,
 } from 'lucide-react';
 import type { Tab } from './Views';
 
@@ -21,6 +22,22 @@ export const modules: {
   icon: typeof Activity;
   plan: boolean;
 }[] = [
+  {
+    id: 'platform',
+    label: '불량 분석',
+    name: '통합 불량 분석',
+    status: '합성 데이터',
+    icon: Layers3,
+    plan: false,
+  },
+  {
+    id: 'model-lab',
+    label: '모델 분석',
+    name: 'Synthetic Model Lab',
+    status: '합성 모델',
+    icon: Layers3,
+    plan: false,
+  },
   {
     id: 'signals',
     label: 'Signals',

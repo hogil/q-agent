@@ -25,10 +25,13 @@
 | tokenizer 폴더 | models.<name>.tokenizer_dir | 모델 폴더와 별도로 지정 가능 |
 | 모델 API | models.<name>.base_url / served_model | 접속 URL과 API 요청의 model 값 |
 | 역할별 모델 선택 | roles.router/answer/judge.model | models에 정의한 논리 모델 이름 참조 |
+| 역할별 thinking | roles.<role>.reasoning_effort | 빈 문자열은 API 옵션 생략. 지원 모델에만 low 등 지정 |
+| 생성 옵션 호환 | roles.<role>.temperature / models.<name>.token_limit_parameter | temperature: null은 전송 생략. 토큰 한도는 max_tokens 또는 max_completion_tokens |
 | 기존 RAG 연결 | retrieval.internal_documents / engineer_notes | endpoint, index_name, 기존 검색 정책 |
 | 회의록 검색 | meetings | SQLite FTS5 또는 사내 Hybrid HTTP 계약. 활성화/파일/테이블/endpoint/top-k/timeout |
 | Golden 파일 | paths.golden_file | 명시적 prepare-demo가 생성하거나 전문가가 검토한 JSONL |
 | 추가 few-shot | runtime.prompt_examples | 기본 false. 역할별 examples.md 로딩 on/off 비교 |
+| 후속 Router 문맥 | runtime.context_management | 기본 비활성화. 명시적 overlay에서 typed snapshot·닫힌 이력을 확인해 이력/중복 계약을 선택적으로 제외 |
 | Storage | storage | local/object 계약. object Adapter는 후속 구현 |
 | 기간시스템/조치 | enterprise / actions | 연결 계약만 정의, 현재 호출하지 않음 |
 | Skill/사전 파일 위치 | paths.skills_root / dictionary_root / registry_file / skill_lock_file | 내용이 같으면 이동 후에도 동일 프롬프트 해시 |
@@ -64,6 +67,41 @@ demo는 config.yaml + demo.yaml을 읽고 선택적 `--demo-overlay`를 마지�
 상세 검색 계약과 검증 순서는 [현재 설계](PROJECT_DESIGN.md)를 따른다.
 
 Linux 경로는 `/appdata/qagent/models`, Windows 경로는 YAML 문자열 `model_root: 'D:\models'` 또는 `model_root: D:/models`로 적는다. Windows 경로를 Linux에서 사용하면 오류로 처리한다. 네트워크 Storage URI는 local path에 넣지 않고 storage 설정을 사용한다.
+
+### 역할별 비용과 reasoning 설정
+
+모델 선택은 기존 `models` 프로파일과 `roles.<role>.model` 참조를 사용한다. 단순 Router와
+최종 Answer에 다른 모델을 연결할 수 있지만, 실제 endpoint의 지원 모델과 출력 계약을
+확인한 뒤 site overlay에서 지정한다. 개발용 Codex 서브에이전트 모델을 배포 모델로 복사하지 않는다.
+
+`reasoning_effort`는 선택 키이며 `''` 또는 생략 시 API에 보내지 않는다. 허용값은
+`none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`다. 모델마다 지원값이 다르며
+Loader의 허용값 검증이 서버의 기능 지원을 확인하는 것은 아니다. `temperature: null`은
+해당 옵션을 생략한다. 기존 숫자 temperature와 `max_tokens` 기본 동작은 유지한다.
+
+아래는 해당 옵션을 지원하는 Chat Completions 서버용 overlay 일부이며, 사내 데이터 검증을
+마친 배포 설정이 아니다. reasoning 모델에 따라 native function calling도 제한될 수 있으므로
+Router의 `structured_outputs` 지원을 별도로 확인한다.
+
+```yaml
+models:
+  text:
+    token_limit_parameter: max_completion_tokens
+roles:
+  router:
+    reasoning_effort: low
+    temperature: null
+```
+
+`token_limit_parameter`는 모델별 선택 키다. 생략하면 `max_tokens`를 사용하며,
+`max_completion_tokens`를 선택하면 역할의 기존 `max_output_tokens` 값을 해당 API 필드로
+보낸다. 이 한도에는 reasoning token도 포함되므로 무조건 줄이면 JSON이 잘릴 수 있다.
+Judge의 근거 검토와 Answer 품질을 확인하지 않고 모든 역할을 low로 바꾸지 않는다.
+`llm_output.metrics`의 입력·출력·reasoning·cached input token과 호출 시간을 보고 조정한다.
+서버가 상세 usage를 반환하지 않으면 해당 지표는 `null`로 남으며 0으로 추정하지 않는다.
+
+API 계약 기준: [OpenAI Chat Completions 공식 문서](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create)
+(확인일 2026-10-24). 외부 모델의 지원 여부와 실측 비용·응답 시간은 별도 확인이 필요하다.
 
 ## 3. 사내 설정 시작
 

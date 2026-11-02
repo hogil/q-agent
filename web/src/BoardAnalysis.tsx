@@ -36,9 +36,13 @@ const sourceOptions = [
   ['maps', 'Map'],
   ['sem', 'SEM'],
   ['production', '재공 / 다운'],
+  ['action_evidence', '합성 조치 제안 근거'],
   ['enterprise', '사내 시스템 SQL'],
   ['related', '관련 사고'],
-  ['inform', 'Eng’r Inform'],
+  ['inform', 'Eng’r Inform 스냅샷'],
+  ['engineer_note_search', 'Eng’r Inform Note 검색'],
+  ['internal_document_search', '사내문서 검색'],
+  ['mes_reference_search', 'MES 기준정보 검색'],
   ['meetings', '회의록'],
   ['changes', '변경 이력'],
 ] as const;
@@ -48,6 +52,7 @@ type Analysis = {
   llm_connected: boolean;
   release?: string;
   status?: string;
+  final_scope?: FinalScope | null;
   report?: AnalysisReportData;
   answer_message_id?: string;
   enterprise?: {
@@ -66,6 +71,26 @@ type Analysis = {
     status: 'completed' | 'unavailable';
     detail: string;
   }[];
+};
+type FinalScope = {
+  request?: { incident_number?: string | null };
+  confirmed?: {
+    selected?: boolean;
+    selection_status?: 'SELECTED' | 'COHORT' | 'NEEDS_SELECTION' | 'NO_MATCH' | 'NONE' | string;
+    incident_ids?: string[];
+    incidents?: { incident_id: string; incident_number: string }[];
+  };
+  incident_lookup_status?: 'NOT_QUERIED' | 'OK' | 'NO_MATCH' | 'NEEDS_SELECTION' | 'FAILED' | string;
+  scope_status?: 'UNVERIFIED' | 'VALID' | 'NEEDS_SELECTION' | 'EMPTY' | 'EXPIRED' | 'UNAVAILABLE' | string;
+  scope_id?: string | null;
+  scope_valid?: boolean;
+  lot_page_collection?: { status?: 'COMPLETE' | 'QUERIED' | 'NOT_QUERIED' | string; result_status?: string | null };
+  wafer_page_collection?: {
+    status?: 'COMPLETE' | 'QUERIED' | 'NOT_QUERIED' | string;
+    result_status?: string | null;
+    source_completeness?: string | null;
+    wafer_scope?: string | null;
+  };
 };
 type ProgressEvent = {
   event: string;
@@ -142,6 +167,49 @@ const elapsedText = (run: ProgressRun) => {
   const remainder = seconds % 60;
   return remainder ? `${minutes}분 ${remainder}초` : `${minutes}분`;
 };
+
+const lookupLabels: Record<string, string> = {
+  NOT_QUERIED: '사고 DB 미조회',
+  OK: '사고 DB 확인 완료',
+  NO_MATCH: '일치하는 사고 없음',
+  NEEDS_SELECTION: '사고 후보 선택 필요',
+  FAILED: '사고 DB 확인 오류',
+};
+
+function FinalScopePanel({ scope }: { scope?: FinalScope | null }) {
+  if (!scope) return <div className="board-final-scope"><strong>DB 확인 범위 미제공</strong></div>;
+  const confirmed = scope.confirmed;
+  const scopeUnavailable = scope.scope_status === 'EXPIRED' || scope.scope_status === 'UNAVAILABLE';
+  const selectedIncidents = !scopeUnavailable && confirmed?.selected ? confirmed.incidents || [] : [];
+  const lookupStatus = scope.incident_lookup_status || 'NOT_QUERIED';
+  const selectionStatus = confirmed?.selection_status;
+  const confirmedLabel = selectionStatus === 'COHORT' ? '확인된 사고 묶음'
+    : selectionStatus === 'SELECTED' ? '확인된 사고'
+      : 'DB 확인 사고';
+  const collectionLabel = (status?: string) => status === 'COMPLETE'
+    ? '페이지 수집 종료'
+    : status === 'QUERIED' ? '조회됨 · 수집 종료 여부 미확인' : '미조회';
+  return <section className="board-final-scope" aria-label="DB 확인 범위">
+    <div className={`board-final-scope-heading${scopeUnavailable ? ' unavailable' : ''}`}><strong>DB 확인 범위</strong><span>{scope.scope_status === 'EXPIRED' ? '확인 범위 만료'
+      : scope.scope_status === 'UNAVAILABLE' ? '확인 범위 사용 불가'
+        : scope.scope_status === 'VALID' && selectionStatus === 'COHORT' ? '사고 묶음 확인'
+          : lookupLabels[lookupStatus] || '사고 확인 상태 미확인'}</span></div>
+    <p><b>요청 사고</b> · {scope.request?.incident_number || '미지정'}</p>
+    <p><b>{confirmedLabel}</b> · {scopeUnavailable ? '현재 확인 범위에서 확인되지 않음' : selectedIncidents.length
+      ? selectedIncidents.map((incident) => incident.incident_number || incident.incident_id).join(', ')
+      : selectionStatus === 'NEEDS_SELECTION' || lookupStatus === 'NEEDS_SELECTION' ? '후보 중 선택되지 않음' : '없음'}</p>
+    {scope.scope_status === 'EXPIRED' && <p className="board-final-scope-alert">확인 범위가 만료되었습니다. 사고 목록은 현재 유효한 확인 결과로 표시하지 않습니다.</p>}
+    {scope.scope_status === 'UNAVAILABLE' && <p className="board-final-scope-alert">확인 범위를 사용할 수 없습니다. 사고 목록은 현재 유효한 확인 결과로 표시하지 않습니다.</p>}
+    {!scopeUnavailable && scope.scope_valid === false && <p>선택한 사고 범위를 확인하지 못했습니다.</p>}
+    <div className="board-final-scope-collections">
+      <p><b>Lot 페이지</b> · {collectionLabel(scope.lot_page_collection?.status)} · 결과 {scope.lot_page_collection?.result_status || '미제공'}</p>
+      <p><b>Wafer 페이지</b> · {collectionLabel(scope.wafer_page_collection?.status)} · 결과 {scope.wafer_page_collection?.result_status || '미제공'}</p>
+      <p><b>Wafer 출처 완전성</b> · {scope.wafer_page_collection?.source_completeness || '미제공'}</p>
+      <p><b>Wafer 범위</b> · {scope.wafer_page_collection?.wafer_scope || '미제공'}</p>
+    </div>
+    <small>페이지 수집 상태와 결과 상태는 별도입니다. lot_inventory는 재고 목록이며 사고 영향 Lot/Wafer를 뜻하지 않습니다.</small>
+  </section>;
+}
 
 export default function BoardAnalysis({
   roomId,
@@ -515,6 +583,9 @@ export default function BoardAnalysis({
           <ArrowUpRight size={14} />
         </button>
       </header>
+      {(runtime as (Bootstrap & { local_fullworld_research?: boolean }) | null)?.local_fullworld_research && (
+        <LocalFullworldResearch key={roomId} roomId={roomId} />
+      )}
       {panelTab === 'results' && (
         <>
           <fieldset className="board-source-checks" disabled={effectiveBusy}>
@@ -537,6 +608,10 @@ export default function BoardAnalysis({
               </label>
             ))}
           </fieldset>
+          <small>
+            Eng’r Inform 스냅샷과 검색은 별도 자료입니다. 검색 자료는 연결 설정이 필요하며, 미연결 상태에서는 사용할 수 없습니다.
+          </small>
+          <small>합성 제안 검토용 근거입니다. 실제 조치를 실행하거나 지시하지 않습니다.</small>
         </>
       )}
       <div className="board-analysis-controls">
@@ -667,6 +742,7 @@ export default function BoardAnalysis({
                 · {completedStepCount}개 조회 · {unavailableStepCount}개 미연결
                 {analysis.saved_at && <time dateTime={analysis.saved_at}> · {new Date(analysis.saved_at).toLocaleString()}</time>}
               </div>
+              <FinalScopePanel scope={analysis.final_scope} />
               <details className="board-analysis-event-details">
                 <summary>저장 범위 · {analysis.context.item} · {analysis.context.wafers.length} Wafers</summary>
                 <p>{analysis.context.step} · {analysis.context.equipment || '전체 설비'} · {analysis.context.recipe || '전체 Recipe'}</p>
@@ -943,4 +1019,72 @@ export default function BoardAnalysis({
       )}
     </>
   );
+}
+
+
+type ResearchCase = { case_token: string; metadata: { case_id: string; direction: string; analysis_as_of: string; steps: string[] } };
+type ResearchJob = { job_id: string; state: string; events: { seq: number; event: string; name?: string; state?: string }[]; result?: { quality_verified?: boolean; artifacts?: Record<string, unknown> } };
+function LocalFullworldResearch({ roomId }: { roomId: string }) {
+  const [cases, setCases] = useState<ResearchCase[]>([]);
+  const [selected, setSelected] = useState('');
+  const [question, setQuestion] = useState('');
+  const [selectors, setSelectors] = useState('{}');
+  const [job, setJob] = useState<ResearchJob | null>(null);
+  const [error, setError] = useState('');
+  const [pending, setPending] = useState(false);
+  const [artifact, setArtifact] = useState('');
+  const requestId = useRef<string | null>(null);
+  const base = `/rooms/${encodeURIComponent(roomId)}/local-investigations`;
+  const active = pending || !!job && ['QUEUED', 'WAITING_GPU', 'RUNNING'].includes(job.state);
+  useEffect(() => {
+    let live = true;
+    api<{ cases: ResearchCase[]; latest_job?: ResearchJob | null }>(`${base}?view=catalog`).then(v => {
+      if (live) { setCases(v.cases); if (v.latest_job) setJob(v.latest_job); }
+    })
+      .catch(e => { if (live) setError(String(e)); });
+    return () => { live = false; };
+  }, [base]);
+  useEffect(() => {
+    if (!job || !['QUEUED', 'WAITING_GPU', 'RUNNING'].includes(job.state)) return;
+    let live = true;
+    const timer = window.setInterval(() => {
+      api<ResearchJob>(`${base}?job_id=${encodeURIComponent(job.job_id)}&after_seq=0`)
+        .then(v => { if (live) setJob(v); }).catch(e => { if (live) setError(String(e)); });
+    }, 1500);
+    return () => { live = false; window.clearInterval(timer); };
+  }, [base, job?.job_id, job?.state]);
+  const submit = async () => {
+    setError(''); setPending(true); setArtifact('');
+    try {
+      const typedSelectors: unknown = JSON.parse(selectors);
+      requestId.current ??= crypto.randomUUID();
+      const result = await api<ResearchJob>(base, 'POST', { client_request_id: requestId.current,
+        case_token: selected, question, selectors: typedSelectors });
+      setJob({ ...result, events: [] });
+    } catch (e) { setError(String(e)); }
+    finally { setPending(false); }
+  };
+  const change = () => { requestId.current = null; };
+  return <details className="board-research-panel">
+    <summary>로컬 fullworld 연구 조회 · 합성 데이터 · 읽기 전용</summary>
+    <p>현재 방의 사고 범위와 별개인 합성 case를 직접 선택합니다. 모델 답변은 검토 전이며, Tool 사실과 별도로 표시합니다.</p>
+    <label>합성 case <select value={selected} disabled={active} onChange={e => { setSelected(e.target.value); change(); }}>
+      <option value="">직접 선택하세요</option>
+      {cases.map(c => <option key={c.case_token} value={c.case_token}>{c.metadata.case_id} · {c.metadata.direction} · {c.metadata.analysis_as_of}</option>)}
+    </select></label>
+    <label>원문 질문 <textarea value={question} disabled={active} onChange={e => { setQuestion(e.target.value); change(); }} /></label>
+    <small>{Array.from(question).length} / 1200자. 질문을 자동 생성하거나 줄이지 않습니다.</small>
+    <label>명시적 selectors (JSON) <textarea value={selectors} disabled={active} onChange={e => { setSelectors(e.target.value); change(); }} /></label>
+    <button type="button" disabled={active || !selected || Array.from(question).length < 1 || Array.from(question).length > 1200} onClick={() => void submit()}>
+      {active ? '연구 조회 진행 중' : '선택한 case로 연구 조회'}</button>
+    {error && <p role="alert">{error}</p>}
+    {job && <section aria-live="polite"><p>실행 {job.job_id} · {job.state} · 답변 품질 미확인</p>
+      <ol>{job.events.map(e => <li key={e.seq}>{e.event} {e.name || e.state || ''}</li>)}</ol>
+      {Object.keys(job.result?.artifacts || {}).map(name => <button type="button" key={name} onClick={() => {
+        api<{ content: string }>(`${base}?job_id=${encodeURIComponent(job.job_id)}&artifactenum=${encodeURIComponent(name)}`)
+          .then(v => setArtifact(v.content)).catch(e => setError(String(e)));
+      }}>{name === 'validated_report_md' ? 'Tool 사실과 coverage' : name}</button>)}
+      <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{artifact}</pre>
+    </section>}
+  </details>;
 }

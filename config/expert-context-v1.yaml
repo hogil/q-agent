@@ -1,0 +1,7 @@
+# Explicit synthetic/demo context experiment. Base role models and all budgets remain configured by the base/site settings.
+runtime:
+  context_management:
+    enabled: true
+    router_history_min_messages: 2
+    omit_examples: true
+    omit_embedded_output_schema: true

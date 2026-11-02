@@ -100,6 +100,41 @@ export type Bootstrap = {
 };
 
 export type AnalysisReportData = {
+  retrieval_evidence?: {
+    source: string;
+    result: {
+      status?: string;
+      as_of?: string;
+      source_kind?: string;
+      retrieval_method?: string;
+      incident_ids?: string[];
+      historical_incident_ids?: string[];
+      truncated?: boolean;
+      candidate_count?: number;
+      limitations?: string[];
+      items?: {
+        document_id?: string;
+        chunk_id?: string;
+        version?: string;
+        text?: string;
+        source_ref?: string;
+        locator?: string;
+        status?: string;
+        available_at?: string;
+        incident_ids?: string[];
+        relation?: string;
+        applicability_status?: string;
+        effective_from?: string | null;
+        effective_to?: string | null;
+        applicability?: Record<string, string | string[] | boolean | null> | string;
+        kind?: string;
+        record_id?: string;
+        name?: string;
+        scope_relation?: string;
+        time_status?: string;
+      }[];
+    };
+  }[];
   map_assets?: {
     id: string; lot_id: string; wafer_id: string; step: string; timestamp: string; provenance: string; sha256: string;
     overlay: import('./overlayVectors').OverlayVectorPoint[];

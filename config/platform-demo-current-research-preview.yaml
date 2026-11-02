@@ -1,0 +1,77 @@
+# Deterministic synthetic multi-source platform fixture. No private data is used.
+environment: demo
+model_lab:
+  enabled: true
+  source_root: ../../q-agent-models
+  python: ../../q-agent-models/.venv/Scripts/python.exe
+  base_config: ../../q-agent-models/config/config.yaml
+  overlay: ../../q-agent-models/config/platform-runtime-v3-ui.yaml
+  stderr_file: ../var/log/model-lab-worker.log
+  timeout_seconds: 120
+cohort_research:
+  enabled: true
+  artifact_root: D:/project/q-agent-models/var
+  manifest_path: D:/project/q-agent-models/var/research/24h-20261026/cohort-dashboard-sources-v6-9-draft-v1.json
+  current_status_manifest_path: D:/project/q-agent-models/var/research/24h-20261026/current-research-status-sources-v2.json
+  current_status_manifest_sha256: b168e1adc48a9953d7eee6819029436616390fbafc4aa69b345edc643abe0d53
+paths:
+  data_root: ../var/data/platform-demo-v3
+  output_root: ../var/output/platform-demo-v3
+  model_root: ../var/models/platform-demo-v3
+meetings:
+  enabled: true
+value_matching:
+  fuzzy_enabled: true
+  fuzzy_threshold: 0.85
+models:
+  image:
+    enabled: true
+    local_dir: ${paths.model_root}/sem
+    checkpoint_file: synthetic_sem.npz
+  trend:
+    enabled: true
+    local_dir: ${paths.model_root}/trend
+    checkpoint_file: synthetic_trend.npz
+platform:
+  enabled: true
+  seed: 20261024
+  incident_count: 240
+  lots_per_incident: 3
+  wafers_per_lot: 4
+  chips_per_wafer: 64
+  tabular:
+    enabled: true
+    subdirectory: tabular-v1
+    feature_count: 128  # Synthetic features, including the original two electrical items.
+    fit_sample_limit: 4096
+  map_analysis:
+    enabled: true
+    subdirectory: map-analysis-v1
+  tables:
+    mes:
+      name: synthetic_mes
+      columns: {record_id: record_id, incident_id: incident_id, lot_id: lot_id, equipment: equipment, step: step, recipe: recipe, occurred_at: occurred_at, available_at: available_at, status: status, hold_code: hold_code, queue_hours: queue_hours, synthetic: synthetic}
+    test:
+      name: synthetic_test
+      columns: {record_id: record_id, incident_id: incident_id, lot_id: lot_id, wafer_id: wafer_id, stage: stage, equipment: equipment, step: step, occurred_at: occurred_at, available_at: available_at, yield_pct: yield_pct, bin_code: bin_code, fail_count: fail_count, tested_count: tested_count, synthetic: synthetic}
+    measure:
+      name: synthetic_measure
+      columns: {record_id: record_id, incident_id: incident_id, lot_id: lot_id, wafer_id: wafer_id, chip_id: chip_id, die_x: die_x, die_y: die_y, item: item, value: value, unit: unit, lower_limit: lower_limit, upper_limit: upper_limit, stage: stage, occurred_at: occurred_at, available_at: available_at, synthetic: synthetic}
+    failbit:
+      name: synthetic_failbit
+      columns: {record_id: record_id, incident_id: incident_id, lot_id: lot_id, wafer_id: wafer_id, chip_id: chip_id, bit_x: bit_x, bit_y: bit_y, test_item: test_item, fail_count: fail_count, bin_code: bin_code, occurred_at: occurred_at, available_at: available_at, synthetic: synthetic}
+    sem:
+      name: synthetic_sem
+      columns: {record_id: record_id, incident_id: incident_id, lot_id: lot_id, wafer_id: wafer_id, chip_id: chip_id, asset_id: asset_id, storage_ref: storage_ref, sha256: sha256, pixel_size_nm: pixel_size_nm, orientation: orientation, recipe: recipe, edge_density: edge_density, contrast: contrast, training_label: training_label, occurred_at: occurred_at, available_at: available_at, synthetic: synthetic}
+    trend:
+      name: synthetic_trend
+      columns: {record_id: record_id, incident_id: incident_id, lot_id: lot_id, wafer_id: wafer_id, equipment: equipment, step: step, item: item, timestamp: timestamp, value: value, unit: unit, available_at: available_at, training_label: training_label, synthetic: synthetic}
+    inform:
+      name: synthetic_inform
+      columns: {record_id: record_id, incident_id: incident_id, document_id: document_id, title: title, content: content, version: version, step: step, equipment: equipment, occurred_at: occurred_at, available_at: available_at, synthetic: synthetic}
+
+
+
+
+
+

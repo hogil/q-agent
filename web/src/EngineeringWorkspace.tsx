@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { lazy, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   ArrowUpRight,
   Check,
@@ -16,8 +16,8 @@ import {
 } from 'lucide-react';
 import { download, type Attachment, type Incident } from './api';
 import { Chart } from './charts';
-import { Empty, type Tab, type ViewProps } from './Views';
-import { OperationsView } from './OperationsView';
+import EmptyState from './EmptyState';
+import type { Tab, ViewProps } from './Views';
 import InvestigationBoard from './InvestigationBoard';
 import HistoricalCorrelation from './HistoricalCorrelation';
 import { historicalData, selectHistoricalData } from './historicalData';
@@ -52,6 +52,7 @@ import {
 } from './engineeringAnalysis';
 import './engineering.css';
 
+const OperationsView = lazy(() => import('./OperationsView').then((module) => ({ default: module.OperationsView })));
 const time = (value: string) => value.slice(5, 16).replace('T', ' ');
 type SelectionChange = (patch: Partial<InvestigationSelection>) => void;
 
@@ -539,7 +540,7 @@ function SignalList({
         </table>
       </div>
       {!rows.length && (
-        <Empty title="일치하는 감지 항목 없음" detail="현재 필터 결과 0건" />
+        <EmptyState title="일치하는 감지 항목 없음" detail="현재 필터 결과 0건" />
       )}
       <div className="eng-preview-heading">
         <h3>{data.signals.find((s) => s.id === selection.signalId)?.title}</h3>

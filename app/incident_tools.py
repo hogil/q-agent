@@ -2,11 +2,26 @@
 Production ACL/connection/snapshot/LLM Tool 등록은 별도 구현 대상.
 """
 import re, secrets, sqlite3, time
+from functools import wraps
 from incident_filters import fold, predicates, SCALAR_FILTER_FIELDS, ARRAY_FILTER_FIELDS
 from terminology import match_values
 
 class ToolError(ValueError):
     pass
+
+def consistent_sqlite_read(method):
+    """Keep the SQL statements in one tool response on the same read snapshot."""
+    @wraps(method)
+    def wrapped(self, *args, **kwargs):
+        own_transaction = not self.db.in_transaction
+        if own_transaction:
+            self.db.execute('BEGIN')
+        try:
+            return method(self, *args, **kwargs)
+        finally:
+            if own_transaction:
+                self.db.rollback()
+    return wrapped
 
 def ident(value):
     # Identifiers never come from a user's prompt. Mapping files are administrator-controlled.
@@ -88,7 +103,9 @@ class IncidentTools:
                 coverage.append({'field':field,'status':'distinct_limit_exceeded'});continue
             values_by_field[field]=[row['value'] for row in rows]
             coverage.append({'field':field,'status':'checked','distinct_values':len(rows)})
-        matched=match_values(question,values_by_field,config['max_candidates'])
+        matched=match_values(question,values_by_field,config['max_candidates'],
+                             fuzzy_enabled=config.get('fuzzy_enabled',False),
+                             fuzzy_threshold=config.get('fuzzy_threshold',.85))
         return {'status':'PARTIAL' if matched['truncated'] or any(row['status']!='checked' for row in coverage) else 'OK',
                 **matched,'coverage':coverage,'mapping_version':self.m['mapping_version'],
                 'source_ref':{'logical_entity':'incident'},
@@ -128,13 +145,25 @@ class IncidentTools:
         if len(rows)>self.m['limits']['max_scope_incidents']:raise ToolError('SCOPE_TOO_LARGE: use server-side query scope')
         now=time.monotonic()
         self.scopes={key:value for key,value in self.scopes.items() if value['expires_at']>now}
-        selection_required=scope_mode!='cohort' and (title is not None or filters is not None) and len(rows)>1
+        selection_required=scope_mode!='cohort' and len(rows)>1
         scope=secrets.token_hex(12);self.scopes[scope]={'actor':actor,'ids':tuple(r['incident_id'] for r in rows),'expires_at':now+self.scope_ttl_seconds,'requires_selection':selection_required}
         return {'status':'NEEDS_SELECTION' if selection_required else ('OK' if rows else 'NO_MATCH'),'scope_id':scope,'data':rows,'requires_selection':selection_required,'scope_mode':scope_mode,'mapping_version':self.m['mapping_version']}
 
     def summarize_incidents(self, actor, filters, group_by=None, comparison_period=None, top_k=None, as_of=None):
         from incident_statistics import summarize
         return summarize(self, actor, filters, group_by, comparison_period, top_k, as_of)
+
+    def get_platform_evidence(self, actor, scope_id, as_of, sources=None, limit=12, measure_features=None):
+        from platform_tools import PlatformTools
+        if not getattr(self, 'platform_settings', None):
+            raise ToolError('PLATFORM_NOT_CONFIGURED')
+        return PlatformTools(self.platform_settings, self).evidence(actor, scope_id, as_of, sources, limit, measure_features)
+
+    def search_platform_history(self, actor, scope_id, as_of, top_k=5):
+        from platform_tools import PlatformTools
+        if not getattr(self, 'platform_settings', None):
+            raise ToolError('PLATFORM_NOT_CONFIGURED')
+        return PlatformTools(self.platform_settings, self).history(actor, scope_id, as_of, top_k)
 
     def search_related_incidents(self, actor, scope_id, terms, as_of):
         from datetime import date, timedelta
@@ -204,6 +233,7 @@ class IncidentTools:
         join=self.col('incident',rel['parent_key'],'i')+'='+self.col('lot_list',rel['child_key'],'l')
         fields=[self.col('incident',k,'i')+' AS '+ident(k) for k in ('incident_id','incident_number','title')]+[self.col('lot_list',k,'l')+' AS '+ident(k) for k in ('lot_id','product_code','status')]
         return 'SELECT DISTINCT '+','.join(fields)+' FROM '+self.table('incident')+' i JOIN '+self.table('lot_list')+' l ON '+join+' WHERE '+self.col('incident','incident_id','i')+' IN ('+ph+')'
+    @consistent_sqlite_read
     def list_incident_lots(self,actor,scope_id,page_size=None,offset=0):
         scope=self._scope(actor,scope_id)
         size=self.m['limits']['default_page_size'] if page_size is None else page_size
@@ -235,6 +265,7 @@ class IncidentTools:
                 'source_ref':{'logical_entity':'lot_list','relation':'incident_lots'},
                 'note':'Count agreement is a check, not proof that the lot identifiers are correct. Demo has no production snapshot/ACL.'}
 
+    @consistent_sqlite_read
     def list_incident_wafers(self,actor,scope_id,lot_ids=None,page_size=None,offset=0):
         scope=self._scope(actor,scope_id)
         if 'wafer_list' not in self.m['entities']:raise ToolError('WAFER_TABLE_NOT_CONFIGURED')

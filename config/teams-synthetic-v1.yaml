@@ -1,0 +1,4 @@
+# Explicit standalone synthetic code-worker experiment; no LLM team or production adapter.
+runtime:
+  team_execution:
+    enabled: true

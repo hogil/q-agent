@@ -1,6 +1,6 @@
 # Meeting Retrieval Contract
 
-Source: local meeting_tools.py and hard synthetic split-evidence failures, 2026-09-18.
+Source: local synthetic `app/meeting_tools.py` contract inspection, 2026-10-30; earlier hard synthetic split-evidence failures, 2026-09-18. The selected-ID projection issue is a design requirement, not a verified implementation fix.
 Company minutes, schema and retrieval quality are not verified.
 
 - search_meeting_minutes returns pre-existing chunks, not newly inferred facts.
@@ -8,6 +8,7 @@ Company minutes, schema and retrieval quality are not verified.
 - meeting_date is the source publication/availability date used for as_of filtering; site ingestion must not backdate later revisions. Preserve the actual session date in source_ref/text when different.
 - version, source_ref and incident_ids retain traceability. status=approved means approved source, not a confirmed cause.
 - Code filters status, cutoff and incident overlap. A multi-incident chunk may discuss other incidents; attribute only statements for the selected IDs, never the whole chunk indiscriminately.
+- For a scoped search, return each item's `incident_ids` as only its intersection with the selected IDs; reject items with no intersection. `incident_ids=None` remains independent retrieval without scope projection; `[]` is `NO_MATCH`. This metadata projection does not filter `text` or `source_ref`, and does not verify source ACL. For multi-incident text, attribute only statements relevant to selected incidents.
 - None incident scope means independent meeting retrieval. Empty selected IDs means no matches, not a global search.
 - SQLite retrieval_method=sqlite_fts5_bm25 is lexical only. remote_hybrid requests the existing service's BM25+vector chunks. Scores are ranking values, not confidence.
 - SQLite keeps all-term hits first, then fills unused top-k slots with deduplicated any-term hits only inside a nonempty incident scope. query_match.strategy=scoped_mixed_terms marks mixed hits; scoped_any_terms marks no all-term hits. Status/date/incident filters never relax. Independent searches keep all terms. Neither mode handles Korean morphology or synonyms.

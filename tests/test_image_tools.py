@@ -157,7 +157,7 @@ class ImageToolsTests(unittest.TestCase):
         sem.update(changes.pop("sem", {}))
         overlay.update(changes.pop("overlay", {}))
         return SimpleNamespace(data={"image_tools": {"sem": sem, "overlay": overlay},
-                                     "runtime": {"max_page_size": 2}, **changes})
+                                     "runtime": {"max_page_size": 2, "timezone": "Asia/Seoul"}, **changes})
 
     def tool(self, **changes):
         return ImageTools(self.settings(**changes), self.incidents)

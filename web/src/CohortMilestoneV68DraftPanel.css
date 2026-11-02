@@ -1,0 +1,28 @@
+.cohort-v68-draft { margin: 1rem 0; padding: 1.15rem; border: 1px solid #536a82; border-radius: .9rem; background: #18232e; color: #e8eef4; }
+.cohort-v68-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.cohort-v68-heading h2 { margin: .25rem 0; }
+.cohort-v68-kicker { color: #9ab3c9; font-size: .76rem; font-weight: 700; letter-spacing: .08em; }
+.cohort-v68-badge { padding: .35rem .6rem; border: 1px solid #62798e; border-radius: 99px; color: #c5d2de; font-size: .82rem; white-space: nowrap; }
+.cohort-v68-intro { max-width: 76rem; color: #bdcad7; }
+.cohort-v68-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; }
+.cohort-v68-card { min-width: 0; padding: .95rem; border: 1px solid #344456; border-radius: .7rem; background: #202c38; }
+.cohort-v68-card-top { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: .4rem .8rem; }
+.cohort-v68-card h3 { margin: 0; font-size: 1rem; }
+.cohort-v68-card-top span { max-width: 52%; color: #c6d5e2; font-size: .82rem; overflow-wrap: anywhere; text-align: right; }
+.cohort-v68-summary { color: #f2f6f9; font-weight: 650; }
+.cohort-v68-card p { line-height: 1.5; }
+.cohort-v68-card details { padding-top: .55rem; border-top: 1px solid #344456; color: #bdcad7; }
+.cohort-v68-card summary { cursor: pointer; font-weight: 650; }
+.cohort-v68-card dl { display: grid; grid-template-columns: 6rem minmax(0, 1fr); gap: .35rem .6rem; font-size: .78rem; }
+.cohort-v68-card dt { color: #9ab3c9; }
+.cohort-v68-card dd { margin: 0; overflow-wrap: anywhere; }
+.cohort-v68-card ul { padding-left: 1.25rem; line-height: 1.45; }
+.cohort-v68-card li { overflow-wrap: anywhere; }
+.cohort-v68-footer { display: flex; flex-wrap: wrap; gap: .4rem 1rem; margin-top: .9rem; padding: .8rem; border-radius: .6rem; background: #202c38; color: #bdcad7; font-size: .88rem; }
+.cohort-v68-footer strong { color: #f2f6f9; }
+@media (max-width: 720px) {
+  .cohort-v68-grid { grid-template-columns: 1fr; }
+  .cohort-v68-heading { align-items: flex-start; flex-direction: column; }
+  .cohort-v68-card dl { grid-template-columns: 1fr; }
+  .cohort-v68-card-top span { max-width: 100%; text-align: left; }
+}

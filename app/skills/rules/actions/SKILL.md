@@ -4,6 +4,7 @@ description: 품질 분석에서 조치안과 실행 상태를 다룰 때 사용
 ---
 
 과거 조치와 현재 적용 가능한 조치를 구분한다. 현재 대상/조건/근거/효과 검증 방법을 포함한 초안을 prepare_action으로 생성한다.
+`plan_synthetic_action_evidence`는 향후 proposal-only 연구 연결 계약이다. 합성 hypothesis와 검사 추천은 판단 보조이며 실행 지시나 인과 증명이 아니다. 생산 ACL, 실제 HOLD/RELEASE, 검사 실행 권한을 부여하지 않는다. 현재 Tool/runtime 연결은 기본 disabled·미구현이다.
 권한·승인·실행 여부는 서비스 상태를 따른다. LLM 또는 Judge의 PASS는 실행 승인으로 대체되지 않는다.
 실행 timeout은 실패로 단정하지 말고 실행 ID로 상태를 확인한다. 적용 완료와 품질 효과 확인은 별도다.
 

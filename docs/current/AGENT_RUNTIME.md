@@ -59,8 +59,11 @@ history에 남아 있어도 현재 evidence_ids와 유효 scope에 없는 근거
 컨텍스트 제한, Tool 인자·scope 검사와 호출 전 릴리스 해시 검사는 유지한다.
 명시적 requested_tools 워크플로에서는 완료된 Engineering/회의록/이미지 결과를 Router용
 조회 상태로 축약한다. 실제 원문 근거는 폐기하지 않고 Judge/Answer에 전달한다.
-`structured_outputs: true`에서는 역할 JSON 계약을 response_format으로 검증하되, 의미 이해를
+`structured_outputs: true`에서는 역할 JSON 계약을 response_format으로 검증하되, 기본 설정은 의미 이해를
 위해 시스템 프롬프트에도 계약을 유지한다. 스키마 제거는 로컬 Qwen에서 빈 계획 회귀를 보였다.
+선택적 `config/expert-context-v1.yaml` overlay는 상태·근거·닫힌 이력을 확인한 후속 Router에만
+이력 축약과 중복 계약 제외를 허용한다. 실제 LLM 품질은 미검증이며 기본값은 비활성화다.
+구현·측정 범위는 [Skill runtime 기록](EXPERT_SKILL_RUNTIME_20261028_ROOT_v1.md)을 따른다.
 `llm_output.metrics`에 호출 시간·입출력 토큰을 기록한다. 출력 한도 초과는 MODEL_OUTPUT_LIMIT로
 구분하며 잘린 JSON을 성공 답변으로 복구하지 않는다.
 
@@ -68,7 +71,7 @@ history에 남아 있어도 현재 evidence_ids와 유효 scope에 없는 근거
 
 - 각 API 호출 전에 공통 Skill + 선택 topic + 역할 Skill + config 매핑을 조립한다.
 - 실행 전체의 topic은 역할별 허용 목록으로 분리한다. loaded_topics는 해당 역할이 실제로 읽은 topic이다. 알 수 없는 topic과 온라인 비허용 topic은 거부한다.
-- 세 역할의 모델/temperature/출력 한도는 roles와 models 설정에서 읽는다.
+- 세 역할의 모델/temperature/출력 한도와 선택적 reasoning_effort는 roles와 models 설정에서 읽는다. temperature가 null이면 API에 보내지 않는다. 모델별 token_limit_parameter로 max_tokens/max_completion_tokens를 선택한다.
 - output.schema.json과 tools.json도 같은 사내 skills_root에서 읽는다.
 - Skill·사전·실행 코드의 릴리스 해시를 확인하며 변경되면 중단한다.
 - Lot/Wafer 실행에 필요한 Schema topic을 추가 로딩한다. Router도 등록된 topic을 load_skills로 요청할 수 있다.
@@ -95,6 +98,8 @@ Tool 실행은 순차적이며 max_parallel_tools는 아직 사용하지 않는�
 독립 요청은 --request-scope independent로 지정한다. 현재 DB Tool을 전혀 노출하지 않으며,
 사용자 제공 내용을 출처가 확인되지 않은 입력 근거로 구분한다. 자동 범위 분류기는 없다.
 복수 사고는 사용자 선택을 요구하며 --select-incident로 지정한 ID만 현재 검색 범위에서 검증한다.
+Adapter의 `candidates` 검색도 제목뿐 아니라 번호·city·line 등 어떤 조건이든 복수 결과면
+선택 전 Lot/Wafer 상세 조회를 차단한다. 여러 사고를 의도적으로 묶는 `cohort` 모드는 별도다.
 오류·모호함·조회 한도 도달 시 unavailable/needs_selection/needs_clarification을 반환한다.
 
 현재 Tool에는 사고/값 후보/Lot/Wafer, 회의록, Engineering snapshot, SEM/Overlay 비교,

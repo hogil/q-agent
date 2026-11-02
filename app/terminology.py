@@ -15,11 +15,12 @@ from zoneinfo import ZoneInfo
 from incident_filters import fold
 
 
-def match_values(question, values_by_field, max_candidates):
-    """Return exact DB-value mentions, not automatically selected WHERE predicates."""
+def match_values(question, values_by_field, max_candidates, fuzzy_enabled=False, fuzzy_threshold=.85):
+    """Return exact DB-value mentions and optional typo suggestions, never filters."""
     text = ' '.join(unicodedata.normalize('NFKC', question).casefold().split())
     candidates = []
     particles = '에서|으로|부터|까지|에는|에서는|와|과|의|은|는|이|가|을|를|에|로|도|만'
+    exact_pairs = set()
     for field, values in values_by_field.items():
         for value in values:
             term = ' '.join(unicodedata.normalize('NFKC', value).casefold().split())
@@ -29,10 +30,59 @@ def match_values(question, values_by_field, max_candidates):
             if re.search(pattern, text):
                 candidates.append({'field': field, 'value': value, 'mention': term,
                                    'match': 'normalized_exact', 'ambiguous': False})
+                exact_pairs.add((field, value))
+
+    if fuzzy_enabled:
+        particle_list = sorted(particles.split('|'), key=len, reverse=True)
+        tokens = []
+        for token in re.findall(r'[가-힣A-Za-z0-9]+', text):
+            while True:
+                suffix = next((p for p in particle_list if token.endswith(p) and len(token) > len(p)), None)
+                if suffix is None:
+                    break
+                token = token[:-len(suffix)]
+            tokens.append(token)
+        mentions = set()
+        for start in range(len(tokens)):
+            for width in range(1, min(4, len(tokens) - start + 1)):
+                mention = ' '.join(tokens[start:start + width]).strip()
+                # Codes and identifiers are only matched exactly; typo repair is unsafe.
+                if (4 <= len(mention.replace(' ', '')) <= 80
+                        and not re.search(r'[0-9-]', mention)):
+                    mentions.add(mention)
+                if len(mentions) >= 128:
+                    break
+            if len(mentions) >= 128:
+                break
+        suggestions = {}
+        for field, values in values_by_field.items():
+            field_key = field.casefold()
+            if re.search(r'(^|_)(id|number|code|serial)(_|$)', field_key) or field_key.endswith('_codes'):
+                continue
+            for value in values:
+                term = ' '.join(unicodedata.normalize('NFKC', value).casefold().split())
+                if ((field, value) in exact_pairs or not 4 <= len(term.replace(' ', '')) <= 80
+                        or re.search(r'[0-9-]', term)):
+                    continue
+                for mention in sorted(mentions):
+                    if mention == term:
+                        continue
+                    score = difflib.SequenceMatcher(None, mention, term).ratio()
+                    if score >= fuzzy_threshold:
+                        key = (field, value)
+                        item = {'field': field, 'value': value, 'mention': mention,
+                                'match': 'typo_candidate', 'requires_confirmation': True,
+                                'score': round(score, 3), 'ambiguous': False}
+                        if key not in suggestions or score > suggestions[key]['score']:
+                            suggestions[key] = item
+        candidates.extend(suggestions.values())
+
     occurrences = Counter(item['mention'] for item in candidates)
     for item in candidates:
         item['ambiguous'] = occurrences[item['mention']] > 1
-    candidates.sort(key=lambda item: (-len(item['mention']), item['field'], item['value']))
+    candidates.sort(key=lambda item: (item['match'] != 'normalized_exact',
+                                      -item.get('score', 0), -len(item['mention']),
+                                      item['field'], item['value']))
     return {'candidates': candidates[:max_candidates], 'truncated': len(candidates) > max_candidates}
 
 

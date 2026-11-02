@@ -29,7 +29,7 @@ from agent import run as run_agent  # noqa: E402
 from demo_data import generate  # noqa: E402
 from incident_tools import ToolError  # noqa: E402
 from meeting_tools import MeetingTools  # noqa: E402
-from runtime_factory import open_incident_tools  # noqa: E402
+from runtime_factory import open_incident_tools, open_synthetic_mes_reference  # noqa: E402
 from detection_workflow import DetectionWorkflow  # noqa: E402
 from workbench_data import load_workbench_data  # noqa: E402
 from engineering_tools import EngineeringTools  # noqa: E402
@@ -47,11 +47,34 @@ INCIDENT_FIELDS = [
 ]
 ANALYSIS_SOURCES = (
     "incident", "trend", "correlation", "maps", "sem", "production",
-    "inform", "meetings", "changes", "enterprise", "related",
+    "inform", "meetings", "changes", "enterprise", "related", "action_evidence",
+    "engineer_note_search", "internal_document_search", "mes_reference_search",
 )
 ANALYSIS_CONTEXT_FIELDS = {"incident_number", "item", "step", "equipment", "from", "to", "wafers"}
 ANALYSIS_OPTIONAL_FIELDS = {"recipe", "trend_selection", "sem_wafers", "map_view", "map_comparison"}
 ANALYSIS_TEXT_FIELDS = ("item", "step", "equipment")
+PROVIDER_USAGE_FIELDS = ("input_tokens", "output_tokens", "total_tokens", "reasoning_tokens", "cached_input_tokens")
+PROVIDER_USAGE_SUMMARY_FIELDS = ("total", "observed_subtotal", "coverage", "reported_calls", "attempted_calls")
+
+
+def _safe_provider_usage(value):
+    if not isinstance(value, dict):
+        return None
+    summary = {}
+    for field in PROVIDER_USAGE_FIELDS:
+        item = value.get(field)
+        if not isinstance(item, dict):
+            continue
+        allowed = {key: item[key] for key in PROVIDER_USAGE_SUMMARY_FIELDS if key in item}
+        if (set(allowed) != set(PROVIDER_USAGE_SUMMARY_FIELDS)
+                or any(number is not None and (type(number) is not int or number < 0)
+                       for number in (allowed["total"], allowed["observed_subtotal"]))
+                or any(type(allowed[key]) is not int or allowed[key] < 0
+                       for key in ("reported_calls", "attempted_calls"))
+                or allowed["coverage"] not in {"complete", "partial", "unavailable", "no_calls"}):
+            continue
+        summary[field] = allowed
+    return summary or None
 ANALYSIS_TEXT_LIMIT = 256
 ANALYSIS_TIME_LIMIT = 64
 ANALYSIS_MAX_WAFERS = 100
@@ -135,7 +158,7 @@ def _validate_wafer_geometry(raw):
 def load_workbench(path: str | Path, *, raw_file=None, agent_overlay=None) -> dict:
     config_path = Path(path).expanduser().resolve()
     raw = read_config(config_path)
-    if set(raw) - {"agent_overlay", "sources", "server", "wafer_geometry", "demo_image_tools", "demo_image_model_dir"} != {"config_version", "demo", "chat", "cutoff", "static_root"}:
+    if set(raw) - {"agent_overlay", "platform_overlay", "sources", "server", "wafer_geometry", "demo_image_tools", "demo_image_model_dir", "research_bridge"} != {"config_version", "demo", "chat", "cutoff", "static_root"}:
         raise WorkbenchError("workbench config keys are invalid")
     if raw["config_version"] != 1:
         raise WorkbenchError("unsupported workbench config version")
@@ -177,8 +200,15 @@ def load_workbench(path: str | Path, *, raw_file=None, agent_overlay=None) -> di
         raise WorkbenchError("cutoff must be YYYY-MM-DD") from None
     base = _path(demo["base_config"], config_path.parent)
     overlay = _path(demo["overlay"], config_path.parent)
-    if base.name != "config.yaml" or overlay.name not in {"demo.yaml", "engineering-demo.yaml"}:
+    if base.name != "config.yaml":
         raise WorkbenchError("synthetic workbench requires config.yaml plus a supported demo overlay")
+    if overlay.name not in {"demo.yaml", "engineering-demo.yaml"}:
+        from local_fullworld_research_v1 import admit_research_site_overlay
+        try:
+            admit_research_site_overlay(raw.get('research_bridge'), overlay,
+                                       _path(raw['platform_overlay'], config_path.parent) if raw.get('platform_overlay') else None)
+        except (KeyError, TypeError, ValueError, OSError) as exc:
+            raise WorkbenchError(f'research site source admission failed: {exc}') from None
     try:
         settings = load_config(base, overlay)
         overlay_path = str(Path(agent_overlay).expanduser().resolve()) if agent_overlay is not None else raw.get("agent_overlay")
@@ -196,18 +226,31 @@ def load_workbench(path: str | Path, *, raw_file=None, agent_overlay=None) -> di
         raise WorkbenchError(str(exc)) from None
     if settings.data.get("environment") != "demo":
         raise WorkbenchError("workbench accepts only environment: demo")
+    platform_settings = None
+    if raw.get("platform_overlay"):
+        platform_settings = load_config(base, _path(raw["platform_overlay"], config_path.parent))
+        if platform_settings.data['environment'] != 'demo':
+            raise WorkbenchError('platform workbench accepts only environment: demo')
+        if overlay_path:
+            # Reuse active text inference settings while retaining synthetic DB/image mappings.
+            platform_data = merge(platform_settings.data, {
+                'models': {'text': settings.data['models']['text']},
+                'roles': settings.data['roles'], 'runtime': settings.data['runtime']})
+            check_shape(platform_data, SPEC)
+            validate_values(platform_data)
+            platform_settings = Settings(platform_data, [*platform_settings.source_files, str(agent_path)])
     if type(chat["history_limit"]) is not int or not 1 <= chat["history_limit"] <= 200:
         raise WorkbenchError("chat.history_limit must be between 1 and 200")
     static_root = _path(raw["static_root"], config_path.parent)
     chat_db = _path(chat["sqlite_file"], config_path.parent)
     data = settings.data
-    outputs = [Path(data["database"]["sqlite_file"]), Path(data["meetings"]["sqlite_file"]), Path(data["paths"]["golden_file"])]
+    outputs = [Path(data["database"]["sqlite_file"]), Path(data["meetings"]["sqlite_file"])]
     for source in data["enterprise"]["sources"]:
         if source["dialect"] == "sqlite":
             source_path = Path(source["sqlite_file"]).resolve()
             if source_path == chat_db.resolve() or source_path.is_relative_to(static_root.resolve()):
                 raise WorkbenchError("enterprise SQLite must differ from chat DB and stay outside static_root")
-    if chat_db in {output.resolve() for output in outputs}:
+    if chat_db in {output.resolve() for output in [*outputs, Path(data['paths']['golden_file'])]}:
         raise WorkbenchError("chat sqlite must differ from synthetic data outputs")
     try:
         chat_db.relative_to(static_root)
@@ -223,9 +266,9 @@ def load_workbench(path: str | Path, *, raw_file=None, agent_overlay=None) -> di
             if sources and sources.get("scenario_file"):
                 from engineering_demo import load_scenarios
                 scenarios = load_scenarios(_path(sources["scenario_file"], config_path.parent))
-                generate(settings, profile="engineering", engineering_raw=raw_data, scenarios=scenarios)
+                generate(settings, profile="engineering", engineering_raw=raw_data, scenarios=scenarios, include_goldens=False)
             else:
-                generate(settings, profile="basic")
+                generate(settings, profile="basic", include_goldens=False)
         except (OSError, ValueError, FileExistsError) as exc:
             raise WorkbenchError(f"synthetic data generation failed: {type(exc).__name__}") from None
     registry = json.loads(Path(data["paths"]["registry_file"]).read_text(encoding="utf-8"))
@@ -233,7 +276,8 @@ def load_workbench(path: str | Path, *, raw_file=None, agent_overlay=None) -> di
             "chat_db": chat_db, "history_limit": chat["history_limit"],
             "raw_data": raw_data, "port": server["port"],
             "release": registry.get("release", "unknown"), "wafer_geometry": wafer_geometry,
-            "demo_image_tools": demo_image_tools, "demo_image_model_dir": demo_image_model_dir}
+            "demo_image_tools": demo_image_tools, "demo_image_model_dir": demo_image_model_dir,
+            "platform_settings": platform_settings, "research_bridge": raw.get("research_bridge")}
 
 
 def _summary(row: dict | None) -> dict | None:
@@ -243,7 +287,9 @@ def _summary(row: dict | None) -> dict | None:
 
 
 class Workbench:
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, *, synthetic_action_planner=None, snapshot_lease_provider=None,
+                 document_query=None, document_allowed_statuses=None, mes_reference_query=None,
+                 fbm_search_query=None):
         self.settings = config["settings"]
         self.cutoff = config["cutoff"]
         self.static_root = config["static_root"]
@@ -252,6 +298,14 @@ class Workbench:
         self.release = config["release"]
         self.wafer_geometry = config.get("wafer_geometry")
         self.raw_data = config.get("raw_data")
+        self.synthetic_action_planner = synthetic_action_planner
+        self.snapshot_lease_provider = snapshot_lease_provider
+        self.document_query = document_query
+        self.document_allowed_statuses = copy.deepcopy(document_allowed_statuses)
+        if mes_reference_query is None:
+            mes_reference_query = open_synthetic_mes_reference(self.settings)
+        self.mes_reference_query = mes_reference_query
+        self.fbm_search_query = fbm_search_query
         self.actor = "local-workbench"
         self.lock = threading.RLock()
         self.running_rooms = set()
@@ -259,6 +313,22 @@ class Workbench:
         self.llm_connected = False
         self.image_connections = set()
         self.demo_images = None
+        self.platform = None
+        self.model_lab = None
+        self.cohort_research = None
+        from local_fullworld_research_v1 import from_options
+        self.local_fullworld = from_options(config.get('research_bridge'))
+        self.platform_analysis_lock = threading.Lock()
+        if config.get('platform_settings'):
+            from platform_tools import PlatformService
+            self.platform = PlatformService(config['platform_settings'])
+            if config['platform_settings'].data.get('model_lab', {}).get('enabled'):
+                from model_lab import ModelLabService
+                self.model_lab = ModelLabService(config['platform_settings'])
+            research_options = config['platform_settings'].data.get('cohort_research', {})
+            if config['platform_settings'].data['environment'] == 'demo' and research_options.get('enabled'):
+                from cohort_research import CohortResearchService
+                self.cohort_research = CohortResearchService(research_options)
         if config.get("demo_image_tools"):
             from demo_images import DemoImageService
             self.demo_images = DemoImageService(self.raw_data, self.static_root, self._incident_map(),
@@ -280,6 +350,18 @@ class Workbench:
         db.execute("PRAGMA busy_timeout=10000")
         db.execute("PRAGMA foreign_keys=ON")
         return db
+
+    def platform_analyze(self, body):
+        if self.platform is None:
+            raise WorkbenchError('platform demo is not configured')
+        if not self.platform_analysis_lock.acquire(blocking=False):
+            raise WorkbenchError('platform LLM analysis is already running')
+        try:
+            return self.platform.analyze(body)
+        except (ToolError, ValueError) as exc:
+            raise WorkbenchError(str(exc)) from None
+        finally:
+            self.platform_analysis_lock.release()
 
     @contextmanager
     def _db(self):
@@ -366,12 +448,14 @@ class Workbench:
         return items
 
     def _workspace(self, incident_number, include_meetings=True):
-        incident = self._incident_map().get(incident_number)
-        if incident is None:
-            raise WorkbenchError("incident not found")
         try:
             with open_incident_tools(self.settings) as tool:
                 found = tool.find_incidents(self.actor, incident_number=incident_number, fields=INCIDENT_FIELDS)
+                if not found["data"]:
+                    raise WorkbenchError("incident not found")
+                if len(found["data"]) > 1:
+                    raise WorkbenchError("incident number is ambiguous")
+                incident = found["data"][0]
                 scope = found["scope_id"]
                 lots = self._pages(tool.list_incident_lots, self.actor, scope)
                 wafers = self._pages(tool.list_incident_wafers, self.actor, scope)
@@ -400,6 +484,7 @@ class Workbench:
 
     def bootstrap(self):
         return {"synthetic": True, **self.llm_status(),
+                "local_fullworld_research": self.local_fullworld is not None,
                 "incidents": self._incidents(), "rooms": [_summary(row) for row in self._rooms()],
                 "release": self.release, "default_room_id": self._default_room_id()}
 
@@ -719,6 +804,12 @@ class Workbench:
             self.running_rooms.add(room_id)
             self._begin_analysis_run(room_id, sources, context)
         try:
+            if "action_evidence" in sources:
+                planner_configured = (self.settings.data.get("synthetic_action_planner", {}).get("enabled") is True)
+                callbacks_configured = (callable(self.synthetic_action_planner)
+                                        and callable(self.snapshot_lease_provider))
+                if not planner_configured or not callbacks_configured or not self.llm_status()["llm_configured"]:
+                    raise WorkbenchError("action_evidence is unavailable: synthetic planner, trusted callbacks, and LLM must be configured")
             if self.llm_status()["llm_configured"]:
                 answer, answer_attachments, runtime = self._llm_answer(
                     room_id, content, sources, context, include_previous_answers="context" not in body,
@@ -809,6 +900,53 @@ class Workbench:
         if len(question) > 12000:
             raise WorkbenchError("content plus selected incident context must not exceed 12000 characters")
         requested_tools = ["find_incidents"]
+        retrieval_sources = {
+            "engineer_note_search": ("search_engineer_notes", "engineer_notes"),
+            "internal_document_search": ("search_internal_documents", "internal_documents"),
+        }
+        document_statuses = {}
+        unavailable_details = {}
+        for source, (tool, kind) in retrieval_sources.items():
+            if source not in sources:
+                continue
+            configured_statuses = (self.document_allowed_statuses.get(kind)
+                                   if isinstance(self.document_allowed_statuses, dict) else None)
+            source_config = config["retrieval"].get(kind, {})
+            statuses_valid = (
+                isinstance(configured_statuses, (list, tuple)) and 0 < len(configured_statuses) <= 100
+                and all(isinstance(value, str) and value.strip() and len(value) <= 256
+                        for value in configured_statuses)
+                and len(set(configured_statuses)) == len(configured_statuses)
+            )
+            if (source_config.get("enabled") is True and callable(self.document_query)
+                    and statuses_valid):
+                requested_tools.append(tool)
+                document_statuses[kind] = list(configured_statuses)
+            else:
+                unavailable_details[source] = (
+                    "Unavailable: document status allowlist is invalid"
+                    if source_config.get("enabled") is True and callable(self.document_query) and not statuses_valid
+                    else "Unavailable: retrieval config and trusted callback are required")
+        mes_requested = False
+        if "mes_reference_search" in sources:
+            mes_config = config.get("mes_reference", {})
+            kinds = mes_config.get("allowed_kinds")
+            kinds_valid = (
+                isinstance(kinds, (list, tuple)) and bool(kinds)
+                and all(isinstance(kind, str) and kind.strip() and len(kind) <= 64 for kind in kinds)
+                and len(set(kinds)) == len(kinds)
+            )
+            if (mes_config.get("enabled") is True and callable(self.mes_reference_query)
+                    and kinds_valid):
+                requested_tools.append("search_mes_reference")
+                mes_requested = True
+            else:
+                unavailable_details["mes_reference_search"] = (
+                    "Unavailable: MES reference allowed kinds are invalid"
+                    if mes_config.get("enabled") is True and callable(self.mes_reference_query) and not kinds_valid
+                    else "Unavailable: MES reference config and trusted callback are required")
+        if "action_evidence" in sources:
+            requested_tools.append("plan_synthetic_action_evidence")
         if "related" in sources:
             requested_tools.append("search_related_incidents")
         if engineering or enterprise:
@@ -823,6 +961,12 @@ class Workbench:
                            inspection_requested=inspection_requested,
                            conversation_turns=conversation_turns,
                            context_data=payload, engineering_query=engineering_query if engineering or enterprise else None,
+                           synthetic_action_planner=self.synthetic_action_planner,
+                           snapshot_lease_provider=self.snapshot_lease_provider,
+                           document_query=self.document_query if document_statuses else None,
+                           document_allowed_statuses=document_statuses,
+                           mes_reference_query=self.mes_reference_query if mes_requested else None,
+                           fbm_search_query=self.fbm_search_query,
                            emit=lambda event: self._analysis_event(room_id, event))
         events = result.get("events", [])
         self.llm_connected = any(event["event"] == "llm_output" for event in events)
@@ -839,6 +983,14 @@ class Workbench:
                      "meetings": "search_meeting_minutes" in tool_names,
                      "sem": "compare_sem_images" in tool_names,
                      "maps": "compare_overlay_maps" in tool_names}
+        retrieved["action_evidence"] = "plan_synthetic_action_evidence" in tool_names
+        for source, tool in (("engineer_note_search", "search_engineer_notes"),
+                             ("internal_document_search", "search_internal_documents"),
+                             ("mes_reference_search", "search_mes_reference")):
+            retrieved[source] = any(event.get("event") == "tool_result" and event.get("source") == tool
+                                    and isinstance(event.get("result"), dict)
+                                    and event["result"].get("status") in ("OK", "NO_MATCH")
+                                    for event in events)
         enterprise_result = None
         for event in events:
             if event.get("event") == "tool_result" and event.get("source") == "get_engineering_snapshot":
@@ -850,6 +1002,17 @@ class Workbench:
                   "detail": "Agent tool queried synthetic data" if retrieved.get(source)
                   else "Not queried; UI fixtures are not model evidence"} for source in sources]
         for step in steps:
+            if step["source"] in unavailable_details and step["status"] == "unavailable":
+                step["detail"] = unavailable_details[step["source"]]
+            elif step["source"] in {"engineer_note_search", "internal_document_search", "mes_reference_search"}:
+                step["detail"] = ("Existing retrieval Tool returned evidence" if step["status"] == "completed"
+                                   else "Unavailable: selected retrieval Tool did not return valid evidence")
+        for step in steps:
+            if step["source"] == "action_evidence":
+                step["detail"] = ("Synthetic proposal-only evidence returned; no action was executed"
+                                   if retrieved["action_evidence"] else
+                                   "Unavailable: requested proposal-only evidence was not returned")
+        for step in steps:
             if step["source"] == "enterprise":
                 step["detail"] = ("; ".join(f"{s['system']} / {s['view']}: {s['status']} ({s['row_count']})"
                                             for s in enterprise_result["systems"]) if enterprise_result
@@ -860,19 +1023,34 @@ class Workbench:
         runtime = {"mode": "llm", "release": self.release, "llm_connected": self.llm_connected, "steps": steps,
                    "status": result["status"], "trace": trace, "tool_calls": result["tool_calls"],
                    "llm_calls": result["llm_calls"], "limitations": result.get("limitations", []),
+                   "system_limitations": result.get("system_limitations", []),
+                   "final_scope": copy.deepcopy(result.get("final_scope")),
                    "enterprise": enterprise_result,
                    "llm_metrics": [{"role": event["role"], **event["metrics"]} for event in events
                                    if event["event"] in ("llm_output", "llm_metrics") and event.get("metrics")]}
+        provider_usage = _safe_provider_usage(result.get("execution_metrics", {}).get("provider_usage")
+                                              if isinstance(result.get("execution_metrics"), dict) else None)
+        if provider_usage is not None:
+            runtime["provider_usage"] = provider_usage
         runtime["report"] = self._analysis_report(result, context)
+        runtime["report"]["retrieval_evidence"] = [
+            {"source": event["source"], "result": copy.deepcopy(event["result"])}
+            for event in events if event.get("event") == "tool_result"
+            and event.get("source") in {"search_engineer_notes", "search_internal_documents", "search_mes_reference"}
+        ]
         answer = result["answer"]
+        if retrieved["action_evidence"]:
+            answer += "\n\n합성 proposal-only evidence입니다. 실제 조치나 HOLD/RELEASE는 실행되지 않았습니다."
         labels = {"historical_match": "과거 사고 매칭", "check": "점검 권고", "eds_followup": "EDS 후속 확인"}
         for row in result.get("inspection_plan", []):
             answer += (f"\n\n{labels[row['kind']]}\n대상: {row['target']}\n근거: {row['basis']}"
                        f"\n비교·확인: {row['comparison']}")
         if result.get("inspection_plan"):
             answer += "\n\n점검·EDS 확인은 미실행 권고이며, 조치 완료나 현재 불량 확정이 아닙니다."
-        if result.get("limitations"):
-            answer += "\n\n제한 사항:\n" + "\n".join(result["limitations"])
+        displayed_limitations = list(dict.fromkeys([
+            *result.get("limitations", []), *result.get("system_limitations", [])]))
+        if displayed_limitations:
+            answer += "\n\n제한 사항:\n" + "\n".join(displayed_limitations)
         answer += ("\n\n[합성 사고 데이터 + SQL 조회 · 출처별 synthetic 표시 확인 · LLM 생성 답변]"
                    if enterprise_result else "\n\n[합성 데이터 · LLM 생성 답변]")
         refs = [self._ref("data", context["incident_number"], incident["incident_id"], context["incident_number"])]
@@ -880,7 +1058,13 @@ class Workbench:
 
     def _analysis_report(self, result, context):
         report = {"version": 2, "summary": result["answer"], "inspection_plan": result.get("inspection_plan", []),
-                  "images": [], "trend": [], "image_findings": [], "historical_cases": [], "map_assets": []}
+                  "images": [], "trend": [], "image_findings": [], "historical_cases": [], "map_assets": [],
+                  "evidence_review": copy.deepcopy(result.get("evidence_review", {})),
+                  "synthetic_action_evidence": [
+                      {"evidence_id": event.get("id"), "result": copy.deepcopy(event.get("result"))}
+                      for event in result.get("events", [])
+                      if event.get("event") == "tool_result"
+                      and event.get("source") == "plan_synthetic_action_evidence"]}
         record = (self.raw_data or {}).get(context["incident_number"], {})
         assets = {asset["id"]: asset for asset in record.get("sem_assets", [])}
         history = {asset["id"]: asset for asset in record.get("image_history", [])}
@@ -1183,8 +1367,11 @@ class Workbench:
                         lines.append(f"- {item['meeting_date']} {item['title']}: {item['text']}")
                         attachments.append(self._ref("inform", item["title"], item["chunk_id"], incident_number))
             else:
+                detail = ("Unavailable: LLM is not configured; retrieval Tool was not called"
+                          if source in {"engineer_note_search", "internal_document_search", "mes_reference_search"}
+                          else "UI-only synthetic source; backend is unavailable and no real LLM inference was used.")
                 steps.append({"source": source, "status": "unavailable",
-                              "detail": "UI-only synthetic source; backend is unavailable and no real LLM inference was used."})
+                              "detail": detail})
         return "\n".join(lines), attachments, steps
 
     def _append_analysis(self, room_id, content, sources, context, answer, answer_attachments, analysis):
@@ -1356,6 +1543,54 @@ class Handler(BaseHTTPRequestHandler):
         return parts
 
     def _api(self, method, parts):
+        if method == 'GET' and parts == ['api', 'cohort-research']:
+            if self.app.cohort_research is None:
+                raise WorkbenchError('saved synthetic cohort research is not configured')
+            try: return self.app.cohort_research.snapshot()
+            except (ValueError, OSError) as exc: raise WorkbenchError(str(exc)) from None
+        if len(parts) == 3 and parts[:2] == ['api', 'model-lab']:
+            if self.app.model_lab is None:
+                raise WorkbenchError('synthetic model lab is not configured')
+            operation = parts[2]
+            if method == 'GET' and operation == 'progress': return self.app.model_lab.progress()
+            if method == 'GET' and operation == 'catalog': body = {}
+            elif method == 'GET' and operation == 'report':
+                query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                if set(query) != {'run_id'} or len(query['run_id']) != 1:
+                    raise WorkbenchError('one run_id is required')
+                body = {'run_id': query['run_id'][0]}
+            elif method == 'POST' and operation in ('analyze', 'actions', 'action-status', 'dispatch-check'): body = self._read()
+            else: raise WorkbenchError('unknown model lab route')
+            try: return self.app.model_lab.request(operation, body)
+            except (ValueError, OSError) as exc: raise WorkbenchError(str(exc)) from None
+        if parts == ['api', 'platform', 'analyze'] and method == 'POST':
+            return self.app.platform_analyze(self._read())
+        if len(parts) == 3 and parts[:2] == ['api', 'platform'] and method == 'GET':
+            service = self.app.platform
+            if service is None:
+                raise WorkbenchError('platform demo is not configured')
+            values = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+            def argument(name, default=''):
+                found = values.get(name, [default])
+                if len(found) != 1:
+                    raise WorkbenchError('duplicate platform query argument')
+                return found[0]
+            try:
+                if parts[2] == 'catalog':
+                    return service.catalog(argument('q'), int(argument('offset', '0')), int(argument('limit', '40')),
+                                           field=argument('field') or None, value=argument('value') or None)
+                if parts[2] == 'case':
+                    return service.case(argument('incident'), argument('as_of') or None)
+                if parts[2] == 'match':
+                    return service.match(argument('q'))
+                if parts[2] == 'measure-catalog':
+                    return service.measure_catalog(argument('q'))
+                if parts[2] == 'profile':
+                    return service.profile()
+                if parts[2] == 'models':
+                    return service.models()
+            except (ToolError, ValueError) as exc:
+                raise WorkbenchError(str(exc)) from None
         if (len(parts) == 3 and parts[:2] == ["api", "demo-images"]
                 and parts[2] in ("assets", "compare") and method == "POST"):
             return self.app.demo_image_request(parts[2], self._read())
@@ -1377,6 +1612,37 @@ class Handler(BaseHTTPRequestHandler):
             return self.app.workspace(values[0])
         if len(parts) >= 3 and parts[:2] == ["api", "rooms"]:
             room_id = parts[2]
+            if len(parts) == 4 and parts[3] == 'local-investigations':
+                origin = self.headers.get('Origin')
+                if origin and urlsplit(origin).netloc != self.headers.get('Host'):
+                    raise WorkbenchError('same-origin research request required')
+                if method == 'POST' and self.headers.get('Content-Type', '').split(';')[0] != 'application/json':
+                    raise WorkbenchError('research request requires application/json')
+                self.app.room(room_id)  # UI room ownership only; no cross-catalog incident join.
+                service = self.app.local_fullworld
+                if service is None:
+                    raise WorkbenchError('local fullworld research is disabled')
+                query = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
+                try:
+                    if method == 'POST' and not query:
+                        return service.submit(room_id, self._read())
+                    if method == 'GET' and query == {'view': ['catalog']}:
+                        return {**service.catalog(), 'latest_job': service.store.latest(room_id)}
+                    if method == 'GET' and set(query) in ({'job_id'}, {'job_id', 'after_seq'}):
+                        if any(len(v) != 1 for v in query.values()):
+                            raise ValueError('single job cursor required')
+                        after = int(query.get('after_seq', ['0'])[0])
+                        if after < 0:
+                            raise ValueError('nonnegative event cursor required')
+                        return service.store.get(room_id, query['job_id'][0], after)
+                    if method == 'GET' and set(query) == {'job_id', 'artifactenum'} and all(len(v) == 1 for v in query.values()):
+                        return service.artifact(room_id, query['job_id'][0], query['artifactenum'][0])
+                    raise ValueError('invalid local research route fields')
+                except ValueError as exc:
+                    from local_fullworld_research_v1 import Conflict
+                    if isinstance(exc, Conflict):
+                        self._research_conflict = True
+                    raise WorkbenchError(str(exc)) from None
             if len(parts) == 3 and method == "GET":
                 values = parse_qs(urlsplit(self.path).query, keep_blank_values=True).get("before", [])
                 if len(values) > 1 or (values and not values[0]):
@@ -1412,17 +1678,33 @@ class Handler(BaseHTTPRequestHandler):
         self._send(200, target.read_bytes(), mimetypes.guess_type(target.name)[0] or "application/octet-stream")
 
     def _handle(self):
+        self._research_conflict = False
         if not self._guard(): return
         try:
             parts = self._route()
+            if parts in (['api', 'platform', 'asset'], ['api', 'platform', 'map-asset']) and self.command == 'GET':
+                values = parse_qs(urlsplit(self.path).query, keep_blank_values=True).get('asset_id', [])
+                if len(values) != 1 or not values[0] or self.app.platform is None:
+                    raise WorkbenchError('asset_id is required')
+                try:
+                    if parts[-1] == 'map-asset':
+                        from map_analysis import demo_asset
+                        content = demo_asset(self.app.platform.settings, values[0])
+                    else:
+                        content = self.app.platform.asset(values[0])
+                    self._send(200, content, 'image/png')
+                except (ToolError, OSError, ValueError) as exc:
+                    raise WorkbenchError(type(exc).__name__) from None
+                return
             if parts and parts[0] == "api":
-                self._send(200, self._api(self.command, parts))
+                value = self._api(self.command, parts)
+                self._send(202 if self.command == 'POST' and len(parts) == 4 and parts[-1] == 'local-investigations' else 200, value)
             elif self.command == "GET":
                 self._static()
             else:
                 raise WorkbenchError("not found")
         except WorkbenchError as exc:
-            self._send(404 if str(exc) in ("not found", "static file not found", "room not found", "incident not found") else 400, {"error": str(exc)})
+            self._send(409 if getattr(self, '_research_conflict', False) else (404 if str(exc) in ("not found", "static file not found", "room not found", "incident not found") else 400), {"error": str(exc)})
         except Exception:
             self._send(500, {"error": "internal workbench error"})
 
@@ -1433,20 +1715,32 @@ class Handler(BaseHTTPRequestHandler):
 
 
 class WorkbenchServer(ThreadingHTTPServer):
+    # Windows SO_REUSEADDR can allow an older process to keep serving the port.
+    allow_reuse_address = sys.platform != 'win32'
     def server_close(self):
         if hasattr(self, "app"):
             self.app.monitor.stop()
+            if self.app.model_lab is not None: self.app.model_lab.close()
+            if self.app.local_fullworld is not None: self.app.local_fullworld.close()
         super().server_close()
 
 
 def create_server(config_path: str | Path = REPO_ROOT / "config/workbench.yaml", port: int | None = None,
-                  *, raw_file=None, agent_overlay=None):
+                  *, raw_file=None, agent_overlay=None, synthetic_action_planner=None,
+                  snapshot_lease_provider=None, document_query=None, document_allowed_statuses=None,
+                  mes_reference_query=None, fbm_search_query=None):
     if port is not None and (type(port) is not int or not 0 <= port <= 65535):
         raise WorkbenchError("port must be between 0 and 65535")
     config = load_workbench(config_path, raw_file=raw_file, agent_overlay=agent_overlay)
     server = WorkbenchServer(("127.0.0.1", config["port"] if port is None else port), Handler)
-    server.app = Workbench(config)
+    server.app = Workbench(config, synthetic_action_planner=synthetic_action_planner,
+                           snapshot_lease_provider=snapshot_lease_provider,
+                           document_query=document_query,
+                           document_allowed_statuses=document_allowed_statuses,
+                           mes_reference_query=mes_reference_query,
+                           fbm_search_query=fbm_search_query)
     server.app.monitor.start()
+    if server.app.local_fullworld is not None: server.app.local_fullworld.start()
     return server
 
 

@@ -1,4 +1,6 @@
 import {
+  Suspense,
+  lazy,
   useEffect,
   useRef,
   useState,
@@ -46,13 +48,10 @@ import {
   type RoomSummary,
   type Workspace,
 } from './api';
-import { DataView, Empty, Overview, type Tab } from './Views';
+import type { Tab } from './Views';
+import EmptyState from './EmptyState';
 import PlanPanel from './PlanPanel';
-import Images from './Images';
-import { HistoryView, InformWorkspace } from './Sources';
 import { modules } from './modules';
-import ReviewView from './ReviewView';
-import EngineeringWorkspace from './EngineeringWorkspace';
 import {
   clearReviewDraft,
   loadReviewDraft,
@@ -60,6 +59,16 @@ import {
 } from './reviewState';
 
 const tabs = modules;
+const MODEL_LAB_TAB: Tab = 'model-lab';
+const PlatformView = lazy(() => import('./PlatformView'));
+const ModelLabView = lazy(() => import('./ModelLabView'));
+const EngineeringWorkspace = lazy(() => import('./EngineeringWorkspace'));
+const Overview = lazy(() => import('./Views').then((module) => ({ default: module.Overview })));
+const DataView = lazy(() => import('./Views').then((module) => ({ default: module.DataView })));
+const Images = lazy(() => import('./Images'));
+const InformWorkspace = lazy(() => import('./Sources').then((module) => ({ default: module.InformWorkspace })));
+const HistoryView = lazy(() => import('./Sources').then((module) => ({ default: module.HistoryView })));
+const ReviewView = lazy(() => import('./ReviewView'));
 type ModalType =
   | 'search'
   | 'settings'
@@ -757,14 +766,18 @@ export default function App() {
             <span>
               {!isChat && tab === 'trend'
                 ? workspace?.incident.incident_number
-                : 'Workspace'}
+                : tab === MODEL_LAB_TAB
+                  ? 'Synthetic Model Lab'
+                  : 'Workspace'}
             </span>
             <ChevronRight size={13} />
             <strong>
               {isChat
                 ? 'Analysis chat'
                 : tab === 'trend'
-                  ? room?.title
+                ? room?.title
+                : tab === MODEL_LAB_TAB
+                  ? '합성 추론 · 근거 · 조치'
                   : 'Quality analysis'}
             </strong>
           </div>
@@ -779,7 +792,7 @@ export default function App() {
                 <LayoutDashboard size={18} />
               </button>
             )}
-            {!isChat && (
+            {!isChat && tab !== MODEL_LAB_TAB && (
               <button
                 className="icon-button plan-toggle"
                 title="분석 계획 보기/접기"
@@ -816,7 +829,7 @@ export default function App() {
             <span className="topbar-divider" />
             <button
               className="outline-button screen-switch"
-              disabled={!room}
+              disabled={!room || tab === 'platform' || tab === MODEL_LAB_TAB}
               onClick={() => (isChat ? navigate('trend') : launchChat())}
             >
               {isChat ? (
@@ -832,7 +845,7 @@ export default function App() {
         <div className="content-columns" ref={contentColumns}>
           {!isChat && (
             <main className="analysis-panel">
-              <header className="analysis-header">
+              {tab !== 'platform' && tab !== MODEL_LAB_TAB && <header className="analysis-header">
                 <div className="analysis-title-row">
                   <h1 tabIndex={-1}>
                     {room?.title ||
@@ -897,7 +910,7 @@ export default function App() {
                     <span className="scope-source">합성 DB · 읽기 전용</span>
                   </div>
                 )}
-              </header>
+              </header>}
               <nav className="workspace-tabs" aria-label="분석 보기">
                 <label className="mobile-view-picker">
                   <span>개별 보기</span>
@@ -918,7 +931,7 @@ export default function App() {
                 </label>
                 {tabs
                   .filter((item) =>
-                    ['trend', 'signals', 'review'].includes(item.id),
+                    ['platform', MODEL_LAB_TAB, 'trend', 'signals', 'review'].includes(item.id),
                   )
                   .map((item) => (
                     <button
@@ -971,14 +984,22 @@ export default function App() {
                 </div>
               )}
               <div className="analysis-scroll">
-                {loading ? (
+                {tab === 'platform' ? (
+                  <Suspense fallback={<div className="loading-state"><Loader2 className="spin" size={25} /><span>분석 화면 불러오는 중</span></div>}>
+                    <PlatformView />
+                  </Suspense>
+                ) : tab === MODEL_LAB_TAB ? (
+                  <Suspense fallback={<div className="loading-state"><Loader2 className="spin" size={25} /><span>분석 화면 불러오는 중</span></div>}>
+                    <ModelLabView />
+                  </Suspense>
+                ) : loading ? (
                   <div className="loading-state">
                     <Loader2 className="spin" size={25} />
                     <span>분석 데이터 조회 중</span>
                   </div>
                 ) : !activeProps ? (
                   <div className="empty-workspace">
-                    <Empty title="새 분석" detail="선택된 분석이 없습니다." />
+                    <EmptyState title="새 분석" detail="선택된 분석이 없습니다." />
                     <button
                       className="primary-button"
                       disabled={busy}
@@ -988,6 +1009,7 @@ export default function App() {
                     </button>
                   </div>
                 ) : (
+                  <Suspense fallback={<div className="loading-state"><Loader2 className="spin" size={25} /><span>분석 화면 불러오는 중</span></div>}>
                   <EngineeringWorkspace
                     key={`${roomId}:${workspace!.incident.incident_number}`}
                     {...activeProps}
@@ -1069,17 +1091,18 @@ export default function App() {
                       </>
                     )}
                   </EngineeringWorkspace>
+                  </Suspense>
                 )}
                 <footer className="analysis-footer">
                   <ShieldCheck size={13} />
-                  <span>Read-only · 합성 DB</span>
+                  <span>{tab === MODEL_LAB_TAB ? '합성 DB · 더미 MES' : 'Read-only · 합성 DB'}</span>
                   <span>{bootstrap?.release || 'Q-Agent'}</span>
                 </footer>
               </div>
             </main>
           )}
 
-          {!isChat && (
+          {!isChat && tab !== MODEL_LAB_TAB && (
             <aside className="investigation-panel" aria-label="분석 검토 목록">
               <header className="inspector-header" tabIndex={-1}>
                 <ClipboardList size={17} />
@@ -1330,7 +1353,7 @@ export default function App() {
                 )}
                 {!loading && !room && (
                   <div className="empty-workspace">
-                    <Empty title="대화 없음" detail="선택된 분석이 없습니다." />
+                    <EmptyState title="대화 없음" detail="선택된 분석이 없습니다." />
                     <button className="primary-button" onClick={createRoom}>
                       <Plus size={16} />새 분석
                     </button>
@@ -1725,3 +1748,4 @@ export default function App() {
     </div>
   );
 }
+

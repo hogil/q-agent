@@ -440,7 +440,7 @@ def _publish(staged: Path, outputs: list[tuple[Path, str]]) -> None:
         raise
 
 
-def generate(settings: Any, profile: str = "basic", *, engineering_raw=None, scenarios=None) -> dict[str, Any]:
+def generate(settings: Any, profile: str = "basic", *, engineering_raw=None, scenarios=None, include_goldens=True) -> dict[str, Any]:
     """Create demo/test data and return absolute output paths and fixture counts."""
     if profile not in ("basic", "hard", "engineering"):
         raise ValueError("unknown demo data profile: " + str(profile))
@@ -462,7 +462,9 @@ def generate(settings: Any, profile: str = "basic", *, engineering_raw=None, sce
     meeting_table, fts_table, meeting_path = _meeting_config(settings)
     meeting_path = _confined(meeting_path, root, "meetings.sqlite_file")
     golden_path = _confined(_setting_path(data["paths"]["golden_file"], "paths.golden_file"), root, "paths.golden_file")
-    output_targets = [(incident_path, "incidents.sqlite"), (meeting_path, "meetings.sqlite"), (golden_path, "golden.jsonl")]
+    output_targets = [(incident_path, "incidents.sqlite"), (meeting_path, "meetings.sqlite")]
+    if include_goldens:
+        output_targets.append((golden_path, "golden.jsonl"))
     outputs = [target for target, _ in output_targets]
     if len(set(outputs)) != len(outputs):
         raise ValueError("output paths must be distinct")
@@ -474,13 +476,13 @@ def generate(settings: Any, profile: str = "basic", *, engineering_raw=None, sce
         lot_rows = _hard_lot_rows(incident_rows)
         wafer_rows = _hard_wafer_rows(lot_rows)
         meeting_rows = _hard_meeting_rows(incident_rows)
-        golden_rows = _hard_goldens(incident_rows)
+        golden_rows = _hard_goldens(incident_rows) if include_goldens else []
     else:
         incident_rows = _incident_rows()
         lot_rows = _lot_rows(incident_rows)
         wafer_rows = _wafer_rows(lot_rows)
         meeting_rows = _meeting_rows()
-        golden_rows = [] if profile == "engineering" else _goldens()
+        golden_rows = [] if profile == "engineering" or not include_goldens else _goldens()
     if profile == "engineering":
         if not engineering_raw or not scenarios:
             raise ValueError("engineering profile requires validated raw data and scenarios")
@@ -508,10 +510,14 @@ def generate(settings: Any, profile: str = "basic", *, engineering_raw=None, sce
         staged_paths = [stage / filename for _, filename in output_targets]
         _write_incident_db(staged_paths[0], settings, incident_rows, lot_rows, wafer_rows)
         _write_meeting_db(staged_paths[1], meeting_table, fts_table, meeting_rows)
-        with staged_paths[2].open("w", encoding="utf-8", newline="\n") as stream:
-            for row in golden_rows:
-                stream.write(_json(row) + "\n")
+        if include_goldens:
+            with staged_paths[2].open("w", encoding="utf-8", newline="\n") as stream:
+                for row in golden_rows:
+                    stream.write(_json(row) + "\n")
         _publish(stage, output_targets)
     finally:
         shutil.rmtree(stage, ignore_errors=True)
-    return {"profile": profile, "paths": {"database": str(incident_path), "meetings": str(meeting_path), "golden": str(golden_path)}, "counts": {"incidents": len(incident_rows), "lots": len(lot_rows), "wafers": len(wafer_rows), "meeting_chunks": len(meeting_rows), "golden_cases": len(golden_rows)}}
+    paths = {"database": str(incident_path), "meetings": str(meeting_path)}
+    if include_goldens:
+        paths['golden'] = str(golden_path)
+    return {"profile": profile, "paths": paths, "counts": {"incidents": len(incident_rows), "lots": len(lot_rows), "wafers": len(wafer_rows), "meeting_chunks": len(meeting_rows), "golden_cases": len(golden_rows)}}

@@ -1,0 +1,17 @@
+.cohort-milestone-v63 { border-color: #d7c99c; }
+.cohort-v63-intro { padding: 15px 16px; margin: 14px 0; border-left: 4px solid #b08b43; background: #fffbf2; color: #705b32; }
+.cohort-v63-intro > strong { font-size: 16px; }
+.cohort-v63-intro p, .cohort-v63-workflow-status { margin: 7px 0 0; color: #675f4e; font-size: 13px; line-height: 1.6; }
+.cohort-v63-workflow { min-width: 620px; }
+.cohort-v63-workflow td:first-child { width: 52px; text-align: center; font-variant-numeric: tabular-nums; }
+.cohort-v63-workflow-status { padding: 10px 12px; margin: 0 0 14px; border: 1px solid #eadfbd; border-radius: 7px; background: #fffdf8; }
+.cohort-v63-grid { margin-top: 14px; }
+.cohort-v63-grid h4 { margin: 16px 0 8px; color: #596b5f; font-size: 13px; }
+.cohort-v63-statline { display: flex; align-items: baseline; gap: 10px; margin: 2px 0 10px; color: #52685a; font-size: 13px; }
+.cohort-v63-statline strong { font-size: 26px; font-variant-numeric: tabular-nums; }
+.cohort-v63-proofs li { padding: 7px 0; overflow-wrap: anywhere; }
+.cohort-v63-proofs code { font-size: 11px; }
+@media (max-width: 640px) {
+  .cohort-v63-intro { padding: 12px; }
+  .cohort-v63-statline { align-items: flex-start; flex-direction: column; gap: 2px; }
+}

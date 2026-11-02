@@ -38,6 +38,7 @@ export default function AnalysisEvidence({
     );
   });
   const cases = report.historical_cases || [];
+  const retrievalEvidence = report.retrieval_evidence || [];
   const media: Media[] = [
     ...current
       .slice(0, 1)
@@ -141,6 +142,61 @@ export default function AnalysisEvidence({
               </ul>
             </div>
           ))}
+        </details>
+      )}
+      {!!retrievalEvidence.length && (
+        <details className="agent-model-evidence">
+          <summary>문서 · MES 검색 근거 · {retrievalEvidence.length}건</summary>
+          {retrievalEvidence.map(({ source, result }, index) => {
+            const mes = source === 'search_mes_reference';
+            const sourceLabel = source === 'search_engineer_notes'
+              ? 'Eng’r Inform Note 검색'
+              : source === 'search_internal_documents'
+                ? '사내문서 검색'
+                : mes ? 'MES 기준정보 검색' : source;
+            const items = result.items || [];
+            return (
+              <section className="agent-past-case" key={`${source}-${index}`}>
+                <strong>{sourceLabel} · Tool {source} · {result.status || '응답 상태 미상'}</strong>
+                {(result.source_kind || result.retrieval_method) && (
+                  <p>{result.source_kind || ''}{result.source_kind && result.retrieval_method ? ' · ' : ''}{result.retrieval_method || ''}</p>
+                )}
+                <p>기준일: {result.as_of || '미기록'}</p>
+                <p>선택 사고 범위: {context.incident_number} · Tool 범위: {(result.incident_ids || []).join(', ') || '미기록'}</p>
+                {result.historical_incident_ids?.length ? (
+                  <p>과거 후보 범위: {result.historical_incident_ids.join(', ')}</p>
+                ) : null}
+                {result.status === 'NO_MATCH' && <p>일치 결과 없음 (NO_MATCH)</p>}
+                {result.truncated && <p>일부 결과만 표시 · {result.candidate_count ?? items.length}건 후보</p>}
+                {items.map((item, itemIndex) => (
+                  <article key={`${item.record_id || item.chunk_id || item.document_id || item.kind || itemIndex}-${item.version || ''}`}>
+                    <strong>{mes ? `${item.kind || 'MES record'} · ${item.name || item.record_id || '이름 미기록'}` : `${item.document_id || '문서'} · chunk ${item.chunk_id || 'ID 미기록'}`}</strong>
+                    {!mes && item.text && <p>{item.text}</p>}
+                    <p>출처: {item.source_ref || '미기록'}{item.locator ? ` · 위치: ${item.locator}` : ''}</p>
+                    <p>버전: {item.version || '미기록'} · 사용 가능 시각: {item.available_at || '미기록'}</p>
+                    {mes ? (
+                      <>
+                        <p>적용 상태: {typeof item.applicability === 'string' ? item.applicability : 'unknown'} · 범위 관계: {item.scope_relation || '미기록'} · 시간 상태: {item.time_status || '미기록'}</p>
+                        <p>유효 기간: {item.effective_from || '시작 미상'} ~ {item.effective_to || '종료 미상'}</p>
+                      </>
+                    ) : (
+                      <>
+                        <p>관계: {item.relation || '미기록'} · 적용 상태: {item.applicability_status || '미검증'} · 문서 상태: {item.status || '미기록'}</p>
+                        <p>문서 유효 기간: {item.effective_from || '시작 미상'} ~ {item.effective_to || '종료 미상'}</p>
+                      </>
+                    )}
+                  </article>
+                ))}
+                {!!result.limitations?.length && (
+                  <div>
+                    <strong>제한사항</strong>
+                    <ul>{result.limitations.map((limitation, limitationIndex) => <li key={limitationIndex}>{limitation}</li>)}</ul>
+                  </div>
+                )}
+              </section>
+            );
+          })}
+          <small>검색 결과는 출처·시점 정보이며, 후보 또는 미검증 적용 상태를 확인 완료로 간주하지 않습니다.</small>
         </details>
       )}
       {preview && (

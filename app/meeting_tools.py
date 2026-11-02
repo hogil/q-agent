@@ -201,8 +201,13 @@ class MeetingTools:
                 or len(item["incident_ids"]) > self.max_incident_ids
                 or any(not isinstance(x, str) or not x.strip() or len(x) > _MAX_METADATA for x in item["incident_ids"])):
             raise ToolError("INVALID_MEETING_ROW")
-        if ids is not None and not set(item["incident_ids"]).intersection(ids):
-            raise ToolError("INVALID_MEETING_ROW")
+        if ids is None:
+            permitted_ids = list(item["incident_ids"])
+        else:
+            scope = set(ids)
+            permitted_ids = [incident_id for incident_id in item["incident_ids"] if incident_id in scope]
+            if not permitted_ids:
+                raise ToolError("INVALID_MEETING_ROW")
         try:
             score = float(item.get("score"))
         except (OverflowError, TypeError, ValueError) as exc:
@@ -212,5 +217,5 @@ class MeetingTools:
         seen.add(item["chunk_id"])
         return {"chunk_id": item["chunk_id"], "meeting_id": item["meeting_id"], "title": item["title"],
                 "meeting_date": meeting_date, "version": item["version"], "status": "approved",
-                "incident_ids": list(item["incident_ids"]), "text": item["text"],
+                "incident_ids": permitted_ids, "text": item["text"],
                 "source_ref": item["source_ref"], "score": score}

@@ -54,8 +54,11 @@ class EnterpriseTests(unittest.TestCase):
     def test_sql_filters_overlap_and_provenance(self):
         result = self.query()
         system = result['systems'][0]
-        self.assertEqual(result['status'], 'OK')
+        self.assertEqual(result['status'], 'PARTIAL')
+        self.assertEqual(system['status'], 'PARTIAL')
         self.assertEqual([r['state'] for r in system['rows']], ['DOWN', 'PM'])
+        self.assertEqual([r['availability'] for r in system['rows']], ['unknown', 'unknown'])
+        self.assertIn('AVAILABILITY_TIME_NOT_MAPPED', system['limitations'])
         self.assertEqual(system['view'], 'approved_events')
         self.assertTrue(system['synthetic'])
         self.assertIn('queried_at', system)
@@ -97,7 +100,7 @@ class EnterpriseTests(unittest.TestCase):
         self.settings.data['enterprise']['sources'].append({**self.source, 'id': 'broken', 'view': 'missing'})
         result = self.query()
         self.assertEqual(result['status'], 'PARTIAL')
-        self.assertEqual([s['status'] for s in result['systems']], ['OK', 'UNAVAILABLE'])
+        self.assertEqual([s['status'] for s in result['systems']], ['PARTIAL', 'UNAVAILABLE'])
 
     def test_scope_and_time_limits(self):
         with self.assertRaises(ToolError):

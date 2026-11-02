@@ -63,6 +63,20 @@ class WorkbenchRawIntegrationTests(unittest.TestCase):
         try:
             self.assertNotEqual(server.server_port, 9876)
             self.assertGreater(server.server_port, 0)
+            self.assertIsNone(server.app.synthetic_action_planner)
+            self.assertIsNone(server.app.snapshot_lease_provider)
+        finally:
+            server.server_close()
+
+    def test_server_passes_only_explicit_synthetic_action_callbacks(self):
+        planner = lambda scoped: scoped
+        lease_provider = lambda conn: {"revision": "synthetic-test", "as_of": "2026-03-31T00:00:00Z"}
+        server = create_server(self.config(source=self.raw), 0, raw_file=self.raw,
+                               synthetic_action_planner=planner,
+                               snapshot_lease_provider=lease_provider)
+        try:
+            self.assertIs(server.app.synthetic_action_planner, planner)
+            self.assertIs(server.app.snapshot_lease_provider, lease_provider)
         finally:
             server.server_close()
 

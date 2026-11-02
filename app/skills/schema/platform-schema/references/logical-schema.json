@@ -1,0 +1,529 @@
+{
+  "schema_version": "1",
+  "synthetic": true,
+  "as_of": "2026-10-24",
+  "logical_sources": {
+    "mes": {
+      "description": "합성 MES Lot 상태와 작업 이력. 실생산 이력이 아니다.",
+      "grain": "Lot 작업 이벤트 한 건",
+      "columns": {
+        "record_id": {
+          "description": "MES 이벤트 ID",
+          "type": "string",
+          "unit": null
+        },
+        "incident_id": {
+          "description": "연결된 사고 ID",
+          "type": "string",
+          "unit": null
+        },
+        "lot_id": {
+          "description": "Lot ID",
+          "type": "string",
+          "unit": null
+        },
+        "equipment": {
+          "description": "장비 ID",
+          "type": "string",
+          "unit": null
+        },
+        "step": {
+          "description": "공정 단계",
+          "type": "string",
+          "unit": null
+        },
+        "recipe": {
+          "description": "Recipe ID",
+          "type": "string",
+          "unit": null
+        },
+        "occurred_at": {
+          "description": "이벤트 관측 시각",
+          "type": "string",
+          "unit": "ISO-8601"
+        },
+        "available_at": {
+          "description": "레코드 이용 가능 시각",
+          "type": "string",
+          "unit": "ISO-8601"
+        },
+        "status": {
+          "description": "상태 코드",
+          "type": "string",
+          "unit": null
+        },
+        "hold_code": {
+          "description": "보류 코드",
+          "type": "string",
+          "unit": null
+        },
+        "queue_hours": {
+          "description": "대기 시간",
+          "type": "number",
+          "unit": "hour"
+        },
+        "synthetic": {
+          "description": "행 표시이며 true만 허용",
+          "type": "boolean",
+          "unit": null
+        }
+      }
+    },
+    "test": {
+      "description": "합성 Wafer 단계별 EDS/FAB_OUT 수율 집계. EDS는 Electrical Die Sorting이며 EDX를 뜻하지 않는다.",
+      "grain": "사고·Lot·Wafer·검사 단계 한 건",
+      "columns": {
+        "record_id": {
+          "description": "검사 ID",
+          "type": "string",
+          "unit": null
+        },
+        "incident_id": {
+          "description": "연결된 사고 ID",
+          "type": "string",
+          "unit": null
+        },
+        "lot_id": {
+          "description": "Lot ID",
+          "type": "string",
+          "unit": null
+        },
+        "wafer_id": {
+          "description": "Wafer ID",
+          "type": "string",
+          "unit": null
+        },
+        "stage": {
+          "description": "EDS 또는 FAB_OUT 단계",
+          "type": "string",
+          "unit": null
+        },
+        "equipment": {
+          "description": "검사 장비 ID",
+          "type": "string",
+          "unit": null
+        },
+        "step": {
+          "description": "공정 단계",
+          "type": "string",
+          "unit": null
+        },
+        "occurred_at": {
+          "description": "검사 시각",
+          "type": "string",
+          "unit": "ISO-8601"
+        },
+        "available_at": {
+          "description": "결과 이용 가능 시각",
+          "type": "string",
+          "unit": "ISO-8601"
+        },
+        "yield_pct": {
+          "description": "tested_count와 fail_count에서 산출한 수율",
+          "type": "number",
+          "unit": "%"
+        },
+        "bin_code": {
+          "description": "BIN 그룹 코드",
+          "type": "string",
+          "unit": null
+        },
+        "fail_count": {
+          "description": "fail chip 수",
+          "type": "integer",
+          "unit": "chip"
+        },
+        "tested_count": {
+          "description": "검사한 chip 수와 일치",
+          "type": "integer",
+          "unit": "chip"
+        },
+        "synthetic": {
+          "description": "행 표시이며 true만 허용",
+          "type": "boolean",
+          "unit": null
+        }
+      }
+    },
+    "measure": {
+      "description": "합성 chip 좌표별 leakage와 Vth 측정값 및 한계값.",
+      "grain": "사고·Lot·Wafer·chip·측정 항목 한 건",
+      "columns": {
+        "record_id": {
+          "description": "측정 ID",
+          "type": "string",
+          "unit": null
+        },
+        "incident_id": {
+          "description": "연결된 사고 ID",
+          "type": "string",
+          "unit": null
+        },
+        "lot_id": {
+          "description": "Lot ID",
+          "type": "string",
+          "unit": null
+        },
+        "wafer_id": {
+          "description": "Wafer ID",
+          "type": "string",
+          "unit": null
+        },
+        "chip_id": {
+          "description": "검사 테이블과 공유하는 chip ID",
+          "type": "string",
+          "unit": null
+        },
+        "die_x": {
+          "description": "die 열 좌표",
+          "type": "integer",
+          "unit": "die"
+        },
+        "die_y": {
+          "description": "die 행 좌표",
+          "type": "integer",
+          "unit": "die"
+        },
+        "item": {
+          "description": "leakage_uA 또는 Vth_V",
+          "type": "string",
+          "unit": null
+        },
+        "value": {
+          "description": "측정값",
+          "type": "number",
+          "unit": "item별"
+        },
+        "unit": {
+          "description": "측정 단위",
+          "type": "string",
+          "unit": null
+        },
+        "lower_limit": {
+          "description": "하한",
+          "type": "number",
+          "unit": "item별"
+        },
+        "upper_limit": {
+          "description": "상한",
+          "type": "number",
+          "unit": "item별"
+        },
+        "stage": {
+          "description": "측정 단계",
+          "type": "string",
+          "unit": null
+        },
+        "occurred_at": {
+          "description": "측정 시각",
+          "type": "string",
+          "unit": "ISO-8601"
+        },
+        "available_at": {
+          "description": "측정 이용 가능 시각",
+          "type": "string",
+          "unit": "ISO-8601"
+        },
+        "synthetic": {
+          "description": "행 표시이며 true만 허용",
+          "type": "boolean",
+          "unit": null
+        }
+      }
+    },
+    "failbit": {
+      "description": "합성 Wafer의 제한된 failbit 좌표. 사고 원인 확정 자료가 아니다.",
+      "grain": "failbit 위치 한 건",
+      "columns": {
+        "record_id": {
+          "description": "failbit ID",
+          "type": "string",
+          "unit": null
+        },
+        "incident_id": {
+          "description": "연결된 사고 ID",
+          "type": "string",
+          "unit": null
+        },
+        "lot_id": {
+          "description": "Lot ID",
+          "type": "string",
+          "unit": null
+        },
+        "wafer_id": {
+          "description": "Wafer ID",
+          "type": "string",
+          "unit": null
+        },
+        "chip_id": {
+          "description": "측정 테이블과 공유하는 chip ID",
+          "type": "string",
+          "unit": null
+        },
+        "bit_x": {
+          "description": "chip 내 bit 열 좌표",
+          "type": "integer",
+          "unit": "bit"
+        },
+        "bit_y": {
+          "description": "chip 내 bit 행 좌표",
+          "type": "integer",
+          "unit": "bit"
+        },
+        "test_item": {
+          "description": "검사 항목",
+          "type": "string",
+          "unit": null
+        },
+        "fail_count": {
+          "description": "해당 위치의 실패 수",
+          "type": "integer",
+          "unit": "count"
+        },
+        "bin_code": {
+          "description": "BIN 코드",
+          "type": "string",
+          "unit": null
+        },
+        "occurred_at": {
+          "description": "검사 시각",
+          "type": "string",
+          "unit": "ISO-8601"
+        },
+        "available_at": {
+          "description": "결과 이용 가능 시각",
+          "type": "string",
+          "unit": "ISO-8601"
+        },
+        "synthetic": {
+          "description": "행 표시이며 true만 허용",
+          "type": "boolean",
+          "unit": null
+        }
+      }
+    },
+    "sem": {
+      "description": "절차적으로 그린 96×96 합성 SEM patch와 픽셀에서 계산한 단순 feature.",
+      "grain": "SEM asset 한 건",
+      "columns": {
+        "record_id": {
+          "description": "SEM 레코드 ID",
+          "type": "string",
+          "unit": null
+        },
+        "incident_id": {
+          "description": "연결된 사고 ID",
+          "type": "string",
+          "unit": null
+        },
+        "lot_id": {
+          "description": "Lot ID",
+          "type": "string",
+          "unit": null
+        },
+        "wafer_id": {
+          "description": "Wafer ID",
+          "type": "string",
+          "unit": null
+        },
+        "chip_id": {
+          "description": "측정 테이블과 공유하는 chip ID",
+          "type": "string",
+          "unit": null
+        },
+        "asset_id": {
+          "description": "이미지 asset ID",
+          "type": "string",
+          "unit": null
+        },
+        "storage_ref": {
+          "description": "paths.image_root 기준 이미지 상대 위치",
+          "type": "string",
+          "unit": null
+        },
+        "sha256": {
+          "description": "생성된 PNG의 SHA-256",
+          "type": "string",
+          "unit": null
+        },
+        "pixel_size_nm": {
+          "description": "시연용 pixel size",
+          "type": "number",
+          "unit": "nm/pixel"
+        },
+        "orientation": {
+          "description": "좌표 방향",
+          "type": "string",
+          "unit": null
+        },
+        "recipe": {
+          "description": "이미지 recipe ID",
+          "type": "string",
+          "unit": null
+        },
+        "edge_density": {
+          "description": "생성 픽셀에서 계산한 edge 비율",
+          "type": "number",
+          "unit": "ratio"
+        },
+        "contrast": {
+          "description": "생성 픽셀 intensity 표준편차를 정규화한 값",
+          "type": "number",
+          "unit": "ratio"
+        },
+        "training_label": {
+          "description": "학습용 label(예: normal/bridge/gap). Router/Judge/Answer와 runtime evidence에 공개 금지.",
+          "type": "string",
+          "unit": null
+        },
+        "occurred_at": {
+          "description": "이미지 취득 시각",
+          "type": "string",
+          "unit": "ISO-8601"
+        },
+        "available_at": {
+          "description": "asset 이용 가능 시각",
+          "type": "string",
+          "unit": "ISO-8601"
+        },
+        "synthetic": {
+          "description": "행 표시이며 true만 허용",
+          "type": "boolean",
+          "unit": null
+        }
+      }
+    },
+    "trend": {
+      "description": "incident별 96시점 synthetic temperature/pressure/current 시계열.",
+      "grain": "사고·시각·항목별 한 관측",
+      "columns": {
+        "record_id": {
+          "description": "Trend 관측 ID",
+          "type": "string",
+          "unit": null
+        },
+        "incident_id": {
+          "description": "연결된 사고 ID",
+          "type": "string",
+          "unit": null
+        },
+        "lot_id": {
+          "description": "Lot ID",
+          "type": "string",
+          "unit": null
+        },
+        "wafer_id": {
+          "description": "Wafer ID",
+          "type": "string",
+          "unit": null
+        },
+        "equipment": {
+          "description": "장비 ID",
+          "type": "string",
+          "unit": null
+        },
+        "step": {
+          "description": "공정 단계",
+          "type": "string",
+          "unit": null
+        },
+        "item": {
+          "description": "temperature, pressure 또는 current",
+          "type": "string",
+          "unit": null
+        },
+        "timestamp": {
+          "description": "관측 시각",
+          "type": "string",
+          "unit": "ISO-8601"
+        },
+        "value": {
+          "description": "raw 측정값",
+          "type": "number",
+          "unit": "item별"
+        },
+        "unit": {
+          "description": "측정 단위",
+          "type": "string",
+          "unit": null
+        },
+        "available_at": {
+          "description": "관측 이용 가능 시각",
+          "type": "string",
+          "unit": "ISO-8601"
+        },
+        "training_label": {
+          "description": "학습 전용 normal/drift/shift/spike label. Router/Judge/Answer와 runtime evidence에 공개 금지.",
+          "type": "string",
+          "unit": null
+        },
+        "synthetic": {
+          "description": "행 표시이며 true만 허용",
+          "type": "boolean",
+          "unit": null
+        }
+      }
+    },
+    "inform": {
+      "description": "각 합성 사고의 가설 검토와 반대 근거 note. 두 note 모두 합성 승인 fixture이며 실제 공정 결론이 아니다.",
+      "grain": "사고 연결 합성 문서 버전 한 건",
+      "columns": {
+        "record_id": {
+          "description": "note ID",
+          "type": "string",
+          "unit": null
+        },
+        "incident_id": {
+          "description": "연결된 사고 ID",
+          "type": "string",
+          "unit": null
+        },
+        "document_id": {
+          "description": "core incident_document와 공유하는 문서 ID",
+          "type": "string",
+          "unit": null
+        },
+        "title": {
+          "description": "note 제목",
+          "type": "string",
+          "unit": null
+        },
+        "content": {
+          "description": "가설 또는 대조 근거와 단계·시각 설명",
+          "type": "string",
+          "unit": null
+        },
+        "version": {
+          "description": "문서 버전",
+          "type": "string",
+          "unit": null
+        },
+        "step": {
+          "description": "연결을 시연하는 공정 단계",
+          "type": "string",
+          "unit": null
+        },
+        "equipment": {
+          "description": "연결을 시연하는 장비 ID",
+          "type": "string",
+          "unit": null
+        },
+        "occurred_at": {
+          "description": "note 기준 시각",
+          "type": "string",
+          "unit": "ISO-8601"
+        },
+        "available_at": {
+          "description": "note 이용 가능 시각",
+          "type": "string",
+          "unit": "ISO-8601"
+        },
+        "synthetic": {
+          "description": "행 표시이며 true만 허용",
+          "type": "boolean",
+          "unit": null
+        }
+      }
+    }
+  }
+}

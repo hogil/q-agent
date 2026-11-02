@@ -284,6 +284,45 @@ details[open] > summary > .board-details-chevron {
   line-height: 1.35;
 }
 
+.board-final-scope {
+  margin: 6px 0;
+  padding: 6px 7px;
+  border: 1px solid #dbe5df;
+  border-radius: 4px;
+  background: #fbfcfb;
+  color: #46584f;
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+.board-final-scope p {
+  margin: 3px 0;
+  overflow-wrap: anywhere;
+}
+
+.board-final-scope-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.board-final-scope-heading.unavailable,
+.board-final-scope-alert {
+  color: #9d4d4d;
+}
+
+.board-final-scope-collections {
+  margin-top: 5px;
+  padding-top: 4px;
+  border-top: 1px solid #e4ebe7;
+}
+
+.board-final-scope small {
+  display: block;
+  margin-top: 5px;
+  color: #68776f;
+}
+
 .board-enterprise-evidence {
   margin: 6px 0;
   min-width: 0;

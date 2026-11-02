@@ -1,5 +1,6 @@
 # Local synthetic analysis workbench. It never selects an on-prem configuration.
 config_version: 1
+platform_overlay: platform-demo.yaml
 demo:
   base_config: config.yaml
   overlay: engineering-demo.yaml

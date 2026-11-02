@@ -1,0 +1,34 @@
+.cohort-v69 {
+  margin: 1.25rem 0;
+  padding: 1.15rem;
+  border: 1px solid #b7d1d4;
+  border-radius: 16px;
+  background: linear-gradient(145deg, #f5fbfb, #fbfaf6);
+  color: #18343a;
+}
+.cohort-v69-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+.cohort-v69-heading h2 { margin: .25rem 0; font-size: 1.45rem; }
+.cohort-v69-badge { border: 1px solid #89afb3; border-radius: 99px; padding: .35rem .7rem; white-space: nowrap; font-size: .78rem; }
+.cohort-v69-intro { max-width: 78ch; line-height: 1.55; }
+.cohort-v69-meta { display: flex; flex-wrap: wrap; gap: .5rem; margin: .9rem 0; }
+.cohort-v69-meta span { padding: .38rem .58rem; border-radius: 8px; background: #e7f1f0; font-size: .83rem; }
+.cohort-v69-table-wrap { overflow-x: auto; }
+.cohort-v69-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+.cohort-v69-table th, .cohort-v69-table td { padding: .65rem .55rem; border-bottom: 1px solid #d9e5e3; text-align: right; white-space: nowrap; }
+.cohort-v69-table th:first-child { text-align: left; }
+.cohort-v69-footnote { margin: .35rem 0 .7rem; color: #48656a; font: .76rem/1.45 ui-monospace, monospace; }
+.cohort-v69-callout { padding: .7rem .85rem; border-left: 4px solid #c17f35; background: #fff5e6; line-height: 1.5; }
+.cohort-v69-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; }
+.cohort-v69-grid article { min-width: 0; padding: .85rem; border: 1px solid #d8e5e2; border-radius: 11px; background: #fff; }
+.cohort-v69-grid h3 { margin: 0 0 .4rem; font-size: 1rem; }
+.cohort-v69-grid p { line-height: 1.45; }
+.cohort-v69-grid details { margin-top: .65rem; }
+.cohort-v69-grid summary { cursor: pointer; font-weight: 650; }
+.cohort-v69-hash { overflow-wrap: anywhere; color: #48656a; font: .72rem/1.45 ui-monospace, monospace; }
+.cohort-v69-footer { margin-top: .9rem; padding-top: .75rem; border-top: 1px solid #d8e5e2; color: #476269; font-size: .83rem; }
+@media (max-width: 680px) {
+  .cohort-v69 { padding: .85rem; }
+  .cohort-v69-heading { display: block; }
+  .cohort-v69-badge { display: inline-block; margin-top: .35rem; }
+  .cohort-v69-grid { grid-template-columns: 1fr; }
+}

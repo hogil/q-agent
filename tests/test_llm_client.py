@@ -395,6 +395,48 @@ class RoleClientTests(unittest.TestCase):
         self.assertIsNone(client.last_metrics['output_tokens'])
         self.assertIsNone(client.last_metrics['total_tokens'])
 
+    def test_usage_metrics_accept_only_nonnegative_plain_integers(self):
+        client = self.make_client()
+        invalid_values = (-1, 1.5, True, '3', None)
+        metric_cases = (
+            ('input_tokens', 'prompt_tokens'),
+            ('output_tokens', 'completion_tokens'),
+            ('total_tokens', 'total_tokens'),
+        )
+        for metric, usage_key in metric_cases:
+            for invalid in invalid_values:
+                with self.subTest(metric=metric, invalid=invalid):
+                    self.create.return_value = completion(
+                        content='{"verdict":"pass"}', tool_call=False,
+                        usage={usage_key: invalid})
+                    client.call('judge', 'judge', {}, [])
+                    self.assertIsNone(client.last_metrics[metric])
+
+        detail_cases = (
+            ('reasoning_tokens', 'completion_tokens_details', 'reasoning_tokens'),
+            ('cached_input_tokens', 'prompt_tokens_details', 'cached_tokens'),
+        )
+        for metric, details_key, usage_key in detail_cases:
+            for invalid in invalid_values:
+                with self.subTest(metric=metric, invalid=invalid):
+                    self.create.return_value = completion(
+                        content='{"verdict":"pass"}', tool_call=False,
+                        usage={details_key: {usage_key: invalid}})
+                    client.call('judge', 'judge', {}, [])
+                    self.assertIsNone(client.last_metrics[metric])
+
+        self.create.return_value = completion(
+            content='{"verdict":"pass"}', tool_call=False,
+            usage={'prompt_tokens': 0, 'completion_tokens': 1, 'total_tokens': 1,
+                   'completion_tokens_details': {'reasoning_tokens': 0},
+                   'prompt_tokens_details': {'cached_tokens': 1}})
+        client.call('judge', 'judge', {}, [])
+        self.assertEqual(client.last_metrics['input_tokens'], 0)
+        self.assertEqual(client.last_metrics['output_tokens'], 1)
+        self.assertEqual(client.last_metrics['total_tokens'], 1)
+        self.assertEqual(client.last_metrics['reasoning_tokens'], 0)
+        self.assertEqual(client.last_metrics['cached_input_tokens'], 1)
+
     def test_length_error_records_completion_metrics(self):
         self.create.return_value = completion(
             finish_reason='length',

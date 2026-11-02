@@ -29,6 +29,8 @@ class RoleClient:
             'input_tokens': None,
             'output_tokens': None,
             'total_tokens': None,
+            'reasoning_tokens': None,
+            'cached_input_tokens': None,
             'finish_reason': None,
             'request_characters': None,
         }
@@ -41,8 +43,12 @@ class RoleClient:
                 'name': 'submit_plan'}}
         messages = [{'role': 'system', 'content': system_prompt}, *history,
                     {'role': 'user', 'content': json.dumps(payload, ensure_ascii=False, separators=(',', ':'))}]
-        options = dict(model=model['served_model'], messages=messages, temperature=profile['temperature'],
-                       max_tokens=profile['max_output_tokens'])
+        options = dict(model=model['served_model'], messages=messages)
+        options[model.get('token_limit_parameter', 'max_tokens')] = profile['max_output_tokens']
+        if profile['temperature'] is not None:
+            options['temperature'] = profile['temperature']
+        if profile.get('reasoning_effort'):
+            options['reasoning_effort'] = profile['reasoning_effort']
         if role == 'router':
             paths = self.settings.data['paths']
             schema = read_role_reference('router', 'output.schema.json', paths['skills_root'], paths['registry_file'])
@@ -57,6 +63,18 @@ class RoleClient:
                 schema['properties']['plan']['maxItems'] = (
                     min(4, max(0, budget_remaining)) if payload.get('scope_valid') is True else 1)
                 catalog = read_role_reference('router', 'tools.json', paths['skills_root'], paths['registry_file'])
+                selected_number = payload.get('selected_incident_number')
+                if selected_number is not None and payload.get('scope_valid') is not True:
+                    schema['properties']['decision']['enum'] = ['execute']
+                    schema['properties']['stage']['enum'] = ['incident']
+                    schema['properties']['plan']['minItems'] = 1
+                    parameters = catalog['find_incidents']['parameters']
+                    parameters['properties'] = {key: value for key, value in parameters['properties'].items()
+                                                if key in ('incident_number', 'fields')}
+                    parameters['properties']['incident_number']['enum'] = [selected_number]
+                    parameters['required'] = ['incident_number']
+                    schema['properties']['filters'].update(properties={}, additionalProperties=False)
+                    schema['properties']['search_mode']['enum'] = ['sql_exact']
                 advertised = payload.get('available_tools')
                 if payload.get('pending_requested_tools') and isinstance(advertised, dict) and any(
                         spec.get('enabled') for spec in advertised.values()):
@@ -135,6 +153,22 @@ class RoleClient:
                 if role == 'answer' and (payload.get('judge') or {}).get('verdict') == 'abstain':
                     schema['properties']['status']['enum'] = ['partial', 'unavailable']
                 if role == 'answer':
+                    facts = payload.get('platform_facts', [])
+                    if facts:
+                        candidates = payload.get('platform_investigations', [])
+                        ranking = {'type': 'array', 'minItems': len(candidates), 'maxItems': len(candidates),
+                                   'items': {'type': 'string'}}
+                        if candidates:
+                            ranking['items']['enum'] = [item['id'] for item in candidates]
+                        schema['properties']['ranked_investigation_ids'] = ranking
+                        schema['required'].append('ranked_investigation_ids')
+                        schema['properties']['answer']['enum'] = ['플랫폼 분석 결과']
+                        schema['properties']['limitations']['items']['enum'] = payload['platform_limitations']
+                        claims = schema['properties']['claims']
+                        claims['maxItems'] = 0
+                        schema['properties']['selected_fact_ids'] = {'type': 'array', 'minItems': len(facts), 'maxItems': len(facts),
+                            'items': {'type': 'string', 'enum': [fact['fact_id'] for fact in facts]}}
+                        schema['required'].append('selected_fact_ids')
                     # The business plan is optional via null, not a missing strict-schema key.
                     schema['required'].append('inspection_plan')
                     plan = schema['properties']['inspection_plan']['properties']
@@ -151,6 +185,8 @@ class RoleClient:
                                 plan['historical_matches']['minItems'] = 1
                         else:
                             plan['historical_matches']['maxItems'] = 0
+                    if facts:
+                        schema['properties']['inspection_plan'] = {'type': 'null'}
                 options['response_format'] = {'type': 'json_schema', 'json_schema': {
                     'name': role + '_output', 'strict': True, 'schema': schema}}
         # Count the complete request, including function schemas; this is not a token budget.
@@ -172,10 +208,19 @@ class RoleClient:
                     return next((value for name in names
                                  if (value := getattr(usage, name, None)) is not None), None)
 
+                def usage_detail(name, field):
+                    details = usage.get(name) if isinstance(usage, dict) else getattr(usage, name, None)
+                    return details.get(field) if isinstance(details, dict) else getattr(details, field, None)
+
+                def measured_tokens(value):
+                    return value if type(value) is int and value >= 0 else None
+
                 self.last_metrics.update(
-                    input_tokens=usage_value('prompt_tokens', 'input_tokens'),
-                    output_tokens=usage_value('completion_tokens', 'output_tokens'),
-                    total_tokens=usage_value('total_tokens'))
+                    input_tokens=measured_tokens(usage_value('prompt_tokens', 'input_tokens')),
+                    output_tokens=measured_tokens(usage_value('completion_tokens', 'output_tokens')),
+                    total_tokens=measured_tokens(usage_value('total_tokens')),
+                    reasoning_tokens=measured_tokens(usage_detail('completion_tokens_details', 'reasoning_tokens')),
+                    cached_input_tokens=measured_tokens(usage_detail('prompt_tokens_details', 'cached_tokens')))
             choice = completion.choices[0]
             message = choice.message
             self.last_metrics['finish_reason'] = getattr(choice, 'finish_reason', None)

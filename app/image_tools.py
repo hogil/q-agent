@@ -8,6 +8,7 @@ import os
 import re
 import socket
 import uuid
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import HTTPRedirectHandler, Request, build_opener
@@ -87,15 +88,20 @@ def _asset_id(value, code="INVALID_ASSET_ID"):
     return value
 
 
-def _iso_timestamp(value, as_of):
+def _iso_timestamp(value, as_of, timezone):
     _string(value, "INVALID_IMAGE_ASSET")
     try:
         parsed = _datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError as exc:
+        offset = parsed.utcoffset()
+    except (ValueError, OverflowError) as exc:
         raise ToolError("INVALID_IMAGE_ASSET") from exc
-    if parsed.tzinfo is None or parsed.utcoffset() is None:
+    if parsed.tzinfo is None or offset is None:
         raise ToolError("INVALID_IMAGE_ASSET")
-    if parsed.date() > _datetime.date.fromisoformat(as_of):
+    try:
+        local_date = parsed.astimezone(timezone).date()
+    except (ValueError, OverflowError) as exc:
+        raise ToolError("INVALID_IMAGE_ASSET") from exc
+    if local_date > _datetime.date.fromisoformat(as_of):
         raise ToolError("INVALID_IMAGE_ASSET")
     return value
 
@@ -113,11 +119,23 @@ class ImageTools:
         for modality in ("sem", "overlay"):
             self.config[modality] = self._read_config(configs.get(modality))
         runtime = getattr(settings, "data", {}).get("runtime", {})
+        self.timezone_name = runtime.get("timezone") if isinstance(runtime, dict) else None
+        self.timezone = None
         page_size = runtime.get("max_page_size", runtime.get("default_page_size", 100))
         if type(page_size) is not int or page_size < 1:
             raise ToolError("INVALID_RUNTIME_PAGE_SIZE")
         self.page_size = page_size
         self._asset_cache = {}
+
+    def _runtime_timezone(self):
+        if self.timezone is None:
+            if type(self.timezone_name) is not str or not self.timezone_name.strip():
+                raise ToolError("INVALID_RUNTIME_TIMEZONE")
+            try:
+                self.timezone = ZoneInfo(self.timezone_name)
+            except (ZoneInfoNotFoundError, ValueError, TypeError) as exc:
+                raise ToolError("INVALID_RUNTIME_TIMEZONE") from exc
+        return self.timezone
 
     def _read_config(self, config):
         if not isinstance(config, dict):
@@ -218,13 +236,13 @@ class ImageTools:
                 raise ToolError("IMAGE_WAFER_REGISTRY_INVALID")
             offset = next_offset
 
-    def _validate_asset(self, asset, item, modality, as_of, incident_ids, registered):
+    def _validate_asset(self, asset, item, modality, as_of, incident_ids, registered, timezone):
         if not isinstance(asset, dict) or set(asset) != _ASSET_FIELDS:
             raise ToolError("INVALID_IMAGE_ASSET")
         for field in _ASSET_FIELDS - {"acquired_at"}:
             _string(asset.get(field), "INVALID_IMAGE_ASSET")
         _asset_id(asset["asset_id"], "INVALID_IMAGE_ASSET")
-        _iso_timestamp(asset["acquired_at"], as_of)
+        _iso_timestamp(asset["acquired_at"], as_of, timezone)
         if asset["item"] != item or asset["modality"] != modality:
             raise ToolError("INVALID_IMAGE_ASSET")
         if asset["incident_id"] not in incident_ids:
@@ -239,6 +257,7 @@ class ImageTools:
         config = self._config_for(modality)
         item = _string(item, "INVALID_ITEM")
         as_of = _date(as_of)
+        timezone = self._runtime_timezone()
         registered = self._registered_wafers(actor, scope_id, incident_ids)
         body = self._post(config, "/assets", {
             "actor": actor, "incident_ids": list(incident_ids), "item": item,
@@ -251,7 +270,7 @@ class ImageTools:
         assets = []
         seen = set()
         for asset in body["assets"]:
-            normalized = self._validate_asset(asset, item, modality, as_of, incident_ids, registered)
+            normalized = self._validate_asset(asset, item, modality, as_of, incident_ids, registered, timezone)
             if normalized["asset_id"] in seen:
                 raise ToolError("INVALID_IMAGE_ASSET")
             seen.add(normalized["asset_id"])
@@ -296,6 +315,7 @@ class ImageTools:
         config = self._config_for(modality)
         item = _string(item, "INVALID_ITEM")
         as_of = _date(as_of)
+        self._runtime_timezone()
         if not isinstance(asset_ids, list) or len(asset_ids) != 2:
             raise ToolError("IMAGE_ASSET_IDS_REQUIRED")
         asset_ids = [_asset_id(value) for value in asset_ids]

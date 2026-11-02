@@ -26,7 +26,9 @@ export type Tab =
   | 'data'
   | 'production'
   | 'history'
-  | 'review';
+  | 'review'
+  | 'platform'
+  | 'model-lab';
 export type ViewProps = {
   workspace: Workspace;
   attach: (item: Attachment) => void;

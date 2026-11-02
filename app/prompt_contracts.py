@@ -5,6 +5,7 @@ by this project's role schemas. Unknown validation keywords fail explicitly.
 Runtime context must be supplied by trusted application code, not question text.
 """
 from pathlib import Path
+import re
 from skill_loader import read_role_reference
 
 ROOT = Path(__file__).resolve().parent
@@ -19,8 +20,8 @@ def inspection_rows(plan):
 
 
 def structure(value, schema, path='$'):
-    supported={'type','enum','required','properties','additionalProperties','items','minimum','description','title','$schema',
-               'minItems','maxItems','minLength','maxLength'}
+    supported={'type','enum','required','properties','additionalProperties','items','minimum','maximum','description','title','$schema',
+               'minItems','maxItems','minLength','maxLength','minProperties','maxProperties','propertyNames','pattern'}
     if set(schema)-supported:raise ValueError('UNSUPPORTED_SCHEMA_KEYWORD')
     types=schema.get('type');types=types if isinstance(types,list) else [types] if types else []
     kinds={'object':dict,'array':list,'string':str,'integer':int,'number':(int,float),'boolean':bool,'null':type(None)}
@@ -29,17 +30,25 @@ def structure(value, schema, path='$'):
         raise ValueError('TYPE: '+path+'; expected '+ '|'.join(types)+'; got '+actual)
     if 'enum' in schema and value not in schema['enum']:raise ValueError('ENUM: '+path)
     if 'minimum' in schema and value<schema['minimum']:raise ValueError('MINIMUM: '+path)
+    if 'maximum' in schema and value>schema['maximum']:raise ValueError('MAXIMUM: '+path)
     for keyword, kind, lower in (('minItems', list, True), ('maxItems', list, False),
-                                 ('minLength', str, True), ('maxLength', str, False)):
+                                 ('minLength', str, True), ('maxLength', str, False),
+                                 ('minProperties', dict, True), ('maxProperties', dict, False)):
         if keyword in schema and isinstance(value, kind):
             if (len(value) < schema[keyword]) if lower else (len(value) > schema[keyword]):
                 raise ValueError(keyword.upper()+': '+path)
     if isinstance(value,dict):
         if set(schema.get('required',[]))-set(value):raise ValueError('REQUIRED: '+path)
         props=schema.get('properties',{})
-        if schema.get('additionalProperties') is False and set(value)-set(props):raise ValueError('ADDITIONAL_PROPERTY: '+path)
+        additional=schema.get('additionalProperties',True)
+        if additional is False and set(value)-set(props):raise ValueError('ADDITIONAL_PROPERTY: '+path)
         for key,item in value.items():
-            if key in props:structure(item,props[key],path+'.'+key)
+            key_path=path+'.'+key
+            if 'propertyNames' in schema:structure(key,schema['propertyNames'],key_path)
+            if key in props:structure(item,props[key],key_path)
+            elif isinstance(additional,dict):structure(item,additional,key_path)
+    if isinstance(value,str) and 'pattern' in schema:
+        if re.search(schema['pattern'],value) is None:raise ValueError('PATTERN: '+path)
     if isinstance(value,list) and 'items' in schema:
         for i,item in enumerate(value):structure(item,schema['items'],f'{path}[{i}]')
 
@@ -48,6 +57,10 @@ def validate_output(role, output, context):
     if role not in ('router','judge','answer'):raise ValueError('UNKNOWN_ROLE')
     schema_root=Path(context.get('skills_root',ROOT/'skills'))
     schema=read_role_reference(role,'output.schema.json',schema_root,context.get('registry_file',ROOT/'skill_registry.json'))
+    facts = context.get('platform_facts', []) if role == 'answer' else []
+    if facts:
+        schema['properties']['claims']['maxItems'] = len(facts)
+        schema['properties']['claims']['items']['properties']['text']['maxLength'] = max(140, max(len(fact['text']) for fact in facts))
     structure(output,schema)
     if role=='router':
         decision=output['decision'];plan=output['plan']
@@ -111,6 +124,16 @@ def validate_output(role, output, context):
             ids.append(claim['claim_id'])
             if not claim['evidence_ids'] or not set(claim['evidence_ids']).issubset(context.get('evidence_ids',[])):raise ValueError('UNKNOWN_EVIDENCE')
         if len(ids)!=len(set(ids)):raise ValueError('DUPLICATE_CLAIM_ID')
+        if facts and output['status'] in ('answered', 'partial'):
+            expected = {fact['fact_id']: fact for fact in facts}
+            if set(ids) != set(expected):raise ValueError('PLATFORM_FACT_COVERAGE_REQUIRED')
+            for claim in output['claims']:
+                fact = expected[claim['claim_id']]
+                if claim['text'] != fact['text'] or claim['evidence_ids'] != fact['evidence_ids']:
+                    raise ValueError('PLATFORM_FACT_CHANGED')
+            for limitation in output['limitations']:
+                from platform_facts import PLATFORM_LIMITATIONS
+                if limitation not in PLATFORM_LIMITATIONS:raise ValueError('PLATFORM_LIMITATION_NOT_GROUNDED')
         inspections=inspection_rows(output.get('inspection_plan'))
         if len(inspections)>6:raise ValueError('INSPECTION_PLAN_TOO_LONG')
         if inspections and (verdict not in ('pass','abstain') or output['status']=='unavailable'):

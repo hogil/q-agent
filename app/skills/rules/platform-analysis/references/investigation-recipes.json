@@ -1,0 +1,56 @@
+{
+  "source_basis": "2026-10-24 합성 Tool/schema 계약과 제한된 Edata palette-map grain 검토; 사내 측정 의미와 정확도는 미검증",
+  "as_of": "2026-10-24",
+  "synthetic_design": true,
+  "recipes": [
+    {
+      "id": "electrical_feature_combination",
+      "trigger": "tabular_combination",
+      "hypothesis": "다변량 기준 이탈은 규격 내 feature의 조합·상관 변화 또는 합성 채널의 분포 차이에서 발생할 수 있다.",
+      "counterevidence": "상위 이탈 진단이 합성 채널에만 몰리거나 단위·결측 분포가 다르면 실제 전기 특성 불량의 근거로 쓰기 어렵다.",
+      "next_check": "source feature와 dummy feature를 나누어 표준화 이탈·결측·상관을 정상 대조군과 비교하고 전기 검사 연결을 확인한다."
+    },
+    {
+      "id": "registered_chip_motif_recurrence",
+      "trigger": "chip_repetition",
+      "hypothesis": "정합된 서로 다른 die의 chip-local mask에서 같은 상대 형상이 겹치면 공통 layout·주소·공정 조건과 연관될 수 있다.",
+      "counterevidence": "crop 크기나 방향을 맞춘 뒤 겹침이 사라지거나 형상이 한 die에만 있으면 chip 간 반복 가설은 지지되지 않는다.",
+      "next_check": "복합키와 positions rect로 crop을 등록하고 방향·크기를 확인한 뒤 직접 mask overlap을 비교해 지원 die와 반례 die를 확인한다."
+    },
+    {
+      "id": "wafer_localized_region",
+      "trigger": "wafer_local",
+      "hypothesis": "wafer map 색상 후보의 영역 집중과 chip 반복 형상의 위치 중첩은 독립적으로 검토할 수 있다.",
+      "counterevidence": "후보가 넓게 분산되거나 반복 chip 위치로만 설명되면 별도의 local 이상 가설을 지지하기 어렵다.",
+      "next_check": "각 영역 bbox를 positions의 die rect에 투영하고 반복 지원 die와 나머지 die의 Measure·Failbit·형상을 따로 비교한다."
+    },
+    {
+      "id": "bit_pattern_without_chip_oos",
+      "trigger": "bit_without_oos",
+      "hypothesis": "조회한 단변량 Measure가 규격 내여도 정합 후 같은 bit 좌표에 Failbit가 모이면 bit-local 신호가 별도로 존재할 수 있다.",
+      "counterevidence": "bit 좌표가 chip 방향 보정 뒤 일치하지 않거나 EDS stage·분모가 다르면 두 신호의 비교 근거가 약하다.",
+      "next_check": "사고·Lot·Wafer·Chip 키에서 bit_x/bit_y와 EDS test stage·tested_count를 따로 집계하고 좌표계와 분모를 검증한다."
+    },
+    {
+      "id": "trend_precedes_measure_shift",
+      "trigger": "trend_shift",
+      "hypothesis": "같은 equipment·step의 Trend 변화가 측정 변화보다 먼저 관측되면 시간상 선행 신호가 동반될 수 있다.",
+      "counterevidence": "Trend의 단위·step이 다르거나 뒤늦게 공개돼 당시 이용할 수 없었다면 당시 선행 신호 판단의 근거가 약해진다.",
+      "next_check": "Trend의 item·unit·timestamp·available_at을 Measure 및 test 시각과 equipment·step·복합키 범위에서 정렬해 선후를 확인한다."
+    },
+    {
+      "id": "mes_hold_before_test_change",
+      "trigger": "mes_hold",
+      "hypothesis": "MES hold 또는 queue 변화가 같은 Lot의 검사 변화보다 먼저 있으면 작업 상태와 검사 결과가 함께 움직였을 수 있다.",
+      "counterevidence": "hold가 검사 변화 뒤에 기록됐거나 Lot·equipment·step이 다르면 시간적 동반 가설은 약해진다.",
+      "next_check": "MES occurred_at·available_at·status·queue_hours를 같은 Lot의 test·Measure 시각과 equipment·step 기준으로 대조한다."
+    },
+    {
+      "id": "inform_hypothesis_crosscheck",
+      "trigger": "inform_hypothesis",
+      "hypothesis": "조회된 Inform의 가설이 관측된 item·step·시간과 맞으면 후속 검증 대상으로 우선 검토할 수 있다.",
+      "counterevidence": "같은 범위의 반대 근거나 늦게 공개된 문서 버전이 있으면 가설의 시점·지지 강도가 낮아진다.",
+      "next_check": "사고 scope와 as_of를 적용해 Inform 버전·available_at·반대 근거를 조회하고 MES·test·Measure에서 논리 키를 대조한다."
+    }
+  ]
+}

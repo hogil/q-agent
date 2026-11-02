@@ -1,5 +1,5 @@
 {
-  "release": "quality-demo-0.60",
+  "release": "quality-demo-0.83",
   "purpose": "on-prem application Skill sources; not personal ChatGPT skill installation",
   "base": [
     "core"
@@ -50,6 +50,16 @@
     ],
     "incident_search": [
       "schema/incident-schema"
+    ],
+    "platform": [
+      "schema/platform-schema",
+      "rules/platform-analysis"
+    ],
+    "data_profile": [
+      "rules/data-profiling"
+    ],
+    "mes_reference": [
+      "rules/mes-reference"
     ]
   },
   "role_allowed_topics": {
@@ -64,7 +74,10 @@
       "images",
       "trends",
       "wafers",
-      "incident_search"
+      "incident_search",
+      "platform",
+      "data_profile",
+      "mes_reference"
     ],
     "answer": [
       "terminology",
@@ -77,7 +90,10 @@
       "images",
       "trends",
       "wafers",
-      "incident_search"
+      "incident_search",
+      "platform",
+      "data_profile",
+      "mes_reference"
     ],
     "judge": [
       "schema",
@@ -89,16 +105,32 @@
       "images",
       "trends",
       "wafers",
-      "incident_search"
+      "incident_search",
+      "platform",
+      "data_profile",
+      "mes_reference"
     ]
   },
-  "max_prompt_characters": 36000,
+  "topic_dependencies": {
+    "lots": ["incident_search"],
+    "wafers": ["lots"]
+  },
+  "max_prompt_characters": 70000,
   "notes": [
     "temperature=0 reduces sampling variability but does not guarantee deterministic serving",
     "topic/reference loads are explicit; arbitrary filesystem paths are prohibited",
     "Maintenance is an offline development workflow, not an online user-triggered role",
     "Model deployment and revision limits come from config/config.yaml plus site overlay; compile_prompt without settings is source validation only.",
-    "Role output contracts require decision/stage/search_mode, Judge coverage/return_to and Answer status. 36000 character ceiling supports combined image/wafer/meeting context after lossless column encoding; actual model token budgeting remains a deployment check.",
+    "Role output contracts require decision/stage/search_mode, Judge coverage/return_to and Answer status. 70000 character ceiling accommodates broad registered topic combinations with lossless column encoding; this is a compiler character-count guard, not a provider token limit. Character-to-token conversion has not been measured, and broad requests increase actual usage.",
     "ReAct rules live in core/references/react.md; Router tool parameters live in its references/tools.json. All roles and schemas resolve through this registry."
-  ]
+  ],
+  "platform_review_base": [
+    "core",
+    "schema/platform-schema",
+    "rules/platform-analysis"
+  ],
+  "platform_review_roles": {
+    "judge": "roles/platform-judge",
+    "answer": "roles/platform-answer"
+  }
 }

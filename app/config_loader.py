@@ -39,9 +39,12 @@ TABLE_FIELDS = {
 MODEL_SPEC = dict(enabled=bool, mode=str, base_url=str, api_key_env=str, served_model=str,
                   local_dir=str, checkpoint_file=str, tokenizer_dir=str, timeout_seconds=int,
                   structured_outputs=bool)
+MODEL_SPEC['token_limit_parameter?'] = str
+ROLE_SPEC = {'model': str, 'temperature': (int, float, type(None)), 'max_output_tokens': int,
+             'reasoning_effort?': str}
 RAG_SPEC = dict(enabled=bool, endpoint=str, api_key_env=str, index_name=str,
                 existing_chunks=bool, methods=list, fusion=str, reranker=str,
-                top_k=int, timeout_seconds=int)
+                top_k=int, timeout_seconds=int, **{'require_content_kind?': bool})
 SERVICE_SPEC = dict(enabled=bool, endpoint=str, api_key_env=str, timeout_seconds=int)
 ENTERPRISE_SOURCE_SPEC = dict(
     id=str, system=str, dialect=str, dsn_env=str, sqlite_file=str, schema=str, view=str,
@@ -59,17 +62,27 @@ SPEC = {
                       wafer_scope=str, wafer_source_completeness=str),
     'arrays': dict(product_generations=str, fab_out_failure_codes=str),
     'value_matching': dict(enabled=bool, fields=list, max_values_per_field=int, max_candidates=int),
+    'platform?': dict(enabled=bool, seed=int, incident_count=int, lots_per_incident=int,
+                      wafers_per_lot=int, chips_per_wafer=int,
+                      **{'tabular?': dict(enabled=bool, subdirectory=str, feature_count=int, fit_sample_limit=int),
+                         'map_analysis?': dict(enabled=bool, subdirectory=str)},
+                      tables={'*': dict(name=str, columns={'*': str})}),
     'storage': dict(backend=str, endpoint=str, bucket=str, prefix=str, credential_env=str,
                     signed_url_ttl_seconds=int),
     'models': {'*': MODEL_SPEC},
     'image_tools': {name: dict(SERVICE_SPEC, served_model=str) for name in ('sem', 'overlay')},
-    'roles': {role: dict(model=str, temperature=(int, float), max_output_tokens=int)
-              for role in ('router', 'answer', 'judge')},
+    'roles': {role: ROLE_SPEC for role in ('router', 'answer', 'judge')},
     'retrieval': {name: RAG_SPEC for name in ('internal_documents', 'engineer_notes')},
     'meetings': dict(enabled=bool, backend=str, sqlite_file=str, table=str, fts_table=str,
                      endpoint=str, api_key_env=str, top_k=int, max_top_k=int, timeout_seconds=int),
     'enterprise': dict(SERVICE_SPEC, max_rows=int, max_window_days=int, sources=list),
+    'mes_reference?': dict(enabled=bool, top_k=int, allowed_kinds=list,
+                           **{'synthetic_sqlite?': dict(enabled=bool, database_file=str, table=str,
+                                                        columns={'*': str}, timezone=str,
+                                                        **{'filter_columns?': {'*': str}})}),
     'actions': dict(SERVICE_SPEC, require_approval=bool),
+    'synthetic_action_planner?': dict(enabled=bool),
+    'fbm_search?': dict(enabled=bool, top_k=int),
     'runtime': dict(timezone=str, default_page_size=int, max_page_size=int,
                     max_scope_incidents=int, scope_ttl_seconds=int, max_tool_calls=int,
                     max_parallel_tools=int, max_retries=int, max_answer_revisions=int,
@@ -77,6 +90,16 @@ SPEC = {
                     conversation_memory=dict(candidate_messages=int, recent_turns=int, recalled_turns=int,
                                              router_characters=int, review_characters=int)),
 }
+SPEC['value_matching'].update({'fuzzy_enabled?': bool, 'fuzzy_threshold?': (int, float)})
+SPEC['runtime']['context_management?'] = dict(enabled=bool, router_history_min_messages=int,
+                                           omit_examples=bool, omit_embedded_output_schema=bool)
+SPEC['runtime']['team_execution?'] = dict(enabled=bool, max_workers=int, max_parallel_tasks=int,
+                                       max_shared_calls=int, deadline_seconds=int)
+SPEC['model_lab?'] = dict(enabled=bool, source_root=str, python=str, base_config=str,
+                          overlay=str, stderr_file=str, timeout_seconds=int)
+SPEC['cohort_research?'] = dict(enabled=bool, artifact_root=str, manifest_path=str,
+                                **{'current_status_manifest_path?': str,
+                                   'current_status_manifest_sha256?': str})
 
 
 def check_shape(data, spec, location='config'):
@@ -84,18 +107,22 @@ def check_shape(data, spec, location='config'):
         if not isinstance(data, dict):
             raise ConfigError(f'{location}: table required')
         if '*' in spec:
-            if not data:
+            if not data and location != 'config.mes_reference.synthetic_sqlite.filter_columns':
                 raise ConfigError(f'{location}: empty table')
             for key, value in data.items():
-                if not re.fullmatch(r'[a-z][a-z0-9_]*', key):
+                pattern = r'[A-Za-z][A-Za-z0-9_]*' if location == 'config.mes_reference.synthetic_sqlite.filter_columns' else r'[a-z][a-z0-9_]*'
+                if not isinstance(key, str) or not re.fullmatch(pattern, key):
                     raise ConfigError(f'{location}: invalid logical name')
                 check_shape(value, spec['*'], f'{location}.{key}')
         else:
-            unknown, missing = set(data) - set(spec), set(spec) - set(data)
+            # A trailing '?' marks an optional key; older full configs remain valid.
+            fields = {key.removesuffix('?'): value for key, value in spec.items()}
+            required = {key for key in spec if not key.endswith('?')}
+            unknown, missing = set(data) - set(fields), required - set(data)
             if unknown or missing:
                 raise ConfigError(f'{location}: unknown={sorted(unknown)}, missing={sorted(missing)}')
-            for key in spec:
-                check_shape(data[key], spec[key], f'{location}.{key}')
+            for key in data:
+                check_shape(data[key], fields[key], f'{location}.{key}')
     elif type(data) not in (spec if isinstance(spec, tuple) else (spec,)):
         raise ConfigError(f'{location}: wrong value type')
 
@@ -160,7 +187,86 @@ def validate_values(data):
                     raise ConfigError(f'{place}: control character forbidden')
                 visit(item, place)
     visit(data)
+    mes_reference = data.get('mes_reference')
+    if mes_reference:
+        kinds = mes_reference['allowed_kinds']
+        if not 1 <= mes_reference['top_k'] <= 100:
+            raise ConfigError('mes_reference.top_k: integer in 1..100 required')
+        if len(kinds) > 32:
+            raise ConfigError('mes_reference.allowed_kinds: at most 32 entries required')
+        if any(not isinstance(kind, str) or not re.fullmatch(r'[a-z][a-z0-9_]{0,63}', kind)
+               for kind in kinds):
+            raise ConfigError('mes_reference.allowed_kinds: lowercase identifiers required')
+        if len(kinds) != len(set(kinds)):
+            raise ConfigError('mes_reference.allowed_kinds: unique identifiers required')
+        if mes_reference['enabled'] and not kinds:
+            raise ConfigError('mes_reference.allowed_kinds: nonempty when enabled')
+        sqlite_reader = mes_reference.get('synthetic_sqlite', {})
+        if sqlite_reader.get('enabled'):
+            required = {'kind', 'record_id', 'version', 'name', 'source_ref', 'available_at',
+                        'effective_from', 'effective_to', 'applicability', 'incident_ids'}
+            if data['environment'] != 'demo' or not mes_reference['enabled']:
+                raise ConfigError('mes_reference.synthetic_sqlite: enabled demo MES reference only')
+            if not sqlite_reader['database_file'] or Path(sqlite_reader['database_file']).is_absolute() or '..' in Path(sqlite_reader['database_file']).parts:
+                raise ConfigError('mes_reference.synthetic_sqlite.database_file: relative path below paths.data_root required')
+            if set(sqlite_reader['columns']) != required:
+                raise ConfigError('mes_reference.synthetic_sqlite.columns: all required logical columns must be mapped')
+            if not re.fullmatch(r'[^\W\d]\w*', sqlite_reader['table']) or any(
+                    not re.fullmatch(r'[^\W\d]\w*', column)
+                    for column in [sqlite_reader['table'], *sqlite_reader['columns'].values()]):
+                raise ConfigError('mes_reference.synthetic_sqlite: simple SQL identifiers required')
+            physical = [sqlite_reader['table'], *sqlite_reader['columns'].values()]
+            if len({name.casefold() for name in physical[1:]}) != len(physical[1:]):
+                raise ConfigError('mes_reference.synthetic_sqlite.columns: unique physical names required')
+            filters = sqlite_reader.get('filter_columns', {})
+            if len(filters) > 32:
+                raise ConfigError('mes_reference.synthetic_sqlite.filter_columns: at most 32 entries required')
+            if any(not isinstance(key, str) or len(key) > 64 or
+                   not re.fullmatch(r'[A-Za-z][A-Za-z0-9_]*', key) for key in filters):
+                raise ConfigError('mes_reference.synthetic_sqlite.filter_columns: ASCII logical identifiers of at most 64 characters required')
+            if any(not isinstance(column, str) or not re.fullmatch(r'[A-Za-z][A-Za-z0-9_]*', column)
+                   for column in filters.values()):
+                raise ConfigError('mes_reference.synthetic_sqlite.filter_columns: strict SQL identifiers required')
+            try:
+                ZoneInfo(sqlite_reader['timezone'])
+            except (ZoneInfoNotFoundError, ValueError):
+                raise ConfigError('mes_reference.synthetic_sqlite.timezone: known timezone required') from None
+    fbm_search = data.get('fbm_search', {'enabled': False, 'top_k': 10})
+    if not 1 <= fbm_search['top_k'] <= 50:
+        raise ConfigError('fbm_search.top_k: integer in 1..50 required')
     matching = data['value_matching']
+    if not .75 <= matching.get('fuzzy_threshold', .85) <= 1:
+        raise ConfigError('value_matching.fuzzy_threshold: value in .75..1 required')
+    platform = data.get('platform')
+    if platform:
+        if platform['enabled'] and data['environment'] not in ('demo', 'test'):
+            raise ConfigError('platform: synthetic demo/test environments only')
+        if platform['enabled'] and data['relations']['wafer_scope'] != 'incident_affected':
+            raise ConfigError('platform: incident_affected wafer scope required')
+        if platform['seed'] < 0:
+            raise ConfigError('platform.seed: nonnegative value required')
+        for key in ('tabular', 'map_analysis'):
+            if key in platform:
+                folder = Path(platform[key]['subdirectory'])
+                if folder.is_absolute() or '..' in folder.parts or str(folder) in ('', '.'):
+                    raise ConfigError('platform.' + key + '.subdirectory: confined relative folder required')
+        if 'tabular' in platform and (not 2 <= platform['tabular']['feature_count'] <= 512
+                                     or not 128 <= platform['tabular']['fit_sample_limit'] <= 8192):
+            raise ConfigError('platform.tabular: invalid feature/sample limit')
+        if platform['incident_count'] * platform['lots_per_incident'] * platform['wafers_per_lot'] * platform['chips_per_wafer'] > 2000000:
+            raise ConfigError('platform: synthetic chip population exceeds 2000000')
+        for key, upper in (('incident_count', 2000), ('lots_per_incident', 10),
+                           ('wafers_per_lot', 25), ('chips_per_wafer', 256)):
+            if not 1 <= platform[key] <= upper:
+                raise ConfigError('platform.' + key + ': out of range')
+        names = {table['name'].casefold() for table in data['tables'].values()}
+        for name, table in platform['tables'].items():
+            for value in (table['name'], *table['columns'].values()):
+                if not re.fullmatch(r'[^\W\d]\w*', value):
+                    raise ConfigError('platform.tables.' + name + ': simple SQL identifiers required')
+            if table['name'].casefold() in names or len({value.casefold() for value in table['columns'].values()}) != len(table['columns']):
+                raise ConfigError('platform.tables: duplicate physical mapping')
+            names.add(table['name'].casefold())
     fields = matching['fields']
     if any(not isinstance(field, str) or field not in SCALAR_FILTER_FIELDS | ARRAY_FILTER_FIELDS for field in fields):
         raise ConfigError('value_matching.fields: supported logical filter fields required')
@@ -171,6 +277,8 @@ def validate_values(data):
             raise ConfigError('value_matching.' + key + ': value in 1..10000 required')
     required_columns = {'incident': {'incident_id', 'incident_number', 'title', 'city', 'line'},
                         'lot_list': set(TABLE_FIELDS['lot_list']), 'wafer_list': {'lot_id','wafer_id','status'}}
+    if platform and platform['enabled']:
+        required_columns['incident'].add('occurred_at')
     if data['relations']['wafer_scope'] == 'incident_affected':
         required_columns['wafer_list'].add('incident_ref')
     for name, table in data['tables'].items():
@@ -256,6 +364,8 @@ def validate_values(data):
     for name, model in data['models'].items():
         if model['mode'] not in ('api', 'local'):
             raise ConfigError(f'models.{name}.mode: api/local required')
+        if model.get('token_limit_parameter', 'max_tokens') not in ('max_tokens', 'max_completion_tokens'):
+            raise ConfigError(f'models.{name}.token_limit_parameter: max_tokens/max_completion_tokens required')
         url(model['base_url'], f'models.{name}.base_url', model['enabled'] and model['mode'] == 'api')
         if model['enabled'] and model['mode'] == 'api' and (not model['served_model'] or model['served_model'].startswith(('SET_', 'YOUR_'))):
             raise ConfigError(f'models.{name}.served_model: real served model name required')
@@ -267,8 +377,10 @@ def validate_values(data):
     for role, profile in data['roles'].items():
         if profile['model'] not in data['models']:
             raise ConfigError(f'roles.{role}.model: unknown model reference')
-        if not 0 <= profile['temperature'] <= 2:
+        if profile['temperature'] is not None and not 0 <= profile['temperature'] <= 2:
             raise ConfigError(f'roles.{role}.temperature: out of range')
+        if profile.get('reasoning_effort', '') not in ('', 'none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'):
+            raise ConfigError(f'roles.{role}.reasoning_effort: unsupported effort')
     for name, service in data['image_tools'].items():
         url(service['endpoint'], f'image_tools.{name}.endpoint', service['enabled'])
         if service['enabled']:
@@ -316,6 +428,8 @@ def validate_values(data):
         url(data[name]['endpoint'], f'{name}.endpoint', data[name]['enabled'])
     if data['actions']['require_approval'] is not True:
         raise ConfigError('actions.require_approval must remain true')
+    if 'synthetic_action_planner' in data and type(data['synthetic_action_planner']['enabled']) is not bool:
+        raise ConfigError('synthetic_action_planner.enabled: strict boolean required')
     rt = data['runtime']
     memory = rt['conversation_memory']
     for key, lower, upper in (('candidate_messages', 2, 1000), ('recent_turns', 1, 10),
@@ -327,6 +441,19 @@ def validate_values(data):
         raise ConfigError('runtime.conversation_memory: router budget exceeds review budget')
     if 2 * (memory['recent_turns'] + memory['recalled_turns']) > memory['candidate_messages']:
         raise ConfigError('runtime.conversation_memory: candidate_messages must cover selected turns')
+    context_policy = rt.get('context_management')
+    if context_policy is not None:
+        minimum = context_policy['router_history_min_messages']
+        if type(minimum) is not int or not 0 <= minimum <= 128:
+            raise ConfigError('runtime.context_management.router_history_min_messages: integer in 0..128 required')
+    team = rt.get('team_execution')
+    if team is not None:
+        for key, lower, upper in (('max_workers', 1, 3), ('max_parallel_tasks', 1, 3),
+                                  ('max_shared_calls', 1, rt['max_tool_calls']), ('deadline_seconds', 1, 300)):
+            if type(team[key]) is not int or not lower <= team[key] <= upper:
+                raise ConfigError(f'runtime.team_execution.{key}: integer in {lower}..{upper} required')
+        if team['max_parallel_tasks'] > team['max_workers']:
+            raise ConfigError('runtime.team_execution: parallel tasks exceed worker bound')
     for key in ('default_page_size', 'max_page_size', 'max_scope_incidents', 'max_tool_calls', 'max_parallel_tools', 'max_agent_steps', 'max_context_characters'):
         if rt[key] < 1:
             raise ConfigError(f'runtime.{key}: positive value required')
@@ -373,6 +500,13 @@ def resolve_paths(data, base_dir):
     data['paths'] = cache
     data['database']['sqlite_file'] = absolute(expand(data['database']['sqlite_file']), 'database.sqlite_file')
     data['meetings']['sqlite_file'] = absolute(expand(data['meetings']['sqlite_file']), 'meetings.sqlite_file')
+    mes_reader = data.get('mes_reference', {}).get('synthetic_sqlite', {})
+    if mes_reader.get('enabled'):
+        root = Path(data['paths']['data_root']).resolve()
+        target = (root / mes_reader['database_file']).resolve()
+        if not target.is_relative_to(root):
+            raise ConfigError('mes_reference.synthetic_sqlite.database_file: path escapes paths.data_root')
+        mes_reader['database_file'] = str(target)
     for source in data['enterprise']['sources']:
         if source['sqlite_file']:
             source['sqlite_file'] = absolute(expand(source['sqlite_file']), 'enterprise.sources.sqlite_file')
@@ -380,10 +514,60 @@ def resolve_paths(data, base_dir):
         for key in ('local_dir', 'tokenizer_dir'):
             if model[key]:
                 model[key] = absolute(expand(model[key]), f'models.{name}.{key}')
+    if data.get('model_lab', {}).get('enabled'):
+        if data['environment'] != 'demo':
+            raise ConfigError('model_lab: only synthetic demo environment is supported')
+        if not 1 <= data['model_lab']['timeout_seconds'] <= 300:
+            raise ConfigError('model_lab.timeout_seconds: expected 1..300')
+        for key in ('source_root', 'python', 'base_config', 'overlay', 'stderr_file'):
+            if not data['model_lab'][key]:
+                raise ConfigError('model_lab.' + key + ': required when enabled')
+            data['model_lab'][key] = absolute(expand(data['model_lab'][key]), 'model_lab.' + key)
+    if data.get('cohort_research', {}).get('enabled'):
+        if data['environment'] != 'demo':
+            raise ConfigError('cohort_research: only synthetic demo environment is supported')
+        for key in ('artifact_root', 'manifest_path'):
+            if not data['cohort_research'][key]:
+                raise ConfigError('cohort_research.' + key + ': required when enabled')
+            data['cohort_research'][key] = absolute(expand(data['cohort_research'][key]), 'cohort_research.' + key)
+        current_status_path = data['cohort_research'].get('current_status_manifest_path')
+        current_status_sha = data['cohort_research'].get('current_status_manifest_sha256')
+        if bool(current_status_path) != bool(current_status_sha):
+            raise ConfigError('cohort_research: current status manifest path and SHA256 must be supplied together')
+        if current_status_path:
+            data['cohort_research']['current_status_manifest_path'] = absolute(
+                expand(current_status_path), 'cohort_research.current_status_manifest_path')
+            if not isinstance(current_status_sha, str) or not re.fullmatch(r'[0-9a-fA-F]{64}', current_status_sha):
+                raise ConfigError('cohort_research.current_status_manifest_sha256: valid SHA256 required')
+
+
+def validate_platform_mapping(data):
+    if not data.get('platform', {}).get('enabled'):
+        return
+    try:
+        paths = data['paths']
+        registry = json.loads(Path(paths['registry_file']).read_text(encoding='utf-8'))
+        sources = None
+        for folder in registry['topics'].get('platform', []):
+            reference = Path(paths['skills_root']) / folder / 'references/logical-schema.json'
+            if reference.is_file():
+                document = json.loads(reference.read_text(encoding='utf-8'))
+                if 'logical_sources' in document:
+                    sources = document['logical_sources']
+                    break
+        tables = data['platform']['tables']
+        if sources is None or set(tables) != set(sources) or any(
+                set(tables[name]['columns']) != set(sources[name]['columns']) for name in tables):
+            raise ConfigError('platform.tables: mapping must match registered platform Schema Skill')
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        if isinstance(exc, ConfigError):
+            raise
+        raise ConfigError('platform: registered logical schema is missing or invalid') from None
 
 
 class Settings:
     def __init__(self, data, source_files):
+        validate_platform_mapping(data)
         self.data = copy.deepcopy(data)
         self.source_files = tuple(source_files)
         self.config_hash = hashlib.sha256(json.dumps(data, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
@@ -422,6 +606,9 @@ class Settings:
         for key in ('skills_root', 'dictionary_root'):
             if not Path(self.data['paths'][key]).is_dir():
                 errors.append(f'paths.{key}: directory missing')
+        mes_reader = self.data.get('mes_reference', {}).get('synthetic_sqlite', {})
+        if mes_reader.get('enabled') is True and not Path(mes_reader['database_file']).is_file():
+            errors.append('mes_reference.synthetic_sqlite.database_file: file missing')
         for name, model in self.data['models'].items():
             if model['enabled'] and model['mode'] == 'local':
                 target = Path(model['local_dir'])
@@ -443,6 +630,14 @@ def load_config(config=None, overlay=None):
         site = Path(selected).expanduser().resolve()
         data = merge(data, read_config(site))
         sources.append(str(site))
+    # Older standalone base configs and overlays predate this source policy.
+    # Keep their behavior equivalent to the explicit false default.
+    retrieval = data.get('retrieval')
+    if isinstance(retrieval, dict):
+        for source in retrieval.values():
+            if isinstance(source, dict):
+                source.setdefault('require_content_kind', False)
+    data.setdefault('fbm_search', {'enabled': False, 'top_k': 10})
     check_shape(data, SPEC)
     validate_values(data)
     resolve_paths(data, base.parent)

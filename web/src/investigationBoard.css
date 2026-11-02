@@ -953,6 +953,38 @@
   margin: 0;
   accent-color: #397a64;
 }
+.board-research-panel {
+  min-width: 0;
+  max-width: 100%;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.board-research-panel label {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0;
+  min-width: 0;
+}
+.board-research-panel select,
+.board-research-panel textarea,
+.board-research-panel button {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  font: inherit;
+}
+.board-research-panel select,
+.board-research-panel textarea {
+  width: 100%;
+}
+.board-research-panel textarea {
+  min-height: 56px;
+  resize: vertical;
+}
+.board-research-panel pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .board-analysis-controls {
   display: flex;
   align-items: center;
